@@ -25,7 +25,7 @@ class _AdminPanelState extends State<AdminPanel> with SingleTickerProviderStateM
   final Color primaryTeal = const Color(0xFF1C8C8C);
   final Color secondaryOrange = const Color(0xFFFF6B35);
 
-  Map<DateTime, List<Registro>> _registrosPorFecha = {};
+  final Map<DateTime, List<Registro>> _registrosPorFecha = {};
 Map<int, Map<int, Map<DateTime, List<Registro>>>> _registrosPorAnioMesDia = {};
 
 Map<int, Map<int, Map<DateTime, List<Registro>>>> _registrosFiltrados = {};

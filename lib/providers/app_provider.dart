@@ -11,7 +11,7 @@ class AppProvider extends ChangeNotifier {
   final SyncService _syncService = SyncService();
 
   bool _isInitialized = false;
-  bool _isLoading = false;
+  final bool _isLoading = false;
 
   Map<DateTime, List<Registro>> _registrosPorFecha = {};
   List<Map<String, String>> _consolidadores = [];

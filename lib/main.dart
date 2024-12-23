@@ -8,7 +8,8 @@ import 'package:formulario_app/utils/error_handler.dart';
 import 'package:formulario_app/firebase_options.dart';
 import 'package:formulario_app/services/sync_service.dart'; // Importa tu SyncService
 import 'package:formulario_app/services/database_service.dart'; // Importa DatabaseService
-
+//await Firebase.initializeApp(
+   // options: DefaultFirebaseOptions.currentPlatform,
 void main() async {
   await runZonedGuarded(() async {
     final dbService = DatabaseService();
