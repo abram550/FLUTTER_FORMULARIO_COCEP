@@ -1,0 +1,45 @@
+name: formulario_app
+description: "A new Flutter project."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.6.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  firebase_core: ^2.32.0
+  cloud_firestore: ^4.13.6
+  provider: ^6.0.5
+  sqflite: ^2.3.0
+  path_provider: ^2.0.11
+  path: ^1.8.3
+  connectivity_plus: ^5.0.2
+  excel: ^2.1.0
+  intl: ^0.18.0
+  workmanager: ^0.5.2
+  google_fonts: ^5.1.0
+  cupertino_icons: ^1.0.8
+  material_design_icons_flutter: ^7.0.7296
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+  flutter_launcher_icons: ^0.14.2
+
+flutter_icons:
+  android: true  # Cambia "launcher_icon" por true
+  ios: true
+  image_path: "assets/COCEPP.png"
+  adaptive_icon_background: "#ffffff"  # Opcional: añade un color de fondo
+  adaptive_icon_foreground: "assets/COCEPP.png"  # Para íconos adaptables en Android
+  remove_alpha_ios: true  # Elimina el canal alfa en iOS para cumplir con las políticas de la App Store
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/COCEPP.png
+    - assets/Cocep_.png
