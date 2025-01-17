@@ -8,6 +8,10 @@ import 'package:formulario_app/utils/error_handler.dart';
 import 'package:formulario_app/firebase_options.dart';
 import 'package:formulario_app/services/sync_service.dart'; // Importa tu SyncService
 import 'package:formulario_app/services/database_service.dart'; // Importa DatabaseService
+import 'package:formulario_app/screens/admin_pastores.dart';
+
+
+
 //await Firebase.initializeApp(
    // options: DefaultFirebaseOptions.currentPlatform,
 void main() async {
@@ -62,11 +66,17 @@ class MyApp extends StatelessWidget {
         primarySwatch: Colors.teal,
         scaffoldBackgroundColor: Colors.grey[100],
       ),
-      home: const SplashScreen(), // Cambia esto
+      home: const SplashScreen(), // Pantalla de inicio
       debugShowCheckedModeBanner: false,
       navigatorObservers: [ErrorHandler.routeObserver],
       builder: (context, child) {
         return ErrorHandler.buildErrorScreen(context, child);
+      },
+      routes: {
+        '/adminPastores': (context) => const AdminPastores(),
+        // Aquí puedes agregar más rutas según sea necesario.
+        '/splash': (context) => const SplashScreen(),
+        // Agrega otras rutas a tus pantallas, si es necesario.
       },
     );
   }

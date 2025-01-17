@@ -31,8 +31,58 @@
 
   <title>formulario_app</title>
   <link rel="manifest" href="manifest.json">
+
+  <style>
+    /* Estilos de la pantalla de carga */
+    #loading {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      width: 100vw;
+      background: white;
+    }
+
+    #loading img {
+      width: 80%;
+      max-width: 400px;
+      margin-bottom: 30px;
+    }
+
+    #loading .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid #919c8c;
+      border-top: 3px solid transparent;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
 </head>
 <body>
+  <!-- Pantalla de carga -->
+  <div id="loading">
+    <img src="assets/Cocep_.png" alt="COCEP"/>
+    <div class="spinner"></div>
+  </div>
+
+  <!-- Cargar Flutter Bootstrap -->
   <script src="flutter_bootstrap.js" async></script>
+
+  <script>
+    window.addEventListener('load', function() {
+      // Eliminar pantalla de carga cuando Flutter esté listo
+      window.addEventListener('flutter-first-frame', function() {
+        var loadingElement = document.querySelector('#loading');
+        loadingElement.remove();
+      });
+    });
+  </script>
 </body>
 </html>

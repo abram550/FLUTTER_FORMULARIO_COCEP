@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:formulario_app/screens/TimoteosScreen.dart';
 import 'package:formulario_app/screens/admin_screen.dart';
 import 'package:formulario_app/services/auth_service.dart';
 import 'package:formulario_app/utils/error_handler.dart';
+import 'TribusScreen.dart';
+
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -45,25 +48,69 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
     super.dispose();
   }
 
-  Future<void> _login() async {
-    if (!_formKey.currentState!.validate()) return;
+Future<void> _login() async {
+  if (!_formKey.currentState!.validate()) return;
 
-    setState(() => _isLoading = true);
+  setState(() => _isLoading = true);
 
-    try {
-      final isValid = await _authService.login(
-        _usuarioController.text,
-        _contrasenaController.text,
-      );
+  try {
+    final result = await _authService.login(
+      _usuarioController.text.trim(),
+      _contrasenaController.text.trim(),
+    );
 
-      if (!mounted) return;
+    if (!mounted) return;
 
-      if (isValid) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const AdminPanel()),
-        );
-      } else {
+    if (result != null) {
+      switch (result['role']) {
+        case 'adminPastores':
+          if (mounted) {
+            Navigator.pushReplacementNamed(context, '/adminPastores'); // Navegar a AdminPastores
+          }
+          break;
+        case 'liderConsolidacion':
+          if (mounted) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => const AdminPanel()),
+            );
+          }
+          break;
+        case 'tribu':
+          if (mounted) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (context) => TribusScreen(
+                  tribuId: result['tribuId'] ?? '',
+                  tribuNombre: _usuarioController.text.trim(),
+                ),
+              ),
+            );
+          }
+          break;
+case 'timoteo':
+  if (mounted) {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) => TimoteoScreen(
+          timoteoId: result['timoteoId'] ?? '',
+          timoteoNombre: result['timoteoNombre'] ?? '',
+        ),
+      ),
+    );
+  }
+  break;
+        default:
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Rol no reconocido')),
+            );
+          }
+      }
+    } else {
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Credenciales inválidas'),
@@ -71,19 +118,24 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
           ),
         );
       }
-    } catch (e, stack) {
-      ErrorHandler.logError(e, stack);
-      if (!mounted) return;
+    }
+  } catch (e, stackTrace) {
+    ErrorHandler.logError(e, stackTrace); // Ahora pasa dos argumentos
+    if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error: ${e.toString()}'),
+        const SnackBar(
+          content: Text('Ocurrió un error al iniciar sesión'),
           backgroundColor: Colors.redAccent,
         ),
       );
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
     }
+  } finally {
+    if (mounted) setState(() => _isLoading = false);
   }
+}
+
+
+
 
   @override
   Widget build(BuildContext context) {

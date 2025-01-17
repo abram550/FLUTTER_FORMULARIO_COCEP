@@ -1,17 +1,23 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:formulario_app/models/registro.dart';
 import 'package:formulario_app/services/firestore_service.dart';
 import 'package:formulario_app/services/excel_service.dart';
 import 'package:intl/intl.dart';
+import 'TribusScreen.dart';
 
 class AdminPanel extends StatefulWidget {
   const AdminPanel({super.key});
+  
+
 
   @override
   _AdminPanelState createState() => _AdminPanelState();
 }
 
 class _AdminPanelState extends State<AdminPanel> with SingleTickerProviderStateMixin {
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
   final TextEditingController _nuevoConsolidadorController = TextEditingController();
   final FirestoreService _firestoreService = FirestoreService();
   final ExcelService _excelService = ExcelService();
@@ -120,6 +126,16 @@ Map<int, Map<int, Map<DateTime, List<Registro>>>> _agruparRegistrosPorFecha(List
   return agrupados;
 }
 
+
+
+
+
+
+
+
+
+
+
   Future<void> _selectDateRange(BuildContext context) async {
     final DateTimeRange? picked = await showDateRangePicker(
       context: context,
@@ -210,6 +226,77 @@ Map<int, Map<int, Map<DateTime, List<Registro>>>> _agruparRegistrosPorFecha(List
   }
 }
 
+Future<void> _assignRegistroToTribu(String registroId) async {
+  final tribusSnapshot = await FirebaseFirestore.instance.collection('tribus').get();
+  final tribus = tribusSnapshot.docs;
+
+  if (tribus.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('No hay tribus disponibles.')),
+    );
+    return;
+  }
+
+  String? selectedTribu;
+
+  await showDialog(
+    context: context,
+    builder: (context) {
+      return AlertDialog(
+        title: const Text('Asignar a una Tribu'),
+        content: DropdownButtonFormField<String>(
+          items: tribus.map((tribu) {
+            return DropdownMenuItem(
+              value: tribu.id,
+              child: Text(tribu['nombre']),
+            );
+          }).toList(),
+          onChanged: (value) {
+            selectedTribu = value;
+          },
+          decoration: const InputDecoration(labelText: 'Seleccione una tribu'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (selectedTribu != null) {
+                try {
+                  await FirebaseFirestore.instance
+                      .collection('registros')
+                      .doc(registroId)
+                      .update({
+                    'tribuAsignada': selectedTribu,
+                    'coordinadorAsignado': FieldValue.delete(), // Elimina el coordinador si aplica.
+                    'fechaAsignacionTribu': FieldValue.serverTimestamp(),
+                  });
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Registro asignado a la tribu correctamente')),
+                  );
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Error al asignar a la tribu: $e')),
+                  );
+                }
+              }
+            },
+            child: const Text('Asignar'),
+          ),
+        ],
+      );
+    },
+  );
+}
+
+
+
+
+
+
   void _mostrarExito(String mensaje) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -225,6 +312,7 @@ Map<int, Map<int, Map<DateTime, List<Registro>>>> _agruparRegistrosPorFecha(List
       ),
     );
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -251,7 +339,7 @@ Map<int, Map<int, Map<DateTime, List<Registro>>>> _agruparRegistrosPorFecha(List
             style: TextStyle(
               fontWeight: FontWeight.bold,
               color: Colors.white,
-              fontSize: 24,
+              fontSize: 20,
             ),
           ),
           bottom: TabBar(
@@ -307,6 +395,9 @@ Map<int, Map<int, Map<DateTime, List<Registro>>>> _agruparRegistrosPorFecha(List
       ),
     );
   }
+
+
+  
 
   Widget _buildRegistrosTab() {
     return SingleChildScrollView(
@@ -465,15 +556,28 @@ Widget _buildRegistrosList() {
       child: Column(
         children: [
           _buildBuscadorFechas(),
-          ListView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            padding: const EdgeInsets.all(8),
-            itemCount: (_mostrarFiltrados ? _registrosFiltrados : _registrosPorAnioMesDia).length,
-            itemBuilder: (context, indexAnio) {
-              final datos = _mostrarFiltrados ? _registrosFiltrados : _registrosPorAnioMesDia;
-              final anio = datos.keys.toList()[indexAnio];
-              return _buildAnioGroup(anio, datos[anio]!);
+          StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance.collection('registros').snapshots(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+
+              if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                return const Center(child: Text('No hay registros disponibles.'));
+              }
+
+              return ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(8),
+                itemCount: (_mostrarFiltrados ? _registrosFiltrados : _registrosPorAnioMesDia).length,
+                itemBuilder: (context, indexAnio) {
+                  final datos = _mostrarFiltrados ? _registrosFiltrados : _registrosPorAnioMesDia;
+                  final anio = datos.keys.toList()[indexAnio];
+                  return _buildAnioGroup(anio, datos[anio]!);
+                },
+              );
             },
           ),
         ],
@@ -481,6 +585,9 @@ Widget _buildRegistrosList() {
     ),
   );
 }
+
+
+
 
 Widget _buildBuscadorFechas() {
   return Padding(
@@ -640,99 +747,140 @@ children: registros
     );
   }
 
-  Widget _buildRegistroTile(Registro registro) {
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      elevation: 4,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(15),
-      ),
-      child: Container(
-        decoration: BoxDecoration(
+ Widget _buildRegistroTile(Registro registro) {
+  return StatefulBuilder(
+    builder: (BuildContext context, StateSetter setInnerState) {
+      return Card(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        elevation: 4,
+        shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(15),
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Colors.white, primaryTeal.withOpacity(0.05)],
-          ),
         ),
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                CircleAvatar(
-                  backgroundColor: secondaryOrange.withOpacity(0.2),
-                  child: Text(
-                    registro.nombre[0].toUpperCase(),
-                    style: TextStyle(
-                      color: secondaryOrange,
-                      fontWeight: FontWeight.bold,
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(15),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Colors.white, primaryTeal.withOpacity(0.05)],
+            ),
+          ),
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  CircleAvatar(
+                    backgroundColor: secondaryOrange.withOpacity(0.2),
+                    child: Text(
+                      registro.nombre[0].toUpperCase(),
+                      style: TextStyle(
+                        color: secondaryOrange,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${registro.nombre} ${registro.apellido}',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: primaryTeal,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          registro.servicio,
+                          style: const TextStyle(
+                            color: Colors.grey,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Botones de acción
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(
-                        '${registro.nombre} ${registro.apellido}',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: primaryTeal,
-                        ),
+                      IconButton(
+                        icon: const Icon(Icons.edit),
+                        onPressed: () => _editarRegistro(context, registro),
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        registro.servicio,
-                        style: const TextStyle(
-                          color: Colors.grey,
-                          fontSize: 14,
-                        ),
+                      // Verificar si el registro ya tiene una tribu asignada
+                      StreamBuilder<DocumentSnapshot>(
+                        stream: FirebaseFirestore.instance
+                            .collection('registros')
+                            .doc(registro.id)
+                            .snapshots(),
+                        builder: (context, snapshot) {
+                          if (!snapshot.hasData) return SizedBox();
+                          
+                          final registroData = snapshot.data!.data() as Map<String, dynamic>?;
+                          final tribuAsignada = registroData?['tribuAsignada'];
+                          
+                          // Solo mostrar el botón si no hay tribu asignada
+                          if (tribuAsignada == null) {
+                            return IconButton(
+                              icon: const Icon(Icons.group_add, color: Colors.blue),
+                              onPressed: () async {
+                                try {
+                                  await _assignRegistroToTribu(registro.id!);
+                                  // No necesitamos actualizar el estado local porque
+                                  // el StreamBuilder se actualizará automáticamente
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('Tribu asignada exitosamente'),
+                                      backgroundColor: Colors.green,
+                                    ),
+                                  );
+                                } catch (e) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('Error al asignar tribu: $e'),
+                                      backgroundColor: Colors.red,
+                                    ),
+                                  );
+                                }
+                              },
+                            );
+                          }
+                          return SizedBox(); // No mostrar el botón si ya hay tribu asignada
+                        },
                       ),
                     ],
                   ),
-                ),
-              ],
-            ),
-            const Divider(height: 24),
-            Row(
-              children: [
-                Icon(Icons.phone, size: 20, color: Colors.grey[600]),
-                const SizedBox(width: 8),
-                Text(
-                  registro.telefono,
-                  style: TextStyle(
-                    color: Colors.grey[600],
-                    fontSize: 16,
-                  ),
-                ),
-                const Spacer(),
-                ElevatedButton.icon(
-                  onPressed: () => _editarRegistro(context, registro),
-                  icon: const Icon(Icons.edit, size: 20),
-                  label: const Text('Editar'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: primaryTeal,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+                ],
+              ),
+              const Divider(height: 24),
+              Row(
+                children: [
+                  Icon(Icons.phone, size: 20, color: Colors.grey[600]),
+                  const SizedBox(width: 8),
+                  Text(
+                    registro.telefono,
+                    style: TextStyle(
+                      color: Colors.grey[600],
+                      fontSize: 16,
                     ),
                   ),
-                ),
-              ],
-            ),
-          ],
+                ],
+              ),
+            ],
+          ),
         ),
-      ),
-    );
-  }
+      );
+    },
+  );
+}
+
+
 
   Widget _buildConsolidadoresTab() {
     return SingleChildScrollView(
@@ -956,6 +1104,63 @@ children: registros
     ),
   );
 }
+
+
+void _asignarAtribu(Registro registro) async {
+  final tribusSnapshot = await FirebaseFirestore.instance.collection('tribus').get();
+  final tribus = tribusSnapshot.docs;
+
+  if (tribus.isEmpty) {
+    _mostrarError('No hay tribus disponibles para asignar.');
+    return;
+  }
+
+  String? tribuSeleccionada;
+
+  // Mostrar diálogo para seleccionar tribu
+  await showDialog(
+    context: context,
+    builder: (context) {
+      return AlertDialog(
+        title: Text('Asignar a Tribu'),
+        content: DropdownButtonFormField<String>(
+          value: tribuSeleccionada,
+          items: tribus.map((doc) {
+            return DropdownMenuItem(
+              value: doc.id,
+              child: Text(doc['nombre'] ?? ''),
+            );
+          }).toList(),
+          onChanged: (value) {
+            tribuSeleccionada = value;
+          },
+          decoration: InputDecoration(labelText: 'Seleccione una tribu'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (tribuSeleccionada != null) {
+                await FirebaseFirestore.instance
+                    .collection('registros')
+                    .doc(registro.id)
+                    .update({'tribuAsignada': tribuSeleccionada});
+                Navigator.pop(context);
+                _mostrarExito('Registro asignado exitosamente.');
+              }
+            },
+            child: Text('Asignar'),
+          ),
+        ],
+      );
+    },
+  );
+}
+
+
 
 
   void _editarRegistro(BuildContext context, Registro registro) {
@@ -1282,3 +1487,4 @@ children: registros
     );
   }
 }
+

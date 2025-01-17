@@ -18,11 +18,18 @@ dependencies:
   path: ^1.8.3
   connectivity_plus: ^5.0.2
   excel: ^2.1.0
-  intl: ^0.18.0
   workmanager: ^0.5.2
   google_fonts: ^5.1.0
   cupertino_icons: ^1.0.8
   material_design_icons_flutter: ^7.0.7296
+  crypto: ^3.0.0
+  url_launcher: ^6.1.14
+  intl: ^0.20.1
+  firebase_messaging: ^14.0.0
+  mailer: ^6.4.1
+  universal_html: ^2.2.4
+
+
 
 dev_dependencies:
   flutter_test:

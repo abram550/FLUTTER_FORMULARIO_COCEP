@@ -23,7 +23,8 @@ class Registro {
   bool tieneHijos;
   String referenciaInvitacion;
   String? observaciones;
-
+  String? tribuAsignada;
+  
   Registro({
     this.id,
     required this.nombre,

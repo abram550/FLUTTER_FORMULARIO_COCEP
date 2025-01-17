@@ -46,6 +46,15 @@ class DefaultFirebaseOptions {
     }
   }
 
+  static const FirebaseOptions web = FirebaseOptions(
+    apiKey: 'AIzaSyA0AmSY4J1AIi8_Iu5dagJzwgjAhEO3uvM',
+    appId: '1:313954033619:web:910e9f3f4be0cc1c2e1926',
+    messagingSenderId: '313954033619',
+    projectId: 'consolidacion-5b340',
+    authDomain: 'consolidacion-5b340.firebaseapp.com',
+    storageBucket: 'consolidacion-5b340.firebasestorage.app',
+  );
+
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyDIeptUqYQ9oxH6jlDt-BKoaR0VN2Mqtxw',
     appId: '1:313954033619:android:abeddfa68b4960e92e1926',
@@ -62,14 +71,4 @@ class DefaultFirebaseOptions {
     storageBucket: 'consolidacion-5b340.firebasestorage.app',
     iosBundleId: 'com.example.formularioApp',
   );
-
-  static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyA0AmSY4J1AIi8_Iu5dagJzwgjAhEO3uvM',
-    appId: '1:313954033619:web:910e9f3f4be0cc1c2e1926',
-    messagingSenderId: '313954033619',
-    projectId: 'consolidacion-5b340',
-    authDomain: 'consolidacion-5b340.firebaseapp.com',
-    storageBucket: 'consolidacion-5b340.firebasestorage.app',
-  );
-
 }
