@@ -1,37 +1,113 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/services.dart';
+import 'package:formulario_app/utils/theme_constants.dart';
 import 'TimoteosScreen.dart';
 import 'CoordinadorScreen.dart';
+import 'package:formulario_app/utils/theme_constants.dart';
 
 class TribusScreen extends StatelessWidget {
   final String tribuId;
   final String tribuNombre;
 
-  const TribusScreen({Key? key, required this.tribuId, required this.tribuNombre})
+  const TribusScreen(
+      {Key? key, required this.tribuId, required this.tribuNombre})
       : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 3, // Se elimina la pestaña de "Asistencia"
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text('Tribu: $tribuNombre'),
-          bottom: const TabBar(
-            tabs: [
-              Tab(text: 'Timoteos'),
-              Tab(text: 'Coordinadores'),
-              Tab(text: 'Jóvenes Asignados'),
-            ],
+    return Theme(
+      data: ThemeConstants.appTheme,
+      child: DefaultTabController(
+        length: 3,
+        child: Scaffold(
+          appBar: AppBar(
+            title: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Image.asset(
+                  'assets/Cocep_.png', // Asegúrate de tener el logo en assets
+                  height: 40,
+                ),
+                SizedBox(width: 12),
+                Text(
+                  'Tribu: $tribuNombre',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+            bottom: PreferredSize(
+              preferredSize: Size.fromHeight(60),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: ThemeConstants.primaryTeal,
+                  border: Border(
+                    bottom: BorderSide(
+                      color: ThemeConstants.secondaryOrange,
+                      width: 3,
+                    ),
+                  ),
+                ),
+                child: TabBar(
+                  tabs: [
+                    Tab(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.people),
+                          Text('Timoteos'),
+                        ],
+                      ),
+                    ),
+                    Tab(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.supervised_user_circle),
+                          Text('Coordinadores'),
+                        ],
+                      ),
+                    ),
+                    Tab(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.assignment_ind),
+                          Text('Jóvenes'),
+                        ],
+                      ),
+                    ),
+                  ],
+                  indicatorColor: ThemeConstants.secondaryOrange,
+                  indicatorWeight: 3,
+                  labelStyle: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
           ),
-        ),
-        body: TabBarView(
-          children: [
-            TimoteosTab(tribuId: tribuId),
-            CoordinadoresTab(tribuId: tribuId),
-            RegistrosAsignadosTab(tribuId: tribuId),
-          ],
+          body: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  ThemeConstants.primaryTeal.withOpacity(0.1),
+                  Colors.white,
+                ],
+              ),
+            ),
+            child: TabBarView(
+              children: [
+                TimoteosTab(tribuId: tribuId),
+                CoordinadoresTab(tribuId: tribuId),
+                RegistrosAsignadosTab(tribuId: tribuId),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -43,67 +119,257 @@ class CoordinadoresTab extends StatelessWidget {
 
   const CoordinadoresTab({Key? key, required this.tribuId}) : super(key: key);
 
-
   Future<void> _crearCoordinador(BuildContext context) async {
-    final TextEditingController _nameController = TextEditingController();
-    final TextEditingController _lastNameController = TextEditingController();
-    final TextEditingController _ageController = TextEditingController();
-    final TextEditingController _userController = TextEditingController();
-    final TextEditingController _passwordController = TextEditingController();
-    final TextEditingController _phoneController = TextEditingController();
-    final TextEditingController _emailController = TextEditingController();
+    final _nameController = TextEditingController();
+    final _lastNameController = TextEditingController();
+    final _ageController = TextEditingController();
+    final _userController = TextEditingController();
+    final _passwordController = TextEditingController();
+    final _phoneController = TextEditingController();
+    final _emailController = TextEditingController();
 
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: SingleChildScrollView(
+            child: Container(
+              padding: EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.supervisor_account,
+                        color: ThemeConstants.secondaryOrange,
+                        size: 32,
+                      ),
+                      SizedBox(width: 12),
+                      Text(
+                        'Nuevo Coordinador',
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: ThemeConstants.primaryTeal,
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 24),
+                  _buildTextField(
+                    controller: _nameController,
+                    label: 'Nombre',
+                    icon: Icons.person_outline,
+                  ),
+                  SizedBox(height: 16),
+                  _buildTextField(
+                    controller: _lastNameController,
+                    label: 'Apellido',
+                    icon: Icons.person,
+                  ),
+                  SizedBox(height: 16),
+                  _buildTextField(
+                    controller: _ageController,
+                    label: 'Edad',
+                    icon: Icons.cake,
+                    keyboardType: TextInputType.number,
+                  ),
+                  SizedBox(height: 16),
+                  _buildTextField(
+                    controller: _phoneController,
+                    label: 'Teléfono',
+                    icon: Icons.phone,
+                    keyboardType: TextInputType.phone,
+                    formatters: [
+                      FilteringTextInputFormatter.allow(RegExp(r'^\+?[0-9]*$')),
+                    ],
+                    onChanged: (value) {
+                      if (!value.startsWith('+57')) {
+                        _phoneController.text = '+57$value';
+                        _phoneController.selection = TextSelection.fromPosition(
+                          TextPosition(offset: _phoneController.text.length),
+                        );
+                      }
+                    },
+                  ),
+                  SizedBox(height: 16),
+                  _buildTextField(
+                    controller: _emailController,
+                    label: 'Correo Electrónico',
+                    icon: Icons.email,
+                    keyboardType: TextInputType.emailAddress,
+                  ),
+                  SizedBox(height: 16),
+                  _buildTextField(
+                    controller: _userController,
+                    label: 'Usuario',
+                    icon: Icons.account_circle,
+                  ),
+                  SizedBox(height: 16),
+                  _buildTextField(
+                    controller: _passwordController,
+                    label: 'Contraseña',
+                    icon: Icons.lock_outline,
+                    isPassword: true,
+                  ),
+                  SizedBox(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: Text('Cancelar'),
+                        style: TextButton.styleFrom(
+                          padding: EdgeInsets.symmetric(
+                              horizontal: 20, vertical: 12),
+                        ),
+                      ),
+                      SizedBox(width: 12),
+                      ElevatedButton.icon(
+                        icon: Icon(Icons.save),
+                        label: Text('Guardar'),
+                        onPressed: () async {
+                          if (_validateFields(
+                              _nameController.text,
+                              _lastNameController.text,
+                              _ageController.text,
+                              _phoneController.text,
+                              _emailController.text,
+                              _userController.text,
+                              _passwordController.text)) {
+                            await FirebaseFirestore.instance
+                                .collection('coordinadores')
+                                .add({
+                              'nombre': _nameController.text,
+                              'apellido': _lastNameController.text,
+                              'edad': int.tryParse(_ageController.text) ?? 0,
+                              'telefono': _phoneController.text,
+                              'email': _emailController.text,
+                              'usuario': _userController.text,
+                              'contrasena': _passwordController.text,
+                              'tribuId': tribuId,
+                            });
+                            Navigator.pop(context);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content:
+                                    Text('Coordinador creado exitosamente'),
+                                backgroundColor: Colors.green,
+                              ),
+                            );
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                    'Por favor completa todos los campos correctamente'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          padding: EdgeInsets.symmetric(
+                              horizontal: 20, vertical: 12),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
 
-  await showDialog(
-    context: context,
-    builder: (context) {
-      return AlertDialog(
-        title: Text('Crear Coordinador'),
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    bool isPassword = false,
+    TextInputType? keyboardType,
+    List<TextInputFormatter>? formatters,
+    Function(String)? onChanged,
+  }) {
+    return TextField(
+      controller: controller,
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(icon, color: ThemeConstants.primaryTeal),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: ThemeConstants.primaryTeal),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide:
+              BorderSide(color: ThemeConstants.primaryTeal.withOpacity(0.5)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: ThemeConstants.primaryTeal, width: 2),
+        ),
+      ),
+      obscureText: isPassword,
+      keyboardType: keyboardType,
+      inputFormatters: formatters,
+      onChanged: onChanged,
+    );
+  }
+
+  bool _validateFields(String name, String lastName, String age, String phone,
+      String email, String user, String password) {
+    return name.isNotEmpty &&
+        lastName.isNotEmpty &&
+        age.isNotEmpty &&
+        phone.isNotEmpty &&
+        email.isNotEmpty &&
+        user.isNotEmpty &&
+        password.isNotEmpty;
+  }
+
+  Future<void> _editarCoordinador(
+      BuildContext context, DocumentSnapshot coordinador) async {
+    final nombreController = TextEditingController(text: coordinador['nombre']);
+    final apellidoController =
+        TextEditingController(text: coordinador['apellido']);
+    final usuarioController =
+        TextEditingController(text: coordinador['usuario']);
+    final contrasenaController = TextEditingController();
+
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Editar Coordinador'),
         content: SingleChildScrollView(
           child: Column(
-            mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
-                controller: _nameController,
-                decoration: InputDecoration(labelText: 'Nombre'),
+                controller: nombreController,
+                decoration: const InputDecoration(labelText: 'Nombre'),
               ),
               TextField(
-                controller: _lastNameController,
-                decoration: InputDecoration(labelText: 'Apellido'),
+                controller: apellidoController,
+                decoration: const InputDecoration(labelText: 'Apellido'),
               ),
               TextField(
-                controller: _ageController,
-                decoration: InputDecoration(labelText: 'Edad'),
-                keyboardType: TextInputType.number,
+                controller: usuarioController,
+                decoration: const InputDecoration(labelText: 'Usuario'),
               ),
               TextField(
-                controller: _phoneController,
-                decoration: const InputDecoration(labelText: 'Teléfono'),
-                keyboardType: TextInputType.phone,
-                inputFormatters: [
-                  FilteringTextInputFormatter.allow(RegExp(r'^\+?[0-9]*$')), // Solo números y +
-                ],
-                onChanged: (value) {
-                  if (!value.startsWith('+57')) {
-                    _phoneController.text = '+57$value';
-                    _phoneController.selection = TextSelection.fromPosition(
-                      TextPosition(offset: _phoneController.text.length),
-                    );
-                  }
-                },
-              ),
-              TextField(
-                controller: _emailController,
-                decoration: const InputDecoration(labelText: 'Correo Electrónico'),
-                keyboardType: TextInputType.emailAddress,
-              ),
-              TextField(
-                controller: _userController,
-                decoration: InputDecoration(labelText: 'Usuario'),
-              ),
-              TextField(
-                controller: _passwordController,
-                decoration: InputDecoration(labelText: 'Contraseña'),
+                controller: contrasenaController,
+                decoration: const InputDecoration(
+                    labelText: 'Nueva Contraseña (opcional)'),
               ),
             ],
           ),
@@ -111,112 +377,122 @@ class CoordinadoresTab extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Cancelar'),
+            child: const Text('Cancelar'),
           ),
           ElevatedButton(
             onPressed: () async {
-              await FirebaseFirestore.instance.collection('coordinadores').add({
-                'nombre': _nameController.text,
-                'apellido': _lastNameController.text,
-                'edad': int.tryParse(_ageController.text) ?? 0,
-                'telefono': _phoneController.text,
-                'email': _emailController.text,
-                'usuario': _userController.text,
-                'contrasena': _passwordController.text,
-                'tribuId': tribuId,
-              });
+              final Map<String, dynamic> datosActualizados = {
+                'nombre': nombreController.text,
+                'apellido': apellidoController.text,
+                'usuario': usuarioController.text,
+              };
+
+              if (contrasenaController.text.isNotEmpty) {
+                datosActualizados['contrasena'] =
+                    contrasenaController.text; // Guardar nueva contraseña
+              }
+
+              await FirebaseFirestore.instance
+                  .collection('coordinadores')
+                  .doc(coordinador.id)
+                  .update(datosActualizados);
+
               Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                    content: Text('Coordinador actualizado exitosamente')),
+              );
             },
-            child: Text('Guardar'),
+            child: const Text('Guardar'),
           ),
         ],
-      );
-    },
-  );
-}
+      ),
+    );
+  }
 
-   Future<void> _eliminarCoordinador(BuildContext context, DocumentSnapshot coordinador) async {
-  // Mostrar diálogo de confirmación
-  bool? confirmacion = await showDialog<bool>(
-    context: context,
-    barrierDismissible: false, // Evita que el diálogo se cierre al tocar fuera
-    builder: (BuildContext dialogContext) => AlertDialog(
-      title: const Text('Confirmar eliminación'),
-      content: const Text('¿Estás seguro de eliminar este coordinador? Los timoteos y registros asignados volverán a estar disponibles para asignación.'),
-      actions: [
-        TextButton(
-          onPressed: () {
-            Navigator.of(dialogContext).pop(false); // Cierra el diálogo con false
-          },
-          child: const Text('Cancelar'),
-        ),
-        TextButton(
-          onPressed: () {
-            Navigator.of(dialogContext).pop(true); // Cierra el diálogo con true
-          },
-          child: const Text('Eliminar'),
-        ),
-      ],
-    ),
-  );
+  Future<void> _eliminarCoordinador(
+      BuildContext context, DocumentSnapshot coordinador) async {
+    // Mostrar diálogo de confirmación
+    bool? confirmacion = await showDialog<bool>(
+      context: context,
+      barrierDismissible:
+          false, // Evita que el diálogo se cierre al tocar fuera
+      builder: (BuildContext dialogContext) => AlertDialog(
+        title: const Text('Confirmar eliminación'),
+        content: const Text(
+            '¿Estás seguro de eliminar este coordinador? Los timoteos y registros asignados volverán a estar disponibles para asignación.'),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(dialogContext)
+                  .pop(false); // Cierra el diálogo con false
+            },
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(dialogContext)
+                  .pop(true); // Cierra el diálogo con true
+            },
+            child: const Text('Eliminar'),
+          ),
+        ],
+      ),
+    );
 
-  // Si no se confirmó la eliminación o se cerró el diálogo, no hacer nada
-  if (confirmacion != true) return;
+    // Si no se confirmó la eliminación o se cerró el diálogo, no hacer nada
+    if (confirmacion != true) return;
 
-  try {
-    final batch = FirebaseFirestore.instance.batch();
+    try {
+      final batch = FirebaseFirestore.instance.batch();
 
-    // Obtener y actualizar timoteos asignados
-    final timoteos = await FirebaseFirestore.instance
-        .collection('timoteos')
-        .where('coordinadorId', isEqualTo: coordinador.id)
-        .get();
+      // Obtener y actualizar timoteos asignados
+      final timoteos = await FirebaseFirestore.instance
+          .collection('timoteos')
+          .where('coordinadorId', isEqualTo: coordinador.id)
+          .get();
 
-    for (var timoteo in timoteos.docs) {
-      batch.update(timoteo.reference, {
-        'coordinadorId': null,
-        'nombreCoordinador': null
-      });
-    }
+      for (var timoteo in timoteos.docs) {
+        batch.update(timoteo.reference,
+            {'coordinadorId': null, 'nombreCoordinador': null});
+      }
 
-    // Obtener y actualizar registros asignados
-    final registros = await FirebaseFirestore.instance
-        .collection('registros')
-        .where('coordinadorAsignado', isEqualTo: coordinador.id)
-        .get();
+      // Obtener y actualizar registros asignados
+      final registros = await FirebaseFirestore.instance
+          .collection('registros')
+          .where('coordinadorAsignado', isEqualTo: coordinador.id)
+          .get();
 
-    for (var registro in registros.docs) {
-      batch.update(registro.reference, {
-        'coordinadorAsignado': null,
-        'nombreCoordinador': null,
-        'estado': 'pendiente'
-      });
-    }
+      for (var registro in registros.docs) {
+        batch.update(registro.reference, {
+          'coordinadorAsignado': null,
+          'nombreCoordinador': null,
+          'estado': 'pendiente'
+        });
+      }
 
-    // Eliminar coordinador
-    batch.delete(coordinador.reference);
+      // Eliminar coordinador
+      batch.delete(coordinador.reference);
 
-    await batch.commit();
+      await batch.commit();
 
-    // Mostrar mensaje de éxito
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Coordinador eliminado correctamente'))
-      );
-    }
-  } catch (e) {
-    print('Error al eliminar coordinador: $e');
-    // Mostrar mensaje de error
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error al eliminar el coordinador: $e'))
-      );
+      // Mostrar mensaje de éxito
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Coordinador eliminado correctamente')));
+      }
+    } catch (e) {
+      print('Error al eliminar coordinador: $e');
+      // Mostrar mensaje de error
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error al eliminar el coordinador: $e')));
+      }
     }
   }
-}
 
-
-  Future<void> _verTimoteosAsignados(BuildContext context, DocumentSnapshot coordinador) async {
+  Future<void> _verTimoteosAsignados(
+      BuildContext context, DocumentSnapshot coordinador) async {
     await showDialog(
       context: context,
       builder: (context) {
@@ -226,7 +502,8 @@ class CoordinadoresTab extends StatelessWidget {
             height: MediaQuery.of(context).size.height * 0.8,
             child: Scaffold(
               appBar: AppBar(
-                title: Text('Timoteos de ${coordinador['nombre']} ${coordinador['apellido']}'),
+                title: Text(
+                    'Timoteos de ${coordinador['nombre']} ${coordinador['apellido']}'),
                 actions: [
                   IconButton(
                     icon: Icon(Icons.close),
@@ -253,16 +530,18 @@ class CoordinadoresTab extends StatelessWidget {
                     itemBuilder: (context, index) {
                       final timoteo = snapshot.data!.docs[index];
                       return Card(
-                            margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-                            child: ListTile(
-                              title: Text('${timoteo['nombre']} ${timoteo['apellido']}'),
-                              subtitle: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text('Usuario: ${timoteo['usuario']}'),
-                                  Text('Contraseña: ${timoteo['contrasena']}'),
-                                ],
-                              ),
+                        margin:
+                            EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                        child: ListTile(
+                          title: Text(
+                              '${timoteo['nombre']} ${timoteo['apellido']}'),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Usuario: ${timoteo['usuario']}'),
+                              Text('Contraseña: ${timoteo['contrasena']}'),
+                            ],
+                          ),
                           trailing: IconButton(
                             icon: Icon(Icons.remove_circle_outline),
                             onPressed: () async {
@@ -287,91 +566,265 @@ class CoordinadoresTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: ElevatedButton(
-            onPressed: () => _crearCoordinador(context),
-            child: Text('Crear Coordinador'),
+    return Container(
+      padding: EdgeInsets.all(16),
+      child: Column(
+        children: [
+          Container(
+            width: double.infinity,
+            margin: EdgeInsets.only(bottom: 20),
+            child: ElevatedButton.icon(
+              icon: Icon(Icons.group_add, size: 24),
+              label: Text(
+                'Crear Coordinador',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: ThemeConstants.secondaryOrange,
+                padding: EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                elevation: 4,
+              ),
+              onPressed: () => _crearCoordinador(context),
+            ),
           ),
-        ),
-        Expanded(
-          child: StreamBuilder(
-            stream: FirebaseFirestore.instance
-                .collection('coordinadores')
-                .where('tribuId', isEqualTo: tribuId)
-                .snapshots(),
-            builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return Center(child: CircularProgressIndicator());
-              }
+          Expanded(
+            child: StreamBuilder(
+              stream: FirebaseFirestore.instance
+                  .collection('coordinadores')
+                  .where('tribuId', isEqualTo: tribuId)
+                  .snapshots(),
+              builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return Center(
+                    child: CircularProgressIndicator(
+                      color: ThemeConstants.primaryTeal,
+                    ),
+                  );
+                }
 
-              if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                return Center(child: Text('No hay coordinadores'));
-              }
-
-              return ListView.builder(
-                itemCount: snapshot.data!.docs.length,
-                itemBuilder: (context, index) {
-                  final coordinador = snapshot.data!.docs[index];
-                  return Card(
-                    child: ExpansionTile(
-                      title: Text(
-                        '${coordinador['nombre']} ${coordinador['apellido']}',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      subtitle: Text('Edad: ${coordinador['edad']}'),
+                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        ListTile(
-                          title: Text('Usuario: ${coordinador['usuario']}'),
-                          subtitle: Text('Contraseña: ${coordinador['contrasena']}'),
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              IconButton(
-                                icon: Icon(Icons.group),
-                                tooltip: 'Ver timoteos asignados',
-                                onPressed: () => _verTimoteosAsignados(context, coordinador),
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.delete, color: Colors.red),
-                                tooltip: 'Eliminar Coordinador',
-                                onPressed: () => _eliminarCoordinador(context, coordinador),
-                              ),
-                              IconButton(
-                                icon: Icon(Icons.arrow_forward),
-                                tooltip: 'Ir a pantalla de coordinador',
-                                onPressed: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => CoordinadorScreen(
-                                        coordinadorId: coordinador.id,
-                                        coordinadorNombre:
-                                            '${coordinador['nombre']} ${coordinador['apellido']}',
-                                      ),
-                                    ),
-                                  );
-                                },
-                              ),
-                            ],
+                        Icon(
+                          Icons.groups,
+                          size: 64,
+                          color: ThemeConstants.accentGrey,
+                        ),
+                        SizedBox(height: 16),
+                        Text(
+                          'No hay coordinadores registrados',
+                          style: TextStyle(
+                            fontSize: 18,
+                            color: ThemeConstants.accentGrey,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
                       ],
                     ),
                   );
-                },
-              );
-            },
+                }
+
+                return ListView.builder(
+                  itemCount: snapshot.data!.docs.length,
+                  itemBuilder: (context, index) {
+                    final coordinador = snapshot.data!.docs[index];
+                    return Card(
+                      elevation: 3,
+                      margin: EdgeInsets.symmetric(vertical: 8),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: ExpansionTile(
+                        leading: CircleAvatar(
+                          backgroundColor: ThemeConstants.primaryTeal,
+                          child: Text(
+                            '${coordinador['nombre'][0]}${coordinador['apellido'][0]}',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        title: Text(
+                          '${coordinador['nombre']} ${coordinador['apellido']}',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: ThemeConstants.primaryTeal,
+                            fontSize: 16,
+                          ),
+                        ),
+                        subtitle: Text(
+                          'Edad: ${coordinador['edad']} años',
+                          style: TextStyle(color: ThemeConstants.accentGrey),
+                        ),
+                        children: [
+                          Container(
+                            padding: EdgeInsets.all(16),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _buildInfoRow(Icons.phone, 'Teléfono',
+                                    coordinador['telefono']),
+                                SizedBox(height: 8),
+                                _buildInfoRow(
+                                    Icons.email, 'Email', coordinador['email']),
+                                SizedBox(height: 8),
+                                _buildInfoRow(Icons.person, 'Usuario',
+                                    coordinador['usuario']),
+                                SizedBox(height: 8),
+                                _buildInfoRow(Icons.lock, 'Contraseña',
+                                    coordinador['contrasena']),
+                                Divider(height: 24),
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceEvenly,
+                                  children: [
+                                    _buildActionButton(
+                                      icon: Icons.edit,
+                                      label: '',
+                                      color: ThemeConstants.primaryTeal,
+                                      padding: EdgeInsets.symmetric(
+                                          horizontal: 16, vertical: 12),
+                                      iconSize: 30, // Ajuste del tamaño
+                                      onPressed: () => _editarCoordinador(
+                                          context, coordinador),
+                                    ),
+                                    _buildActionButton(
+                                      icon: Icons.group,
+                                      label: '',
+                                      color: ThemeConstants.secondaryOrange,
+                                      onPressed: () => _verTimoteosAsignados(
+                                          context, coordinador),
+                                      padding: EdgeInsets.symmetric(
+                                          horizontal: 16, vertical: 12),
+                                      iconSize:
+                                          30, // Cambiar el tamaño del ícono (aumentado)
+                                      // Ajuste del tamaño
+                                    ),
+                                    _buildActionButton(
+                                      icon: Icons.delete,
+                                      label:
+                                          '', // Mantener sin texto si no necesitas un label
+                                      color: Colors.red,
+                                      onPressed: () => _eliminarCoordinador(
+                                          context, coordinador),
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: 16,
+                                        vertical: 12,
+                                      ), // Ajuste del tamaño
+                                      iconSize:
+                                          30, // Cambiar el tamaño del ícono (aumentado)
+                                    ),
+                                    _buildActionButton(
+                                      icon: Icons.arrow_forward,
+                                      label: '',
+                                      color: Colors.blue,
+                                      padding: EdgeInsets.symmetric(
+                                          horizontal: 16, vertical: 12),
+                                      iconSize: 30, // Ajuste del tamaño
+                                      onPressed: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) =>
+                                                CoordinadorScreen(
+                                              coordinadorId: coordinador.id,
+                                              coordinadorNombre:
+                                                  '${coordinador['nombre']} ${coordinador['apellido']}',
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(IconData icon, String label, String value) {
+    return Container(
+      margin: EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 20, color: ThemeConstants.accentGrey),
+          SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: ThemeConstants.accentGrey,
+                    fontWeight: FontWeight.w500,
+                    fontSize: 12,
+                  ),
+                ),
+                Text(
+                  value,
+                  style: TextStyle(
+                    color: Colors.black87,
+                    fontWeight: FontWeight.w500,
+                    fontSize: 14,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 2,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionButton({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onPressed,
+    EdgeInsets padding =
+        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+    double fontSize = 14, // Tamaño por defecto del texto
+    double iconSize = 24, // Tamaño por defecto del ícono
+  }) {
+    return TextButton.icon(
+      icon: Icon(icon,
+          color: color, size: iconSize), // Aquí se ajusta el tamaño del ícono
+      label: Text(
+        label,
+        style: TextStyle(color: color, fontSize: fontSize),
+      ),
+      onPressed: onPressed,
+      style: TextButton.styleFrom(
+        padding: padding,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
         ),
-      ],
+      ),
     );
   }
 }
- 
- 
+
 class TimoteosTab extends StatelessWidget {
   final String tribuId;
 
@@ -386,125 +839,271 @@ class TimoteosTab extends StatelessWidget {
     await showDialog(
       context: context,
       builder: (context) {
-        return AlertDialog(
-          title: Text('Crear Timoteo'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: _nameController,
-                decoration: InputDecoration(labelText: 'Nombre'),
-              ),
-              TextField(
-                controller: _lastNameController,
-                decoration: InputDecoration(labelText: 'Apellido'),
-              ),
-              TextField(
-                controller: _userController,
-                decoration: InputDecoration(labelText: 'Usuario'),
-              ),
-              TextField(
-                controller: _passwordController,
-                decoration: InputDecoration(labelText: 'Contraseña'),
-              ),
-            ],
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text('Cancelar'),
+          child: Container(
+            padding: EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
             ),
-            ElevatedButton(
-              onPressed: () async {
-                await FirebaseFirestore.instance.collection('timoteos').add({
-                  'nombre': _nameController.text,
-                  'apellido': _lastNameController.text,
-                  'usuario': _userController.text,
-                  'contrasena': _passwordController.text,
-                  'tribuId': tribuId,
-                  'coordinadorId': null, // Agregamos este campo explícitamente
-                });
-                Navigator.pop(context);
-              },
-              child: Text('Guardar'),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      Icons.person_add,
+                      color: ThemeConstants.secondaryOrange,
+                      size: 30,
+                    ),
+                    SizedBox(width: 10),
+                    Text(
+                      'Crear Timoteo',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: ThemeConstants.primaryTeal,
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 20),
+                TextField(
+                  controller: _nameController,
+                  decoration: InputDecoration(
+                    labelText: 'Nombre',
+                    prefixIcon: Icon(Icons.person_outline),
+                  ),
+                ),
+                SizedBox(height: 16),
+                TextField(
+                  controller: _lastNameController,
+                  decoration: InputDecoration(
+                    labelText: 'Apellido',
+                    prefixIcon: Icon(Icons.family_restroom),
+                  ),
+                ),
+                SizedBox(height: 16),
+                TextField(
+                  controller: _userController,
+                  decoration: InputDecoration(
+                    labelText: 'Usuario',
+                    prefixIcon: Icon(Icons.account_circle),
+                  ),
+                ),
+                SizedBox(height: 16),
+                TextField(
+                  controller: _passwordController,
+                  decoration: InputDecoration(
+                    labelText: 'Contraseña',
+                    prefixIcon: Icon(Icons.lock_outline),
+                  ),
+                  obscureText: true,
+                ),
+                SizedBox(height: 24),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: Text('Cancelar'),
+                      style: TextButton.styleFrom(
+                        padding:
+                            EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                      ),
+                    ),
+                    SizedBox(width: 8),
+                    ElevatedButton.icon(
+                      icon: Icon(Icons.save),
+                      label: Text('Guardar'),
+                      onPressed: () async {
+                        if (_nameController.text.isNotEmpty &&
+                            _lastNameController.text.isNotEmpty &&
+                            _userController.text.isNotEmpty &&
+                            _passwordController.text.isNotEmpty) {
+                          await FirebaseFirestore.instance
+                              .collection('timoteos')
+                              .add({
+                            'nombre': _nameController.text,
+                            'apellido': _lastNameController.text,
+                            'usuario': _userController.text,
+                            'contrasena': _passwordController.text,
+                            'tribuId': tribuId,
+                            'coordinadorId': null,
+                          });
+                          Navigator.pop(context);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Timoteo creado exitosamente'),
+                              backgroundColor: Colors.green,
+                            ),
+                          );
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content:
+                                  Text('Por favor completa todos los campos'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        padding:
+                            EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
-          ],
+          ),
         );
       },
     );
-  } 
+  }
 
-Future<void> _eliminarTimoteo(BuildContext context, DocumentSnapshot timoteo) async {
-  // Mostrar diálogo de confirmación
-  bool? confirmacion = await showDialog<bool>(
-    context: context,
-    barrierDismissible: false, // Evita que el diálogo se cierre al tocar fuera
-    builder: (BuildContext dialogContext) => AlertDialog(
-      title: const Text('Confirmar eliminación'),
-      content: const Text('¿Estás seguro de eliminar este timoteo?'),
-      actions: [
-        TextButton(
-          onPressed: () {
-            Navigator.of(dialogContext).pop(false); // Cierra el diálogo con false
-          },
-          child: const Text('Cancelar'),
+  Future<void> _editarTimoteo(
+      BuildContext context, DocumentSnapshot timoteo) async {
+    final nombreController = TextEditingController(text: timoteo['nombre']);
+    final apellidoController = TextEditingController(text: timoteo['apellido']);
+    final usuarioController = TextEditingController(text: timoteo['usuario']);
+    final contrasenaController = TextEditingController();
+
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Editar Timoteo'),
+        content: SingleChildScrollView(
+          child: Column(
+            children: [
+              TextField(
+                controller: nombreController,
+                decoration: const InputDecoration(labelText: 'Nombre'),
+              ),
+              TextField(
+                controller: apellidoController,
+                decoration: const InputDecoration(labelText: 'Apellido'),
+              ),
+              TextField(
+                controller: usuarioController,
+                decoration: const InputDecoration(labelText: 'Usuario'),
+              ),
+              TextField(
+                controller: contrasenaController,
+                decoration: const InputDecoration(
+                    labelText: 'Nueva Contraseña (opcional)'),
+              ),
+            ],
+          ),
         ),
-        TextButton(
-          onPressed: () {
-            Navigator.of(dialogContext).pop(true); // Cierra el diálogo con true
-          },
-          child: const Text('Eliminar'),
-        ),
-      ],
-    ),
-  );
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final Map<String, dynamic> datosActualizados = {
+                'nombre': nombreController.text,
+                'apellido': apellidoController.text,
+                'usuario': usuarioController.text,
+              };
 
-  // Si no se confirmó la eliminación o se cerró el diálogo, no hacer nada
-  if (confirmacion != true) return;
+              if (contrasenaController.text.isNotEmpty) {
+                datosActualizados['contrasena'] =
+                    contrasenaController.text; // Guardar nueva contraseña
+              }
 
-  try {
-    final batch = FirebaseFirestore.instance.batch();
-    
-    // Obtener registros asignados al timoteo
-    final registros = await FirebaseFirestore.instance
-        .collection('registros')
-        .where('timoteoAsignado', isEqualTo: timoteo.id)
-        .get();
+              await FirebaseFirestore.instance
+                  .collection('timoteos')
+                  .doc(timoteo.id)
+                  .update(datosActualizados);
 
-    // Actualizar cada registro para remover la asignación del timoteo
-    for (var registro in registros.docs) {
-      batch.update(registro.reference, {
-        'timoteoAsignado': null,
-        'nombreTimoteo': null
-      });
-    }
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                    content: Text('Timoteo actualizado exitosamente')),
+              );
+            },
+            child: const Text('Guardar'),
+          ),
+        ],
+      ),
+    );
+  }
 
-    // Eliminar el timoteo
-    batch.delete(timoteo.reference);
-    
-    await batch.commit();
-    
-    // Mostrar mensaje de éxito
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Timoteo eliminado correctamente'))
-      );
-    }
-  } catch (e) {
-    // Mostrar mensaje de error
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error al eliminar el timoteo: $e'))
-      );
+  Future<void> _eliminarTimoteo(
+      BuildContext context, DocumentSnapshot timoteo) async {
+    // Mostrar diálogo de confirmación
+    bool? confirmacion = await showDialog<bool>(
+      context: context,
+      barrierDismissible:
+          false, // Evita que el diálogo se cierre al tocar fuera
+      builder: (BuildContext dialogContext) => AlertDialog(
+        title: const Text('Confirmar eliminación'),
+        content: const Text('¿Estás seguro de eliminar este timoteo?'),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(dialogContext)
+                  .pop(false); // Cierra el diálogo con false
+            },
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(dialogContext)
+                  .pop(true); // Cierra el diálogo con true
+            },
+            child: const Text('Eliminar'),
+          ),
+        ],
+      ),
+    );
+
+    // Si no se confirmó la eliminación o se cerró el diálogo, no hacer nada
+    if (confirmacion != true) return;
+
+    try {
+      final batch = FirebaseFirestore.instance.batch();
+
+      // Obtener registros asignados al timoteo
+      final registros = await FirebaseFirestore.instance
+          .collection('registros')
+          .where('timoteoAsignado', isEqualTo: timoteo.id)
+          .get();
+
+      // Actualizar cada registro para remover la asignación del timoteo
+      for (var registro in registros.docs) {
+        batch.update(registro.reference,
+            {'timoteoAsignado': null, 'nombreTimoteo': null});
+      }
+
+      // Eliminar el timoteo
+      batch.delete(timoteo.reference);
+
+      await batch.commit();
+
+      // Mostrar mensaje de éxito
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Timoteo eliminado correctamente')));
+      }
+    } catch (e) {
+      // Mostrar mensaje de error
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error al eliminar el timoteo: $e')));
+      }
     }
   }
-}
 
-
-
-  
-  
-  Future<void> _asignarACoordinador(BuildContext context, DocumentSnapshot timoteo) async {
+  Future<void> _asignarACoordinador(
+      BuildContext context, DocumentSnapshot timoteo) async {
     final coordinadoresSnapshot = await FirebaseFirestore.instance
         .collection('coordinadores')
         .where('tribuId', isEqualTo: tribuId)
@@ -512,7 +1111,8 @@ Future<void> _eliminarTimoteo(BuildContext context, DocumentSnapshot timoteo) as
 
     if (coordinadoresSnapshot.docs.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('No hay coordinadores disponibles para asignar')),
+        SnackBar(
+            content: Text('No hay coordinadores disponibles para asignar')),
       );
       return;
     }
@@ -528,7 +1128,8 @@ Future<void> _eliminarTimoteo(BuildContext context, DocumentSnapshot timoteo) as
             items: coordinadoresSnapshot.docs.map((coordinador) {
               return DropdownMenuItem(
                 value: coordinador.id,
-                child: Text('${coordinador['nombre']} ${coordinador['apellido']}'),
+                child:
+                    Text('${coordinador['nombre']} ${coordinador['apellido']}'),
               );
             }).toList(),
             onChanged: (value) {
@@ -554,13 +1155,15 @@ Future<void> _eliminarTimoteo(BuildContext context, DocumentSnapshot timoteo) as
                         .doc(timoteo.id)
                         .update({
                       'coordinadorId': coordinador.id,
-                      'nombreCoordinador': '${coordinador['nombre']} ${coordinador['apellido']}',
+                      'nombreCoordinador':
+                          '${coordinador['nombre']} ${coordinador['apellido']}',
                     });
 
                     Navigator.pop(context);
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text('Timoteo asignado exitosamente a ${coordinador['nombre']}'),
+                        content: Text(
+                            'Timoteo asignado exitosamente a ${coordinador['nombre']}'),
                         backgroundColor: Colors.green,
                       ),
                     );
@@ -584,89 +1187,203 @@ Future<void> _eliminarTimoteo(BuildContext context, DocumentSnapshot timoteo) as
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: ElevatedButton(
-            onPressed: () => _createTimoteo(context),
-            child: Text('Crear Timoteo'),
+    return Container(
+      padding: EdgeInsets.all(16),
+      child: Column(
+        children: [
+          Container(
+            width: double.infinity,
+            margin: EdgeInsets.only(bottom: 20),
+            child: ElevatedButton.icon(
+              icon: Icon(Icons.add_circle_outline, size: 24),
+              label: Text(
+                'Crear Timoteo',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: ThemeConstants.secondaryOrange,
+                padding: EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                elevation: 4,
+              ),
+              onPressed: () => _createTimoteo(context),
+            ),
           ),
-        ),
-        Expanded(
-          child: StreamBuilder<QuerySnapshot>(
-            stream: FirebaseFirestore.instance
-                .collection('timoteos')
-                .where('tribuId', isEqualTo: tribuId)
-                .snapshots(),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return Center(child: CircularProgressIndicator());
-              }
-
-              if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                return Center(child: Text('No hay Timoteos disponibles.'));
-              }
-
-              // Filtrar los documentos que no tienen coordinadorId o tienen coordinadorId null
-              final docs = snapshot.data!.docs.where((doc) {
-                return !doc.data().toString().contains('coordinadorId') || 
-                       doc.get('coordinadorId') == null;
-              }).toList();
-
-              if (docs.isEmpty) {
-                return Center(child: Text('No hay Timoteos sin asignar.'));
-              }
-
-              return ListView.builder(
-                itemCount: docs.length,
-                itemBuilder: (context, index) {
-                  final timoteo = docs[index];
-                  return Card(
-  margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-  child: ListTile(
-    title: Text('${timoteo['nombre']} ${timoteo['apellido']}'),
-    subtitle: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('Usuario: ${timoteo['usuario']}'),
-        Text('Contraseña: ${timoteo['contrasena']}'),
-      ],
-    ),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            icon: Icon(Icons.delete, color: Colors.red),
-                            tooltip: 'Eliminar Timoteo',
-                            onPressed: () => _eliminarTimoteo(context, timoteo),
-                          ),
-                          IconButton(
-                            icon: Icon(Icons.person_add),
-                            tooltip: 'Asignar a Coordinador',
-                            onPressed: () => _asignarACoordinador(context, timoteo),
-                          ),
-                        ],
-                      ),
+          Expanded(
+            child: StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('timoteos')
+                  .where('tribuId', isEqualTo: tribuId)
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return Center(
+                    child: CircularProgressIndicator(
+                      color: ThemeConstants.primaryTeal,
                     ),
                   );
+                }
 
-                },
-              );
-            },
+                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.people_outline,
+                          size: 64,
+                          color: ThemeConstants.accentGrey,
+                        ),
+                        SizedBox(height: 16),
+                        Text(
+                          'No hay Timoteos disponibles',
+                          style: TextStyle(
+                            fontSize: 18,
+                            color: ThemeConstants.accentGrey,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+
+                final docs = snapshot.data!.docs.where((doc) {
+                  return !doc.data().toString().contains('coordinadorId') ||
+                      doc.get('coordinadorId') == null;
+                }).toList();
+
+                return ListView.builder(
+                  itemCount: docs.length,
+                  itemBuilder: (context, index) {
+                    final timoteo = docs[index];
+                    return Card(
+                      elevation: 3,
+                      margin: EdgeInsets.symmetric(vertical: 8),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: ThemeConstants.primaryTeal.withOpacity(0.3),
+                            width: 1,
+                          ),
+                        ),
+                        child: ExpansionTile(
+                          leading: CircleAvatar(
+                            backgroundColor: ThemeConstants.primaryTeal,
+                            child: Text(
+                              '${timoteo['nombre'][0]}${timoteo['apellido'][0]}',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          title: Text(
+                            '${timoteo['nombre']} ${timoteo['apellido']}',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: ThemeConstants.primaryTeal,
+                              fontSize: 16,
+                            ),
+                          ),
+                          children: [
+                            Padding(
+                              padding: EdgeInsets.all(16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _buildInfoRow(
+                                    Icons.person_outline,
+                                    'Usuario',
+                                    timoteo['usuario'],
+                                  ),
+                                  SizedBox(height: 8),
+                                  _buildInfoRow(
+                                    Icons.lock_outline,
+                                    'Contraseña',
+                                    timoteo['contrasena'],
+                                  ),
+                                  SizedBox(height: 16),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.end,
+                                    children: [
+                                      IconButton(
+                                        icon: Icon(Icons.edit,
+                                            color: ThemeConstants.primaryTeal),
+                                        tooltip: 'Editar Timoteo',
+                                        onPressed: () =>
+                                            _editarTimoteo(context, timoteo),
+                                      ),
+                                      IconButton(
+                                        icon: Icon(Icons.delete,
+                                            color: Colors.red),
+                                        tooltip: 'Eliminar Timoteo',
+                                        onPressed: () =>
+                                            _eliminarTimoteo(context, timoteo),
+                                      ),
+                                      IconButton(
+                                        icon: Icon(
+                                          Icons.person_add,
+                                          color: ThemeConstants.secondaryOrange,
+                                        ),
+                                        tooltip: 'Asignar a Coordinador',
+                                        onPressed: () => _asignarACoordinador(
+                                            context, timoteo),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
+}
+
+Widget _buildInfoRow(IconData icon, String label, String value) {
+  return Row(
+    children: [
+      Icon(icon, size: 20, color: ThemeConstants.accentGrey),
+      SizedBox(width: 8),
+      Text(
+        '$label: ',
+        style: TextStyle(
+          color: ThemeConstants.accentGrey,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+      Text(
+        value,
+        style: TextStyle(
+          color: Colors.black87,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+    ],
+  );
 }
 
 class RegistrosAsignadosTab extends StatelessWidget {
   final String tribuId;
 
-  const RegistrosAsignadosTab({Key? key, required this.tribuId}) : super(key: key);
+  const RegistrosAsignadosTab({Key? key, required this.tribuId})
+      : super(key: key);
 
-  Future<void> _asignarACoordinador(BuildContext context, DocumentSnapshot registro) async {
+  Future<void> _asignarACoordinador(
+      BuildContext context, DocumentSnapshot registro) async {
     final coordinadoresSnapshot = await FirebaseFirestore.instance
         .collection('coordinadores')
         .where('tribuId', isEqualTo: tribuId)
@@ -674,7 +1391,20 @@ class RegistrosAsignadosTab extends StatelessWidget {
 
     if (coordinadoresSnapshot.docs.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No hay coordinadores disponibles')),
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.warning_amber_rounded, color: Colors.white),
+              SizedBox(width: 8),
+              Text('No hay coordinadores disponibles'),
+            ],
+          ),
+          backgroundColor: Colors.red.shade700,
+          behavior: SnackBarBehavior.floating,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          margin: EdgeInsets.all(10),
+        ),
       );
       return;
     }
@@ -683,118 +1413,326 @@ class RegistrosAsignadosTab extends StatelessWidget {
 
     await showDialog(
       context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Asignar a Coordinador'),
-          content: DropdownButtonFormField<String>(
-            items: coordinadoresSnapshot.docs.map((coordinador) {
-              return DropdownMenuItem(
-                value: coordinador.id,
-                child: Text('${coordinador['nombre']} ${coordinador['apellido']}'),
-              );
-            }).toList(),
-            onChanged: (value) {
-              selectedCoordinador = value;
-            },
-            decoration: const InputDecoration(labelText: 'Seleccione un coordinador'),
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Container(
+          padding: EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: ThemeConstants.primaryTeal.withOpacity(0.1),
+                blurRadius: 10,
+                spreadRadius: 5,
+              ),
+            ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancelar'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                if (selectedCoordinador != null) {
-                  try {
-                    await FirebaseFirestore.instance
-                        .collection('registros')
-                        .doc(registro.id)
-                        .update({
-                      'coordinadorAsignado': selectedCoordinador,
-                      'fechaAsignacionCoordinador': FieldValue.serverTimestamp(),
-                    });
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                            'Registro asignado exitosamente al coordinador seleccionado'),
-                        backgroundColor: Colors.green,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    Icons.people_alt_rounded,
+                    color: ThemeConstants.secondaryOrange,
+                    size: 30,
+                  ),
+                  SizedBox(width: 12),
+                  Text(
+                    'Asignar a Coordinador',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: ThemeConstants.primaryTeal,
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 24),
+              Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: ThemeConstants.primaryTeal.withOpacity(0.3),
+                  ),
+                ),
+                child: DropdownButtonFormField<String>(
+                  items: coordinadoresSnapshot.docs.map((coordinador) {
+                    return DropdownMenuItem(
+                      value: coordinador.id,
+                      child: Text(
+                        '${coordinador['nombre']} ${coordinador['apellido']}',
+                        style: TextStyle(
+                          color: ThemeConstants.primaryTeal,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     );
-                  } catch (e) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Error al asignar el registro: $e'),
-                        backgroundColor: Colors.red,
+                  }).toList(),
+                  onChanged: (value) {
+                    selectedCoordinador = value;
+                  },
+                  decoration: InputDecoration(
+                    labelText: 'Seleccione un coordinador',
+                    labelStyle: TextStyle(color: ThemeConstants.accentGrey),
+                    border: InputBorder.none,
+                    contentPadding:
+                        EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  ),
+                  icon: Icon(Icons.arrow_drop_down,
+                      color: ThemeConstants.primaryTeal),
+                ),
+              ),
+              SizedBox(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: Text(
+                      'Cancelar',
+                      style: TextStyle(
+                        color: ThemeConstants.accentGrey,
+                        fontWeight: FontWeight.w600,
                       ),
-                    );
-                  }
-                }
-              },
-              child: const Text('Asignar'),
-            ),
-          ],
-        );
-      },
+                    ),
+                    style: TextButton.styleFrom(
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    ),
+                  ),
+                  SizedBox(width: 12),
+                  ElevatedButton.icon(
+                    icon: Icon(Icons.check_circle_outline),
+                    label: Text('Asignar'),
+                    onPressed: () async {
+                      if (selectedCoordinador != null) {
+                        try {
+                          await FirebaseFirestore.instance
+                              .collection('registros')
+                              .doc(registro.id)
+                              .update({
+                            'coordinadorAsignado': selectedCoordinador,
+                            'fechaAsignacionCoordinador':
+                                FieldValue.serverTimestamp(),
+                          });
+                          Navigator.pop(context);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Row(
+                                children: [
+                                  Icon(Icons.check_circle, color: Colors.white),
+                                  SizedBox(width: 8),
+                                  Text('¡Asignación exitosa!'),
+                                ],
+                              ),
+                              backgroundColor: Colors.green,
+                              behavior: SnackBarBehavior.floating,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              margin: EdgeInsets.all(10),
+                            ),
+                          );
+                        } catch (e) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Error al asignar el registro: $e'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        }
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: ThemeConstants.secondaryOrange,
+                      foregroundColor: Colors.white,
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('registros')
-          .where('tribuAsignada', isEqualTo: tribuId)
-          .snapshots(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-
-        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-          return const Center(
-            child: Text('No hay jóvenes asignados a esta tribu'),
-          );
-        }
-
-        // Filtrar los documentos que no tienen coordinadorAsignado
-        final docs = snapshot.data!.docs.where((doc) {
-          return !doc.data().toString().contains('coordinadorAsignado') ||
-                 doc.get('coordinadorAsignado') == null;
-        }).toList();
-
-        if (docs.isEmpty) {
-          return const Center(
-            child: Text('No hay jóvenes sin asignar en esta tribu'),
-          );
-        }
-
-        return ListView.builder(
-          itemCount: docs.length,
-          itemBuilder: (context, index) {
-            final registro = docs[index];
-            return Card(
-              margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              child: ListTile(
-                title: Text(
-                  '${registro['nombre']} ${registro['apellido']}',
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-                subtitle: Text(
-                  'Teléfono: ${registro['telefono']}',
-                  style: const TextStyle(color: Colors.grey),
-                ),
-                trailing: IconButton(
-                  icon: const Icon(Icons.person_add, color: Colors.green),
-                  tooltip: 'Asignar a Coordinador',
-                  onPressed: () => _asignarACoordinador(context, registro),
-                ),
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            ThemeConstants.primaryTeal.withOpacity(0.05),
+            Colors.white,
+          ],
+        ),
+      ),
+      child: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection('registros')
+            .where('tribuAsignada', isEqualTo: tribuId)
+            .snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Center(
+              child: CircularProgressIndicator(
+                color: ThemeConstants.primaryTeal,
               ),
             );
-          },
-        );
-      },
+          }
+
+          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.group_off_outlined,
+                    size: 64,
+                    color: ThemeConstants.accentGrey,
+                  ),
+                  SizedBox(height: 16),
+                  Text(
+                    'No hay jóvenes asignados a esta tribu',
+                    style: TextStyle(
+                      fontSize: 18,
+                      color: ThemeConstants.accentGrey,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          final docs = snapshot.data!.docs.where((doc) {
+            return !doc.data().toString().contains('coordinadorAsignado') ||
+                doc.get('coordinadorAsignado') == null;
+          }).toList();
+
+          if (docs.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.check_circle_outline,
+                    size: 64,
+                    color: ThemeConstants.secondaryOrange,
+                  ),
+                  SizedBox(height: 16),
+                  Text(
+                    '¡Todos los jóvenes están asignados!',
+                    style: TextStyle(
+                      fontSize: 18,
+                      color: ThemeConstants.primaryTeal,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          return Padding(
+            padding: EdgeInsets.all(16),
+            child: ListView.builder(
+              itemCount: docs.length,
+              itemBuilder: (context, index) {
+                final registro = docs[index];
+                return Card(
+                  margin: EdgeInsets.only(bottom: 12),
+                  elevation: 2,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    side: BorderSide(
+                      color: ThemeConstants.primaryTeal.withOpacity(0.1),
+                      width: 1,
+                    ),
+                  ),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(16),
+                    onTap: () => _asignarACoordinador(context, registro),
+                    child: Padding(
+                      padding: EdgeInsets.all(16),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 50,
+                            height: 50,
+                            decoration: BoxDecoration(
+                              color:
+                                  ThemeConstants.primaryTeal.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Center(
+                              child: Text(
+                                '${registro['nombre'][0]}${registro['apellido'][0]}',
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  color: ThemeConstants.primaryTeal,
+                                ),
+                              ),
+                            ),
+                          ),
+                          SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  '${registro['nombre']} ${registro['apellido']}',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: ThemeConstants.primaryTeal,
+                                  ),
+                                ),
+                                SizedBox(height: 4),
+                                Text(
+                                  'Tel: ${registro['telefono']}',
+                                  style: TextStyle(
+                                    color: ThemeConstants.accentGrey,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Container(
+                            decoration: BoxDecoration(
+                              color: ThemeConstants.secondaryOrange
+                                  .withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            padding: EdgeInsets.all(8),
+                            child: Icon(
+                              Icons.person_add,
+                              color: ThemeConstants.secondaryOrange,
+                              size: 24,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          );
+        },
+      ),
     );
   }
 }

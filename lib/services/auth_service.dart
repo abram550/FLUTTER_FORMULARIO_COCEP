@@ -16,31 +16,82 @@ class AuthService {
 
   Future<Map<String, dynamic>?> login(String username, String password) async {
     try {
+      print('Intentando login con usuario: $username');
+
       // Verificar si las credenciales son las del usuario por defecto
       if (username.toLowerCase() == 'admin' && password == '123') {
         return {'role': 'adminPastores'};
       }
 
-      // Primero intentar autenticar en la colección de usuarios
+      // Buscar en la colección de usuarios
       final userQuery = await FirebaseFirestore.instance
           .collection('usuarios')
           .where('usuario', isEqualTo: username)
-          .where('contrasena', isEqualTo: _hashPassword(password))
           .get();
+
+      print('Encontrados ${userQuery.docs.length} documentos');
 
       if (userQuery.docs.isNotEmpty) {
         final userData = userQuery.docs.first.data();
+        print('Datos encontrados: $userData');
+
+        // Verificar la contraseña sin hash para todos los usuarios
+        if (userData['contrasena'] == password) {
+          switch (userData['rol']) {
+            case 'tribu':
+              // Asegurarse de que todos los campos necesarios existan
+              if (userData['tribuId'] != null && userData['nombre'] != null) {
+                return {
+                  'role': 'tribu',
+                  'tribuId': userData['tribuId'],
+                  'nombreTribu': userData['nombre'],
+                };
+              }
+              print('Faltan datos requeridos para la tribu');
+              return null;
+            case 'liderConsolidacion':
+              return {'role': 'liderConsolidacion'};
+            case 'coordinador':
+              if (userData['coordinadorId'] != null) {
+                return {
+                  'role': 'coordinador',
+                  'coordinadorId': userData['coordinadorId'],
+                  'coordinadorNombre': userData['nombre'] ?? '',
+                };
+              }
+              return null;
+            default:
+              print('Rol no reconocido: ${userData['rol']}');
+              return null;
+          }
+        } else {
+          print('Contraseña incorrecta');
+          return null;
+        }
+      }
+
+      // Verificar coordinadores en su colección específica
+      final coordinadorQuery = await FirebaseFirestore.instance
+          .collection('coordinadores')
+          .where('usuario', isEqualTo: username)
+          .where('contrasena', isEqualTo: password)
+          .get();
+
+      if (coordinadorQuery.docs.isNotEmpty) {
+        final coordinadorData = coordinadorQuery.docs.first;
         return {
-          'role': userData['rol'],
-          'tribuId': userData['tribuId'] ?? '',
+          'role': 'coordinador',
+          'coordinadorId': coordinadorData.id,
+          'coordinadorNombre':
+              '${coordinadorData['nombre']} ${coordinadorData['apellido']}',
         };
       }
 
-      // Si no se encuentra en usuarios, buscar en timoteos
+      // Verificar timoteos
       final timoteoQuery = await FirebaseFirestore.instance
           .collection('timoteos')
           .where('usuario', isEqualTo: username)
-          .where('contrasena', isEqualTo: password) // No hasheamos la contraseña para timoteos
+          .where('contrasena', isEqualTo: password)
           .get();
 
       if (timoteoQuery.docs.isNotEmpty) {
@@ -52,8 +103,10 @@ class AuthService {
         };
       }
 
+      print('No se encontró coincidencia de credenciales');
       return null;
     } catch (e, stack) {
+      print('Error en login: $e');
       ErrorHandler.logError(e, stack);
       return null;
     }

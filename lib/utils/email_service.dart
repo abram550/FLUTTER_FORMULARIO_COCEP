@@ -2,8 +2,8 @@ import 'package:mailer/mailer.dart';
 import 'package:mailer/smtp_server.dart';
 
 class EmailService {
-  static final String _username = 'ajosuerojas@uniguajira.edu.co'; // Tu correo de Gmail
-  static final String _password = '1006653714'; // Contraseña de aplicación de Gmail
+  static final String _username = 'abrahamfaju18@gmail.com'; // Tu correo de Gmail
+  static final String _password = 'srlo vtow qtlo oxkl'; // Contraseña de aplicación de Gmail
   
   static Future<void> enviarAlertaFaltas({
     required String emailCoordinador,

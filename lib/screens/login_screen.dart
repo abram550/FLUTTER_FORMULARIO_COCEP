@@ -4,7 +4,7 @@ import 'package:formulario_app/screens/admin_screen.dart';
 import 'package:formulario_app/services/auth_service.dart';
 import 'package:formulario_app/utils/error_handler.dart';
 import 'TribusScreen.dart';
-
+import 'CoordinadorScreen.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -76,6 +76,23 @@ Future<void> _login() async {
             );
           }
           break;
+
+          case 'coordinador':
+  if (mounted) {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CoordinadorScreen(
+          coordinadorId: result['coordinadorId'] ?? '',
+          coordinadorNombre: result['coordinadorNombre'] ?? '',
+        ),
+      ),
+    );
+  }
+  break;
+
+
+
         case 'tribu':
           if (mounted) {
             Navigator.pushReplacement(
@@ -83,56 +100,58 @@ Future<void> _login() async {
               MaterialPageRoute(
                 builder: (context) => TribusScreen(
                   tribuId: result['tribuId'] ?? '',
-                  tribuNombre: _usuarioController.text.trim(),
+                  tribuNombre: result['nombreTribu'] ?? '', // Pasar el nombre correcto
                 ),
               ),
             );
           }
           break;
-case 'timoteo':
-  if (mounted) {
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (context) => TimoteoScreen(
-          timoteoId: result['timoteoId'] ?? '',
-          timoteoNombre: result['timoteoNombre'] ?? '',
-        ),
-      ),
-    );
-  }
-  break;
-        default:
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Rol no reconocido')),
-            );
+
+
+          case 'timoteo':
+            if (mounted) {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => TimoteoScreen(
+                    timoteoId: result['timoteoId'] ?? '',
+                    timoteoNombre: result['timoteoNombre'] ?? '',
+                  ),
+                ),
+              );
+            }
+          break;
+                default:
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Rol no reconocido')),
+                    );
+                  }
+              }
+            } else {
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Credenciales inválidas'),
+                    backgroundColor: Colors.redAccent,
+                  ),
+                );
+              }
+            }
+          } catch (e, stackTrace) {
+            ErrorHandler.logError(e, stackTrace); // Ahora pasa dos argumentos
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Ocurrió un error al iniciar sesión'),
+                  backgroundColor: Colors.redAccent,
+                ),
+              );
+            }
+          } finally {
+            if (mounted) setState(() => _isLoading = false);
           }
-      }
-    } else {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Credenciales inválidas'),
-            backgroundColor: Colors.redAccent,
-          ),
-        );
-      }
-    }
-  } catch (e, stackTrace) {
-    ErrorHandler.logError(e, stackTrace); // Ahora pasa dos argumentos
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Ocurrió un error al iniciar sesión'),
-          backgroundColor: Colors.redAccent,
-        ),
-      );
-    }
-  } finally {
-    if (mounted) setState(() => _isLoading = false);
-  }
-}
+        }
 
 
 

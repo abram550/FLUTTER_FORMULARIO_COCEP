@@ -24,7 +24,8 @@ class SyncService {
       }
 
       // Escuchar cambios en la conectividad para sincronizar automáticamente
-      _connectivitySubscription = Connectivity().onConnectivityChanged.listen((result) async {
+      _connectivitySubscription =
+          Connectivity().onConnectivityChanged.listen((result) async {
         if (result != ConnectivityResult.none) {
           await sincronizarDatos(); // Sincronizar cuando la conectividad vuelva
         }
@@ -61,7 +62,8 @@ class SyncService {
       }
 
       // Obtener los registros pendientes de la base de datos local
-      final registrosPendientes = await _databaseService.obtenerRegistrosPendientes();
+      final registrosPendientes =
+          await _databaseService.obtenerRegistrosPendientes();
       print('Registros pendientes encontrados: ${registrosPendientes.length}');
 
       // Iterar sobre los registros pendientes y sincronizarlos con Firestore
@@ -73,8 +75,8 @@ class SyncService {
 
           // Marcar el registro como sincronizado en la base de datos local
           if (registro.id != null) {
-            await _databaseService.marcarRegistroComoSincronizado(
-              int.parse(registro.id!));
+            await _databaseService
+                .marcarRegistroComoSincronizado(int.parse(registro.id!));
             print('Registro marcado como sincronizado en BD local');
           }
         } catch (e) {

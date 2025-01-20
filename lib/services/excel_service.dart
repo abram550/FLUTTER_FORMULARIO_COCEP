@@ -4,27 +4,49 @@ import 'package:path_provider/path_provider.dart';
 import 'package:universal_html/html.dart' as html;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import '../models/registro.dart';
+import 'package:excel/excel.dart';
 
 class ExcelService {
-  Future<String> exportarRegistros(List<Registro> registros, {String? prefix}) async {
+  Future<String> exportarRegistros(List<Registro> registros,
+      {String? prefix}) async {
     final excel = Excel.createExcel();
     excel.delete('Sheet1');
 
-    final nuevosRegistros = registros.where((r) => r.tipo?.toLowerCase() == 'nuevo').toList();
-    final visitasRegistros = registros.where((r) => r.tipo?.toLowerCase() == 'visita').toList();
+    final nuevosRegistros =
+        registros.where((r) => r.tipo?.toLowerCase() == 'nuevo').toList();
+    final visitasRegistros =
+        registros.where((r) => r.tipo?.toLowerCase() == 'visita').toList();
 
     if (nuevosRegistros.isNotEmpty) {
       _configurarHoja(excel, 'Nuevos', nuevosRegistros, [
-        'Fecha', 'Nombre', 'Apellido', 'Edad', 'Sexo', 'Teléfono',
-        'Dirección', 'Barrio', 'Estado Civil', 'Nombre Pareja',
-        'Tiene Hijos', 'Ocupaciones', 'Referencia', 'Observaciones', 'Consolidador'
+        'Fecha',
+        'Nombre',
+        'Apellido',
+        'Edad',
+        'Sexo',
+        'Teléfono',
+        'Dirección',
+        'Barrio',
+        'Estado Civil',
+        'Nombre Pareja',
+        'Tiene Hijos',
+        'Ocupaciones',
+        'Referencia',
+        'Observaciones',
+        'Consolidador'
       ]);
     }
 
     if (visitasRegistros.isNotEmpty) {
       _configurarHoja(excel, 'Visitas', visitasRegistros, [
-        'Fecha', 'Nombre', 'Apellido', 'Teléfono', 'Servicio',
-        'Motivo', 'Peticiones', 'Consolidador'
+        'Fecha',
+        'Nombre',
+        'Apellido',
+        'Teléfono',
+        'Servicio',
+        'Motivo',
+        'Peticiones',
+        'Consolidador'
       ]);
     }
 
@@ -32,39 +54,41 @@ class ExcelService {
       throw Exception('No hay registros para exportar');
     }
 
-    final String fileName = '${prefix ?? 'registros'}_${DateTime.now().millisecondsSinceEpoch}.xlsx';
+    final String fileName =
+        '${prefix ?? 'registros'}_${DateTime.now().millisecondsSinceEpoch}.xlsx';
 
-    return kIsWeb ? _exportarWeb(excel, fileName) : await _exportarMobile(excel, fileName);
+    return kIsWeb
+        ? _exportarWeb(excel, fileName)
+        : await _exportarMobile(excel, fileName);
   }
 
-  void _configurarHoja(Excel excel, String sheetName, List<Registro> registros, List<String> headers) {
+  void _configurarHoja(Excel excel, String sheetName, List<Registro> registros,
+      List<String> headers) {
     final sheet = excel[sheetName];
-    
+
     // Estilos para encabezados
     final headerStyle = CellStyle(
-      backgroundColorHex: '#1F497D',  // Azul oscuro profesional
-      fontColorHex: '#FFFFFF',        // Texto blanco
-      bold: true,
-      horizontalAlign: HorizontalAlign.Center,
-      verticalAlign: VerticalAlign.Center
-    );
+        backgroundColorHex: '#1F497D', // Azul oscuro profesional
+        fontColorHex: '#FFFFFF', // Texto blanco
+        bold: true,
+        horizontalAlign: HorizontalAlign.Center,
+        verticalAlign: VerticalAlign.Center);
 
     // Estilos para filas de datos
     final dataStyleEven = CellStyle(
-      backgroundColorHex: '#F2F2F2',  // Gris claro para filas pares
-      horizontalAlign: HorizontalAlign.Left,
-      verticalAlign: VerticalAlign.Center
-    );
+        backgroundColorHex: '#F2F2F2', // Gris claro para filas pares
+        horizontalAlign: HorizontalAlign.Left,
+        verticalAlign: VerticalAlign.Center);
 
     final dataStyleOdd = CellStyle(
-      backgroundColorHex: '#FFFFFF',  // Blanco para filas impares
-      horizontalAlign: HorizontalAlign.Left,
-      verticalAlign: VerticalAlign.Center
-    );
+        backgroundColorHex: '#FFFFFF', // Blanco para filas impares
+        horizontalAlign: HorizontalAlign.Left,
+        verticalAlign: VerticalAlign.Center);
 
     // Configurar encabezados
     for (var i = 0; i < headers.length; i++) {
-      final cell = sheet.cell(CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 0));
+      final cell =
+          sheet.cell(CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 0));
       cell.value = headers[i];
       cell.cellStyle = headerStyle;
     }
@@ -108,7 +132,8 @@ class ExcelService {
       }
 
       for (var j = 0; j < rowData.length; j++) {
-        final cell = sheet.cell(CellIndex.indexByColumnRow(columnIndex: j, rowIndex: rowIndex));
+        final cell = sheet.cell(
+            CellIndex.indexByColumnRow(columnIndex: j, rowIndex: rowIndex));
         cell.value = rowData[j];
         cell.cellStyle = isEvenRow ? dataStyleEven : dataStyleOdd;
       }
@@ -150,7 +175,7 @@ class ExcelService {
 
     final String filePath = '${directory.path}/$fileName';
     final file = File(filePath);
-    
+
     final bytes = excel.save();
     if (bytes == null) throw Exception('Error al codificar el archivo Excel');
 

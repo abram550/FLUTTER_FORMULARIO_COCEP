@@ -11,20 +11,25 @@ class FirestoreService {
         .collection('registros')
         .orderBy('fecha', descending: true)
         .snapshots()
-        .map((snapshot) => snapshot.docs.map((doc) {
+        .map((snapshot) => snapshot.docs
+            .map((doc) {
               try {
                 return Registro.fromFirestore(doc);
               } catch (e) {
                 print('Error al convertir documento: $e');
                 return null;
               }
-            }).whereType<Registro>().toList());
+            })
+            .whereType<Registro>()
+            .toList());
   }
 
   // Stream para escuchar cambios en tiempo real de los consolidadores
   Stream<List<Map<String, String>>> streamConsolidadores() {
-    return _firestore.collection('consolidadores').snapshots().map(
-        (snapshot) => snapshot.docs.map((doc) {
+    return _firestore
+        .collection('consolidadores')
+        .snapshots()
+        .map((snapshot) => snapshot.docs.map((doc) {
               return {
                 'id': doc.id, // El ID siempre es String
                 'nombre': doc['nombre']?.toString() ?? '',
@@ -55,7 +60,8 @@ class FirestoreService {
 
       DocumentReference docRef =
           await _firestore.collection('registros').add(data);
-      print('Registro insertado exitosamente en Firestore con ID: ${docRef.id}');
+      print(
+          'Registro insertado exitosamente en Firestore con ID: ${docRef.id}');
       return docRef.id;
     } catch (e) {
       print('Error al insertar registro en Firestore: $e');
@@ -117,7 +123,8 @@ class FirestoreService {
   }
 
   // Sincronización batch para registros locales
-  Future<void> sincronizarRegistrosLocales(List<Registro> registrosLocales) async {
+  Future<void> sincronizarRegistrosLocales(
+      List<Registro> registrosLocales) async {
     try {
       for (var registro in registrosLocales) {
         final data = registro.toFirestoreMap(); // Usar el método correcto

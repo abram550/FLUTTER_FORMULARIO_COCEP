@@ -154,94 +154,92 @@ class _FormularioPageState extends State<FormularioPage> {
     );
   }
 
-      Future<void> _enviarFormulario() async {
-  if (_formKey.currentState!.validate()) {
-    setState(() => _isLoading = true);
+  Future<void> _enviarFormulario() async {
+    if (_formKey.currentState!.validate()) {
+      setState(() => _isLoading = true);
 
-    try {
-      final registro = Registro(
-        nombre: _nombreController.text,
-        apellido: _apellidoController.text,
-        telefono: _telefonoController.text,
-        servicio: _servicioSeleccionado ?? '',
-        tipo: _tipoPersona,
-        fecha: DateTime.now(),
-        motivo: _tipoPersona == 'Visita'
-            ? (_motivoVisita == 'Otro'
-                ? _otroMotivoController.text
-                : _motivoVisita)
-            : null,
-        peticiones: (_peticionOracion == 'Otro'
-            ? _otroPeticionController.text
-            : _peticionOracion), // Incluye la petición de oración
-        consolidador: (_consolidadorSeleccionado == 'Otro'
-            ? _otroConsolidadorController.text
-            : _consolidadorSeleccionado), // Incluye el consolidador
-        sexo: _sexo ?? '',
-        edad: _edad ?? 0,
-        direccion: _direccionController.text,
-        barrio: _barrioController.text,
-        estadoCivil: _estadoCivil ?? '',
-        nombrePareja: _nombreParejaController.text,
-        ocupaciones: _ocupacionesSeleccionadas.map((ocupacion) {
-          if (ocupacion == 'Otro') {
-            return _descripcionOcupacionController.text;
-          }
-          return ocupacion;
-        }).toList(), // Reemplaza "Otro" por la descripción ingresada
-        descripcionOcupacion: _descripcionOcupacionController.text,
-        tieneHijos: _tieneHijos ?? false,
-        referenciaInvitacion: _referenciaInvitacionController.text,
-        observaciones: _observacionesController.text,
-      );
+      try {
+        final registro = Registro(
+          nombre: _nombreController.text,
+          apellido: _apellidoController.text,
+          telefono: _telefonoController.text,
+          servicio: _servicioSeleccionado ?? '',
+          tipo: _tipoPersona,
+          fecha: DateTime.now(),
+          motivo: _tipoPersona == 'Visita'
+              ? (_motivoVisita == 'Otro'
+                  ? _otroMotivoController.text
+                  : _motivoVisita)
+              : null,
+          peticiones: (_peticionOracion == 'Otro'
+              ? _otroPeticionController.text
+              : _peticionOracion), // Incluye la petición de oración
+          consolidador: (_consolidadorSeleccionado == 'Otro'
+              ? _otroConsolidadorController.text
+              : _consolidadorSeleccionado), // Incluye el consolidador
+          sexo: _sexo ?? '',
+          edad: _edad ?? 0,
+          direccion: _direccionController.text,
+          barrio: _barrioController.text,
+          estadoCivil: _estadoCivil ?? '',
+          nombrePareja: _nombreParejaController.text,
+          ocupaciones: _ocupacionesSeleccionadas.map((ocupacion) {
+            if (ocupacion == 'Otro') {
+              return _descripcionOcupacionController.text;
+            }
+            return ocupacion;
+          }).toList(), // Reemplaza "Otro" por la descripción ingresada
+          descripcionOcupacion: _descripcionOcupacionController.text,
+          tieneHijos: _tieneHijos ?? false,
+          referenciaInvitacion: _referenciaInvitacionController.text,
+          observaciones: _observacionesController.text,
+        );
 
-      var connectivityResult = await Connectivity().checkConnectivity();
+        var connectivityResult = await Connectivity().checkConnectivity();
 
-      if (connectivityResult != ConnectivityResult.none) {
-        // Si hay conexión, enviar datos a Firestore
-        await _firestoreService.insertRegistro(registro);
+        if (connectivityResult != ConnectivityResult.none) {
+          // Si hay conexión, enviar datos a Firestore
+          await _firestoreService.insertRegistro(registro);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Registro enviado exitosamente a la nube',
+                style: GoogleFonts.poppins(),
+              ),
+              backgroundColor: Colors.green,
+            ),
+          );
+        } else {
+          // Si no hay conexión, guardar datos en base de datos local
+          await _databaseService.insertRegistroPendiente(registro);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Sin conexión: Registro guardado localmente',
+                style: GoogleFonts.poppins(),
+              ),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+
+        _limpiarFormulario();
+      } catch (e) {
+        // Manejo de errores
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Registro enviado exitosamente a la nube',
+              'Error al procesar el registro: $e',
               style: GoogleFonts.poppins(),
             ),
-            backgroundColor: Colors.green,
+            backgroundColor: Colors.red,
           ),
         );
-      } else {
-        // Si no hay conexión, guardar datos en base de datos local
-        await _databaseService.insertRegistroPendiente(registro);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Sin conexión: Registro guardado localmente',
-              style: GoogleFonts.poppins(),
-            ),
-            backgroundColor: Colors.orange,
-          ),
-        );
+      } finally {
+        setState(() => _isLoading = false);
       }
-
-      _limpiarFormulario();
-    } catch (e) {
-      // Manejo de errores
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Error al procesar el registro: $e',
-            style: GoogleFonts.poppins(),
-          ),
-          backgroundColor: Colors.red,
-        ),
-      );
-    } finally {
-      setState(() => _isLoading = false);
     }
   }
-}
-
-
 
   void _limpiarFormulario() {
     _formKey.currentState!.reset();
@@ -271,8 +269,6 @@ class _FormularioPageState extends State<FormularioPage> {
       _consolidadorSeleccionado = null;
     });
   }
-
-  
 
   Widget _buildPersonalDataSection() {
     return Card(
@@ -305,8 +301,9 @@ class _FormularioPageState extends State<FormularioPage> {
               controller: _telefonoController,
               decoration: _getInputDecoration('Teléfono'),
               keyboardType: TextInputType.phone,
-              validator: (value) =>
-                  value!.isEmpty ? 'Por favor, ingresa su numero telefónico' : null,
+              validator: (value) => value!.isEmpty
+                  ? 'Por favor, ingresa su numero telefónico'
+                  : null,
             ),
           ],
         ),
@@ -336,7 +333,8 @@ class _FormularioPageState extends State<FormularioPage> {
                         child: Text(servicio, style: GoogleFonts.poppins()),
                       ))
                   .toList(),
-              onChanged: (value) => setState(() => _servicioSeleccionado = value),
+              onChanged: (value) =>
+                  setState(() => _servicioSeleccionado = value),
               validator: (value) =>
                   value == null ? 'Por favor, selecciona un servicio' : null,
             ),
@@ -580,8 +578,7 @@ class _FormularioPageState extends State<FormularioPage> {
                 padding: const EdgeInsets.only(top: 16.0),
                 child: TextFormField(
                   controller: _descripcionOcupacionController,
-                  decoration:
-                      _getInputDecoration('Especifica su ocupación'),
+                  decoration: _getInputDecoration('Especifica su ocupación'),
                   validator: (value) => value!.isEmpty
                       ? 'Por favor, especifica su ocupación'
                       : null,
@@ -643,7 +640,8 @@ class _FormularioPageState extends State<FormularioPage> {
             ),
             TextFormField(
               controller: _referenciaInvitacionController,
-              decoration: _getInputDecoration('Nombre y apellidos de quien lo Invita'),
+              decoration:
+                  _getInputDecoration('Nombre y apellidos de quien lo Invita'),
               validator: (value) =>
                   value!.isEmpty ? 'Por favor, indica quién te invitó' : null,
             ),
@@ -691,54 +689,53 @@ class _FormularioPageState extends State<FormularioPage> {
   }
 
   Widget _buildVisitReasonSection() {
-  return Card(
-    elevation: 4,
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-    child: Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildQuestionTitle(
-            'Motivo de Visita',
-            'Cuéntanos por qué nos visitas hoy',
-          ),
-          // Wrapped in Flexible to prevent overflow
-          DropdownButtonFormField<String>(
-            isExpanded: true, // Añadido para prevenir desbordamiento
-            value: _motivoVisita,
-            decoration: _getInputDecoration('Selecciona el motivo'),
-            items: _motivosVisita
-                .map((motivo) => DropdownMenuItem(
-                      value: motivo,
-                      child: Text(
-                        motivo,
-                        style: GoogleFonts.poppins(),
-                        overflow: TextOverflow.ellipsis, // Maneja texto largo
-                      ),
-                    ))
-                .toList(),
-            onChanged: (value) => setState(() => _motivoVisita = value),
-            validator: (value) =>
-                value == null ? 'Por favor, selecciona un motivo' : null,
-          ),
-          if (_motivoVisita == 'Otro')
-            Padding(
-              padding: const EdgeInsets.only(top: 16.0),
-              child: TextFormField(
-                controller: _otroMotivoController,
-                decoration:
-                    _getInputDecoration('Especifica el motivo de su visita'),
-                validator: (value) => value!.isEmpty
-                    ? 'Por favor, especifica el motivo'
-                    : null,
-              ),
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildQuestionTitle(
+              'Motivo de Visita',
+              'Cuéntanos por qué nos visitas hoy',
             ),
-        ],
+            // Wrapped in Flexible to prevent overflow
+            DropdownButtonFormField<String>(
+              isExpanded: true, // Añadido para prevenir desbordamiento
+              value: _motivoVisita,
+              decoration: _getInputDecoration('Selecciona el motivo'),
+              items: _motivosVisita
+                  .map((motivo) => DropdownMenuItem(
+                        value: motivo,
+                        child: Text(
+                          motivo,
+                          style: GoogleFonts.poppins(),
+                          overflow: TextOverflow.ellipsis, // Maneja texto largo
+                        ),
+                      ))
+                  .toList(),
+              onChanged: (value) => setState(() => _motivoVisita = value),
+              validator: (value) =>
+                  value == null ? 'Por favor, selecciona un motivo' : null,
+            ),
+            if (_motivoVisita == 'Otro')
+              Padding(
+                padding: const EdgeInsets.only(top: 16.0),
+                child: TextFormField(
+                  controller: _otroMotivoController,
+                  decoration:
+                      _getInputDecoration('Especifica el motivo de su visita'),
+                  validator: (value) =>
+                      value!.isEmpty ? 'Por favor, especifica el motivo' : null,
+                ),
+              ),
+          ],
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   Widget _buildPrayerRequestSection() {
     return Card(
@@ -784,50 +781,51 @@ class _FormularioPageState extends State<FormularioPage> {
     );
   }
 
-      Widget _buildConsolidatorField() {
-        return Card(
-          elevation: 4,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildQuestionTitle(
-                  'Consolidador',
-                  'Por favor, selecciona o ingresa el nombre de tu consolidador',
-                ),
-                DropdownButtonFormField<String>(
-                  value: _consolidadorSeleccionado,
-                  decoration: _getInputDecoration('Selecciona tu consolidador'),
-                  items: _consolidadores
-                      .map((consolidador) => DropdownMenuItem(
-                            value: consolidador,
-                            child: Text(consolidador, style: GoogleFonts.poppins()),
-                          ))
-                      .toList(),
-                  onChanged: (value) => setState(() => _consolidadorSeleccionado = value),
-                  validator: (value) =>
-                      value == null ? 'Por favor, selecciona un consolidador' : null,
-                ),
-                if (_consolidadorSeleccionado == 'Otro')
-                  Padding(
-                    padding: const EdgeInsets.only(top: 16.0),
-                    child: TextFormField(
-                      controller: _otroConsolidadorController,
-                      decoration: _getInputDecoration(
-                          'Especifica el nombre del consolidador'),
-                      validator: (value) => value!.isEmpty
-                          ? 'Por favor, ingresa el nombre del consolidador'
-                          : null,
-                    ),
-                  ),
-              ],
+  Widget _buildConsolidatorField() {
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildQuestionTitle(
+              'Consolidador',
+              'Por favor, selecciona o ingresa el nombre de tu consolidador',
             ),
-          ),
-        );
-      }
-
+            DropdownButtonFormField<String>(
+              value: _consolidadorSeleccionado,
+              decoration: _getInputDecoration('Selecciona tu consolidador'),
+              items: _consolidadores
+                  .map((consolidador) => DropdownMenuItem(
+                        value: consolidador,
+                        child: Text(consolidador, style: GoogleFonts.poppins()),
+                      ))
+                  .toList(),
+              onChanged: (value) =>
+                  setState(() => _consolidadorSeleccionado = value),
+              validator: (value) => value == null
+                  ? 'Por favor, selecciona un consolidador'
+                  : null,
+            ),
+            if (_consolidadorSeleccionado == 'Otro')
+              Padding(
+                padding: const EdgeInsets.only(top: 16.0),
+                child: TextFormField(
+                  controller: _otroConsolidadorController,
+                  decoration: _getInputDecoration(
+                      'Especifica el nombre del consolidador'),
+                  validator: (value) => value!.isEmpty
+                      ? 'Por favor, ingresa el nombre del consolidador'
+                      : null,
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
 
   Widget _buildSubmitButton() {
     return Container(
@@ -1013,7 +1011,6 @@ class _FormularioPageState extends State<FormularioPage> {
                           _buildPrayerRequestSection(),
                           const SizedBox(height: 24),
                           _buildConsolidatorField(),
-
                         ] else if (_tipoPersona == 'Visita') ...[
                           const SizedBox(height: 16),
                           _buildVisitSection(),

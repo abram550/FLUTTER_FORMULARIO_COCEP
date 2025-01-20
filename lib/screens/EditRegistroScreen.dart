@@ -62,14 +62,21 @@ class _EditRegistroScreenState extends State<EditRegistroScreen> {
     _apellidoController = TextEditingController(text: widget.registro.apellido);
     _telefonoController = TextEditingController(text: widget.registro.telefono);
     _servicioController = TextEditingController(text: widget.registro.servicio);
-    _direccionController = TextEditingController(text: widget.registro.direccion);
+    _direccionController =
+        TextEditingController(text: widget.registro.direccion);
     _barrioController = TextEditingController(text: widget.registro.barrio);
-    _nombreParejaController = TextEditingController(text: widget.registro.nombrePareja ?? '');
-    _descripcionOcupacionController = TextEditingController(text: widget.registro.descripcionOcupacion);
-    _referenciaInvitacionController = TextEditingController(text: widget.registro.referenciaInvitacion);
-    _observacionesController = TextEditingController(text: widget.registro.observaciones ?? '');
-    _peticionesController = TextEditingController(text: widget.registro.peticiones ?? '');
-    _consolidadorController = TextEditingController(text: widget.registro.consolidador ?? '');
+    _nombreParejaController =
+        TextEditingController(text: widget.registro.nombrePareja ?? '');
+    _descripcionOcupacionController =
+        TextEditingController(text: widget.registro.descripcionOcupacion);
+    _referenciaInvitacionController =
+        TextEditingController(text: widget.registro.referenciaInvitacion);
+    _observacionesController =
+        TextEditingController(text: widget.registro.observaciones ?? '');
+    _peticionesController =
+        TextEditingController(text: widget.registro.peticiones ?? '');
+    _consolidadorController =
+        TextEditingController(text: widget.registro.consolidador ?? '');
 
     _sexo = widget.registro.sexo;
     _edad = widget.registro.edad;
@@ -121,7 +128,8 @@ class _EditRegistroScreenState extends State<EditRegistroScreen> {
           consolidador: _consolidadorController.text,
         );
 
-        await _firestoreService.actualizarRegistro(registroActualizado.id!, registroActualizado);
+        await _firestoreService.actualizarRegistro(
+            registroActualizado.id!, registroActualizado);
 
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Registro actualizado con éxito')),
@@ -136,7 +144,8 @@ class _EditRegistroScreenState extends State<EditRegistroScreen> {
     }
   }
 
-  Widget _buildRadioGroup(String title, List<String> options, String value, Function(String?) onChanged) {
+  Widget _buildRadioGroup(String title, List<String> options, String value,
+      Function(String?) onChanged) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

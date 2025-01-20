@@ -10,27 +10,28 @@ class DatabaseUtils {
           .get();
 
       if (!doc.exists) return;
-      
+
       final data = doc.data();
       if (data == null) return;
 
       Map<String, dynamic> camposAActualizar = {};
-      
+
       // Verifica y establece campos con valores por defecto si no existen
       if (!data.containsKey('faltasConsecutivas')) {
         camposAActualizar['faltasConsecutivas'] = 0;
       }
-      
+
       if (!data.containsKey('estadoProceso')) {
         camposAActualizar['estadoProceso'] = 'Sin iniciar';
       }
-      
+
       if (!data.containsKey('asistencias')) {
         camposAActualizar['asistencias'] = [];
       }
 
       if (!data.containsKey('fechaActualizacionEstado')) {
-        camposAActualizar['fechaActualizacionEstado'] = FieldValue.serverTimestamp();
+        camposAActualizar['fechaActualizacionEstado'] =
+            FieldValue.serverTimestamp();
       }
 
       if (camposAActualizar.isNotEmpty) {

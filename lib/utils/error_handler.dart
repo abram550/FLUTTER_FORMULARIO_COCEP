@@ -4,8 +4,10 @@ import 'package:flutter/foundation.dart';
 import 'package:formulario_app/screens/form_screen.dart';
 
 class ErrorHandler {
-  static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
-  static final RouteObserver<PageRoute> routeObserver = RouteObserver<PageRoute>();
+  static final GlobalKey<NavigatorState> navigatorKey =
+      GlobalKey<NavigatorState>();
+  static final RouteObserver<PageRoute> routeObserver =
+      RouteObserver<PageRoute>();
 
   static void initialize() {
     FlutterError.onError = (FlutterErrorDetails details) {

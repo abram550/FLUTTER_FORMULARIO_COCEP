@@ -60,7 +60,7 @@ class DatabaseService {
           if (oldVersion < 2) {
             // Si existe la tabla anterior, la eliminamos
             await db.execute('DROP TABLE IF EXISTS registros_pendientes');
-            
+
             // Creamos la nueva tabla con todas las columnas
             await db.execute('''
               CREATE TABLE registros_pendientes (
@@ -125,18 +125,21 @@ class DatabaseService {
 
       print('Registros encontrados en BD local: ${maps.length}');
 
-      return maps.map((map) {
-        try {
-          // Asegurarnos de que el map sea mutable
-          final mutableMap = Map<String, dynamic>.from(map);
-          final registro = Registro.fromLocalMap(mutableMap);
-          print('Registro parseado correctamente: ${registro.nombre}');
-          return registro;
-        } catch (e) {
-          print('Error al parsear registro individual: $e');
-          return null;
-        }
-      }).whereType<Registro>().toList();
+      return maps
+          .map((map) {
+            try {
+              // Asegurarnos de que el map sea mutable
+              final mutableMap = Map<String, dynamic>.from(map);
+              final registro = Registro.fromLocalMap(mutableMap);
+              print('Registro parseado correctamente: ${registro.nombre}');
+              return registro;
+            } catch (e) {
+              print('Error al parsear registro individual: $e');
+              return null;
+            }
+          })
+          .whereType<Registro>()
+          .toList();
     } catch (e) {
       print('Error en obtenerRegistrosPendientes: $e');
       return [];

@@ -3,7 +3,8 @@ import 'dart:async';
 
 class IsolateHelper {
   // Ejecuta una tarea computacional intensiva en un Isolate separado
-  static Future<T> compute<T>(FutureOr<T> Function() computation, {String? debugLabel}) async {
+  static Future<T> compute<T>(FutureOr<T> Function() computation,
+      {String? debugLabel}) async {
     final receivePort = ReceivePort();
 
     await Isolate.spawn(
@@ -21,7 +22,8 @@ class IsolateHelper {
   }
 
   // Ejecuta una tarea ligera en un Isolate separado
-  static Future<void> runBackground(Future<void> Function() task, {String? debugLabel}) async {
+  static Future<void> runBackground(Future<void> Function() task,
+      {String? debugLabel}) async {
     await compute(task, debugLabel: debugLabel);
   }
 
@@ -43,5 +45,6 @@ Future<void> main() async {
   // Ejecuta la tarea en un Isolate
   final result = await IsolateHelper.exampleHeavyComputation(input);
 
-  print('Resultado de la tarea: ${result.take(10)}'); // Muestra los primeros 10 resultados
+  print(
+      'Resultado de la tarea: ${result.take(10)}'); // Muestra los primeros 10 resultados
 }
