@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -666,17 +667,58 @@ class JovenesAsignadosTab extends StatelessWidget {
 
       if (!coordinadorDoc.exists) return;
 
-      // Enviar email al coordinador
-      await EmailService.enviarAlertaFaltas(
-        emailCoordinador: coordinadorDoc['email'],
-        nombreJoven: '${registro['nombre']} ${registro['apellido']}',
-        nombreTimoteo: '${timoteoDoc['nombre']} ${timoteoDoc['apellido']}',
-        faltas: faltas,
-      );
+      // Crear la alerta primero
+      final alertaRef =
+          await FirebaseFirestore.instance.collection('alertas').add({
+        'tipo': 'faltasConsecutivas',
+        'registroId': registro.id,
+        'timoteoId': timoteoId,
+        'coordinadorId': coordinadorId,
+        'nombreJoven': '${registro['nombre']} ${registro['apellido']}',
+        'nombreTimoteo': '${timoteoDoc['nombre']} ${timoteoDoc['apellido']}',
+        'cantidadFaltas': faltas,
+        'fecha': FieldValue.serverTimestamp(),
+        'estado': 'pendiente',
+        'procesada': false,
+        'emailEnviado': false
+      });
 
-      print('Correo enviado correctamente.');
+      try {
+        // Intentar enviar el email
+        await EmailService.enviarAlertaFaltas(
+          alertaId: alertaRef.id,
+          emailCoordinador: coordinadorDoc['email'],
+          nombreJoven: '${registro['nombre']} ${registro['apellido']}',
+          nombreTimoteo: '${timoteoDoc['nombre']} ${timoteoDoc['apellido']}',
+          faltas: faltas,
+        );
+
+        // Si llegamos aquí, el email se envió correctamente
+        await alertaRef.update({
+          'emailEnviado': true,
+          'fechaEnvioEmail': FieldValue.serverTimestamp(),
+        });
+      } catch (emailError) {
+        print('Error al enviar email: $emailError');
+        // Actualizar el registro con el error pero no interrumpir el flujo
+        await alertaRef.update({
+          'emailEnviado': false,
+          'errorEmail': emailError.toString(),
+          'fechaError': FieldValue.serverTimestamp(),
+        });
+      }
+
+      // Actualizar el registro independientemente del resultado del email
+      await FirebaseFirestore.instance
+          .collection('registros')
+          .doc(registro.id)
+          .update({
+        'visible': false,
+        'estadoAlerta': 'pendiente',
+      });
     } catch (e) {
-      print('Error al enviar correo electrónico: $e');
+      print('Error general en _enviarAlertaPorEmail: $e');
+      throw Exception('Error al crear o actualizar la alerta: $e');
     }
   }
 
@@ -917,8 +959,6 @@ class JovenesAsignadosTab extends StatelessWidget {
       ),
     );
   }
-
-  
 
   Widget _buildInfoSection(String telefono) {
     return Container(

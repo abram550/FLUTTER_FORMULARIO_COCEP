@@ -1,21 +1,8 @@
 <!DOCTYPE html>
 <html>
+
 <head>
-  <!--
-    If you are serving your web app in a path other than the root, change the
-    href value below to reflect the base path you are serving from.
-
-    The path provided below has to start and end with a slash "/" in order for
-    it to work correctly.
-
-    For more details:
-    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
-
-    This is a placeholder for base href that will be replaced by the value of
-    the `--base-href` argument provided to `flutter build`.
-  -->
   <base href="/">
-
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   <meta name="description" content="A new Flutter project.">
@@ -27,7 +14,11 @@
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
   <!-- Favicon -->
-  <link rel="icon" type="image/png" href="favicon.png"/>
+  <link rel="icon" type="image/png" href="favicon.png" />
+
+  <!-- Firebase Scripts -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-messaging.js"></script>
 
   <title>formulario_app</title>
   <link rel="manifest" href="manifest.json">
@@ -60,29 +51,61 @@
     }
 
     @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
+      0% {
+        transform: rotate(0deg);
+      }
+
+      100% {
+        transform: rotate(360deg);
+      }
+    }
+
+    .flutter-loader {
+      display: none;
     }
   </style>
+
+  <script>
+    // Configuración de Firebase Web
+    const firebaseConfig = {
+      apiKey: "TU-API-KEY",
+      authDomain: "TU-AUTH-DOMAIN",
+      projectId: "TU-PROJECT-ID",
+      storageBucket: "TU-STORAGE-BUCKET",
+      messagingSenderId: "TU-MESSAGING-SENDER-ID",
+      appId: "TU-APP-ID"
+    };
+
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+  </script>
 </head>
+
 <body>
   <!-- Pantalla de carga -->
   <div id="loading">
-    <img src="assets/Cocep_.png" alt="COCEP"/>
+    <img src="assets/Cocep_.png" alt="COCEP" />
     <div class="spinner"></div>
   </div>
 
-  <!-- Cargar Flutter Bootstrap -->
-  <script src="flutter_bootstrap.js" async></script>
-
   <script>
-    window.addEventListener('load', function() {
+    // Service Worker para Firebase Messaging
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('firebase-messaging-sw.js');
+      });
+    }
+
+    window.addEventListener('load', function () {
       // Eliminar pantalla de carga cuando Flutter esté listo
-      window.addEventListener('flutter-first-frame', function() {
+      window.addEventListener('flutter-first-frame', function () {
         var loadingElement = document.querySelector('#loading');
         loadingElement.remove();
       });
     });
   </script>
+
+  <script src="main.dart.js" type="application/javascript"></script>
 </body>
+
 </html>
