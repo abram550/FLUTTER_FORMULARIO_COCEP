@@ -8,17 +8,17 @@
   <meta name="description" content="A new Flutter project.">
 
   <!-- iOS meta tags & icons -->
-  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="formulario_app">
-  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+  <link rel="apple-touch-icon" href="icons/Cocep_.png">
 
   <!-- Favicon -->
-  <link rel="icon" type="image/png" href="favicon.png" />
+  <link rel="icon" type="image/png" href="icons/Cocep_.png?v=1" />
 
-  <!-- Firebase Scripts -->
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-messaging.js"></script>
+  <!-- Firebase Scripts (compatibles con ES5) -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-messaging.js"></script>
 
   <title>formulario_app</title>
   <link rel="manifest" href="manifest.json">
@@ -66,8 +66,8 @@
   </style>
 
   <script>
-    // Configuración de Firebase Web
-    const firebaseConfig = {
+    // Configuración de Firebase Web (versión 8.x)
+    var firebaseConfig = {
       apiKey: "TU-API-KEY",
       authDomain: "TU-AUTH-DOMAIN",
       projectId: "TU-PROJECT-ID",
@@ -76,8 +76,26 @@
       appId: "TU-APP-ID"
     };
 
-    // Initialize Firebase
+    // Inicializar Firebase
     firebase.initializeApp(firebaseConfig);
+
+    // Inicializar Firebase Messaging
+    if (firebase.messaging.isSupported()) {
+      const messaging = firebase.messaging();
+
+      // Solicitar permiso para notificaciones
+      messaging
+        .requestPermission()
+        .then(() => messaging.getToken())
+        .then((token) => {
+          console.log("Token de notificaciones:", token);
+        })
+        .catch((error) => {
+          console.error("Error al obtener el token de notificaciones:", error);
+        });
+    } else {
+      console.warn("Firebase Messaging no es compatible en este navegador.");
+    }
   </script>
 </head>
 
@@ -89,19 +107,24 @@
   </div>
 
   <script>
-    // Service Worker para Firebase Messaging
+    // Registrar el Service Worker para Firebase Messaging
     if ('serviceWorker' in navigator) {
-      window.addEventListener('load', function () {
-        navigator.serviceWorker.register('firebase-messaging-sw.js');
-      });
+      navigator.serviceWorker
+        .register('firebase-messaging-sw.js')
+        .then((registration) => {
+          console.log("Service Worker registrado:", registration);
+        })
+        .catch((error) => {
+          console.error("Error al registrar el Service Worker:", error);
+        });
     }
 
-    window.addEventListener('load', function () {
-      // Eliminar pantalla de carga cuando Flutter esté listo
-      window.addEventListener('flutter-first-frame', function () {
-        var loadingElement = document.querySelector('#loading');
+    // Quitar la pantalla de carga cuando Flutter esté listo
+    window.addEventListener('flutter-first-frame', function () {
+      var loadingElement = document.querySelector('#loading');
+      if (loadingElement) {
         loadingElement.remove();
-      });
+      }
     });
   </script>
 
