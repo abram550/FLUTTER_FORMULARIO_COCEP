@@ -467,65 +467,72 @@ class JovenesAsignadosTab extends StatelessWidget {
   }
 
   Future<void> _registrarAsistencia(
-      BuildContext context, DocumentSnapshot registro) async {
-    try {
-      final registroRef =
-          FirebaseFirestore.instance.collection('registros').doc(registro.id);
+    BuildContext context, DocumentSnapshot registro) async {
+  try {
+    final registroRef =
+        FirebaseFirestore.instance.collection('registros').doc(registro.id);
 
-      final DateTime? fechaSeleccionada = await showDatePicker(
-        context: context,
-        initialDate: DateTime.now(),
-        firstDate: DateTime.now().subtract(Duration(days: 30)),
-        lastDate: DateTime.now(),
-      );
+    final DateTime? fechaSeleccionada = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime.now().subtract(Duration(days: 30)),
+      lastDate: DateTime.now(),
+    );
 
-      if (fechaSeleccionada == null) return;
+    if (fechaSeleccionada == null) return;
 
-      final bool? asistio = await showDialog<bool>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: Text('¿Asistió al servicio?'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                  'Fecha: ${DateFormat('dd/MM/yyyy').format(fechaSeleccionada)}'),
-              SizedBox(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red,
-                    ),
-                    onPressed: () => Navigator.pop(context, false),
-                    child: Text('No Asistió'),
+    final bool? asistio = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('¿Asistió al servicio?'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+                'Fecha: ${DateFormat('dd/MM/yyyy').format(fechaSeleccionada)}'),
+            SizedBox(height: 20),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red,
                   ),
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
-                    ),
-                    onPressed: () => Navigator.pop(context, true),
-                    child: Text('Sí Asistió'),
+                  onPressed: () => Navigator.pop(context, false),
+                  child: Text('No Asistió'),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
                   ),
-                ],
-              ),
-            ],
-          ),
+                  onPressed: () => Navigator.pop(context, true),
+                  child: Text('Sí Asistió'),
+                ),
+              ],
+            ),
+          ],
         ),
-      );
+      ),
+    );
 
-      if (asistio == null) return;
+    if (asistio == null) return;
 
-      final doc = await registroRef.get();
-      final data = doc.data() as Map<String, dynamic>;
+    final doc = await registroRef.get();
+    final data = doc.data() as Map<String, dynamic>;
 
-      int faltasConsecutivas = data['faltasConsecutivas'] ?? 0;
-      if (!asistio) {
-        faltasConsecutivas++;
-      } else {
-        faltasConsecutivas = 0;
-      }
+    // Fetch the tribe ID for this Timoteo
+    final timoteoDoc = await FirebaseFirestore.instance
+        .collection('timoteos')
+        .doc(timoteoId)
+        .get();
+    final tribuId = timoteoDoc.get('tribuId');
+
+    int faltasConsecutivas = data['faltasConsecutivas'] ?? 0;
+    if (!asistio) {
+      faltasConsecutivas++;
+    } else {
+      faltasConsecutivas = 0;
+    }
 
       // Actualizar documento con las nuevas asistencias y faltas
       await registroRef.update({
@@ -538,6 +545,42 @@ class JovenesAsignadosTab extends StatelessWidget {
         'faltasConsecutivas': faltasConsecutivas,
         'ultimaAsistencia': Timestamp.fromDate(fechaSeleccionada),
       });
+
+      // Registrar asistencias por días específicos
+    final diaSemana = DateFormat('EEEE', 'es').format(fechaSeleccionada);
+    if (diaSemana == 'viernes' ||
+        diaSemana == 'sábado' ||
+        diaSemana == 'domingo') {
+      await FirebaseFirestore.instance.collection('asistencias').add({
+        'registroId': registro.id,
+        'tribuId': tribuId, // Añadir ID de la tribu
+        'nombre': '${data['nombre']} ${data['apellido']}',
+        'fecha': Timestamp.fromDate(fechaSeleccionada),
+        'diaSemana': diaSemana,
+        'asistio': asistio,
+      });
+    
+        // NEW CODE: Tribu-specific attendance tracking
+        final tribusSnapshot = await FirebaseFirestore.instance
+            .collection('tribus')
+            .where('timoteoId', isEqualTo: timoteoId)
+            .limit(1)
+            .get();
+
+        if (tribusSnapshot.docs.isNotEmpty) {
+          final tribuDoc = tribusSnapshot.docs.first;
+
+          await FirebaseFirestore.instance.collection('asistenciaTribus').add({
+            'tribuId': tribuDoc.id,
+            'tribuNombre': tribuDoc['nombre'],
+            'registroId': registro.id,
+            'nombreJoven': '${data['nombre']} ${data['apellido']}',
+            'fecha': Timestamp.fromDate(fechaSeleccionada),
+            'diaSemana': diaSemana,
+            'asistio': asistio,
+          });
+        }
+      }
 
       // Crear alerta si las faltas son >= 4
       if (faltasConsecutivas >= 4) {

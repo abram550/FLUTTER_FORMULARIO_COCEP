@@ -2,24 +2,26 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/services.dart';
 import 'package:formulario_app/utils/theme_constants.dart';
+import 'package:intl/intl.dart';
 import 'TimoteosScreen.dart';
 import 'CoordinadorScreen.dart';
-import 'package:formulario_app/utils/theme_constants.dart';
 
 class TribusScreen extends StatelessWidget {
   final String tribuId;
   final String tribuNombre;
 
-  const TribusScreen(
-      {Key? key, required this.tribuId, required this.tribuNombre})
-      : super(key: key);
+  const TribusScreen({
+    Key? key,
+    required this.tribuId,
+    required this.tribuNombre,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return Theme(
       data: ThemeConstants.appTheme,
       child: DefaultTabController(
-        length: 3,
+        length: 4, // Cambiado de 3 a 4 para incluir la nueva pestaña
         child: Scaffold(
           appBar: AppBar(
             title: Row(
@@ -27,13 +29,13 @@ class TribusScreen extends StatelessWidget {
               children: [
                 Image.asset(
                   'assets/Cocep_.png', // Asegúrate de tener el logo en assets
-                  height: 40,
+                  height: 36, // Ajustado a un tamaño menor
                 ),
                 SizedBox(width: 12),
                 Text(
                   'Tribu: $tribuNombre',
                   style: TextStyle(
-                    fontSize: 24,
+                    fontSize: 20, // Reducido
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
                   ),
@@ -41,14 +43,15 @@ class TribusScreen extends StatelessWidget {
               ],
             ),
             bottom: PreferredSize(
-              preferredSize: Size.fromHeight(60),
+              preferredSize:
+                  Size.fromHeight(56), // Reducido el tamaño de la pestaña
               child: Container(
                 decoration: BoxDecoration(
                   color: ThemeConstants.primaryTeal,
                   border: Border(
                     bottom: BorderSide(
                       color: ThemeConstants.secondaryOrange,
-                      width: 3,
+                      width: 2.5, // Reducido
                     ),
                   ),
                 ),
@@ -58,8 +61,11 @@ class TribusScreen extends StatelessWidget {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.people),
-                          Text('Timoteos'),
+                          Icon(Icons.people, size: 22), // Icono más pequeño
+                          Text(
+                            'Timoteos',
+                            style: TextStyle(fontSize: 10), // Reducido
+                          ),
                         ],
                       ),
                     ),
@@ -67,8 +73,11 @@ class TribusScreen extends StatelessWidget {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.supervised_user_circle),
-                          Text('Coordinadores'),
+                          Icon(Icons.supervised_user_circle, size: 24),
+                          Text(
+                            'Coordinadores',
+                            style: TextStyle(fontSize: 10),
+                          ),
                         ],
                       ),
                     ),
@@ -76,14 +85,29 @@ class TribusScreen extends StatelessWidget {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.assignment_ind),
-                          Text('Jóvenes'),
+                          Icon(Icons.assignment_ind, size: 24),
+                          Text(
+                            'Jóvenes',
+                            style: TextStyle(fontSize: 10),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Tab(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.list, size: 24),
+                          Text(
+                            'Asistencias',
+                            style: TextStyle(fontSize: 10),
+                          ),
                         ],
                       ),
                     ),
                   ],
                   indicatorColor: ThemeConstants.secondaryOrange,
-                  indicatorWeight: 3,
+                  indicatorWeight: 2.5,
                   labelStyle: TextStyle(fontWeight: FontWeight.bold),
                 ),
               ),
@@ -105,12 +129,379 @@ class TribusScreen extends StatelessWidget {
                 TimoteosTab(tribuId: tribuId),
                 CoordinadoresTab(tribuId: tribuId),
                 RegistrosAsignadosTab(tribuId: tribuId),
+                AsistenciasTab(tribuId: tribuId), // Nueva pestaña agregada
               ],
             ),
           ),
         ),
       ),
     );
+  }
+}
+
+class AsistenciasTab extends StatelessWidget {
+  final String tribuId;
+
+  const AsistenciasTab({Key? key, required this.tribuId}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('asistencias')
+          .where('tribuId', isEqualTo: tribuId) // Filtrar por tribuId
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Center(
+            child: CircularProgressIndicator(
+              valueColor:
+                  AlwaysStoppedAnimation<Color>(ThemeConstants.primaryTeal),
+            ),
+          );
+        }
+
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.event_busy,
+                    size: 56, color: ThemeConstants.primaryTeal),
+                SizedBox(height: 12),
+                Text(
+                  'No hay asistencias registradas para esta tribu',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: ThemeConstants.primaryTeal,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        final asistencias = snapshot.data!.docs.map((doc) {
+          final data = doc.data() as Map<String, dynamic>;
+          return {
+            'nombre': data['nombre'],
+            'fecha': (data['fecha'] as Timestamp).toDate(),
+            'diaSemana': data['diaSemana'],
+            'asistio': data['asistio'],
+          };
+        }).toList();
+        final agrupadas = _agruparAsistencias(asistencias);
+
+        return Container(
+          padding: EdgeInsets.all(12), // Reducido
+          child: ListView.builder(
+            itemCount: agrupadas.keys.length,
+            itemBuilder: (context, yearIndex) {
+              final year = agrupadas.keys.elementAt(yearIndex);
+              final months = agrupadas[year]!;
+
+              return Card(
+                elevation: 3, // Reducido
+                margin: EdgeInsets.only(bottom: 12), // Reducido
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Theme(
+                  data: Theme.of(context).copyWith(
+                    dividerColor: Colors.transparent,
+                  ),
+                  child: ExpansionTile(
+                    title: Text(
+                      'Año $year',
+                      style: TextStyle(
+                        fontSize: 18, // Reducido
+                        fontWeight: FontWeight.bold,
+                        color: ThemeConstants.primaryTeal,
+                      ),
+                    ),
+                    children: months.keys.map((month) {
+                      return _buildMonthSection(context, month, months[month]!);
+                    }).toList(),
+                  ),
+                ),
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildMonthSection(BuildContext context, String month,
+      Map<String, List<Map<String, dynamic>>> weeks) {
+    final monthName = _getSpanishMonth(month);
+
+    return Card(
+      margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      color: ThemeConstants.primaryTeal.withOpacity(0.05),
+      child: ExpansionTile(
+        title: Text(
+          monthName,
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+            color: ThemeConstants.primaryTeal,
+          ),
+        ),
+        children: weeks.keys.map((week) {
+          return _buildWeekSection(context, week, weeks[week]!);
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildWeekSection(BuildContext context, String week,
+      List<Map<String, dynamic>> asistencias) {
+    final viernes = asistencias
+        .where((a) => a['diaSemana'] == 'viernes' && a['asistio'])
+        .toList();
+    final sabado = asistencias
+        .where((a) => a['diaSemana'] == 'sábado' && a['asistio'])
+        .toList();
+    final domingo = asistencias
+        .where((a) => a['diaSemana'] == 'domingo' && a['asistio'])
+        .toList();
+    final totalUnico = {
+      ...viernes.map((a) => a['nombre']),
+      ...sabado.map((a) => a['nombre']),
+      ...domingo.map((a) => a['nombre'])
+    }.length;
+
+    return Card(
+      margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: ExpansionTile(
+        title: Text(
+          week,
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        children: [
+          _buildDaySection(
+            'Viernes de Poder',
+            viernes,
+            Icons.local_fire_department,
+            ThemeConstants.secondaryOrange,
+          ),
+          _buildDaySection(
+            'Impacto Juvenil',
+            sabado,
+            Icons.star,
+            ThemeConstants.primaryTeal,
+          ),
+          _buildDaySection(
+            'Servicio Familiar',
+            domingo,
+            Icons.favorite,
+            ThemeConstants.secondaryOrange,
+          ),
+          _buildTotalSection(
+              viernes.length, sabado.length, domingo.length, totalUnico),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDaySection(String title, List<Map<String, dynamic>> asistencias,
+      IconData icon, Color color) {
+    return Container(
+      margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8),
+        color: color.withOpacity(0.1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.2),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
+            ),
+            child: Row(
+              children: [
+                Icon(icon, color: color, size: 20),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 14, // Reduced font size
+                      fontWeight: FontWeight.w600,
+                      color: color,
+                    ),
+                    maxLines: 2, // Allow two lines if needed
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                SizedBox(width: 8),
+                Container(
+                  padding: EdgeInsets.symmetric(
+                      horizontal: 6, vertical: 2), // Reduced padding
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '${asistencias.length}',
+                    style: TextStyle(
+                      color: color,
+                      fontWeight: FontWeight.w500,
+                      fontSize: 12, // Smaller font size
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (asistencias.isNotEmpty) ...[
+            ListView.builder(
+              shrinkWrap: true,
+              physics: NeverScrollableScrollPhysics(),
+              itemCount: asistencias.length,
+              itemBuilder: (context, index) {
+                final asistencia = asistencias[index];
+                return ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor: color.withOpacity(0.2),
+                    child: Text(
+                      asistencia['nombre'][0].toUpperCase(),
+                      style: TextStyle(color: color),
+                    ),
+                  ),
+                  title: Text(asistencia['nombre']),
+                  subtitle: Text(
+                    DateFormat('dd/MM/yyyy').format(asistencia['fecha']),
+                    style: TextStyle(color: Colors.grey[600]),
+                  ),
+                );
+              },
+            ),
+          ] else
+            Padding(
+              padding: EdgeInsets.all(16),
+              child: Text(
+                'No hay asistencias registradas',
+                style: TextStyle(color: Colors.grey[600]),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTotalSection(
+      int viernesCount, int sabadoCount, int domingoCount, int totalUnico) {
+    return Container(
+      margin: EdgeInsets.all(16),
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8),
+        color: ThemeConstants.primaryTeal.withOpacity(0.1),
+        border: Border.all(
+          color: ThemeConstants.primaryTeal.withOpacity(0.2),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Resumen de Asistencia',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: ThemeConstants.primaryTeal,
+            ),
+          ),
+          SizedBox(height: 12),
+          _buildTotalRow('Viernes de Poder', viernesCount),
+          _buildTotalRow('Impacto Juvenil', sabadoCount),
+          _buildTotalRow('Servicio Familiar', domingoCount),
+          Divider(height: 24),
+          _buildTotalRow('Total de personas únicas', totalUnico, isTotal: true),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTotalRow(String label, int count, {bool isTotal = false}) {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
+              color: isTotal ? ThemeConstants.primaryTeal : Colors.grey[700],
+            ),
+          ),
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            decoration: BoxDecoration(
+              color: isTotal ? ThemeConstants.primaryTeal : Colors.grey[200],
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              count.toString(),
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: isTotal ? Colors.white : Colors.grey[700],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Map<String, Map<String, Map<String, List<Map<String, dynamic>>>>>
+      _agruparAsistencias(
+    List<Map<String, dynamic>> asistencias,
+  ) {
+    final Map<String, Map<String, Map<String, List<Map<String, dynamic>>>>>
+        agrupadas = {};
+
+    for (var asistencia in asistencias) {
+      final fecha = asistencia['fecha'];
+      final year = DateFormat('yyyy').format(fecha);
+      final month = DateFormat('MMMM').format(fecha);
+      final week = 'Semana ${(fecha.day / 7).ceil()}';
+
+      agrupadas.putIfAbsent(year, () => {});
+      agrupadas[year]!.putIfAbsent(month, () => {});
+      agrupadas[year]![month]!.putIfAbsent(week, () => []);
+      agrupadas[year]![month]![week]!.add(asistencia);
+    }
+
+    return agrupadas;
+  }
+
+  String _getSpanishMonth(String month) {
+    final months = {
+      'January': 'Enero',
+      'February': 'Febrero',
+      'March': 'Marzo',
+      'April': 'Abril',
+      'May': 'Mayo',
+      'June': 'Junio',
+      'July': 'Julio',
+      'August': 'Agosto',
+      'September': 'Septiembre',
+      'October': 'Octubre',
+      'November': 'Noviembre',
+      'December': 'Diciembre',
+    };
+    return months[month] ?? month;
   }
 }
 

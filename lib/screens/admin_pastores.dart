@@ -294,11 +294,17 @@ class _AdminPastoresState extends State<AdminPastores>
           indicatorWeight: 3,
           tabs: [
             Tab(
-              icon: Icon(Icons.groups),
+              icon: Icon(
+                Icons.groups,
+                size: 30, // Tamaño del ícono aumentado
+              ),
               text: 'Tribus',
             ),
             Tab(
-              icon: Icon(Icons.person_outline),
+              icon: Icon(
+                Icons.person_outline,
+                size: 30, // Tamaño del ícono aumentado
+              ),
               text: 'Líder de Consolidación',
             ),
           ],
@@ -559,153 +565,184 @@ class _AdminPastoresState extends State<AdminPastores>
     );
   }
 
- Future<void> _unirTribusConNuevosDatos(
-  String tribu1Id,
-  String tribu2Id,
-  bool mantenerDatos,
-  String? nuevoNombre,
-  String? nuevoNombreLider,
-  String? nuevoApellidoLider,
-  String? nuevoUsuario,
-  String? nuevaContrasena,
-) async {
-  try {
-    // Obtener datos de ambas tribus
-    final tribu1Doc = await _firestore.collection('tribus').doc(tribu1Id).get();
-    final tribu2Doc = await _firestore.collection('tribus').doc(tribu2Id).get();
+  Future<void> _unirTribusConNuevosDatos(
+    String tribu1Id,
+    String tribu2Id,
+    bool mantenerDatos,
+    String? nuevoNombre,
+    String? nuevoNombreLider,
+    String? nuevoApellidoLider,
+    String? nuevoUsuario,
+    String? nuevaContrasena,
+  ) async {
+    try {
+      // Obtener datos de ambas tribus
+      final tribu1Doc =
+          await _firestore.collection('tribus').doc(tribu1Id).get();
+      final tribu2Doc =
+          await _firestore.collection('tribus').doc(tribu2Id).get();
 
-    if (!tribu1Doc.exists || !tribu2Doc.exists) {
-      throw Exception('Una o ambas tribus no existen');
-    }
+      if (!tribu1Doc.exists || !tribu2Doc.exists) {
+        throw Exception('Una o ambas tribus no existen');
+      }
 
-    final tribu1Data = tribu1Doc.data()!;
-    final tribu2Data = tribu2Doc.data()!;
+      final tribu1Data = tribu1Doc.data()!;
+      final tribu2Data = tribu2Doc.data()!;
 
-    // Obtener el nombre original de la tribu2 para el historial
-    final nombreTribu2Original = tribu2Data['nombre'];
+      // Obtener el nombre original de la tribu2 para el historial
+      final nombreTribu2Original = tribu2Data['nombre'];
 
-    // Si no se mantienen los datos, actualizar la tribu1 con los nuevos datos
-    if (!mantenerDatos) {
-      await _firestore.collection('tribus').doc(tribu1Id).update({
-        'nombre': nuevoNombre ?? tribu1Data['nombre'],
-        'nombreLider': nuevoNombreLider ?? tribu1Data['nombreLider'],
-        'apellidoLider': nuevoApellidoLider ?? tribu1Data['apellidoLider'],
-        'usuario': nuevoUsuario ?? tribu1Data['usuario'],
-        'contrasena': nuevaContrasena ?? tribu1Data['contrasena'],
-      });
-
-      // Actualizar el usuario correspondiente
-      final usuarioTribu1Snapshot = await _firestore
-          .collection('usuarios')
-          .where('tribuId', isEqualTo: tribu1Id)
-          .get();
-
-      if (usuarioTribu1Snapshot.docs.isNotEmpty) {
-        await _firestore.collection('usuarios').doc(usuarioTribu1Snapshot.docs.first.id).update({
+      // Si no se mantienen los datos, actualizar la tribu1 con los nuevos datos
+      if (!mantenerDatos) {
+        await _firestore.collection('tribus').doc(tribu1Id).update({
+          'nombre': nuevoNombre ?? tribu1Data['nombre'],
+          'nombreLider': nuevoNombreLider ?? tribu1Data['nombreLider'],
+          'apellidoLider': nuevoApellidoLider ?? tribu1Data['apellidoLider'],
           'usuario': nuevoUsuario ?? tribu1Data['usuario'],
           'contrasena': nuevaContrasena ?? tribu1Data['contrasena'],
-          'nombre': nuevoNombre ?? tribu1Data['nombre'],
         });
+
+        // Actualizar el usuario correspondiente
+        final usuarioTribu1Snapshot = await _firestore
+            .collection('usuarios')
+            .where('tribuId', isEqualTo: tribu1Id)
+            .get();
+
+        if (usuarioTribu1Snapshot.docs.isNotEmpty) {
+          await _firestore
+              .collection('usuarios')
+              .doc(usuarioTribu1Snapshot.docs.first.id)
+              .update({
+            'usuario': nuevoUsuario ?? tribu1Data['usuario'],
+            'contrasena': nuevaContrasena ?? tribu1Data['contrasena'],
+            'nombre': nuevoNombre ?? tribu1Data['nombre'],
+          });
+        }
       }
-    }
 
-    // Obtener todos los registros de la tribu2
-    final registrosTribu2 = await _firestore
-        .collection('registros')
-        .where('tribuAsignada', isEqualTo: tribu2Id)
-        .get();
+      // Obtener todos los registros de la tribu2
+      final registrosTribu2 = await _firestore
+          .collection('registros')
+          .where('tribuAsignada', isEqualTo: tribu2Id)
+          .get();
 
-    // Transferir registros uno por uno para asegurar la transferencia
-    for (var registro in registrosTribu2.docs) {
-      final datosRegistro = Map<String, dynamic>.from(registro.data());
-      
-      // Actualizar los campos necesarios
-      datosRegistro['tribuId'] = tribu1Id;
-      datosRegistro['tribuAsignada'] = tribu1Id; // Actualizar el campo tribuAsignada
-      datosRegistro['tribuOriginal'] = nombreTribu2Original;
-      datosRegistro['fechaUnionTribus'] = FieldValue.serverTimestamp();
-      
-      // Mantener la fecha original de asignación
-      if (datosRegistro.containsKey('fechaAsignacionTribu')) {
-        datosRegistro['fechaAsignacionTribu'] = registro.data()['fechaAsignacionTribu'];
+      // Transferir registros uno por uno para asegurar la transferencia
+      for (var registro in registrosTribu2.docs) {
+        final datosRegistro = Map<String, dynamic>.from(registro.data());
+
+        // Actualizar los campos necesarios
+        datosRegistro['tribuId'] = tribu1Id;
+        datosRegistro['tribuAsignada'] =
+            tribu1Id; // Actualizar el campo tribuAsignada
+        datosRegistro['tribuOriginal'] = nombreTribu2Original;
+        datosRegistro['fechaUnionTribus'] = FieldValue.serverTimestamp();
+
+        // Mantener la fecha original de asignación
+        if (datosRegistro.containsKey('fechaAsignacionTribu')) {
+          datosRegistro['fechaAsignacionTribu'] =
+              registro.data()['fechaAsignacionTribu'];
+        }
+
+        // Crear nuevo registro en la tribu1
+        await _firestore.collection('registros').add(datosRegistro);
       }
-      
-      // Crear nuevo registro en la tribu1
-      await _firestore.collection('registros').add(datosRegistro);
-    }
 
-    // Transferir coordinadores y timoteos
-    final colecciones = ['coordinadores', 'timoteos'];
-
-    for (var coleccion in colecciones) {
-      final snapshot = await _firestore
-          .collection(coleccion)
+      // Transferir asistencias de tribu2 a tribu1
+      final asistenciasSnapshot = await _firestore
+          .collection('asistencias')
           .where('tribuId', isEqualTo: tribu2Id)
           .get();
 
-      // Transferir documentos uno por uno
-      for (var doc in snapshot.docs) {
-        final datosDoc = Map<String, dynamic>.from(doc.data());
-        
-        datosDoc['tribuId'] = tribu1Id;
-        datosDoc['tribuAsignada'] = tribu1Id; // Actualizar el campo tribuAsignada si existe
-        datosDoc['tribuOriginal'] = nombreTribu2Original;
-        datosDoc['fechaUnionTribus'] = FieldValue.serverTimestamp();
-        
-        // Crear nuevo documento
-        await _firestore.collection(coleccion).add(datosDoc);
+      for (var asistencia in asistenciasSnapshot.docs) {
+        final asistenciaData = Map<String, dynamic>.from(asistencia.data());
+        asistenciaData['tribuId'] = tribu1Id; // Actualizar el ID de la tribu
+        asistenciaData['tribuOriginal'] = nombreTribu2Original;
+        asistenciaData['fechaUnionTribus'] = FieldValue.serverTimestamp();
+
+        // Crear nueva asistencia en tribu1
+        await _firestore.collection('asistencias').add(asistenciaData);
       }
-    }
 
-    // Crear historial de unión
-    await _firestore.collection('historialUnionTribus').add({
-      'tribuDestinoId': tribu1Id,
-      'tribuDestinoNombre': mantenerDatos ? tribu1Data['nombre'] : (nuevoNombre ?? tribu1Data['nombre']),
-      'tribuOrigenId': tribu2Id,
-      'tribuOrigenNombre': nombreTribu2Original,
-      'fechaUnion': FieldValue.serverTimestamp(),
-      'mantuvoDatos': mantenerDatos,
-      'cantidadRegistrosTransferidos': registrosTribu2.docs.length,
-    });
+      // Transferir coordinadores y timoteos
+      final colecciones = ['coordinadores', 'timoteos'];
 
-    // Una vez que todos los datos se han transferido, eliminar los datos originales
-    // Eliminar registros de la tribu2
-    for (var registro in registrosTribu2.docs) {
-      await registro.reference.delete();
-    }
+      for (var coleccion in colecciones) {
+        final snapshot = await _firestore
+            .collection(coleccion)
+            .where('tribuId', isEqualTo: tribu2Id)
+            .get();
 
-    // Eliminar coordinadores y timoteos de la tribu2
-    for (var coleccion in colecciones) {
-      final snapshot = await _firestore
-          .collection(coleccion)
+        // Transferir documentos uno por uno
+        for (var doc in snapshot.docs) {
+          final datosDoc = Map<String, dynamic>.from(doc.data());
+
+          datosDoc['tribuId'] = tribu1Id;
+          datosDoc['tribuAsignada'] =
+              tribu1Id; // Actualizar el campo tribuAsignada si existe
+          datosDoc['tribuOriginal'] = nombreTribu2Original;
+          datosDoc['fechaUnionTribus'] = FieldValue.serverTimestamp();
+
+          // Crear nuevo documento
+          await _firestore.collection(coleccion).add(datosDoc);
+        }
+      }
+
+      // Crear historial de unión
+      await _firestore.collection('historialUnionTribus').add({
+        'tribuDestinoId': tribu1Id,
+        'tribuDestinoNombre': mantenerDatos
+            ? tribu1Data['nombre']
+            : (nuevoNombre ?? tribu1Data['nombre']),
+        'tribuOrigenId': tribu2Id,
+        'tribuOrigenNombre': nombreTribu2Original,
+        'fechaUnion': FieldValue.serverTimestamp(),
+        'mantuvoDatos': mantenerDatos,
+        'cantidadRegistrosTransferidos': registrosTribu2.docs.length,
+        'cantidadAsistenciasTransferidas': asistenciasSnapshot.docs.length,
+      });
+
+      // Una vez que todos los datos se han transferido, eliminar los datos originales
+      // Eliminar registros de la tribu2
+      for (var registro in registrosTribu2.docs) {
+        await registro.reference.delete();
+      }
+
+      // Eliminar asistencias de la tribu2
+      for (var asistencia in asistenciasSnapshot.docs) {
+        await asistencia.reference.delete();
+      }
+
+      // Eliminar coordinadores y timoteos de la tribu2
+      for (var coleccion in colecciones) {
+        final snapshot = await _firestore
+            .collection(coleccion)
+            .where('tribuId', isEqualTo: tribu2Id)
+            .get();
+
+        for (var doc in snapshot.docs) {
+          await doc.reference.delete();
+        }
+      }
+
+      // Eliminar usuario de la tribu2
+      final usuarioTribu2Snapshot = await _firestore
+          .collection('usuarios')
           .where('tribuId', isEqualTo: tribu2Id)
           .get();
-      
-      for (var doc in snapshot.docs) {
-        await doc.reference.delete();
+
+      if (usuarioTribu2Snapshot.docs.isNotEmpty) {
+        await usuarioTribu2Snapshot.docs.first.reference.delete();
       }
+
+      // Finalmente, eliminar la tribu2
+      await tribu2Doc.reference.delete();
+
+      _mostrarSnackBar('Las tribus se han unido exitosamente');
+    } catch (e) {
+      print('Error detallado: $e');
+      _mostrarSnackBar('Error al unir las tribus: $e');
     }
-
-    // Eliminar usuario de la tribu2
-    final usuarioTribu2Snapshot = await _firestore
-        .collection('usuarios')
-        .where('tribuId', isEqualTo: tribu2Id)
-        .get();
-
-    if (usuarioTribu2Snapshot.docs.isNotEmpty) {
-      await usuarioTribu2Snapshot.docs.first.reference.delete();
-    }
-
-    // Finalmente, eliminar la tribu2
-    await tribu2Doc.reference.delete();
-
-    _mostrarSnackBar('Las tribus se han unido exitosamente');
-  } catch (e) {
-    print('Error detallado: $e');
-    _mostrarSnackBar('Error al unir las tribus: $e');
   }
-}
-
   Widget _buildLiderConsolidacionTab() {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
@@ -956,266 +993,290 @@ class _AdminPastoresState extends State<AdminPastores>
   }
 
   Widget _buildListaTribus() {
-  return StreamBuilder<QuerySnapshot>(
-    stream: _firestore
-        .collection('tribus')
-        .orderBy('createdAt', descending: true)
-        .snapshots(),
-    builder: (context, snapshot) {
-      if (snapshot.hasError) {
-        return _buildErrorWidget('Error: ${snapshot.error}');
-      }
+    return StreamBuilder<QuerySnapshot>(
+      stream: _firestore
+          .collection('tribus')
+          .orderBy('createdAt', descending: true)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return _buildErrorWidget('Error: ${snapshot.error}');
+        }
 
-      if (snapshot.connectionState == ConnectionState.waiting) {
-        return const Center(
-          child: CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF1B998B)),
-          ),
-        );
-      }
-
-      final tribus = snapshot.data?.docs ?? [];
-
-      if (tribus.isEmpty) {
-        return _buildEmptyState();
-      }
-
-      return ListView.builder(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        itemCount: tribus.length,
-        itemBuilder: (context, index) {
-          final tribu = tribus[index];
-          final data = tribu.data() as Map<String, dynamic>;
-
-          return Card(
-            margin: const EdgeInsets.symmetric(vertical: 8.0),
-            elevation: 3,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: ExpansionTile(
-              leading: const CircleAvatar(
-                backgroundColor: Color(0xFF1B998B),
-                child: Icon(Icons.groups, color: Colors.white),
-              ),
-              title: Text(
-                data['nombre'] ?? '',
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                  color: Color(0xFF2C3E50),
-                ),
-              ),
-              subtitle: Text(
-                'Líder: ${data['nombreLider']} ${data['apellidoLider']}',
-                style: TextStyle(color: Colors.grey[600]),
-              ),
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildInfoRow('Usuario:', data['usuario']),
-                      _buildInfoRow('Contraseña:', data['contrasena']),
-                      const SizedBox(height: 16),
-                      _buildEstadisticasTribu(tribu.id),
-                      const SizedBox(height: 16),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.edit, color: Color(0xFF1B998B)),
-                            onPressed: () => _mostrarDialogoEditarTribu(tribu.id, data),
-                            tooltip: 'Editar',
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.delete, color: Colors.red),
-                            onPressed: () => _mostrarDialogoConfirmarEliminarTribu(tribu.id),
-                            tooltip: 'Eliminar',
-                          ),
-                          ElevatedButton.icon(
-                            icon: const Icon(Icons.visibility),
-                            label: const Text('Ver Detalles'),
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => TribusScreen(
-                                    tribuId: tribu.id,
-                                    tribuNombre: data['nombre'] ?? '',
-                                  ),
-                                ),
-                              );
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF1B998B),
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(
+            child: CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF1B998B)),
             ),
           );
-        },
-      );
-    },
-  );
-}
-
-Widget _buildEstadisticasTribu(String tribuId) {
-  return StreamBuilder<QuerySnapshot>(
-    stream: FirebaseFirestore.instance
-        .collection('registros')
-        .where('tribuAsignada', isEqualTo: tribuId)
-        .snapshots(),
-    builder: (context, snapshot) {
-      if (snapshot.connectionState == ConnectionState.waiting) {
-        return const Center(child: CircularProgressIndicator());
-      }
-
-      if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-        return const Center(
-          child: Padding(
-            padding: EdgeInsets.all(16.0),
-            child: Text('No hay registros asignados a esta tribu.'),
-          ),
-        );
-      }
-
-      final registros = snapshot.data!.docs;
-      // Modificamos la estructura para organizar por año y luego por mes
-      final Map<int, Map<String, int>> registrosPorAnio = {};
-
-      for (var registro in registros) {
-        final fecha = (registro['fechaAsignacionTribu'] as Timestamp).toDate();
-        final ano = fecha.year;
-        final mesNombre = _getMesNombre(fecha.month);
-        
-        // Inicializar el año si no existe
-        if (!registrosPorAnio.containsKey(ano)) {
-          registrosPorAnio[ano] = {};
         }
-        
-        // Inicializar el mes si no existe
-        if (!registrosPorAnio[ano]!.containsKey(mesNombre)) {
-          registrosPorAnio[ano]![mesNombre] = 0;
+
+        final tribus = snapshot.data?.docs ?? [];
+
+        if (tribus.isEmpty) {
+          return _buildEmptyState();
         }
-        
-        registrosPorAnio[ano]![mesNombre] = registrosPorAnio[ano]![mesNombre]! + 1;
-      }
 
-      // Ordenar los años de más reciente a más antiguo
-      final anosOrdenados = registrosPorAnio.keys.toList()..sort((a, b) => b.compareTo(a));
+        return ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: tribus.length,
+          itemBuilder: (context, index) {
+            final tribu = tribus[index];
+            final data = tribu.data() as Map<String, dynamic>;
 
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Cantidad de Registros Asignados',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 18,
-              color: Color(0xFF2C3E50),
-            ),
-          ),
-          const SizedBox(height: 16),
-          ...anosOrdenados.map((ano) {
-            final registrosAnio = registrosPorAnio[ano]!;
-            final totalAnual = registrosAnio.values.reduce((a, b) => a + b);
-            
-            return Container(
-              margin: const EdgeInsets.only(bottom: 8),
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey.shade300),
-                borderRadius: BorderRadius.circular(8),
+            return Card(
+              margin: const EdgeInsets.symmetric(vertical: 8.0),
+              elevation: 3,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
               ),
               child: ExpansionTile(
-                title: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Año $ano',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF2C3E50),
-                      ),
-                    ),
-                    Text(
-                      'Total: $totalAnual',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF1B998B),
-                      ),
-                    ),
-                  ],
+                leading: const CircleAvatar(
+                  backgroundColor: Color(0xFF1B998B),
+                  child: Icon(Icons.groups, color: Colors.white),
+                ),
+                title: Text(
+                  data['nombre'] ?? '',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                    color: Color(0xFF2C3E50),
+                  ),
+                ),
+                subtitle: Text(
+                  'Líder: ${data['nombreLider']} ${data['apellidoLider']}',
+                  style: TextStyle(color: Colors.grey[600]),
                 ),
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    color: Colors.grey[50],
+                  Padding(
+                    padding: const EdgeInsets.all(16.0),
                     child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        ...registrosAnio.entries.map((entry) => Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 4),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                entry.key,
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  color: Color(0xFF2C3E50),
+                        _buildInfoRow('Usuario:', data['usuario']),
+                        _buildInfoRow('Contraseña:', data['contrasena']),
+                        const SizedBox(height: 16),
+                        _buildEstadisticasTribu(tribu.id),
+                        const SizedBox(height: 16),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.edit,
+                                  color: Color(0xFF1B998B)),
+                              onPressed: () =>
+                                  _mostrarDialogoEditarTribu(tribu.id, data),
+                              tooltip: 'Editar',
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.delete, color: Colors.red),
+                              onPressed: () =>
+                                  _mostrarDialogoConfirmarEliminarTribu(
+                                      tribu.id),
+                              tooltip: 'Eliminar',
+                            ),
+                            ElevatedButton.icon(
+                              icon: const Icon(Icons.visibility),
+                              label: const Text('Ver Detalles'),
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => TribusScreen(
+                                      tribuId: tribu.id,
+                                      tribuNombre: data['nombre'] ?? '',
+                                    ),
+                                  ),
+                                );
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF1B998B),
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
                                 ),
                               ),
-                              Text(
-                                '${entry.value} registros',
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  color: Color(0xFF1B998B),
-                                ),
-                              ),
-                            ],
-                          ),
-                        )).toList(),
+                            ),
+                          ],
+                        ),
                       ],
                     ),
                   ),
                 ],
               ),
             );
-          }).toList(),
-        ],
-      );
-    },
-  );
-}
-
-String _getMesNombre(int mes) {
-  switch (mes) {
-    case 1: return 'Enero';
-    case 2: return 'Febrero';
-    case 3: return 'Marzo';
-    case 4: return 'Abril';
-    case 5: return 'Mayo';
-    case 6: return 'Junio';
-    case 7: return 'Julio';
-    case 8: return 'Agosto';
-    case 9: return 'Septiembre';
-    case 10: return 'Octubre';
-    case 11: return 'Noviembre';
-    case 12: return 'Diciembre';
-    default: return '';
+          },
+        );
+      },
+    );
   }
-}
+
+  Widget _buildEstadisticasTribu(String tribuId) {
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('registros')
+          .where('tribuAsignada', isEqualTo: tribuId)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.all(16.0),
+              child: Text('No hay registros asignados a esta tribu.'),
+            ),
+          );
+        }
+
+        final registros = snapshot.data!.docs;
+        // Modificamos la estructura para organizar por año y luego por mes
+        final Map<int, Map<String, int>> registrosPorAnio = {};
+
+        for (var registro in registros) {
+          final fecha =
+              (registro['fechaAsignacionTribu'] as Timestamp).toDate();
+          final ano = fecha.year;
+          final mesNombre = _getMesNombre(fecha.month);
+
+          // Inicializar el año si no existe
+          if (!registrosPorAnio.containsKey(ano)) {
+            registrosPorAnio[ano] = {};
+          }
+
+          // Inicializar el mes si no existe
+          if (!registrosPorAnio[ano]!.containsKey(mesNombre)) {
+            registrosPorAnio[ano]![mesNombre] = 0;
+          }
+
+          registrosPorAnio[ano]![mesNombre] =
+              registrosPorAnio[ano]![mesNombre]! + 1;
+        }
+
+        // Ordenar los años de más reciente a más antiguo
+        final anosOrdenados = registrosPorAnio.keys.toList()
+          ..sort((a, b) => b.compareTo(a));
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Cantidad de Registros Asignados',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+                color: Color(0xFF2C3E50),
+              ),
+            ),
+            const SizedBox(height: 16),
+            ...anosOrdenados.map((ano) {
+              final registrosAnio = registrosPorAnio[ano]!;
+              final totalAnual = registrosAnio.values.reduce((a, b) => a + b);
+
+              return Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey.shade300),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: ExpansionTile(
+                  title: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Año $ano',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF2C3E50),
+                        ),
+                      ),
+                      Text(
+                        'Total: $totalAnual',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF1B998B),
+                        ),
+                      ),
+                    ],
+                  ),
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      color: Colors.grey[50],
+                      child: Column(
+                        children: [
+                          ...registrosAnio.entries
+                              .map((entry) => Padding(
+                                    padding:
+                                        const EdgeInsets.symmetric(vertical: 4),
+                                    child: Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text(
+                                          entry.key,
+                                          style: const TextStyle(
+                                            fontSize: 16,
+                                            color: Color(0xFF2C3E50),
+                                          ),
+                                        ),
+                                        Text(
+                                          '${entry.value} registros',
+                                          style: const TextStyle(
+                                            fontSize: 16,
+                                            color: Color(0xFF1B998B),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ))
+                              .toList(),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }).toList(),
+          ],
+        );
+      },
+    );
+  }
+
+  String _getMesNombre(int mes) {
+    switch (mes) {
+      case 1:
+        return 'Enero';
+      case 2:
+        return 'Febrero';
+      case 3:
+        return 'Marzo';
+      case 4:
+        return 'Abril';
+      case 5:
+        return 'Mayo';
+      case 6:
+        return 'Junio';
+      case 7:
+        return 'Julio';
+      case 8:
+        return 'Agosto';
+      case 9:
+        return 'Septiembre';
+      case 10:
+        return 'Octubre';
+      case 11:
+        return 'Noviembre';
+      case 12:
+        return 'Diciembre';
+      default:
+        return '';
+    }
+  }
 
   Widget _buildInfoRow(String label, String value) {
     return Padding(
