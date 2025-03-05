@@ -16,6 +16,421 @@ class TribusScreen extends StatelessWidget {
     required this.tribuNombre,
   }) : super(key: key);
 
+// Función para determinar el ministerio basado en el nombre de la tribu
+  String _determinarMinisterio(String tribuNombre) {
+    if (tribuNombre.contains('Juvenil')) return 'Ministerio Juvenil';
+    if (tribuNombre.contains('Damas')) return 'Ministerio de Damas';
+    if (tribuNombre.contains('Caballeros')) return 'Ministerio de Caballeros';
+    return 'Otro';
+  }
+
+// Función para guardar registro en Firebase
+  void _guardarRegistroEnFirebase(BuildContext context,
+      Map<String, dynamic> registro, String tribuId) async {
+    try {
+      print("Buscando tribu con ID: $tribuId");
+
+      final tribuSnapshot = await FirebaseFirestore.instance
+          .collection('tribus')
+          .doc(tribuId)
+          .get();
+
+      if (!tribuSnapshot.exists) {
+        print("Error: No se encontró la tribu con ID $tribuId");
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: La tribu no existe'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      final tribuData = tribuSnapshot.data() as Map<String, dynamic>;
+      print("Datos obtenidos de la tribu: $tribuData");
+
+      final tribuNombre = tribuData['nombreTribu'] ?? 'Desconocida';
+      final ministerioAsignado = tribuData['ministerioAsignado'] ??
+          tribuData['ministerio'] ??
+          tribuData['categoria'] ?? // Agregar esta opción si aplica
+          _determinarMinisterio(tribuNombre);
+
+      print("Tribu: $tribuNombre, Ministerio: $ministerioAsignado");
+
+      // Guardar el ID de la tribu en lugar del nombre
+      registro['tribuAsignada'] = tribuId;
+      registro['ministerioAsignado'] = ministerioAsignado;
+
+      await FirebaseFirestore.instance.collection('registros').add(registro);
+      Navigator.pop(context);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.check_circle, color: Colors.white),
+              SizedBox(width: 8),
+              Text('Registro guardado correctamente'),
+            ],
+          ),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      print("Error al guardar registro: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al guardar el registro: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  void _showRegistroDialog(BuildContext context) {
+    final _formKey = GlobalKey<FormState>();
+
+    final List<String> _estadosCiviles = [
+      'Casado(a)',
+      'Soltero(a)',
+      'Unión Libre',
+      'Separado(a)',
+      'Viudo(a)'
+    ];
+    final List<String> _ocupaciones = [
+      'Estudiante',
+      'Profesional',
+      'Trabaja',
+      'Ama de Casa',
+      'Otro'
+    ];
+
+    // Variables para almacenar datos del formulario
+    String nombre = '';
+    String apellido = '';
+    String telefono = '';
+    String sexo = '';
+    int edad = 0;
+    String direccion = '';
+    String barrio = '';
+    String estadoCivil = 'Soltero(a)';
+    String? nombrePareja = 'No aplica';
+    List<String> ocupacionesSeleccionadas = [];
+    String descripcionOcupaciones = ''; // Single field instead of Map
+    bool tieneHijos = false;
+    String referenciaInvitacion = '';
+    String? observaciones;
+    DateTime? fechaAsignacionTribu;
+
+    // StatefulBuilder para manejar estado dinámico
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(builder: (context, setState) {
+        return Dialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: EdgeInsets.all(20),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Registrar Nuevo Miembro',
+                        style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF1B998B))),
+                    _buildTextField(
+                        'Nombre', Icons.person, (value) => nombre = value),
+                    _buildTextField('Apellido', Icons.person_outline,
+                        (value) => apellido = value),
+                    _buildTextField(
+                        'Teléfono', Icons.phone, (value) => telefono = value),
+                    _buildDropdown('Sexo', ['Masculino', 'Femenino'],
+                        (value) => sexo = value),
+                    _buildTextField('Edad', Icons.cake,
+                        (value) => edad = int.tryParse(value) ?? 0),
+                    _buildTextField('Dirección', Icons.location_on,
+                        (value) => direccion = value),
+                    _buildTextField(
+                        'Barrio', Icons.home, (value) => barrio = value),
+
+                    // Dropdown de Estado Civil
+                    _buildDropdown('Estado Civil', _estadosCiviles, (value) {
+                      setState(() {
+                        estadoCivil = value;
+                        // Lógica para nombre de pareja
+                        if (estadoCivil == 'Casado(a)' ||
+                            estadoCivil == 'Unión Libre') {
+                          nombrePareja =
+                              ''; // Campo vacío para que puedan escribir
+                        } else {
+                          nombrePareja = 'No aplica';
+                        }
+                      });
+                    }),
+
+                    // Campo dinámico para nombre de pareja
+                    if (estadoCivil == 'Casado(a)' ||
+                        estadoCivil == 'Unión Libre')
+                      _buildTextField('Nombre de la Pareja', Icons.favorite,
+                          (value) => nombrePareja = value),
+
+                    // Ocupaciones con descripción única
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Ocupaciones',
+                            style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF1B998B))),
+                        Wrap(
+                          spacing: 8,
+                          children: _ocupaciones.map((ocupacion) {
+                            final isSelected =
+                                ocupacionesSeleccionadas.contains(ocupacion);
+                            return ChoiceChip(
+                              label: Text(ocupacion),
+                              selected: isSelected,
+                              onSelected: (selected) {
+                                setState(() {
+                                  if (selected) {
+                                    ocupacionesSeleccionadas.add(ocupacion);
+                                  } else {
+                                    ocupacionesSeleccionadas.remove(ocupacion);
+                                  }
+                                });
+                              },
+                              selectedColor: Color(0xFF1B998B),
+                              labelStyle: TextStyle(
+                                  color:
+                                      isSelected ? Colors.white : Colors.black),
+                            );
+                          }).toList(),
+                        ),
+
+                        // Single description field ONLY when occupations are selected
+                        if (ocupacionesSeleccionadas.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 8),
+                            child: _buildTextField(
+                                'Descripción de Ocupaciones',
+                                Icons.work_outline,
+                                (value) => descripcionOcupaciones = value,
+                                isRequired: false),
+                          ),
+                      ],
+                    ),
+
+                    _buildDropdown('Tiene Hijos', ['Sí', 'No'],
+                        (value) => tieneHijos = (value == 'Sí')),
+                    _buildTextField('Referencia de Invitación', Icons.link,
+                        (value) => referenciaInvitacion = value),
+                    _buildTextField('Observaciones', Icons.note,
+                        (value) => observaciones = value,
+                        isRequired: false),
+// Campo para seleccionar fecha
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: TextFormField(
+                        readOnly: true,
+                        decoration: InputDecoration(
+                          labelText: 'Fecha de Asignación de la Tribu',
+                          prefixIcon: Icon(Icons.calendar_today,
+                              color: Color(0xFF1B998B)),
+                          border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                        ),
+                        validator: (value) => fechaAsignacionTribu == null
+                            ? 'Campo obligatorio'
+                            : null,
+                        onTap: () async {
+                          final DateTime? pickedDate = await showDatePicker(
+                            context: context,
+                            initialDate: DateTime.now(),
+                            firstDate: DateTime(2000),
+                            lastDate: DateTime(2101),
+                            builder: (context, child) {
+                              return Theme(
+                                data: Theme.of(context).copyWith(
+                                  colorScheme: ColorScheme.light(
+                                    primary: Color(0xFF1B998B),
+                                    onPrimary: Colors.white,
+                                    onSurface: Colors.black,
+                                  ),
+                                  textButtonTheme: TextButtonThemeData(
+                                    style: TextButton.styleFrom(
+                                      foregroundColor: Color(0xFFFF7E00),
+                                    ),
+                                  ),
+                                ),
+                                child: child!,
+                              );
+                            },
+                          );
+
+                          if (pickedDate != null) {
+                            setState(() {
+                              fechaAsignacionTribu = pickedDate;
+                            });
+                          }
+                        },
+                        controller: TextEditingController(
+                          text: fechaAsignacionTribu != null
+                              ? DateFormat('dd/MM/yyyy')
+                                  .format(fechaAsignacionTribu!)
+                              : '',
+                        ),
+                      ),
+                    ),
+
+                    // Botones de acción
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: Text('Cancelar'),
+                          ),
+                          ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Color(0xFFFF7E00),
+                            ),
+                            onPressed: () {
+                              if (_formKey.currentState!.validate()) {
+                                final registro = {
+                                  'fechaAsignacionTribu':
+                                      fechaAsignacionTribu != null
+                                          ? Timestamp.fromDate(
+                                              fechaAsignacionTribu!)
+                                          : null,
+                                  'nombre': nombre,
+                                  'apellido': apellido,
+                                  'telefono': telefono,
+                                  'sexo': sexo,
+                                  'edad': edad,
+                                  'direccion': direccion,
+                                  'barrio': barrio,
+                                  'estadoCivil': estadoCivil,
+                                  'nombrePareja': nombrePareja,
+                                  'ocupaciones': ocupacionesSeleccionadas,
+                                  'descripcionOcupaciones':
+                                      descripcionOcupaciones, // Single description field
+                                  'tieneHijos': tieneHijos,
+                                  'referenciaInvitacion': referenciaInvitacion,
+                                  'observaciones': observaciones,
+                                  'tribuAsignada': tribuNombre,
+                                  'ministerioAsignado':
+                                      _determinarMinisterio(tribuNombre),
+                                  'coordinadorAsignado': null,
+                                  'fechaRegistro': FieldValue.serverTimestamp(),
+                                };
+
+                                _guardarRegistroEnFirebase(
+                                    context, registro, tribuId);
+                              }
+                            },
+                            child: Text('Guardar',
+                                style: TextStyle(color: Colors.white)),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      }),
+    );
+  }
+
+// Método auxiliar para campos de texto con opción de requerido
+  Widget _buildTextField(
+      String label, IconData icon, Function(String) onChanged,
+      {bool isRequired = true}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: TextFormField(
+        decoration: InputDecoration(
+          labelText: label,
+          prefixIcon: Icon(icon, color: Color(0xFF1B998B)),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+        validator: isRequired
+            ? (value) => value!.isEmpty ? 'Campo obligatorio' : null
+            : null, // Sin validación si no es requerido
+        onChanged: onChanged,
+      ),
+    );
+  }
+
+// Método de construcción de dropdown
+  Widget _buildDropdown(
+      String label, List<String> options, Function(String) onChanged) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: DropdownButtonFormField<String>(
+        decoration: InputDecoration(
+          labelText: label,
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+        items: options
+            .map((option) =>
+                DropdownMenuItem(value: option, child: Text(option)))
+            .toList(),
+        validator: (value) => value == null ? 'Selecciona una opción' : null,
+        onChanged: (value) => onChanged(value!),
+      ),
+    );
+  }
+
+// Método de construcción de selección múltiple
+  Widget _buildMultiSelect(
+      String label, List<String> options, Function(List<String>) onChanged) {
+    List<String> selectedOptions = [];
+
+    return StatefulBuilder(
+      builder: (context, setState) {
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label, style: TextStyle(fontWeight: FontWeight.bold)),
+              Wrap(
+                spacing: 8,
+                children: options.map((option) {
+                  final isSelected = selectedOptions.contains(option);
+                  return ChoiceChip(
+                    label: Text(option),
+                    selected: isSelected,
+                    onSelected: (selected) {
+                      setState(() {
+                        selected
+                            ? selectedOptions.add(option)
+                            : selectedOptions.remove(option);
+                      });
+                      onChanged(selectedOptions);
+                    },
+                    selectedColor: Color(0xFF1B998B),
+                    labelStyle: TextStyle(
+                        color: isSelected ? Colors.white : Colors.black),
+                  );
+                }).toList(),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     // Define colors based on the COCEP logo
@@ -108,7 +523,9 @@ class TribusScreen extends StatelessWidget {
               children: [
                 _buildTabContent(TimoteosTab(tribuId: tribuId)),
                 _buildTabContent(CoordinadoresTab(tribuId: tribuId)),
-                _buildTabContent(RegistrosAsignadosTab(tribuId: tribuId)),
+                _buildTabContent(RegistrosAsignadosTab(
+                    tribuId: tribuId,
+                    tribuNombre: tribuNombre)), // Aquí modificamos
                 _buildTabContent(AsistenciasTab(tribuId: tribuId)),
               ],
             ),
@@ -186,7 +603,7 @@ class TribusScreen extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
+            /*Text(
               'Agregar Nuevo',
               style: TextStyle(
                 fontSize: 20,
@@ -215,11 +632,24 @@ class TribusScreen extends StatelessWidget {
               secondaryColor,
               () {
                 Navigator.pop(context);
-                // Aquí iría la lógica para agregar un Coordinador
+
+                 _crearCoordinador(context),
+              },
+            ),
+            SizedBox(height: 12),*/
+            _buildOptionButton(
+              context,
+              'Registrar Miembro',
+              Icons.person_add_alt_1,
+              primaryColor,
+              secondaryColor,
+              () {
+                Navigator.pop(context);
+                _showRegistroDialog(context);
               },
             ),
             SizedBox(height: 12),
-            _buildOptionButton(
+            /*_buildOptionButton(
               context,
               'Registrar Asistencia',
               Icons.edit_calendar,
@@ -229,7 +659,7 @@ class TribusScreen extends StatelessWidget {
                 Navigator.pop(context);
                 // Aquí iría la lógica para registrar asistencia
               },
-            ),
+            ),*/
           ],
         ),
       ),
@@ -2605,9 +3035,13 @@ Widget _buildInfoRow(IconData icon, String label, String value) {
 
 class RegistrosAsignadosTab extends StatelessWidget {
   final String tribuId;
+  final String tribuNombre;
 
-  const RegistrosAsignadosTab({Key? key, required this.tribuId})
-      : super(key: key);
+  const RegistrosAsignadosTab({
+    Key? key,
+    required this.tribuId,
+    required this.tribuNombre, // Asegúrate que esté definido aquí
+  }) : super(key: key);
 
   Future<void> _asignarACoordinador(
       BuildContext context, DocumentSnapshot registro) async {
@@ -2884,6 +3318,10 @@ class RegistrosAsignadosTab extends StatelessWidget {
             );
           }
 
+          // Mantenemos un Map para guardar los estados de expansión
+          // Esta línea debe estar fuera del itemBuilder para preservar el estado
+          final Map<String, bool> expandedStates = {};
+
           return Padding(
             padding: EdgeInsets.all(16),
             child: ListView.builder(
@@ -2891,11 +3329,15 @@ class RegistrosAsignadosTab extends StatelessWidget {
               itemBuilder: (context, index) {
                 final registro = docs[index];
                 final data = registro.data() as Map<String, dynamic>? ?? {};
+                final registroId =
+                    registro.id; // Usamos el ID del documento como clave única
 
                 // Acceso seguro con valores por defecto
                 final nombre = data['nombre'] as String? ?? '';
                 final apellido = data['apellido'] as String? ?? '';
                 final telefono = data['telefono'] as String? ?? 'No disponible';
+                final ministerioAsignado =
+                    data['ministerioAsignado'] ?? 'Sin ministerio';
 
                 String iniciales = '';
                 if (nombre.isNotEmpty && nombre.length >= 1) {
@@ -2922,141 +3364,357 @@ class RegistrosAsignadosTab extends StatelessWidget {
                       avatarColors.length;
                 }
 
-                return Card(
-                  margin: EdgeInsets.only(bottom: 12),
-                  elevation: 3,
-                  shadowColor: primaryTeal.withOpacity(0.1),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    side: BorderSide(
-                      color: primaryTeal.withOpacity(0.1),
-                      width: 1,
-                    ),
-                  ),
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(16),
-                    onTap: () => _asignarACoordinador(context, registro),
-                    child: Padding(
-                      padding: EdgeInsets.all(16),
-                      child: Row(
+                // Utilizamos un StatefulBuilder para manejar el estado de expansión
+                return StatefulBuilder(
+                  builder: (BuildContext context, StateSetter setState) {
+                    // Inicializamos el estado de expansión si no existe
+                    expandedStates[registroId] ??= false;
+
+                    return Card(
+                      margin: EdgeInsets.only(bottom: 12),
+                      elevation: 3,
+                      shadowColor: primaryTeal.withOpacity(0.1),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        side: BorderSide(
+                          color: primaryTeal.withOpacity(0.1),
+                          width: 1,
+                        ),
+                      ),
+                      child: Column(
                         children: [
-                          // Avatar con iniciales
-                          Container(
-                            width: 50,
-                            height: 50,
-                            decoration: BoxDecoration(
-                              color: avatarColors[colorIndex].withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color:
-                                    avatarColors[colorIndex].withOpacity(0.5),
-                                width: 1.5,
-                              ),
-                            ),
-                            child: Center(
-                              child: Text(
-                                iniciales,
-                                style: TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                  color: avatarColors[colorIndex],
-                                ),
-                              ),
-                            ),
-                          ),
-                          SizedBox(width: 16),
-                          // Información del registro
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  '$nombre $apellido',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    color: primaryTeal,
-                                  ),
-                                ),
-                                SizedBox(height: 4),
-                                Row(
-                                  children: [
-                                    Icon(
-                                      Icons.phone_outlined,
-                                      size: 14,
-                                      color: accentGrey,
-                                    ),
-                                    SizedBox(width: 4),
-                                    Text(
-                                      telefono,
-                                      style: TextStyle(
-                                        color: accentGrey,
-                                        fontSize: 14,
+                          // Parte superior de la tarjeta con información básica
+                          GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                // Invertimos el estado de expansión al tocar
+                                expandedStates[registroId] =
+                                    !expandedStates[registroId]!;
+                              });
+                            },
+                            child: Padding(
+                              padding: EdgeInsets.all(16),
+                              child: Row(
+                                children: [
+                                  // Avatar con iniciales
+                                  Container(
+                                    width: 50,
+                                    height: 50,
+                                    decoration: BoxDecoration(
+                                      color: avatarColors[colorIndex]
+                                          .withOpacity(0.2),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: avatarColors[colorIndex]
+                                            .withOpacity(0.5),
+                                        width: 1.5,
                                       ),
                                     ),
-                                  ],
-                                ),
-                              ],
+                                    child: Center(
+                                      child: Text(
+                                        iniciales,
+                                        style: TextStyle(
+                                          fontSize: 20,
+                                          fontWeight: FontWeight.bold,
+                                          color: avatarColors[colorIndex],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  SizedBox(width: 16),
+                                  // Información del registro
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          '$nombre $apellido',
+                                          style: TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
+                                            color: primaryTeal,
+                                          ),
+                                        ),
+                                        SizedBox(height: 4),
+                                        Row(
+                                          children: [
+                                            Icon(
+                                              Icons.phone_outlined,
+                                              size: 14,
+                                              color: accentGrey,
+                                            ),
+                                            SizedBox(width: 4),
+                                            Text(
+                                              telefono,
+                                              style: TextStyle(
+                                                color: accentGrey,
+                                                fontSize: 14,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        SizedBox(height: 4),
+                                        Row(
+                                          children: [
+                                            Icon(
+                                              Icons.account_tree_outlined,
+                                              size: 14,
+                                              color: accentGrey,
+                                            ),
+                                            SizedBox(width: 4),
+                                            Text(
+                                              'Ministerio: $ministerioAsignado',
+                                              style: TextStyle(
+                                                color: accentGrey,
+                                                fontSize: 14,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        SizedBox(height: 4),
+                                        Row(
+                                          children: [
+                                            Icon(
+                                              Icons.group_outlined,
+                                              size: 14,
+                                              color: accentGrey,
+                                            ),
+                                            SizedBox(width: 4),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  // Botones de acción
+                                  Row(
+                                    children: [
+                                      // Botón de ver detalles
+                                      Material(
+                                        color: Colors.transparent,
+                                        child: InkWell(
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                          onTap: () => _mostrarDetallesRegistro(
+                                            context,
+                                            data,
+                                            primaryTeal,
+                                            secondaryOrange,
+                                            accentGrey,
+                                            backgroundGrey,
+                                          ),
+                                          child: Container(
+                                            padding: EdgeInsets.all(10),
+                                            decoration: BoxDecoration(
+                                              color:
+                                                  primaryTeal.withOpacity(0.1),
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                            ),
+                                            child: Icon(
+                                              Icons.visibility_outlined,
+                                              color: primaryTeal,
+                                              size: 22,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      SizedBox(width: 8),
+                                      // Botón de asignar
+                                      Material(
+                                        color: Colors.transparent,
+                                        child: InkWell(
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                          onTap: () => _asignarACoordinador(
+                                              context, registro),
+                                          child: Container(
+                                            padding: EdgeInsets.all(10),
+                                            decoration: BoxDecoration(
+                                              color: secondaryOrange
+                                                  .withOpacity(0.1),
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                            ),
+                                            child: Icon(
+                                              Icons.person_add_alt_1_outlined,
+                                              color: secondaryOrange,
+                                              size: 22,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
-                          // Botones de acción
-                          Row(
-                            children: [
-                              // Botón de ver detalles
-                              Material(
-                                color: Colors.transparent,
-                                child: InkWell(
-                                  borderRadius: BorderRadius.circular(12),
-                                  onTap: () => _mostrarDetallesRegistro(
-                                    context,
-                                    data,
-                                    primaryTeal,
-                                    secondaryOrange,
-                                    accentGrey,
-                                    backgroundGrey,
+                          // Botón para expandir en la parte inferior de la tarjeta
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: Padding(
+                              padding: EdgeInsets.only(right: 16, bottom: 8),
+                              child: InkWell(
+                                onTap: () {
+                                  setState(() {
+                                    // Invertimos el estado de expansión con el botón
+                                    expandedStates[registroId] =
+                                        !expandedStates[registroId]!;
+                                  });
+                                },
+                                child: Container(
+                                  padding: EdgeInsets.symmetric(
+                                      horizontal: 12, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: primaryTeal.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(12),
                                   ),
-                                  child: Container(
-                                    padding: EdgeInsets.all(10),
-                                    decoration: BoxDecoration(
-                                      color: primaryTeal.withOpacity(0.1),
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: Icon(
-                                      Icons.visibility_outlined,
-                                      color: primaryTeal,
-                                      size: 22,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              SizedBox(width: 8),
-                              // Botón de asignar
-                              Material(
-                                color: Colors.transparent,
-                                child: InkWell(
-                                  borderRadius: BorderRadius.circular(12),
-                                  onTap: () =>
-                                      _asignarACoordinador(context, registro),
-                                  child: Container(
-                                    padding: EdgeInsets.all(10),
-                                    decoration: BoxDecoration(
-                                      color: secondaryOrange.withOpacity(0.1),
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: Icon(
-                                      Icons.person_add_alt_1_outlined,
-                                      color: secondaryOrange,
-                                      size: 22,
-                                    ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        expandedStates[registroId]!
+                                            ? 'Menos'
+                                            : 'Más',
+                                        style: TextStyle(
+                                          color: primaryTeal,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      SizedBox(width: 4),
+                                      Icon(
+                                        expandedStates[registroId]!
+                                            ? Icons.keyboard_arrow_up
+                                            : Icons.keyboard_arrow_down,
+                                        size: 16,
+                                        color: primaryTeal,
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ),
-                            ],
+                            ),
                           ),
+                          // Sección expandible
+                          if (expandedStates[registroId]!)
+                            Container(
+                              padding: EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: backgroundGrey.withOpacity(0.5),
+                                borderRadius: BorderRadius.only(
+                                  bottomLeft: Radius.circular(16),
+                                  bottomRight: Radius.circular(16),
+                                ),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Detalles Adicionales',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: primaryTeal,
+                                    ),
+                                  ),
+                                  SizedBox(height: 16),
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceEvenly,
+                                    children: [
+                                      Column(
+                                        children: [
+                                          Material(
+                                            color: Colors.transparent,
+                                            child: InkWell(
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                              onTap: () {
+                                                // Lógica para editar registro
+                                                // _editarRegistro(context, registro);
+                                              },
+                                              child: Container(
+                                                padding: EdgeInsets.all(12),
+                                                decoration: BoxDecoration(
+                                                  color: primaryTeal
+                                                      .withOpacity(0.1),
+                                                  borderRadius:
+                                                      BorderRadius.circular(12),
+                                                ),
+                                                child: Column(
+                                                  children: [
+                                                    Icon(
+                                                      Icons.edit_outlined,
+                                                      color: primaryTeal,
+                                                      size: 28,
+                                                    ),
+                                                    SizedBox(height: 4),
+                                                    Text(
+                                                      'Editar',
+                                                      style: TextStyle(
+                                                        color: primaryTeal,
+                                                        fontSize: 12,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      Column(
+                                        children: [
+                                          Material(
+                                            color: Colors.transparent,
+                                            child: InkWell(
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                              onTap: () {
+                                                // Lógica para cambiar ministerio o tribu
+                                                // _cambiarMinisterioTribu(context, registro);
+                                              },
+                                              child: Container(
+                                                padding: EdgeInsets.all(12),
+                                                decoration: BoxDecoration(
+                                                  color: secondaryOrange
+                                                      .withOpacity(0.1),
+                                                  borderRadius:
+                                                      BorderRadius.circular(12),
+                                                ),
+                                                child: Column(
+                                                  children: [
+                                                    Icon(
+                                                      Icons.swap_horiz_outlined,
+                                                      color: secondaryOrange,
+                                                      size: 28,
+                                                    ),
+                                                    SizedBox(height: 4),
+                                                    Text(
+                                                      'Cambiar',
+                                                      style: TextStyle(
+                                                        color: secondaryOrange,
+                                                        fontSize: 12,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
                         ],
                       ),
-                    ),
-                  ),
+                    );
+                  },
                 );
               },
             ),
@@ -3171,7 +3829,7 @@ class RegistrosAsignadosTab extends StatelessWidget {
             'icon': Icons.work_outline
           },
           {
-            'key': 'descripcionOcupacion',
+            'key': 'descripcionOcupaciones',
             'label': 'Descripción',
             'icon': Icons.description_outlined
           },
