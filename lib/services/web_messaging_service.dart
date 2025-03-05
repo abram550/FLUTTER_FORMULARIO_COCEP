@@ -12,7 +12,8 @@ class WebMessagingService {
   Future<String?> getToken() async {
     try {
       final messagingInstance = messaging;
-      final token = await promiseToFuture(callMethod(messagingInstance, 'getToken', []));
+      final token =
+          await promiseToFuture(callMethod(messagingInstance, 'getToken', []));
       return token as String?;
     } catch (e) {
       print('Error getting token: $e');
@@ -24,8 +25,7 @@ class WebMessagingService {
     try {
       final messagingInstance = messaging;
       await promiseToFuture(
-        callMethod(messagingInstance, 'requestPermission', [])
-      );
+          callMethod(messagingInstance, 'requestPermission', []));
     } catch (e) {
       print('Error requesting permission: $e');
     }

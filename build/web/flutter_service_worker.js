@@ -3,16 +3,19 @@ const MANIFEST = 'flutter-app-manifest';
 const TEMP = 'flutter-temp-cache';
 const CACHE_NAME = 'flutter-app-cache';
 
-const RESOURCES = {"assets/AssetManifest.bin": "4ab940e7a6323476dd5d90ed5feccaa6",
-"assets/AssetManifest.bin.json": "db1ffd29e0f3b13239b40a398113c49b",
-"assets/AssetManifest.json": "86e6ab02eeabee7662456b45d3d50d09",
+const RESOURCES = {"assets/AssetManifest.bin": "449a71232fd625853baed88ce85cf217",
+"assets/AssetManifest.bin.json": "cedb9d44c9c4ca0f3f971985a63a2ace",
+"assets/AssetManifest.json": "3135da083579f8231b66f1256565dc60",
 "assets/assets/COCEPP.png": "78a87c640d9443f868a2a4d99d2f9ded",
 "assets/assets/Cocep_.png": "9d1ad5660604ee2d7100a46c69b7e821",
 "assets/Cocep_.png": "9d1ad5660604ee2d7100a46c69b7e821",
-"assets/FontManifest.json": "1b1e7812d9eb9f666db8444d7dde1b20",
-"assets/fonts/MaterialIcons-Regular.otf": "b25a0a79c41e8cd12c2ed13fbfe448cb",
-"assets/NOTICES": "45089024e934cf4b5817ae826f078167",
+"assets/FontManifest.json": "6a84e6c28a318c1ef29352d8cf66d39c",
+"assets/fonts/MaterialIcons-Regular.otf": "db9a659bfdcf1b138603ff8394754557",
+"assets/NOTICES": "d031e5116c7e9d45547f23688580b9af",
 "assets/packages/cupertino_icons/assets/CupertinoIcons.ttf": "e986ebe42ef785b27164c36a9abc7818",
+"assets/packages/font_awesome_flutter/lib/fonts/fa-brands-400.ttf": "6acbd6161edc54ecd0ed58024d2eb9d0",
+"assets/packages/font_awesome_flutter/lib/fonts/fa-regular-400.ttf": "3ca5dc7621921b901d513cc1ce23788c",
+"assets/packages/font_awesome_flutter/lib/fonts/fa-solid-900.ttf": "a2eb084b706ab40c90610942d98886ec",
 "assets/packages/material_design_icons_flutter/lib/fonts/materialdesignicons-webfont.ttf": "d10ac4ee5ebe8c8fff90505150ba2a76",
 "assets/shaders/ink_sparkle.frag": "ecc85a2e95f5e9f53123dcaf8cb9b6ce",
 "canvaskit/canvaskit.js": "26eef3024dbc64886b7f48e1b6fb05cf",
@@ -28,7 +31,7 @@ const RESOURCES = {"assets/AssetManifest.bin": "4ab940e7a6323476dd5d90ed5feccaa6
 "favicon.png": "5dcef449791fa27946b3d35ad8803796",
 "firebase-messaging-sw.js": "04d7ccd113c4d4e4730ce9a4abd54092",
 "flutter.js": "4b2350e14c6650ba82871f60906437ea",
-"flutter_bootstrap.js": "396d8b6116663e9c965f0fd0c68a50d1",
+"flutter_bootstrap.js": "09b605dcd8aa0ea5c5ba9a32e3ac5827",
 "icons/Cocep_.png": "9d1ad5660604ee2d7100a46c69b7e821",
 "icons/Icon-192.png": "ac9a721a12bbc803b44f645561ecb1e1",
 "icons/Icon-512.png": "96e752610906ba2a93c65f8abe1645f1",
@@ -36,7 +39,7 @@ const RESOURCES = {"assets/AssetManifest.bin": "4ab940e7a6323476dd5d90ed5feccaa6
 "icons/Icon-maskable-512.png": "301a7604d45b3e739efc881eb04896ea",
 "index.html": "8a766f2eeb9559a8694c7387ae82aec9",
 "/": "8a766f2eeb9559a8694c7387ae82aec9",
-"main.dart.js": "55196c100cd8cd4d483fe784667663c2",
+"main.dart.js": "575bb88cc5ef7aca5f070a8ebfff207b",
 "manifest.json": "06966ad9a323bd1945d075c2b03e1295",
 "version.json": "6b35b6bb546a4d2ed589e75ee3bed9cd"};
 // The application shell files that are downloaded before a service worker can

@@ -10,8 +10,17 @@ import 'package:formulario_app/utils/email_service.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
-// Reemplaza todo el contenido de la clase TimoteoScreen
+// Constantes de color basadas en el logo
+const Color kPrimaryColor = Color(0xFF148B8D); // Color turquesa del logo
+const Color kSecondaryColor =
+    Color(0xFFFF5722); // Color naranja/rojo de la llama
+const Color kAccentColor =
+    Color(0xFFFFB74D); // Color amarillo/dorado de la llama
+const Color kBackgroundColor = Color(0xFFF8F9FA);
+const Color kCardColor = Colors.white;
+
 class TimoteoScreen extends StatelessWidget {
   final String timoteoId;
   final String timoteoNombre;
@@ -27,21 +36,75 @@ class TimoteoScreen extends StatelessWidget {
     return DefaultTabController(
       length: 2,
       child: Scaffold(
-        backgroundColor: const Color(0xFFF5F5F5),
+        backgroundColor: kBackgroundColor,
         appBar: AppBar(
-          elevation: 0,
-          backgroundColor: const Color(0xFF148B8D),
-          title: Text(
-            'Timoteo: $timoteoNombre',
-            style: const TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
+          elevation: 2,
+          backgroundColor: kPrimaryColor,
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(
+              bottom: Radius.circular(20),
             ),
           ),
+          title: Row(
+            children: [
+              Container(
+                height: 40,
+                width: 40,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Icon(
+                  Icons.person,
+                  color: kPrimaryColor,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Timoteo',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.white70,
+                      ),
+                    ),
+                    Text(
+                      timoteoNombre,
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.notifications_outlined),
+              onPressed: () {},
+              tooltip: 'Notificaciones',
+            ),
+          ],
           bottom: TabBar(
-            indicatorColor: const Color(0xFFFF4B2B),
+            indicatorColor: kSecondaryColor,
             indicatorWeight: 4,
+            indicatorSize: TabBarIndicatorSize.label,
             labelStyle: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
@@ -49,14 +112,28 @@ class TimoteoScreen extends StatelessWidget {
             unselectedLabelStyle: const TextStyle(
               fontSize: 16,
             ),
-            tabs: const [
+            labelColor: Colors.white,
+            unselectedLabelColor: Colors.white70,
+            tabs: [
               Tab(
-                icon: Icon(Icons.person_outline),
-                text: 'Perfil',
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: const [
+                    Icon(Icons.person_outline),
+                    SizedBox(width: 8),
+                    Text('Perfil'),
+                  ],
+                ),
               ),
               Tab(
-                icon: Icon(Icons.groups_outlined),
-                text: 'Discípulos',
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: const [
+                    Icon(Icons.groups_outlined),
+                    SizedBox(width: 8),
+                    Text('Discípulos'),
+                  ],
+                ),
               ),
             ],
           ),
@@ -67,8 +144,8 @@ class TimoteoScreen extends StatelessWidget {
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
               colors: [
-                const Color(0xFF148B8D).withOpacity(0.1),
-                Colors.white,
+                kPrimaryColor.withOpacity(0.05),
+                kBackgroundColor,
               ],
             ),
           ),
@@ -84,7 +161,6 @@ class TimoteoScreen extends StatelessWidget {
   }
 }
 
-// Reemplaza todo el contenido de la clase PerfilTab
 class PerfilTab extends StatelessWidget {
   final String timoteoId;
 
@@ -105,15 +181,27 @@ class PerfilTab extends StatelessWidget {
       context: context,
       builder: (context) {
         return AlertDialog(
+          backgroundColor: kCardColor,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),
-          title: const Text(
-            'Editar Perfil',
-            style: TextStyle(
-              color: Color(0xFF148B8D),
-              fontWeight: FontWeight.bold,
-            ),
+          title: Row(
+            children: [
+              Icon(
+                Icons.edit,
+                color: kSecondaryColor,
+                size: 24,
+              ),
+              const SizedBox(width: 8),
+              const Text(
+                'Editar Perfil',
+                style: TextStyle(
+                  color: kPrimaryColor,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 20,
+                ),
+              ),
+            ],
           ),
           content: SingleChildScrollView(
             child: Column(
@@ -135,19 +223,21 @@ class PerfilTab extends StatelessWidget {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text(
+              child: Text(
                 'Cancelar',
-                style: TextStyle(color: Colors.grey),
+                style: TextStyle(color: Colors.grey.shade600),
               ),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFFF4B2B),
+                backgroundColor: kSecondaryColor,
+                foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(30),
                 ),
                 padding:
                     const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                elevation: 2,
               ),
               onPressed: () async {
                 await FirebaseFirestore.instance
@@ -160,10 +250,21 @@ class PerfilTab extends StatelessWidget {
                   'contrasena': _passwordController.text,
                 });
                 Navigator.pop(context);
+                // Mostrar SnackBar de confirmación
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Perfil actualizado correctamente'),
+                    backgroundColor: kPrimaryColor,
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                );
               },
               child: const Text(
                 'Guardar',
-                style: TextStyle(fontSize: 16),
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
             ),
           ],
@@ -181,19 +282,26 @@ class PerfilTab extends StatelessWidget {
     return TextField(
       controller: controller,
       obscureText: isPassword,
+      style: TextStyle(fontSize: 16),
       decoration: InputDecoration(
         labelText: label,
-        prefixIcon: Icon(icon, color: const Color(0xFF148B8D)),
+        labelStyle: TextStyle(color: Colors.grey.shade700),
+        prefixIcon: Icon(icon, color: kPrimaryColor),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(15),
-          borderSide: const BorderSide(color: Color(0xFF148B8D)),
+          borderSide: BorderSide(color: Colors.grey.shade400),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(15),
+          borderSide: BorderSide(color: Colors.grey.shade300),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(15),
-          borderSide: const BorderSide(color: Color(0xFF148B8D), width: 2),
+          borderSide: BorderSide(color: kPrimaryColor, width: 2),
         ),
         filled: true,
-        fillColor: Colors.white,
+        fillColor: Colors.grey.shade50,
+        contentPadding: EdgeInsets.symmetric(vertical: 16),
       ),
     );
   }
@@ -207,18 +315,29 @@ class PerfilTab extends StatelessWidget {
           .snapshots(),
       builder: (context, AsyncSnapshot<DocumentSnapshot> snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(
+          return Center(
             child: CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF148B8D)),
+              valueColor: AlwaysStoppedAnimation<Color>(kPrimaryColor),
             ),
           );
         }
 
         if (!snapshot.hasData || !snapshot.data!.exists) {
-          return const Center(
-            child: Text(
-              'No se encontró el perfil',
-              style: TextStyle(fontSize: 18, color: Colors.grey),
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.person_off_outlined,
+                  size: 64,
+                  color: Colors.grey.shade400,
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'No se encontró el perfil',
+                  style: TextStyle(fontSize: 18, color: Colors.grey),
+                ),
+              ],
             ),
           );
         }
@@ -230,8 +349,73 @@ class PerfilTab extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Tarjeta de bienvenida
               Card(
-                elevation: 5,
+                elevation: 2,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(20),
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        kPrimaryColor,
+                        kPrimaryColor.withOpacity(0.8),
+                      ],
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 30,
+                        backgroundColor: Colors.white,
+                        child: Text(
+                          datos['nombre']?.substring(0, 1).toUpperCase() ?? 'T',
+                          style: TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                            color: kPrimaryColor,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '¡Bienvenido!',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.white70,
+                              ),
+                            ),
+                            Text(
+                              '${datos['nombre'] ?? ''} ${datos['apellido'] ?? ''}',
+                              style: TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ).animate().fadeIn(duration: 300.ms).slideY(begin: 0.2, end: 0),
+
+              const SizedBox(height: 20),
+
+              // Tarjeta de información personal
+              Card(
+                elevation: 2,
+                shadowColor: Colors.black26,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(20),
                 ),
@@ -239,14 +423,7 @@ class PerfilTab extends StatelessWidget {
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(20),
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        Colors.white,
-                        const Color(0xFF148B8D).withOpacity(0.1),
-                      ],
-                    ),
+                    color: kCardColor,
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -254,40 +431,64 @@ class PerfilTab extends StatelessWidget {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text(
-                            'Información Personal',
-                            style: TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF148B8D),
-                            ),
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.person,
+                                color: kPrimaryColor,
+                                size: 24,
+                              ),
+                              const SizedBox(width: 8),
+                              const Text(
+                                'Información Personal',
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  color: kPrimaryColor,
+                                ),
+                              ),
+                            ],
                           ),
-                          IconButton(
-                            icon: const Icon(
-                              Icons.edit,
-                              color: Color(0xFFFF4B2B),
-                              size: 28,
+                          InkWell(
+                            onTap: () => _editarPerfil(context, datos),
+                            borderRadius: BorderRadius.circular(30),
+                            child: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: kSecondaryColor.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(30),
+                              ),
+                              child: Icon(
+                                Icons.edit,
+                                color: kSecondaryColor,
+                                size: 22,
+                              ),
                             ),
-                            onPressed: () => _editarPerfil(context, datos),
                           ),
                         ],
                       ),
-                      const Divider(color: Color(0xFF148B8D), thickness: 2),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 16),
+                      const Divider(color: kPrimaryColor, thickness: 1),
+                      const SizedBox(height: 16),
                       _buildInfoRow(Icons.person, 'Nombre',
                           datos['nombre'] ?? 'No disponible'),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 20),
                       _buildInfoRow(Icons.person_outline, 'Apellido',
                           datos['apellido'] ?? 'No disponible'),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 20),
                       _buildInfoRow(Icons.account_circle, 'Usuario',
                           datos['usuario'] ?? 'No disponible'),
-                      const SizedBox(height: 16),
-                      _buildInfoRow(Icons.lock, 'Contraseña', '********'),
+                      const SizedBox(height: 20),
+                      _buildInfoRow(Icons.lock, 'Contraseña', '••••••••'),
                     ],
                   ),
                 ),
-              ),
+              )
+                  .animate()
+                  .fadeIn(duration: 300.ms, delay: 100.ms)
+                  .slideY(begin: 0.2, end: 0),
+
+              const SizedBox(height: 20),
             ],
           ),
         );
@@ -296,31 +497,90 @@ class PerfilTab extends StatelessWidget {
   }
 
   Widget _buildInfoRow(IconData icon, String label, String value) {
-    return Row(
-      children: [
-        Icon(icon, color: const Color(0xFF148B8D), size: 24),
-        const SizedBox(width: 12),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    return Container(
+      padding: EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: kPrimaryColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: kPrimaryColor, size: 22),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey.shade600,
+                  ),
+                ),
+                Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.black87,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOptionButton(
+    BuildContext context, {
+    required IconData icon,
+    required String text,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        margin: EdgeInsets.only(bottom: 8),
+        padding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade50,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey.shade200),
+        ),
+        child: Row(
           children: [
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 14,
-                color: Colors.grey,
+            Icon(icon, color: kPrimaryColor, size: 22),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                text,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.black87,
+                ),
               ),
             ),
-            Text(
-              value,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w500,
-                color: Colors.black87,
-              ),
+            Icon(
+              Icons.arrow_forward_ios,
+              color: Colors.grey.shade400,
+              size: 16,
             ),
           ],
         ),
-      ],
+      ),
     );
   }
 }
@@ -466,73 +726,121 @@ class JovenesAsignadosTab extends StatelessWidget {
       ..sort((a, b) => b.key.compareTo(a.key)));
   }
 
-  Future<void> _registrarAsistencia(
-    BuildContext context, DocumentSnapshot registro) async {
-  try {
-    final registroRef =
-        FirebaseFirestore.instance.collection('registros').doc(registro.id);
+  String obtenerNombreServicio(String categoriaTribu, DateTime fecha) {
+    final String diaSemana = DateFormat('EEEE', 'es').format(fecha);
 
-    final DateTime? fechaSeleccionada = await showDatePicker(
-      context: context,
-      initialDate: DateTime.now(),
-      firstDate: DateTime.now().subtract(Duration(days: 30)),
-      lastDate: DateTime.now(),
-    );
-
-    if (fechaSeleccionada == null) return;
-
-    final bool? asistio = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('¿Asistió al servicio?'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-                'Fecha: ${DateFormat('dd/MM/yyyy').format(fechaSeleccionada)}'),
-            SizedBox(height: 20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red,
-                  ),
-                  onPressed: () => Navigator.pop(context, false),
-                  child: Text('No Asistió'),
-                ),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
-                  ),
-                  onPressed: () => Navigator.pop(context, true),
-                  child: Text('Sí Asistió'),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-
-    if (asistio == null) return;
-
-    final doc = await registroRef.get();
-    final data = doc.data() as Map<String, dynamic>;
-
-    // Fetch the tribe ID for this Timoteo
-    final timoteoDoc = await FirebaseFirestore.instance
-        .collection('timoteos')
-        .doc(timoteoId)
-        .get();
-    final tribuId = timoteoDoc.get('tribuId');
-
-    int faltasConsecutivas = data['faltasConsecutivas'] ?? 0;
-    if (!asistio) {
-      faltasConsecutivas++;
-    } else {
-      faltasConsecutivas = 0;
+    if (categoriaTribu == "Ministerio de Damas") {
+      switch (diaSemana) {
+        case "martes":
+          return "Servicio de Damas";
+        case "viernes":
+          return "Viernes de Poder";
+        case "domingo":
+          return "Servicio Dominical";
+      }
+    } else if (categoriaTribu == "Ministerio de Caballeros") {
+      switch (diaSemana) {
+        case "jueves":
+          return "Servicio de Caballeros";
+        case "viernes":
+          return "Viernes de Poder";
+        case "sábado":
+          return "Servicio de Caballero";
+        case "domingo":
+          return "Servicio Dominical";
+      }
+    } else if (categoriaTribu == "Ministerio Juvenil") {
+      switch (diaSemana) {
+        case "viernes":
+          return "Viernes de Poder";
+        case "sábado":
+          return "Impacto Juvenil";
+        case "domingo":
+          return "Servicio Dominical";
+      }
     }
+    return "Reunión General"; // Nombre por defecto si no coincide con ningún caso.
+  }
+
+  Future<void> _registrarAsistencia(
+      BuildContext context, DocumentSnapshot registro) async {
+    try {
+      final registroRef =
+          FirebaseFirestore.instance.collection('registros').doc(registro.id);
+
+      final DateTime? fechaSeleccionada = await showDatePicker(
+        context: context,
+        initialDate: DateTime.now(),
+        firstDate: DateTime.now().subtract(Duration(days: 30)),
+        lastDate: DateTime.now(),
+      );
+
+      if (fechaSeleccionada == null) return;
+
+      final bool? asistio = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text('¿Asistió al servicio?'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                  'Fecha: ${DateFormat('dd/MM/yyyy').format(fechaSeleccionada)}'),
+              SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                    ),
+                    onPressed: () => Navigator.pop(context, false),
+                    child: Text('No Asistió'),
+                  ),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                    ),
+                    onPressed: () => Navigator.pop(context, true),
+                    child: Text('Sí Asistió'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      );
+
+      if (asistio == null) return;
+
+      final doc = await registroRef.get();
+      final data = doc.data() as Map<String, dynamic>;
+
+      // Obtener el ID de la tribu del Timoteo
+      final timoteoDoc = await FirebaseFirestore.instance
+          .collection('timoteos')
+          .doc(timoteoId)
+          .get();
+      final tribuId = timoteoDoc.get('tribuId');
+
+      // Obtener la categoría de la tribu
+      final tribuDoc = await FirebaseFirestore.instance
+          .collection('tribus')
+          .doc(tribuId)
+          .get();
+      final categoriaTribu =
+          tribuDoc.exists ? tribuDoc.get('categoria') : "General";
+
+      // Obtener el nombre específico del servicio basado en la tribu y el día
+      String nombreServicio =
+          obtenerNombreServicio(categoriaTribu, fechaSeleccionada);
+
+      int faltasConsecutivas = data['faltasConsecutivas'] ?? 0;
+      if (!asistio) {
+        faltasConsecutivas++;
+      } else {
+        faltasConsecutivas = 0;
+      }
 
       // Actualizar documento con las nuevas asistencias y faltas
       await registroRef.update({
@@ -540,56 +848,51 @@ class JovenesAsignadosTab extends StatelessWidget {
           {
             'fecha': Timestamp.fromDate(fechaSeleccionada),
             'asistio': asistio,
+            'nombreServicio':
+                nombreServicio, // Registrar el servicio con nombre específico
           }
         ]),
         'faltasConsecutivas': faltasConsecutivas,
         'ultimaAsistencia': Timestamp.fromDate(fechaSeleccionada),
       });
 
-      // Registrar asistencias por días específicos
-    final diaSemana = DateFormat('EEEE', 'es').format(fechaSeleccionada);
-    if (diaSemana == 'viernes' ||
-        diaSemana == 'sábado' ||
-        diaSemana == 'domingo') {
+      // Registrar la asistencia en la colección de asistencias
       await FirebaseFirestore.instance.collection('asistencias').add({
         'registroId': registro.id,
-        'tribuId': tribuId, // Añadir ID de la tribu
+        'tribuId': tribuId,
         'nombre': '${data['nombre']} ${data['apellido']}',
         'fecha': Timestamp.fromDate(fechaSeleccionada),
-        'diaSemana': diaSemana,
+        'nombreServicio':
+            nombreServicio, // Nombre correcto del servicio según el día y tribu
         'asistio': asistio,
+        'diaSemana': DateFormat('EEEE', 'es').format(fechaSeleccionada),
       });
-    
-        // NEW CODE: Tribu-specific attendance tracking
-        final tribusSnapshot = await FirebaseFirestore.instance
-            .collection('tribus')
-            .where('timoteoId', isEqualTo: timoteoId)
-            .limit(1)
-            .get();
 
-        if (tribusSnapshot.docs.isNotEmpty) {
-          final tribuDoc = tribusSnapshot.docs.first;
+      // Mantener el registro de asistencia por tribu si aplica
+      final tribusSnapshot = await FirebaseFirestore.instance
+          .collection('tribus')
+          .where('timoteoId', isEqualTo: timoteoId)
+          .limit(1)
+          .get();
 
-          await FirebaseFirestore.instance.collection('asistenciaTribus').add({
-            'tribuId': tribuDoc.id,
-            'tribuNombre': tribuDoc['nombre'],
-            'registroId': registro.id,
-            'nombreJoven': '${data['nombre']} ${data['apellido']}',
-            'fecha': Timestamp.fromDate(fechaSeleccionada),
-            'diaSemana': diaSemana,
-            'asistio': asistio,
-          });
-        }
+      if (tribusSnapshot.docs.isNotEmpty) {
+        final tribuDoc = tribusSnapshot.docs.first;
+
+        await FirebaseFirestore.instance.collection('asistenciaTribus').add({
+          'tribuId': tribuDoc.id,
+          'tribuNombre': tribuDoc['nombre'],
+          'registroId': registro.id,
+          'nombreJoven': '${data['nombre']} ${data['apellido']}',
+          'fecha': Timestamp.fromDate(fechaSeleccionada),
+          'diaSemana': DateFormat('EEEE', 'es').format(fechaSeleccionada),
+          'nombreServicio': nombreServicio,
+          'asistio': asistio,
+        });
       }
 
       // Crear alerta si las faltas son >= 4
       if (faltasConsecutivas >= 4) {
         // Obtener datos del timoteo
-        final timoteoDoc = await FirebaseFirestore.instance
-            .collection('timoteos')
-            .doc(timoteoId)
-            .get();
-
         if (!timoteoDoc.exists) return;
 
         final coordinadorId = timoteoDoc.get('coordinadorId');
@@ -1312,6 +1615,34 @@ class JovenesAsignadosTab extends StatelessWidget {
                                                                         0xFFFF4B2B),
                                                               ),
                                                             ),
+                                                            if (asistencia
+                                                                .containsKey(
+                                                                    'nombreServicio')) ...[
+                                                              SizedBox(
+                                                                  height: 2),
+                                                              Text(
+                                                                asistencia[
+                                                                    'nombreServicio'],
+                                                                style:
+                                                                    TextStyle(
+                                                                  fontSize: 10,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .w400,
+                                                                  color: asistio
+                                                                      ? Color(
+                                                                          0xFF147B7C)
+                                                                      : Color(
+                                                                          0xFFFF4B2B),
+                                                                ),
+                                                                textAlign:
+                                                                    TextAlign
+                                                                        .center,
+                                                                overflow:
+                                                                    TextOverflow
+                                                                        .ellipsis,
+                                                              ),
+                                                            ],
                                                           ],
                                                         ),
                                                       ),

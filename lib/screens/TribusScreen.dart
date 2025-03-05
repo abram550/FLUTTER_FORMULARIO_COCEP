@@ -18,97 +18,76 @@ class TribusScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Define colors based on the COCEP logo
+    final Color primaryTeal = Color(0xFF1B998B);
+    final Color secondaryOrange = Color(0xFFFF7E00);
+    final Color lightTeal = Color(0xFFE0F7FA);
+
     return Theme(
       data: ThemeConstants.appTheme,
       child: DefaultTabController(
-        length: 4, // Cambiado de 3 a 4 para incluir la nueva pestaña
+        length: 4,
         child: Scaffold(
           appBar: AppBar(
+            elevation: 0,
+            backgroundColor: primaryTeal,
             title: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Image.asset(
-                  'assets/Cocep_.png', // Asegúrate de tener el logo en assets
-                  height: 36, // Ajustado a un tamaño menor
+                Hero(
+                  tag: 'logo',
+                  child: Image.asset(
+                    'assets/Cocep_.png',
+                    height: 42,
+                  ),
                 ),
                 SizedBox(width: 12),
                 Text(
                   'Tribu: $tribuNombre',
                   style: TextStyle(
-                    fontSize: 20, // Reducido
+                    fontSize: 22,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
+                    shadows: [
+                      Shadow(
+                        offset: Offset(1, 1),
+                        blurRadius: 3.0,
+                        color: Colors.black.withOpacity(0.3),
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
             bottom: PreferredSize(
-              preferredSize:
-                  Size.fromHeight(56), // Reducido el tamaño de la pestaña
+              preferredSize: Size.fromHeight(60),
               child: Container(
                 decoration: BoxDecoration(
-                  color: ThemeConstants.primaryTeal,
-                  border: Border(
-                    bottom: BorderSide(
-                      color: ThemeConstants.secondaryOrange,
-                      width: 2.5, // Reducido
-                    ),
-                  ),
-                ),
-                child: TabBar(
-                  tabs: [
-                    Tab(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.people, size: 22), // Icono más pequeño
-                          Text(
-                            'Timoteos',
-                            style: TextStyle(fontSize: 10), // Reducido
-                          ),
-                        ],
-                      ),
-                    ),
-                    Tab(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.supervised_user_circle, size: 24),
-                          Text(
-                            'Coordinadores',
-                            style: TextStyle(fontSize: 10),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Tab(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.assignment_ind, size: 24),
-                          Text(
-                            'Jóvenes',
-                            style: TextStyle(fontSize: 10),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Tab(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.list, size: 24),
-                          Text(
-                            'Asistencias',
-                            style: TextStyle(fontSize: 10),
-                          ),
-                        ],
-                      ),
+                  color: primaryTeal,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black26,
+                      offset: Offset(0, 2),
+                      blurRadius: 4,
                     ),
                   ],
-                  indicatorColor: ThemeConstants.secondaryOrange,
-                  indicatorWeight: 2.5,
-                  labelStyle: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                child: TabBar(
+                  indicator: BoxDecoration(
+                    color: secondaryOrange,
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(10),
+                      topRight: Radius.circular(10),
+                    ),
+                  ),
+                  labelColor: Colors.white,
+                  unselectedLabelColor: Colors.white.withOpacity(0.7),
+                  tabs: [
+                    _buildTab(Icons.people, 'Timoteos'),
+                    _buildTab(Icons.supervised_user_circle, 'Coordinadores'),
+                    _buildTab(Icons.assignment_ind, 'Personas Asignadas'),
+                    _buildTab(Icons.list_alt, 'Asistencias'),
+                  ],
                 ),
               ),
             ),
@@ -119,19 +98,335 @@ class TribusScreen extends StatelessWidget {
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                  ThemeConstants.primaryTeal.withOpacity(0.1),
+                  lightTeal,
                   Colors.white,
                 ],
+                stops: [0.0, 0.5],
               ),
             ),
             child: TabBarView(
               children: [
-                TimoteosTab(tribuId: tribuId),
-                CoordinadoresTab(tribuId: tribuId),
-                RegistrosAsignadosTab(tribuId: tribuId),
-                AsistenciasTab(tribuId: tribuId), // Nueva pestaña agregada
+                _buildTabContent(TimoteosTab(tribuId: tribuId)),
+                _buildTabContent(CoordinadoresTab(tribuId: tribuId)),
+                _buildTabContent(RegistrosAsignadosTab(tribuId: tribuId)),
+                _buildTabContent(AsistenciasTab(tribuId: tribuId)),
               ],
             ),
+          ),
+          floatingActionButton: FloatingActionButton(
+            backgroundColor: secondaryOrange,
+            child: Icon(Icons.add, color: Colors.white),
+            onPressed: () {
+              _showAddOptions(context, primaryTeal, secondaryOrange);
+            },
+            elevation: 4,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTab(IconData icon, String text) {
+    return Tab(
+      child: Padding(
+        padding: EdgeInsets.symmetric(vertical: 8),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 24),
+            SizedBox(height: 4),
+            Text(
+              text,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTabContent(Widget content) {
+    return Card(
+      margin: EdgeInsets.all(12),
+      elevation: 4,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: content,
+      ),
+    );
+  }
+
+  void _showAddOptions(
+      BuildContext context, Color primaryColor, Color secondaryColor) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        padding: EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(20),
+            topRight: Radius.circular(20),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black26,
+              blurRadius: 10,
+              offset: Offset(0, -5),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Agregar Nuevo',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: primaryColor,
+              ),
+            ),
+            SizedBox(height: 20),
+            _buildOptionButton(
+              context,
+              'Agregar Timoteo',
+              Icons.person_add,
+              primaryColor,
+              secondaryColor,
+              () {
+                Navigator.pop(context);
+                // Aquí iría la lógica para agregar un Timoteo
+              },
+            ),
+            SizedBox(height: 12),
+            _buildOptionButton(
+              context,
+              'Agregar Coordinador',
+              Icons.supervisor_account,
+              primaryColor,
+              secondaryColor,
+              () {
+                Navigator.pop(context);
+                // Aquí iría la lógica para agregar un Coordinador
+              },
+            ),
+            SizedBox(height: 12),
+            _buildOptionButton(
+              context,
+              'Registrar Asistencia',
+              Icons.edit_calendar,
+              primaryColor,
+              secondaryColor,
+              () {
+                Navigator.pop(context);
+                // Aquí iría la lógica para registrar asistencia
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOptionButton(
+    BuildContext context,
+    String title,
+    IconData icon,
+    Color primaryColor,
+    Color secondaryColor,
+    VoidCallback onTap,
+  ) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: Ink(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [primaryColor, primaryColor.withOpacity(0.8)],
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+            ),
+            borderRadius: BorderRadius.circular(10),
+            boxShadow: [
+              BoxShadow(
+                color: primaryColor.withOpacity(0.3),
+                blurRadius: 5,
+                offset: Offset(0, 3),
+              ),
+            ],
+          ),
+          child: Container(
+            padding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+            child: Row(
+              children: [
+                Icon(icon, color: Colors.white, size: 24),
+                SizedBox(width: 12),
+                Text(
+                  title,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                Spacer(),
+                Icon(
+                  Icons.arrow_forward_ios,
+                  color: Colors.white,
+                  size: 16,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// Componente de ejemplo para mostrar animación de carga
+class AnimatedLoadingIndicator extends StatefulWidget {
+  @override
+  _AnimatedLoadingIndicatorState createState() =>
+      _AnimatedLoadingIndicatorState();
+}
+
+class _AnimatedLoadingIndicatorState extends State<AnimatedLoadingIndicator>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: Duration(seconds: 1),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: RotationTransition(
+        turns: _controller,
+        child: Container(
+          width: 50,
+          height: 50,
+          child: Icon(
+            Icons.local_fire_department,
+            color: Color(0xFFFF7E00),
+            size: 40,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// Ejemplo de cómo podría ser una tarjeta personalizada para los miembros de la tribu
+class MiembroCard extends StatelessWidget {
+  final String nombre;
+  final String rol;
+  final String? imageUrl;
+  final VoidCallback onTap;
+
+  const MiembroCard({
+    Key? key,
+    required this.nombre,
+    required this.rol,
+    this.imageUrl,
+    required this.onTap,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      elevation: 3,
+      margin: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: EdgeInsets.all(12),
+          child: Row(
+            children: [
+              Container(
+                width: 60,
+                height: 60,
+                decoration: BoxDecoration(
+                  color: Color(0xFF148B9C).withOpacity(0.2),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: Color(0xFF148B9C),
+                    width: 2,
+                  ),
+                ),
+                child: Center(
+                  child: imageUrl != null
+                      ? ClipOval(
+                          child: Image.network(
+                            imageUrl!,
+                            width: 56,
+                            height: 56,
+                            fit: BoxFit.cover,
+                          ),
+                        )
+                      : Icon(
+                          Icons.person,
+                          size: 30,
+                          color: Color(0xFF148B9C),
+                        ),
+                ),
+              ),
+              SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      nombre,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      rol,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.black54,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.arrow_forward_ios,
+                size: 16,
+                color: Color(0xFFFF7E00),
+              ),
+            ],
           ),
         ),
       ),
@@ -144,36 +439,41 @@ class AsistenciasTab extends StatelessWidget {
 
   const AsistenciasTab({Key? key, required this.tribuId}) : super(key: key);
 
+  // Función para obtener asistencias del segundo código
+  Stream<QuerySnapshot> obtenerAsistenciasPorTribu(String tribuId) {
+    return FirebaseFirestore.instance
+        .collection('asistencias')
+        .where('tribuId', isEqualTo: tribuId)
+        .where('asistio', isEqualTo: true) // Mantener el filtro de asistentes
+        .snapshots();
+  }
+
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('asistencias')
-          .where('tribuId', isEqualTo: tribuId) // Filtrar por tribuId
-          .snapshots(),
+      stream: obtenerAsistenciasPorTribu(tribuId),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return Center(
-            child: CircularProgressIndicator(
-              valueColor:
-                  AlwaysStoppedAnimation<Color>(ThemeConstants.primaryTeal),
-            ),
-          );
-        }
-
-        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.event_busy,
-                    size: 56, color: ThemeConstants.primaryTeal),
-                SizedBox(height: 12),
+                SizedBox(
+                  height: 60,
+                  width: 60,
+                  child: CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      const Color(0xFF1D8A8A), // Color teal principal del logo
+                    ),
+                    strokeWidth: 4,
+                  ),
+                ),
+                SizedBox(height: 16),
                 Text(
-                  'No hay asistencias registradas para esta tribu',
+                  'Cargando asistencias...',
                   style: TextStyle(
                     fontSize: 16,
-                    color: ThemeConstants.primaryTeal,
+                    color: const Color(0xFF1D8A8A),
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -182,48 +482,167 @@ class AsistenciasTab extends StatelessWidget {
           );
         }
 
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return Center(
+            child: Container(
+              padding: EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.08),
+                    blurRadius: 10,
+                    offset: Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1D8A8A).withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.event_busy,
+                      size: 64,
+                      color: const Color(0xFF1D8A8A),
+                    ),
+                  ),
+                  SizedBox(height: 16),
+                  Text(
+                    'No hay asistencias registradas',
+                    style: TextStyle(
+                      fontSize: 18,
+                      color: const Color(0xFF1D8A8A),
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    'Los datos de asistencia aparecerán aquí',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        // Convertir los datos de Firestore en una lista de mapas
         final asistencias = snapshot.data!.docs.map((doc) {
           final data = doc.data() as Map<String, dynamic>;
+          final nombre = data['nombre'] ?? "Sin nombre";
+          final apellido = data['apellido'] ?? '';
+          final nombreCompleto =
+              apellido.isNotEmpty ? "$nombre $apellido" : nombre;
+
           return {
-            'nombre': data['nombre'],
+            'nombre': nombre,
+            'nombreCompleto': nombreCompleto,
             'fecha': (data['fecha'] as Timestamp).toDate(),
-            'diaSemana': data['diaSemana'],
+            'diaSemana': data['diaSemana'] ?? '',
             'asistio': data['asistio'],
+            'nombreServicio': data['nombreServicio'] ?? '',
+            'ministerio': _determinarMinisterio(data['nombreServicio'] ?? ''),
           };
         }).toList();
-        final agrupadas = _agruparAsistencias(asistencias);
+
+        // Agrupar las asistencias por año, mes y semana
+        final asistenciasAgrupadas = _agruparAsistenciasPorFecha(asistencias);
 
         return Container(
-          padding: EdgeInsets.all(12), // Reducido
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Colors.white,
+                const Color(0xFF1D8A8A).withOpacity(0.05),
+              ],
+            ),
+          ),
           child: ListView.builder(
-            itemCount: agrupadas.keys.length,
+            padding: EdgeInsets.all(16),
+            itemCount: asistenciasAgrupadas.keys.length,
             itemBuilder: (context, yearIndex) {
-              final year = agrupadas.keys.elementAt(yearIndex);
-              final months = agrupadas[year]!;
+              final year = asistenciasAgrupadas.keys.elementAt(yearIndex);
+              final months = asistenciasAgrupadas[year]!;
 
               return Card(
-                elevation: 3, // Reducido
-                margin: EdgeInsets.only(bottom: 12), // Reducido
+                elevation: 4,
+                margin: EdgeInsets.only(bottom: 20),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(16),
                 ),
-                child: Theme(
-                  data: Theme.of(context).copyWith(
-                    dividerColor: Colors.transparent,
-                  ),
-                  child: ExpansionTile(
-                    title: Text(
-                      'Año $year',
-                      style: TextStyle(
-                        fontSize: 18, // Reducido
-                        fontWeight: FontWeight.bold,
-                        color: ThemeConstants.primaryTeal,
+                clipBehavior: Clip.antiAlias,
+                child: Column(
+                  children: [
+                    Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            const Color(0xFF1D8A8A),
+                            const Color(0xFF156D6D),
+                          ],
+                        ),
+                      ),
+                      child: Theme(
+                        data: Theme.of(context).copyWith(
+                          dividerColor: Colors.transparent,
+                          colorScheme: ColorScheme.light(
+                            primary: Colors.white,
+                          ),
+                        ),
+                        child: ExpansionTile(
+                          leading: Container(
+                            padding: EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.2),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Icons.calendar_today,
+                              color: Colors.white,
+                              size: 20,
+                            ),
+                          ),
+                          title: Text(
+                            'Año $year',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                          subtitle: Text(
+                            'Registro de asistencias',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.white.withOpacity(0.8),
+                            ),
+                          ),
+                          iconColor: Colors.white,
+                          collapsedIconColor: Colors.white,
+                          childrenPadding:
+                              EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                          children: months.keys.map((month) {
+                            return _buildMonthSection(
+                                context, month, months[month]!, year);
+                          }).toList(),
+                        ),
                       ),
                     ),
-                    children: months.keys.map((month) {
-                      return _buildMonthSection(context, month, months[month]!);
-                    }).toList(),
-                  ),
+                  ],
                 ),
               );
             },
@@ -234,128 +653,270 @@ class AsistenciasTab extends StatelessWidget {
   }
 
   Widget _buildMonthSection(BuildContext context, String month,
-      Map<String, List<Map<String, dynamic>>> weeks) {
+      Map<String, List<Map<String, dynamic>>> weeks, String year) {
     final monthName = _getSpanishMonth(month);
+    final IconData monthIcon = _getMonthIcon(month);
 
     return Card(
-      margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      color: ThemeConstants.primaryTeal.withOpacity(0.05),
-      child: ExpansionTile(
-        title: Text(
-          monthName,
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-            color: ThemeConstants.primaryTeal,
+      margin: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(
+          color: const Color(0xFF1D8A8A).withOpacity(0.2),
+          width: 1,
+        ),
+      ),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          gradient: LinearGradient(
+            begin: Alignment.topRight,
+            end: Alignment.bottomLeft,
+            colors: [
+              Colors.white,
+              const Color(0xFF1D8A8A).withOpacity(0.08),
+            ],
           ),
         ),
-        children: weeks.keys.map((week) {
-          return _buildWeekSection(context, week, weeks[week]!);
-        }).toList(),
+        child: ExpansionTile(
+          leading: Container(
+            padding: EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  const Color(0xFF1D8A8A),
+                  const Color(0xFF1D8A8A).withOpacity(0.7),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              monthIcon,
+              color: Colors.white,
+              size: 20,
+            ),
+          ),
+          title: Text(
+            monthName,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: const Color(0xFF1D8A8A),
+            ),
+          ),
+          subtitle: Text(
+            'Toca para ver semanas',
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey[600],
+            ),
+          ),
+          iconColor: const Color(0xFF1D8A8A),
+          collapsedIconColor: const Color(0xFF1D8A8A),
+          children: weeks.keys.map((week) {
+            return _buildWeekSection(
+                context, week, weeks[week]!, '$monthName $year');
+          }).toList(),
+        ),
       ),
     );
   }
 
   Widget _buildWeekSection(BuildContext context, String week,
-      List<Map<String, dynamic>> asistencias) {
-    final viernes = asistencias
-        .where((a) => a['diaSemana'] == 'viernes' && a['asistio'])
-        .toList();
-    final sabado = asistencias
-        .where((a) => a['diaSemana'] == 'sábado' && a['asistio'])
-        .toList();
-    final domingo = asistencias
-        .where((a) => a['diaSemana'] == 'domingo' && a['asistio'])
-        .toList();
-    final totalUnico = {
-      ...viernes.map((a) => a['nombre']),
-      ...sabado.map((a) => a['nombre']),
-      ...domingo.map((a) => a['nombre'])
-    }.length;
+      List<Map<String, dynamic>> asistencias, String monthYear) {
+    // Agrupar por servicio
+    Map<String, List<Map<String, dynamic>>> porServicio = {};
+
+    // Obtener nombres únicos de personas que asistieron a cada servicio
+    Map<String, Set<String>> personasPorServicio = {};
+    Set<String> todasLasPersonas = {};
+
+    for (var asistencia in asistencias) {
+      final servicio = asistencia['nombreServicio'] ?? 'Otro Servicio';
+      final nombre = asistencia['nombre'];
+
+      if (!porServicio.containsKey(servicio)) {
+        porServicio[servicio] = [];
+        personasPorServicio[servicio] = {};
+      }
+
+      porServicio[servicio]!.add(asistencia);
+      personasPorServicio[servicio]!.add(nombre);
+      todasLasPersonas.add(nombre);
+    }
+
+    Map<String, int> resumen = {
+      for (var servicio in porServicio.keys)
+        servicio: personasPorServicio[servicio]!.length
+    };
+    resumen['Total de personas únicas'] = todasLasPersonas.length;
 
     return Card(
-      margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: ExpansionTile(
-        title: Text(
-          week,
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w500,
+      margin: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      color: Colors.transparent,
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Colors.white,
+              const Color(0xFFF5A623).withOpacity(0.05),
+            ],
+          ),
+          border: Border.all(
+            color: const Color(0xFFF5A623).withOpacity(0.2),
+            width: 1,
           ),
         ),
-        children: [
-          _buildDaySection(
-            'Viernes de Poder',
-            viernes,
-            Icons.local_fire_department,
-            ThemeConstants.secondaryOrange,
+        child: ExpansionTile(
+          leading: Container(
+            padding: EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  const Color(0xFFF5A623),
+                  const Color(0xFFFF7A00),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(
+              Icons.date_range,
+              color: Colors.white,
+              size: 18,
+            ),
           ),
-          _buildDaySection(
-            'Impacto Juvenil',
-            sabado,
-            Icons.star,
-            ThemeConstants.primaryTeal,
+          title: Text(
+            'Semana $week',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: const Color(0xFFEE5A24),
+            ),
           ),
-          _buildDaySection(
-            'Servicio Familiar',
-            domingo,
-            Icons.favorite,
-            ThemeConstants.secondaryOrange,
+          subtitle: Text(
+            monthYear,
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey[600],
+            ),
           ),
-          _buildTotalSection(
-              viernes.length, sabado.length, domingo.length, totalUnico),
-        ],
+          iconColor: const Color(0xFFEE5A24),
+          collapsedIconColor: const Color(0xFFEE5A24),
+          children: [
+            ...porServicio.entries.map((entry) {
+              final servicio = entry.key;
+              final listaAsistencias = entry.value;
+              final ministerio = _determinarMinisterio(servicio);
+
+              return _buildServicioSection(
+                servicio,
+                ministerio,
+                listaAsistencias,
+              );
+            }).toList(),
+            _buildTotalSection(resumen),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildDaySection(String title, List<Map<String, dynamic>> asistencias,
-      IconData icon, Color color) {
+  Widget _buildServicioSection(
+    String servicio,
+    String ministerio,
+    List<Map<String, dynamic>> asistencias,
+  ) {
+    final color = _getColorByMinisterio(ministerio);
+    final icon = _getIconByMinisterio(ministerio);
+
     return Container(
-      margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      margin: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(8),
-        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: color.withOpacity(0.15),
+            blurRadius: 8,
+            offset: Offset(0, 3),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            padding: EdgeInsets.all(12),
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.2),
-              borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  color,
+                  color.withOpacity(0.8),
+                ],
+              ),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
             ),
             child: Row(
               children: [
-                Icon(icon, color: color, size: 20),
-                SizedBox(width: 8),
+                Container(
+                  padding: EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(icon, color: Colors.white, size: 20),
+                ),
+                SizedBox(width: 12),
                 Expanded(
-                  child: Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: 14, // Reduced font size
-                      fontWeight: FontWeight.w600,
-                      color: color,
-                    ),
-                    maxLines: 2, // Allow two lines if needed
-                    overflow: TextOverflow.ellipsis,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        servicio,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Text(
+                        ministerio,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.white.withOpacity(0.8),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                SizedBox(width: 8),
                 Container(
-                  padding: EdgeInsets.symmetric(
-                      horizontal: 6, vertical: 2), // Reduced padding
+                  padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   decoration: BoxDecoration(
-                    color: color.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(12),
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
                     '${asistencias.length}',
                     style: TextStyle(
                       color: color,
-                      fontWeight: FontWeight.w500,
-                      fontSize: 12, // Smaller font size
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
                     ),
                   ),
                 ),
@@ -367,30 +928,108 @@ class AsistenciasTab extends StatelessWidget {
               shrinkWrap: true,
               physics: NeverScrollableScrollPhysics(),
               itemCount: asistencias.length,
+              padding: EdgeInsets.symmetric(vertical: 8),
               itemBuilder: (context, index) {
                 final asistencia = asistencias[index];
-                return ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: color.withOpacity(0.2),
-                    child: Text(
-                      asistencia['nombre'][0].toUpperCase(),
-                      style: TextStyle(color: color),
-                    ),
+                final nombreMostrado =
+                    asistencia['nombreCompleto'] ?? asistencia['nombre'];
+                final inicialNombre =
+                    nombreMostrado.toString()[0].toUpperCase();
+
+                return Container(
+                  margin: EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(10),
                   ),
-                  title: Text(asistencia['nombre']),
-                  subtitle: Text(
-                    DateFormat('dd/MM/yyyy').format(asistencia['fecha']),
-                    style: TextStyle(color: Colors.grey[600]),
+                  child: ListTile(
+                    leading: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            color.withOpacity(0.8),
+                            color.withOpacity(0.6),
+                          ],
+                        ),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Center(
+                        child: Text(
+                          inicialNombre,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+                    ),
+                    title: Text(
+                      nombreMostrado,
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    subtitle: Row(
+                      children: [
+                        Icon(
+                          Icons.event,
+                          size: 12,
+                          color: Colors.grey[600],
+                        ),
+                        SizedBox(width: 4),
+                        Text(
+                          "${DateFormat('EEEE, d MMM', 'es').format(asistencia['fecha'])}",
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                    trailing: Container(
+                      padding: EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: Colors.green.withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.check_circle_rounded,
+                        color: Colors.green,
+                        size: 20,
+                      ),
+                    ),
                   ),
                 );
               },
             ),
           ] else
-            Padding(
-              padding: EdgeInsets.all(16),
-              child: Text(
-                'No hay asistencias registradas',
-                style: TextStyle(color: Colors.grey[600]),
+            Container(
+              padding: EdgeInsets.all(20),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.info_outline,
+                    color: Colors.grey[400],
+                    size: 20,
+                  ),
+                  SizedBox(width: 10),
+                  Text(
+                    'No hay asistencias registradas',
+                    style: TextStyle(
+                      color: Colors.grey[500],
+                      fontStyle: FontStyle.italic,
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
               ),
             ),
         ],
@@ -398,64 +1037,158 @@ class AsistenciasTab extends StatelessWidget {
     );
   }
 
-  Widget _buildTotalSection(
-      int viernesCount, int sabadoCount, int domingoCount, int totalUnico) {
+  Widget _buildTotalSection(Map<String, int> resumen) {
+    final totalUnico = resumen['Total de personas únicas'] ?? 0;
+
     return Container(
       margin: EdgeInsets.all(16),
-      padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(8),
-        color: ThemeConstants.primaryTeal.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(16),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.white,
+            const Color(0xFF1D8A8A).withOpacity(0.1),
+          ],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF1D8A8A).withOpacity(0.1),
+            blurRadius: 8,
+            offset: Offset(0, 4),
+          ),
+        ],
         border: Border.all(
-          color: ThemeConstants.primaryTeal.withOpacity(0.2),
+          color: const Color(0xFF1D8A8A).withOpacity(0.3),
+          width: 1,
         ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Resumen de Asistencia',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: ThemeConstants.primaryTeal,
+          Container(
+            padding: EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  const Color(0xFF1D8A8A),
+                  const Color(0xFF156D6D),
+                ],
+              ),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    Icons.summarize_rounded,
+                    color: Colors.white,
+                    size: 18,
+                  ),
+                ),
+                SizedBox(width: 12),
+                Text(
+                  'Resumen de Asistencia',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ],
             ),
           ),
-          SizedBox(height: 12),
-          _buildTotalRow('Viernes de Poder', viernesCount),
-          _buildTotalRow('Impacto Juvenil', sabadoCount),
-          _buildTotalRow('Servicio Familiar', domingoCount),
-          Divider(height: 24),
-          _buildTotalRow('Total de personas únicas', totalUnico, isTotal: true),
+          Padding(
+            padding: EdgeInsets.all(16),
+            child: Column(
+              children: [
+                ...resumen.entries
+                    .where((e) => e.key != 'Total de personas únicas')
+                    .map(
+                      (entry) => _buildTotalRow(entry.key, entry.value),
+                    ),
+                SizedBox(height: 8),
+                Divider(
+                  height: 24,
+                  thickness: 1,
+                  color: const Color(0xFF1D8A8A).withOpacity(0.2),
+                ),
+                _buildTotalRow('Total de personas únicas', totalUnico,
+                    isTotal: true),
+              ],
+            ),
+          ),
         ],
       ),
     );
   }
 
   Widget _buildTotalRow(String label, int count, {bool isTotal = false}) {
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: 4),
+    return Container(
+      margin: EdgeInsets.symmetric(vertical: 4),
+      padding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+      decoration: BoxDecoration(
+        color: isTotal
+            ? const Color(0xFF1D8A8A).withOpacity(0.1)
+            : Colors.transparent,
+        borderRadius: BorderRadius.circular(8),
+        border: isTotal
+            ? Border.all(
+                color: const Color(0xFF1D8A8A).withOpacity(0.3), width: 1)
+            : null,
+      ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
-              color: isTotal ? ThemeConstants.primaryTeal : Colors.grey[700],
+          Expanded(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontWeight: isTotal ? FontWeight.bold : FontWeight.w500,
+                color: isTotal ? const Color(0xFF1D8A8A) : Colors.grey[700],
+                fontSize: isTotal ? 15 : 14,
+              ),
             ),
           ),
           Container(
-            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: isTotal ? ThemeConstants.primaryTeal : Colors.grey[200],
-              borderRadius: BorderRadius.circular(12),
+              gradient: isTotal
+                  ? LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        const Color(0xFF1D8A8A),
+                        const Color(0xFF156D6D),
+                      ],
+                    )
+                  : null,
+              color: isTotal ? null : Colors.grey.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: isTotal
+                  ? [
+                      BoxShadow(
+                        color: const Color(0xFF1D8A8A).withOpacity(0.2),
+                        blurRadius: 4,
+                        offset: Offset(0, 2),
+                      )
+                    ]
+                  : null,
             ),
             child: Text(
               count.toString(),
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 color: isTotal ? Colors.white : Colors.grey[700],
+                fontSize: isTotal ? 15 : 14,
               ),
             ),
           ),
@@ -465,9 +1198,7 @@ class AsistenciasTab extends StatelessWidget {
   }
 
   Map<String, Map<String, Map<String, List<Map<String, dynamic>>>>>
-      _agruparAsistencias(
-    List<Map<String, dynamic>> asistencias,
-  ) {
+      _agruparAsistenciasPorFecha(List<Map<String, dynamic>> asistencias) {
     final Map<String, Map<String, Map<String, List<Map<String, dynamic>>>>>
         agrupadas = {};
 
@@ -475,15 +1206,120 @@ class AsistenciasTab extends StatelessWidget {
       final fecha = asistencia['fecha'];
       final year = DateFormat('yyyy').format(fecha);
       final month = DateFormat('MMMM').format(fecha);
-      final week = 'Semana ${(fecha.day / 7).ceil()}';
+
+      // Modificado: Obtener el número de la semana considerando que comienza el lunes
+      final DateTime lunes = _obtenerLunesDeLaSemana(fecha);
+      final String semanaKey =
+          '${lunes.day}-${_obtenerDomingoDeLaSemana(lunes).day}';
 
       agrupadas.putIfAbsent(year, () => {});
       agrupadas[year]!.putIfAbsent(month, () => {});
-      agrupadas[year]![month]!.putIfAbsent(week, () => []);
-      agrupadas[year]![month]![week]!.add(asistencia);
+      agrupadas[year]![month]!.putIfAbsent(semanaKey, () => []);
+      agrupadas[year]![month]![semanaKey]!.add(asistencia);
     }
 
     return agrupadas;
+  }
+
+  // Nuevo método para obtener el lunes de la semana actual
+  DateTime _obtenerLunesDeLaSemana(DateTime fecha) {
+    int diferencia = fecha.weekday - DateTime.monday;
+    return fecha.subtract(Duration(days: diferencia));
+  }
+
+  // Nuevo método para obtener el domingo de la semana
+  DateTime _obtenerDomingoDeLaSemana(DateTime lunes) {
+    return lunes.add(Duration(days: 6)); // 6 días después del lunes es domingo
+  }
+
+  /// Determina el ministerio basado en el nombre del servicio
+  String _determinarMinisterio(String nombreServicio) {
+    if (nombreServicio.toLowerCase().contains("damas"))
+      return "Ministerio de Damas";
+    if (nombreServicio.toLowerCase().contains("caballeros"))
+      return "Ministerio de Caballeros";
+    if (nombreServicio.toLowerCase().contains("juvenil") ||
+        nombreServicio.toLowerCase().contains("impacto"))
+      return "Ministerio Juvenil";
+    if (nombreServicio.toLowerCase().contains("familiar"))
+      return "Ministerio Familiar";
+    if (nombreServicio.toLowerCase().contains("poder"))
+      return "Viernes de Poder";
+    if (nombreServicio.toLowerCase().contains("dominical"))
+      return "Servicio Dominical";
+    return "Otro Ministerio";
+  }
+
+  /// Retorna el color según el ministerio con los colores del logo
+  Color _getColorByMinisterio(String ministerio) {
+    switch (ministerio) {
+      case "Ministerio de Damas":
+        return Color(0xFFFF6B8B); // Rosa más vibrante
+      case "Ministerio de Caballeros":
+        return Color(0xFF3498DB); // Azul más vibrante
+      case "Ministerio Juvenil":
+        return Color(0xFFF5A623); // Naranja del logo
+      case "Ministerio Familiar":
+        return Color(0xFF9B59B6); // Púrpura más vibrante
+      case "Viernes de Poder":
+        return Color(0xFF1D8A8A); // Teal del logo
+      case "Servicio Dominical":
+        return Color(0xFF2ECC71); // Verde más vibrante
+      default:
+        return Color(0xFF7F8C8D); // Gris acento más vibrante
+    }
+  }
+
+  /// Retorna íconos mejorados según el ministerio
+  IconData _getIconByMinisterio(String ministerio) {
+    switch (ministerio) {
+      case "Ministerio de Damas":
+        return Icons.volunteer_activism;
+      case "Ministerio de Caballeros":
+        return Icons.fitness_center;
+      case "Ministerio Juvenil":
+        return Icons.emoji_people;
+      case "Ministerio Familiar":
+        return Icons.family_restroom;
+      case "Viernes de Poder":
+        return Icons.flash_on;
+      case "Servicio Dominical":
+        return Icons.church;
+      default:
+        return Icons.groups_2;
+    }
+  }
+
+  /// Retorna íconos únicos según el mes
+  IconData _getMonthIcon(String month) {
+    switch (month) {
+      case 'January':
+        return Icons.ac_unit;
+      case 'February':
+        return Icons.favorite;
+      case 'March':
+        return Icons.eco;
+      case 'April':
+        return Icons.water_drop;
+      case 'May':
+        return Icons.local_florist;
+      case 'June':
+        return Icons.wb_sunny;
+      case 'July':
+        return Icons.beach_access;
+      case 'August':
+        return Icons.waves;
+      case 'September':
+        return Icons.school;
+      case 'October':
+        return Icons.theater_comedy;
+      case 'November':
+        return Icons.savings;
+      case 'December':
+        return Icons.celebration;
+      default:
+        return Icons.calendar_month;
+    }
   }
 
   String _getSpanishMonth(String month) {
@@ -1957,14 +2793,20 @@ class RegistrosAsignadosTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Definimos colores según los proporcionados
+    final primaryTeal = Color(0xFF038C7F);
+    final secondaryOrange = Color(0xFFFF5722);
+    final accentGrey = Color(0xFF78909C);
+    final backgroundGrey = Color(0xFFF5F5F5);
+
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [
-            ThemeConstants.primaryTeal.withOpacity(0.05),
-            Colors.white,
+            primaryTeal.withOpacity(0.05),
+            backgroundGrey,
           ],
         ),
       ),
@@ -1977,12 +2819,12 @@ class RegistrosAsignadosTab extends StatelessWidget {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return Center(
               child: CircularProgressIndicator(
-                color: ThemeConstants.primaryTeal,
+                color: primaryTeal,
               ),
             );
           }
 
-          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          if (!snapshot.hasData || snapshot.data?.docs.isEmpty == true) {
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -1990,14 +2832,14 @@ class RegistrosAsignadosTab extends StatelessWidget {
                   Icon(
                     Icons.group_off_outlined,
                     size: 64,
-                    color: ThemeConstants.accentGrey,
+                    color: accentGrey,
                   ),
                   SizedBox(height: 16),
                   Text(
                     'No hay jóvenes asignados a esta tribu',
                     style: TextStyle(
                       fontSize: 18,
-                      color: ThemeConstants.accentGrey,
+                      color: accentGrey,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -2006,9 +2848,16 @@ class RegistrosAsignadosTab extends StatelessWidget {
             );
           }
 
-          final docs = snapshot.data!.docs.where((doc) {
-            return !doc.data().toString().contains('coordinadorAsignado') ||
-                doc.get('coordinadorAsignado') == null;
+          // Usamos ? para acceso seguro en lugar de !
+          final allDocs = snapshot.data?.docs ?? [];
+          final docs = allDocs.where((doc) {
+            // Verificamos si existe la clave antes de intentar acceder
+            final data = doc.data() as Map<String, dynamic>?;
+            if (data == null) return false;
+
+            // Verificamos si coordinadorAsignado existe y es nulo
+            return !data.containsKey('coordinadorAsignado') ||
+                data['coordinadorAsignado'] == null;
           }).toList();
 
           if (docs.isEmpty) {
@@ -2019,14 +2868,14 @@ class RegistrosAsignadosTab extends StatelessWidget {
                   Icon(
                     Icons.check_circle_outline,
                     size: 64,
-                    color: ThemeConstants.secondaryOrange,
+                    color: secondaryOrange,
                   ),
                   SizedBox(height: 16),
                   Text(
                     '¡Todos los jóvenes están asignados!',
                     style: TextStyle(
                       fontSize: 18,
-                      color: ThemeConstants.primaryTeal,
+                      color: primaryTeal,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -2041,13 +2890,46 @@ class RegistrosAsignadosTab extends StatelessWidget {
               itemCount: docs.length,
               itemBuilder: (context, index) {
                 final registro = docs[index];
+                final data = registro.data() as Map<String, dynamic>? ?? {};
+
+                // Acceso seguro con valores por defecto
+                final nombre = data['nombre'] as String? ?? '';
+                final apellido = data['apellido'] as String? ?? '';
+                final telefono = data['telefono'] as String? ?? 'No disponible';
+
+                String iniciales = '';
+                if (nombre.isNotEmpty && nombre.length >= 1) {
+                  iniciales += nombre[0];
+                }
+                if (apellido.isNotEmpty && apellido.length >= 1) {
+                  iniciales += apellido[0];
+                }
+                if (iniciales.isEmpty) {
+                  iniciales = '?';
+                }
+
+                // Determinamos un color de fondo aleatorio pero consistente para las iniciales
+                final List<Color> avatarColors = [
+                  primaryTeal,
+                  secondaryOrange,
+                  accentGrey,
+                ];
+
+                // Usamos la suma de los códigos de caracteres para generar un índice
+                int colorIndex = 0;
+                if (iniciales.isNotEmpty) {
+                  colorIndex = iniciales.codeUnits.reduce((a, b) => a + b) %
+                      avatarColors.length;
+                }
+
                 return Card(
                   margin: EdgeInsets.only(bottom: 12),
-                  elevation: 2,
+                  elevation: 3,
+                  shadowColor: primaryTeal.withOpacity(0.1),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
                     side: BorderSide(
-                      color: ThemeConstants.primaryTeal.withOpacity(0.1),
+                      color: primaryTeal.withOpacity(0.1),
                       width: 1,
                     ),
                   ),
@@ -2058,61 +2940,118 @@ class RegistrosAsignadosTab extends StatelessWidget {
                       padding: EdgeInsets.all(16),
                       child: Row(
                         children: [
+                          // Avatar con iniciales
                           Container(
                             width: 50,
                             height: 50,
                             decoration: BoxDecoration(
-                              color:
-                                  ThemeConstants.primaryTeal.withOpacity(0.1),
+                              color: avatarColors[colorIndex].withOpacity(0.2),
                               borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color:
+                                    avatarColors[colorIndex].withOpacity(0.5),
+                                width: 1.5,
+                              ),
                             ),
                             child: Center(
                               child: Text(
-                                '${registro['nombre'][0]}${registro['apellido'][0]}',
+                                iniciales,
                                 style: TextStyle(
                                   fontSize: 20,
                                   fontWeight: FontWeight.bold,
-                                  color: ThemeConstants.primaryTeal,
+                                  color: avatarColors[colorIndex],
                                 ),
                               ),
                             ),
                           ),
                           SizedBox(width: 16),
+                          // Información del registro
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  '${registro['nombre']} ${registro['apellido']}',
+                                  '$nombre $apellido',
                                   style: TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.bold,
-                                    color: ThemeConstants.primaryTeal,
+                                    color: primaryTeal,
                                   ),
                                 ),
                                 SizedBox(height: 4),
-                                Text(
-                                  'Tel: ${registro['telefono']}',
-                                  style: TextStyle(
-                                    color: ThemeConstants.accentGrey,
-                                    fontSize: 14,
-                                  ),
+                                Row(
+                                  children: [
+                                    Icon(
+                                      Icons.phone_outlined,
+                                      size: 14,
+                                      color: accentGrey,
+                                    ),
+                                    SizedBox(width: 4),
+                                    Text(
+                                      telefono,
+                                      style: TextStyle(
+                                        color: accentGrey,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ],
                             ),
                           ),
-                          Container(
-                            decoration: BoxDecoration(
-                              color: ThemeConstants.secondaryOrange
-                                  .withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            padding: EdgeInsets.all(8),
-                            child: Icon(
-                              Icons.person_add,
-                              color: ThemeConstants.secondaryOrange,
-                              size: 24,
-                            ),
+                          // Botones de acción
+                          Row(
+                            children: [
+                              // Botón de ver detalles
+                              Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  borderRadius: BorderRadius.circular(12),
+                                  onTap: () => _mostrarDetallesRegistro(
+                                    context,
+                                    data,
+                                    primaryTeal,
+                                    secondaryOrange,
+                                    accentGrey,
+                                    backgroundGrey,
+                                  ),
+                                  child: Container(
+                                    padding: EdgeInsets.all(10),
+                                    decoration: BoxDecoration(
+                                      color: primaryTeal.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Icon(
+                                      Icons.visibility_outlined,
+                                      color: primaryTeal,
+                                      size: 22,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              SizedBox(width: 8),
+                              // Botón de asignar
+                              Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  borderRadius: BorderRadius.circular(12),
+                                  onTap: () =>
+                                      _asignarACoordinador(context, registro),
+                                  child: Container(
+                                    padding: EdgeInsets.all(10),
+                                    decoration: BoxDecoration(
+                                      color: secondaryOrange.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Icon(
+                                      Icons.person_add_alt_1_outlined,
+                                      color: secondaryOrange,
+                                      size: 22,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
@@ -2123,6 +3062,481 @@ class RegistrosAsignadosTab extends StatelessWidget {
             ),
           );
         },
+      ),
+    );
+  }
+
+  void _mostrarDetallesRegistro(
+    BuildContext context,
+    Map<String, dynamic> data,
+    Color primaryTeal,
+    Color secondaryOrange,
+    Color accentGrey,
+    Color backgroundGrey,
+  ) {
+    // Función para formatear fechas
+    String formatearFecha(String? fecha) {
+      if (fecha == null || fecha.isEmpty) return '';
+
+      // Si la fecha está en formato timestamp de Firestore
+      if (fecha.contains('Timestamp')) {
+        try {
+          // Extraer los segundos del formato "Timestamp(seconds=1234567890, ...)"
+          final regex = RegExp(r'seconds=(\d+)');
+          final match = regex.firstMatch(fecha);
+          if (match != null) {
+            final seconds = int.tryParse(match.group(1) ?? '');
+            if (seconds != null) {
+              final date = DateTime.fromMillisecondsSinceEpoch(seconds * 1000);
+              return '${date.day}/${date.month}/${date.year}';
+            }
+          }
+        } catch (e) {
+          // Si hay error en la conversión, devolver la fecha original
+          return fecha;
+        }
+      }
+
+      // Intentar parsear otras fechas comunes
+      try {
+        final date = DateTime.parse(fecha);
+        return '${date.day}/${date.month}/${date.year}';
+      } catch (e) {
+        // Si no es parseable, devolver el texto original
+        return fecha;
+      }
+    }
+
+    // Definimos una lista de secciones y campos agrupados para mejor organización
+    final secciones = [
+      {
+        'titulo': 'Información Personal',
+        'icono': Icons.person_outline,
+        'color': primaryTeal,
+        'campos': [
+          {'key': 'nombre', 'label': 'Nombre', 'icon': Icons.badge_outlined},
+          {
+            'key': 'apellido',
+            'label': 'Apellido',
+            'icon': Icons.badge_outlined
+          },
+          {
+            'key': 'telefono',
+            'label': 'Teléfono',
+            'icon': Icons.phone_outlined
+          },
+          {
+            'key': 'edad',
+            'label': 'Edad',
+            'icon': Icons.calendar_today_outlined
+          },
+          {'key': 'sexo', 'label': 'Sexo', 'icon': Icons.wc_outlined},
+          {
+            'key': 'estadoCivil',
+            'label': 'Estado Civil',
+            'icon': Icons.favorite_border
+          },
+          {
+            'key': 'tieneHijos',
+            'label': 'Tiene Hijos',
+            'icon': Icons.child_care_outlined
+          },
+          {
+            'key': 'nombrePareja',
+            'label': 'Nombre Pareja',
+            'icon': Icons.people_outline
+          },
+        ]
+      },
+      {
+        'titulo': 'Ubicación',
+        'icono': Icons.location_on_outlined,
+        'color': primaryTeal,
+        'campos': [
+          {
+            'key': 'direccionBarrio',
+            'label': 'Dirección/Barrio',
+            'icon': Icons.home_outlined
+          },
+        ]
+      },
+      {
+        'titulo': 'Ocupación',
+        'icono': Icons.work_outline,
+        'color': secondaryOrange,
+        'campos': [
+          {
+            'key': 'ocupaciones',
+            'label': 'Ocupaciones',
+            'icon': Icons.work_outline
+          },
+          {
+            'key': 'descripcionOcupacion',
+            'label': 'Descripción',
+            'icon': Icons.description_outlined
+          },
+        ]
+      },
+      {
+        'titulo': 'Información Ministerial',
+        'icono': Icons.groups_outlined,
+        'color': accentGrey,
+        'campos': [
+          {
+            'key': 'nombreTribu',
+            'label': 'Tribu',
+            'icon': Icons.group_outlined
+          },
+          {
+            'key': 'ministerioAsignado',
+            'label': 'Ministerio',
+            'icon': Icons.assignment_ind_outlined
+          },
+          {
+            'key': 'consolidador',
+            'label': 'Consolidador',
+            'icon': Icons.supervisor_account_outlined
+          },
+          {
+            'key': 'referenciaInvitacion',
+            'label': 'Ref. Invitación',
+            'icon': Icons.share_outlined
+          },
+        ]
+      },
+      {
+        'titulo': 'Fechas',
+        'icono': Icons.event_outlined,
+        'color': secondaryOrange,
+        'campos': [
+          {
+            'key': 'fecha',
+            'label': 'Registro',
+            'icon': Icons.event_outlined,
+            'esFecha': true
+          },
+          {
+            'key': 'fechaAsignacion',
+            'label': 'Asignación',
+            'icon': Icons.date_range_outlined,
+            'esFecha': true
+          },
+        ]
+      },
+      // Modificación dentro de la función _mostrarDetallesRegistro existente
+      {
+        'titulo': 'Notas',
+        'icono': Icons.note_outlined,
+        'color': accentGrey,
+        'campos': [
+          {
+            'key': 'observaciones',
+            'label': 'Observaciones',
+            'icon': Icons.notes_outlined
+          },
+          {
+            'key': 'peticiones',
+            'label': 'Peticiones',
+            'icon': Icons.message_outlined
+          },
+          {
+            'key': 'estadoFonovisita',
+            'label': 'Estado de Fonovisita',
+            'icon': Icons.call_outlined
+          },
+          {
+            'key': 'observaciones2',
+            'label': 'Observaciones 2',
+            'icon': Icons.note_add_outlined
+          },
+        ]
+      },
+    ];
+
+    // Crear lista de widgets para el contenido del diálogo
+    List<Widget> contenidoWidgets = [];
+
+    // Procesar cada sección
+    for (var seccion in secciones) {
+      // Filtrar solo los campos que contienen datos en esta sección
+      final camposConDatos = (seccion['campos'] as List).where((campo) {
+        final key = campo['key'] as String;
+
+        // Verificamos que el campo exista y no sea nulo ni vacío
+        if (!data.containsKey(key)) return false;
+
+        final value = data[key];
+        if (value == null) return false;
+
+        // Para listas, verificamos que no estén vacías
+        if (value is List) return value.isNotEmpty;
+
+        // Para strings, verificamos que no estén vacías
+        if (value is String) return value.trim().isNotEmpty;
+
+        // Para otros tipos de datos (números, booleanos), consideramos que tienen valor
+        return true;
+      }).toList();
+
+      // Solo mostramos secciones con campos con datos
+      if (camposConDatos.isNotEmpty) {
+        // Añadir título de sección
+        contenidoWidgets.add(
+          Padding(
+            padding: const EdgeInsets.only(top: 16.0, bottom: 8.0),
+            child: Row(
+              children: [
+                Icon(
+                  seccion['icono'] as IconData,
+                  color: seccion['color'] as Color,
+                  size: 20,
+                ),
+                SizedBox(width: 8),
+                Text(
+                  seccion['titulo'] as String,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: seccion['color'] as Color,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+
+        // Añadir línea separadora para el título
+        contenidoWidgets.add(
+          Divider(
+            color: (seccion['color'] as Color).withOpacity(0.3),
+            thickness: 1,
+          ),
+        );
+
+        // Añadir campos de esta sección
+        for (var campo in camposConDatos) {
+          final key = campo['key'] as String;
+          final label = campo['label'] as String;
+          final icon = campo['icon'] as IconData;
+          final esFecha = campo['esFecha'] as bool? ?? false;
+
+          // Obtenemos y formateamos el valor de forma segura
+          var value = data[key];
+          String textoValor;
+
+          if (esFecha) {
+            textoValor = formatearFecha(value?.toString());
+          } else if (value is List) {
+            textoValor = (value as List).join(', ');
+          } else if (value is int || value is double) {
+            textoValor = value.toString();
+          } else if (value is bool) {
+            textoValor = value ? 'Sí' : 'No';
+          } else {
+            textoValor = value?.toString() ?? '';
+          }
+
+          // Añadir widget de detalle
+          contenidoWidgets.add(
+            _buildDetalle(label, textoValor, icon, accentGrey, primaryTeal),
+          );
+        }
+      }
+    }
+
+    // Si no hay datos para mostrar, mostrar mensaje
+    if (contenidoWidgets.isEmpty) {
+      contenidoWidgets.add(
+        Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Center(
+            child: Column(
+              children: [
+                Icon(
+                  Icons.info_outline,
+                  size: 48,
+                  color: accentGrey,
+                ),
+                SizedBox(height: 16),
+                Text(
+                  'No hay información disponible',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: accentGrey,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Mostrar el diálogo
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        elevation: 5,
+        backgroundColor: backgroundGrey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Encabezado del diálogo
+            Container(
+              padding: EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: primaryTeal,
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(20),
+                  topRight: Radius.circular(20),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.person_outline,
+                      color: Colors.white,
+                      size: 24,
+                    ),
+                  ),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Detalles del Registro',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () => Navigator.pop(context),
+                      borderRadius: BorderRadius.circular(50),
+                      child: Padding(
+                        padding: const EdgeInsets.all(4.0),
+                        child: Icon(
+                          Icons.close,
+                          color: Colors.white,
+                          size: 22,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Contenido con scrolling
+            Container(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(context).size.height * 0.7,
+              ),
+              child: SingleChildScrollView(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: contenidoWidgets,
+                  ),
+                ),
+              ),
+            ),
+
+            // Pie del diálogo
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  ElevatedButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: primaryTeal,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.check_circle_outline, size: 18),
+                        SizedBox(width: 8),
+                        Text('Cerrar'),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDetalle(String label, String value, IconData iconData,
+      Color accentGrey, Color primaryTeal) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: primaryTeal.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              iconData,
+              size: 16,
+              color: primaryTeal,
+            ),
+          ),
+          SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: accentGrey,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 15,
+                    color: Colors.black87,
+                    height: 1.3,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

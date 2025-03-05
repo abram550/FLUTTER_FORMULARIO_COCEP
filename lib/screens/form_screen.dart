@@ -41,10 +41,11 @@ class _FormularioPageState extends State<FormularioPage> {
   List<String> _ocupacionesSeleccionadas = [];
   bool? _tieneHijos;
   String? _motivoVisita;
-  String? _peticionOracion;
+  List<String> _peticionesSeleccionadas = [];
   String? _consolidadorSeleccionado;
   List<String> _consolidadores = [];
   bool _isLoading = false;
+  String? _tieneHijosError;
 
   final List<String> _servicios = [
     "Viernes De Poder",
@@ -156,6 +157,61 @@ class _FormularioPageState extends State<FormularioPage> {
 
   Future<void> _enviarFormulario() async {
     if (_formKey.currentState!.validate()) {
+      if (_servicioSeleccionado == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Por favor, seleccione un servicio',
+                style: GoogleFonts.poppins()),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      if (_tipoPersona == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Por favor, indique si es Nuevo o Visita',
+                style: GoogleFonts.poppins()),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      if (_sexo == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Por favor, seleccione su género',
+                style: GoogleFonts.poppins()),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      if (_estadoCivil == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Por favor, seleccione su estado civil',
+                style: GoogleFonts.poppins()),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      if (_tieneHijos == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Por favor, indique si tiene hijos',
+                style: GoogleFonts.poppins()),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
       setState(() => _isLoading = true);
 
       try {
@@ -171,12 +227,15 @@ class _FormularioPageState extends State<FormularioPage> {
                   ? _otroMotivoController.text
                   : _motivoVisita)
               : null,
-          peticiones: (_peticionOracion == 'Otro'
-              ? _otroPeticionController.text
-              : _peticionOracion), // Incluye la petición de oración
+          peticiones: _peticionesSeleccionadas.map((peticion) {
+            if (peticion == 'Otro') {
+              return _otroPeticionController.text;
+            }
+            return peticion;
+          }).join(', '),
           consolidador: (_consolidadorSeleccionado == 'Otro'
               ? _otroConsolidadorController.text
-              : _consolidadorSeleccionado), // Incluye el consolidador
+              : _consolidadorSeleccionado),
           sexo: _sexo ?? '',
           edad: _edad ?? 0,
           direccion: _direccionController.text,
@@ -188,7 +247,7 @@ class _FormularioPageState extends State<FormularioPage> {
               return _descripcionOcupacionController.text;
             }
             return ocupacion;
-          }).toList(), // Reemplaza "Otro" por la descripción ingresada
+          }).toList(),
           descripcionOcupacion: _descripcionOcupacionController.text,
           tieneHijos: _tieneHijos ?? false,
           referenciaInvitacion: _referenciaInvitacionController.text,
@@ -198,7 +257,6 @@ class _FormularioPageState extends State<FormularioPage> {
         var connectivityResult = await Connectivity().checkConnectivity();
 
         if (connectivityResult != ConnectivityResult.none) {
-          // Si hay conexión, enviar datos a Firestore
           await _firestoreService.insertRegistro(registro);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -210,7 +268,6 @@ class _FormularioPageState extends State<FormularioPage> {
             ),
           );
         } else {
-          // Si no hay conexión, guardar datos en base de datos local
           await _databaseService.insertRegistroPendiente(registro);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -225,7 +282,6 @@ class _FormularioPageState extends State<FormularioPage> {
 
         _limpiarFormulario();
       } catch (e) {
-        // Manejo de errores
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -265,7 +321,7 @@ class _FormularioPageState extends State<FormularioPage> {
       _ocupacionesSeleccionadas = [];
       _tieneHijos = null;
       _motivoVisita = null;
-      _peticionOracion = null;
+      _peticionesSeleccionadas = [];
       _consolidadorSeleccionado = null;
     });
   }
@@ -286,6 +342,7 @@ class _FormularioPageState extends State<FormularioPage> {
             TextFormField(
               controller: _nombreController,
               decoration: _getInputDecoration('Nombre'),
+              textCapitalization: TextCapitalization.sentences,
               validator: (value) =>
                   value!.isEmpty ? 'Por favor, ingrese su nombre' : null,
             ),
@@ -293,6 +350,7 @@ class _FormularioPageState extends State<FormularioPage> {
             TextFormField(
               controller: _apellidoController,
               decoration: _getInputDecoration('Apellido'),
+              textCapitalization: TextCapitalization.sentences,
               validator: (value) =>
                   value!.isEmpty ? 'Por favor, ingrese su apellido' : null,
             ),
@@ -395,8 +453,6 @@ class _FormularioPageState extends State<FormularioPage> {
         _buildChildrenSection(),
         const SizedBox(height: 24),
         _buildReferenceSection(),
-        const SizedBox(height: 24),
-        _buildObservationsSection(),
       ],
     );
   }
@@ -478,6 +534,7 @@ class _FormularioPageState extends State<FormularioPage> {
             TextFormField(
               controller: _direccionController,
               decoration: _getInputDecoration('Dirección completa'),
+              textCapitalization: TextCapitalization.sentences,
               validator: (value) =>
                   value!.isEmpty ? 'Por favor, ingrese su dirección' : null,
             ),
@@ -485,6 +542,7 @@ class _FormularioPageState extends State<FormularioPage> {
             TextFormField(
               controller: _barrioController,
               decoration: _getInputDecoration('Barrio'),
+              textCapitalization: TextCapitalization.sentences,
               validator: (value) =>
                   value!.isEmpty ? 'Por favor, ingrese su barrio' : null,
             ),
@@ -534,6 +592,7 @@ class _FormularioPageState extends State<FormularioPage> {
                 child: TextFormField(
                   controller: _nombreParejaController,
                   decoration: _getInputDecoration('Nombre de su pareja'),
+                  textCapitalization: TextCapitalization.sentences,
                   validator: (value) => value!.isEmpty
                       ? 'Por favor, ingrese el nombre de su pareja'
                       : null,
@@ -573,12 +632,13 @@ class _FormularioPageState extends State<FormularioPage> {
                   activeColor: Colors.teal.shade700,
                   contentPadding: const EdgeInsets.symmetric(horizontal: 8),
                 )),
-            if (_ocupacionesSeleccionadas.contains('Otro'))
+            if (_ocupacionesSeleccionadas.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.only(top: 16.0),
                 child: TextFormField(
                   controller: _descripcionOcupacionController,
                   decoration: _getInputDecoration('Especifica su ocupación'),
+                  textCapitalization: TextCapitalization.sentences,
                   validator: (value) => value!.isEmpty
                       ? 'Por favor, especifica su ocupación'
                       : null,
@@ -607,7 +667,11 @@ class _FormularioPageState extends State<FormularioPage> {
               title: Text('Sí', style: GoogleFonts.poppins()),
               value: true,
               groupValue: _tieneHijos,
-              onChanged: (value) => setState(() => _tieneHijos = value),
+              onChanged: (value) => setState(() {
+                _tieneHijos = value;
+                _tieneHijosError =
+                    null; // Limpiar el error al seleccionar una opción
+              }),
               activeColor: Colors.teal.shade700,
               contentPadding: const EdgeInsets.symmetric(horizontal: 8),
             ),
@@ -615,14 +679,36 @@ class _FormularioPageState extends State<FormularioPage> {
               title: Text('No', style: GoogleFonts.poppins()),
               value: false,
               groupValue: _tieneHijos,
-              onChanged: (value) => setState(() => _tieneHijos = value),
+              onChanged: (value) => setState(() {
+                _tieneHijos = value;
+                _tieneHijosError = null;
+              }),
               activeColor: Colors.teal.shade700,
               contentPadding: const EdgeInsets.symmetric(horizontal: 8),
             ),
+            if (_tieneHijosError != null)
+              Padding(
+                padding: const EdgeInsets.only(left: 8.0, top: 4.0),
+                child: Text(
+                  _tieneHijosError!,
+                  style: TextStyle(color: Colors.red, fontSize: 12),
+                ),
+              ),
           ],
         ),
       ),
     );
+  }
+
+// Función para validar antes de continuar
+  bool _validateForm() {
+    if (_tieneHijos == null) {
+      setState(() {
+        _tieneHijosError = 'Debes seleccionar una opción';
+      });
+      return false;
+    }
+    return true;
   }
 
   Widget _buildReferenceSection() {
@@ -642,6 +728,7 @@ class _FormularioPageState extends State<FormularioPage> {
               controller: _referenciaInvitacionController,
               decoration:
                   _getInputDecoration('Nombre y apellidos de quien lo Invita'),
+              textCapitalization: TextCapitalization.sentences,
               validator: (value) =>
                   value!.isEmpty ? 'Por favor, indica quién te invitó' : null,
             ),
@@ -667,7 +754,11 @@ class _FormularioPageState extends State<FormularioPage> {
             TextFormField(
               controller: _observacionesController,
               decoration: _getInputDecoration('Observaciones adicionales'),
+              textCapitalization: TextCapitalization.sentences,
               maxLines: 3,
+              validator: (value) => value!.isEmpty
+                  ? 'Por favor, ingrese sus observaciones'
+                  : null,
             ),
           ],
         ),
@@ -727,6 +818,7 @@ class _FormularioPageState extends State<FormularioPage> {
                   controller: _otroMotivoController,
                   decoration:
                       _getInputDecoration('Especifica el motivo de su visita'),
+                  textCapitalization: TextCapitalization.sentences,
                   validator: (value) =>
                       value!.isEmpty ? 'Por favor, especifica el motivo' : null,
                 ),
@@ -750,20 +842,22 @@ class _FormularioPageState extends State<FormularioPage> {
               'Petición de Oración',
               '¿Por qué te gustaría que oremos?',
             ),
-            DropdownButtonFormField<String>(
-              value: _peticionOracion,
-              decoration: _getInputDecoration('Selecciona su petición'),
-              items: _peticionesOracion
-                  .map((peticion) => DropdownMenuItem(
-                        value: peticion,
-                        child: Text(peticion, style: GoogleFonts.poppins()),
-                      ))
-                  .toList(),
-              onChanged: (value) => setState(() => _peticionOracion = value),
-              validator: (value) =>
-                  value == null ? 'Por favor, selecciona una petición' : null,
-            ),
-            if (_peticionOracion == 'Otro')
+            ..._peticionesOracion.map((peticion) => CheckboxListTile(
+                  title: Text(peticion, style: GoogleFonts.poppins()),
+                  value: _peticionesSeleccionadas.contains(peticion),
+                  onChanged: (value) {
+                    setState(() {
+                      if (value == true) {
+                        _peticionesSeleccionadas.add(peticion);
+                      } else {
+                        _peticionesSeleccionadas.remove(peticion);
+                      }
+                    });
+                  },
+                  activeColor: Colors.teal.shade700,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+                )),
+            if (_peticionesSeleccionadas.contains('Otro'))
               Padding(
                 padding: const EdgeInsets.only(top: 16.0),
                 child: TextFormField(
@@ -773,6 +867,18 @@ class _FormularioPageState extends State<FormularioPage> {
                   validator: (value) => value!.isEmpty
                       ? 'Por favor, especifica su petición'
                       : null,
+                  textCapitalization: TextCapitalization.sentences,
+                ),
+              ),
+            if (_peticionesSeleccionadas.isEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 8.0, left: 8.0),
+                child: Text(
+                  'Por favor, seleccione al menos una petición',
+                  style: GoogleFonts.poppins(
+                    color: Colors.red,
+                    fontSize: 12,
+                  ),
                 ),
               ),
           ],
@@ -1010,7 +1116,10 @@ class _FormularioPageState extends State<FormularioPage> {
                           const SizedBox(height: 24),
                           _buildPrayerRequestSection(),
                           const SizedBox(height: 24),
+                          _buildObservationsSection(),
+                          const SizedBox(height: 24),
                           _buildConsolidatorField(),
+                          // Mueve Observaciones aquí
                         ] else if (_tipoPersona == 'Visita') ...[
                           const SizedBox(height: 16),
                           _buildVisitSection(),

@@ -1,6 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-
 class AsistenciaSemanal {
   final String id;
   final String tribuId;

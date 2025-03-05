@@ -2,19 +2,23 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
+import 'package:go_router/go_router.dart';
 import 'TribusScreen.dart';
 import 'admin_screen.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:formulario_app/screens/StatisticsDialog.dart';
 
-const Color kPrimaryColor = Color(0xFF1B998B); // Turquesa
-const Color kSecondaryColor = Color(0xFFFF4B3E); // Naranja/rojo
-const Color kBackgroundColor =
-    Color(0xFFF5F7FA); // Gris muy claro para el fondo
-const Color kTextColor = Color(0xFF2C3E50); // Azul oscuro para texto
+// Colors based on the COCEP logo
+const Color kPrimaryColor = Color(0xFF1B998B); // Turquoise
+const Color kSecondaryColor = Color(0xFFFF4B3E); // Orange/red
+const Color kAccentColor = Color(0xFFFFBE3D); // Yellow/gold from flame
+const Color kBackgroundColor = Color(0xFFF5F7FA); // Light gray for background
+const Color kTextColor = Color(0xFF2C3E50); // Dark blue for text
+const Color kCardColor = Colors.white; // White for cards
 
 class AdminPastores extends StatefulWidget {
   const AdminPastores({Key? key}) : super(key: key);
-  // Constantes de colores basadas en el logo
 
   @override
   _AdminPastoresState createState() => _AdminPastoresState();
@@ -41,11 +45,12 @@ class _AdminPastoresState extends State<AdminPastores>
   bool _mostrarFormularioTribu = false;
   bool _mostrarFormularioLiderConsolidacion = false;
   bool _existeLiderConsolidacion = false;
+  String? categoriaSeleccionada;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
     _verificarLiderConsolidacion();
   }
 
@@ -84,32 +89,33 @@ class _AdminPastoresState extends State<AdminPastores>
         _nombreLiderController.text.isEmpty ||
         _apellidoLiderController.text.isEmpty ||
         _usuarioTribuController.text.isEmpty ||
-        _contrasenaTribuController.text.isEmpty) {
+        _contrasenaTribuController.text.isEmpty ||
+        categoriaSeleccionada == null) {
       _mostrarSnackBar('Por favor complete todos los campos');
       return;
     }
 
     try {
-      // Primero crear el documento en la colección tribus
+      // Crear el documento en la colección tribus
       DocumentReference tribuRef = await _firestore.collection('tribus').add({
         'nombre': _nombreTribuController.text,
         'nombreLider': _nombreLiderController.text,
         'apellidoLider': _apellidoLiderController.text,
         'usuario': _usuarioTribuController.text,
-        'contrasena': _contrasenaTribuController
-            .text, // Contraseña sin cifrar para referencia
+        'contrasena': _contrasenaTribuController.text,
+        'categoria': categoriaSeleccionada,
         'rol': 'tribu',
         'createdAt': FieldValue.serverTimestamp(),
       });
 
-      // Luego crear el usuario en la colección usuarios con referencia al ID de la tribu
+      // Crear el usuario en la colección usuarios
       await _firestore.collection('usuarios').add({
         'usuario': _usuarioTribuController.text,
-        'contrasena': _contrasenaTribuController
-            .text, // Guardar sin cifrar para mantener consistencia
+        'contrasena': _contrasenaTribuController.text,
         'rol': 'tribu',
-        'tribuId': tribuRef.id, // Guardar el ID real del documento de la tribu
-        'nombre': _nombreTribuController.text, // Guardar el nombre de la tribu
+        'tribuId': tribuRef.id,
+        'nombre': _nombreTribuController.text,
+        'categoria': categoriaSeleccionada,
       });
 
       _limpiarFormularioTribu();
@@ -122,7 +128,7 @@ class _AdminPastoresState extends State<AdminPastores>
 
   Future<void> _editarTribu(String docId, Map<String, dynamic> datos) async {
     try {
-      print('Iniciando edición de tribu con ID: $docId'); // Log para depuración
+      print('Iniciando edición de tribu con ID: $docId');
 
       // Actualizar documento en la colección tribus
       await _firestore.collection('tribus').doc(docId).update({
@@ -131,38 +137,35 @@ class _AdminPastoresState extends State<AdminPastores>
         'apellidoLider': datos['apellidoLider'],
         'usuario': datos['usuario'].trim(),
         'contrasena': datos['contrasena'].trim(),
+        'categoria': datos['categoria'],
       });
 
-      print(
-          'Tribu actualizada, buscando usuario correspondiente'); // Log para depuración
+      print('Tribu actualizada, buscando usuario correspondiente');
 
       // Actualizar en la colección de usuarios
       final usuarioSnapshot = await _firestore
           .collection('usuarios')
-          .where('tribuId',
-              isEqualTo: docId) // Ahora buscamos por el ID real de la tribu
+          .where('tribuId', isEqualTo: docId)
           .get();
 
       if (usuarioSnapshot.docs.isNotEmpty) {
-        print('Usuario encontrado, actualizando datos'); // Log para depuración
+        print('Usuario encontrado, actualizando datos');
 
         await usuarioSnapshot.docs.first.reference.update({
           'usuario': datos['usuario'].trim(),
-          'contrasena': datos['contrasena']
-              .trim(), // Guardamos sin cifrar para mantener consistencia
-          'nombre':
-              datos['nombre'], // Actualizamos también el nombre de la tribu
+          'contrasena': datos['contrasena'].trim(),
+          'nombre': datos['nombre'],
+          'categoria': datos['categoria'],
         });
 
-        print('Usuario actualizado exitosamente'); // Log para depuración
+        print('Usuario actualizado exitosamente');
       } else {
-        print(
-            'No se encontró usuario asociado a la tribu'); // Log para depuración
+        print('No se encontró usuario asociado a la tribu');
       }
 
       _mostrarSnackBar('Tribu actualizada exitosamente');
     } catch (e) {
-      print('Error al actualizar tribu: $e'); // Log para depuración
+      print('Error al actualizar tribu: $e');
       _mostrarSnackBar('Error al actualizar la tribu: $e');
     }
   }
@@ -187,16 +190,14 @@ class _AdminPastoresState extends State<AdminPastores>
         'nombre': _nombreLiderConsolidacionController.text,
         'apellido': _apellidoLiderConsolidacionController.text,
         'usuario': _usuarioLiderConsolidacionController.text,
-        'contrasena':
-            _contrasenaLiderConsolidacionController.text, // Sin cifrar
+        'contrasena': _contrasenaLiderConsolidacionController.text,
         'createdAt': FieldValue.serverTimestamp(),
       });
 
       // Crear usuario en la colección de usuarios
       await _firestore.collection('usuarios').add({
         'usuario': _usuarioLiderConsolidacionController.text,
-        'contrasena':
-            _contrasenaLiderConsolidacionController.text, // Sin cifrar
+        'contrasena': _contrasenaLiderConsolidacionController.text,
         'rol': 'liderConsolidacion',
       });
 
@@ -219,22 +220,20 @@ class _AdminPastoresState extends State<AdminPastores>
         'nombre': datos['nombre'],
         'apellido': datos['apellido'],
         'usuario': datos['usuario'],
-        'contrasena': datos['contrasena'], // Sin cifrar
+        'contrasena': datos['contrasena'],
       });
 
       // Buscar y actualizar el usuario en la colección 'usuarios'
       final usuarioSnapshot = await _firestore
           .collection('usuarios')
           .where('rol', isEqualTo: 'liderConsolidacion')
-          .where('usuario',
-              isEqualTo:
-                  datos['usuario']) // Asegurarse de filtrar por usuario también
+          .where('usuario', isEqualTo: datos['usuario'])
           .get();
 
       if (usuarioSnapshot.docs.isNotEmpty) {
         await usuarioSnapshot.docs.first.reference.update({
           'usuario': datos['usuario'],
-          'contrasena': datos['contrasena'], // Sin cifrar
+          'contrasena': datos['contrasena'],
         });
       }
 
@@ -261,7 +260,15 @@ class _AdminPastoresState extends State<AdminPastores>
 
   void _mostrarSnackBar(String mensaje) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(mensaje)),
+      SnackBar(
+        content: Text(mensaje),
+        backgroundColor: kPrimaryColor,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+        margin: EdgeInsets.all(8),
+      ),
     );
   }
 
@@ -274,40 +281,66 @@ class _AdminPastoresState extends State<AdminPastores>
         backgroundColor: kPrimaryColor,
         title: Row(
           children: [
-            Image.asset(
-              'assets/Cocep_.png', // Asegúrate de tener el logo en assets
-              height: 40,
+            Container(
+              padding: EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+              ),
+              child: Image.asset(
+                'assets/Cocep_.png',
+                height: 32,
+              ),
             ),
             const SizedBox(width: 12),
-            const Text(
+            Text(
               'Panel de Administración',
-              style: TextStyle(
+              style: GoogleFonts.poppins(
                 color: Colors.white,
                 fontWeight: FontWeight.bold,
+                fontSize: 20,
               ),
             ),
           ],
         ),
-        bottom: TabBar(
-          controller: _tabController,
-          indicatorColor: Colors.white,
-          indicatorWeight: 3,
-          tabs: [
-            Tab(
-              icon: Icon(
-                Icons.groups,
-                size: 30, // Tamaño del ícono aumentado
-              ),
-              text: 'Tribus',
+        bottom: PreferredSize(
+          preferredSize: Size.fromHeight(60),
+          child: Container(
+            margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(15),
+              color: Colors.white.withOpacity(0.15),
             ),
-            Tab(
-              icon: Icon(
-                Icons.person_outline,
-                size: 30, // Tamaño del ícono aumentado
+            child: TabBar(
+              controller: _tabController,
+              indicator: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(15),
               ),
-              text: 'Líder de Consolidación',
+              labelColor: kPrimaryColor,
+              unselectedLabelColor: Colors.white,
+              labelStyle: GoogleFonts.poppins(
+                  fontSize: 14, fontWeight: FontWeight.w600),
+              tabs: [
+                Tab(
+                  icon: Icon(Icons.groups, size: 24),
+                  text: 'Tribus',
+                ),
+                Tab(
+                  icon: Icon(Icons.person_outline, size: 24),
+                  text: 'Líder',
+                ),
+                Tab(
+                  icon: Icon(Icons.woman, size: 24),
+                  text: 'Damas',
+                ),
+                Tab(
+                  icon: Icon(Icons.man, size: 24),
+                  text: 'Caballeros',
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
       body: Container(
@@ -326,9 +359,814 @@ class _AdminPastoresState extends State<AdminPastores>
           children: [
             _buildTribusTab(),
             _buildLiderConsolidacionTab(),
+            _buildMinisterioTab('Ministerio de Damas'),
+            _buildMinisterioTab('Ministerio de Caballeros'),
           ],
         ),
       ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          showDialog(
+            context: context,
+            builder: (context) => StatisticsDialog(),
+          );
+        },
+        backgroundColor: Colors.orange,
+        label: Text('Estadísticas'),
+        icon: Icon(Icons.bar_chart),
+      ),
+    );
+  }
+
+  Widget _buildMinisterioTab(String ministerio) {
+    return Column(
+      children: [
+        // Using StreamBuilder to check if leader exists to show/hide button
+        StreamBuilder<QuerySnapshot>(
+          stream: _firestore
+              .collection('lideresMinisterio')
+              .where('ministerio', isEqualTo: ministerio)
+              .snapshots(),
+          builder: (context, snapshot) {
+            if (!snapshot.hasData)
+              return const Center(
+                  child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF1B998B)),
+              ));
+
+            final docs = snapshot.data!.docs;
+            // Only show create button if no leader exists
+            if (docs.isEmpty) {
+              return Container(
+                margin: const EdgeInsets.all(16),
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () => _crearLiderMinisterio(ministerio),
+                  icon: const Icon(Icons.add_circle),
+                  label: Text('Crear Líder de $ministerio'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF1B998B),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 4,
+                  ),
+                ),
+              );
+            } else {
+              return const SizedBox.shrink(); // Hide button if leader exists
+            }
+          },
+        ),
+        Expanded(
+          child: StreamBuilder<QuerySnapshot>(
+            stream: _firestore
+                .collection('lideresMinisterio')
+                .where('ministerio', isEqualTo: ministerio)
+                .snapshots(),
+            builder: (context, snapshot) {
+              if (!snapshot.hasData)
+                return const Center(
+                    child: CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF1B998B)),
+                ));
+
+              final docs = snapshot.data!.docs;
+
+              if (docs.isEmpty) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.person_add, size: 64, color: Colors.grey[400]),
+                      const SizedBox(height: 16),
+                      Text(
+                        'No hay líder de $ministerio asignado',
+                        style: TextStyle(
+                          fontSize: 18,
+                          color: Colors.grey[600],
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }
+
+              return ListView.builder(
+                padding: const EdgeInsets.all(12),
+                itemCount: docs.length,
+                itemBuilder: (context, index) {
+                  final data = docs[index].data() as Map<String, dynamic>;
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: 16),
+                    elevation: 4,
+                    shadowColor: const Color(0xFF1B998B).withOpacity(0.3),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      side: const BorderSide(
+                        color: Color(0xFF1B998B),
+                        width: 1,
+                      ),
+                    ),
+                    child: ExpansionTile(
+                      leading: Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFFF26419), Color(0xFFFF9E00)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                        child: const CircleAvatar(
+                          backgroundColor: Colors.white,
+                          child: Icon(Icons.person, color: Color(0xFF1B998B)),
+                        ),
+                      ),
+                      title: Text(
+                        '${data['nombre']} ${data['apellido']}',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 20,
+                          color: Color(0xFF2C3E50),
+                        ),
+                      ),
+                      subtitle: RichText(
+                        text: TextSpan(
+                          style: const TextStyle(color: Color(0xFF5D6D7E)),
+                          children: [
+                            const WidgetSpan(
+                              child: Icon(Icons.account_circle,
+                                  size: 16, color: Color(0xFF1B998B)),
+                              alignment: PlaceholderAlignment.middle,
+                            ),
+                            const TextSpan(text: ' '),
+                            TextSpan(text: '${data['usuario']}'),
+                          ],
+                        ),
+                      ),
+                      trailing: const Icon(Icons.expand_more,
+                          color: Color(0xFF1B998B)),
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16.0, vertical: 8.0),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color:
+                                      const Color(0xFF1B998B).withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: const Color(0xFF1B998B)
+                                        .withOpacity(0.3),
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.password,
+                                        size: 16, color: Color(0xFF1B998B)),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      'Contraseña: ${data['contrasena']}',
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.w500),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Row(
+                                children: [
+                                  // New edit button for leader
+                                  IconButton(
+                                    icon: const Icon(Icons.edit,
+                                        color: Color(0xFF1B998B)),
+                                    onPressed: () {
+                                      // Add function to edit leader
+                                      _editarLiderMinisterio(
+                                          docs[index].id, data);
+                                    },
+                                    tooltip: 'Editar líder',
+                                    style: IconButton.styleFrom(
+                                      backgroundColor: const Color(0xFF1B998B)
+                                          .withOpacity(0.1),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  ElevatedButton.icon(
+                                    icon: const Icon(Icons.visibility),
+                                    label: const Text('Ir a pantalla'),
+                                    onPressed: () {
+                                      context.push('/ministerio_lider', extra: {
+                                        'ministerio': data['ministerio']
+                                      });
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(0xFF1B998B),
+                                      foregroundColor: Colors.white,
+                                      elevation: 3,
+                                      shadowColor: const Color(0xFF1B998B)
+                                          .withOpacity(0.5),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Divider(thickness: 1),
+                        StreamBuilder<QuerySnapshot>(
+                          stream: _firestore.collection('tribus').snapshots(),
+                          builder: (context, snapshot) {
+                            if (!snapshot.hasData)
+                              return const Center(
+                                child: Padding(
+                                  padding: EdgeInsets.all(16.0),
+                                  child: CircularProgressIndicator(
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                        Color(0xFF1B998B)),
+                                  ),
+                                ),
+                              );
+
+                            final allTribus = snapshot.data!.docs;
+
+                            // Filtrar las tribus por ministerio en memoria
+                            final tribus = allTribus.where((doc) {
+                              final tribuData =
+                                  doc.data() as Map<String, dynamic>;
+                              return tribuData['categoria'] == ministerio;
+                            }).toList();
+
+                            // Ordenar por fecha de creación
+                            tribus.sort((a, b) {
+                              final aData = a.data() as Map<String, dynamic>;
+                              final bData = b.data() as Map<String, dynamic>;
+                              final aDate = aData['createdAt'] as Timestamp;
+                              final bDate = bData['createdAt'] as Timestamp;
+                              return bDate.compareTo(aDate);
+                            });
+
+                            if (tribus.isEmpty) {
+                              return Padding(
+                                padding: const EdgeInsets.all(16.0),
+                                child: Center(
+                                  child: Column(
+                                    children: [
+                                      Icon(Icons.groups_outlined,
+                                          size: 48, color: Colors.grey[400]),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        'No hay tribus en este ministerio',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          color: Colors.grey[600],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            }
+
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Padding(
+                                  padding: const EdgeInsets.all(16.0),
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 12, vertical: 6),
+                                        decoration: BoxDecoration(
+                                          gradient: const LinearGradient(
+                                            colors: [
+                                              Color(0xFF1B998B),
+                                              Color(0xFF2BCFB1)
+                                            ],
+                                            begin: Alignment.topLeft,
+                                            end: Alignment.bottomRight,
+                                          ),
+                                          borderRadius:
+                                              BorderRadius.circular(20),
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            const Icon(Icons.groups,
+                                                size: 18, color: Colors.white),
+                                            const SizedBox(width: 8),
+                                            Text(
+                                              'Tribus (${tribus.length})',
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                ListView.builder(
+                                  shrinkWrap: true,
+                                  physics: const NeverScrollableScrollPhysics(),
+                                  itemCount: tribus.length,
+                                  itemBuilder: (context, index) {
+                                    final tribu = tribus[index];
+                                    final tribuData =
+                                        tribu.data() as Map<String, dynamic>;
+                                    return Card(
+                                      margin: const EdgeInsets.fromLTRB(
+                                          16, 0, 16, 16),
+                                      elevation: 2,
+                                      shadowColor: Colors.grey.withOpacity(0.3),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        side: BorderSide(
+                                          color: const Color(0xFF1B998B)
+                                              .withOpacity(0.2),
+                                          width: 1,
+                                        ),
+                                      ),
+                                      child: ExpansionTile(
+                                        leading: Container(
+                                          padding: const EdgeInsets.all(2),
+                                          decoration: BoxDecoration(
+                                            gradient: const LinearGradient(
+                                              colors: [
+                                                Color(0xFF1B998B),
+                                                Color(0xFF2BCFB1)
+                                              ],
+                                              begin: Alignment.topLeft,
+                                              end: Alignment.bottomRight,
+                                            ),
+                                            borderRadius:
+                                                BorderRadius.circular(30),
+                                          ),
+                                          child: const CircleAvatar(
+                                            backgroundColor: Colors.white,
+                                            child: Icon(Icons.groups,
+                                                color: Color(0xFF1B998B)),
+                                          ),
+                                        ),
+                                        title: Text(
+                                          tribuData['nombre'] ?? '',
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 18,
+                                            color: Color(0xFF2C3E50),
+                                          ),
+                                        ),
+                                        subtitle: RichText(
+                                          text: TextSpan(
+                                            style: const TextStyle(
+                                                color: Color(0xFF5D6D7E)),
+                                            children: [
+                                              const WidgetSpan(
+                                                child: Icon(Icons.person,
+                                                    size: 14,
+                                                    color: Color(0xFF1B998B)),
+                                                alignment:
+                                                    PlaceholderAlignment.middle,
+                                              ),
+                                              const TextSpan(text: ' '),
+                                              TextSpan(
+                                                  text:
+                                                      '${tribuData['nombreLider']} ${tribuData['apellidoLider']}'),
+                                            ],
+                                          ),
+                                        ),
+                                        children: [
+                                          Padding(
+                                            padding: const EdgeInsets.all(16.0),
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                _buildInfoRowEnhanced(
+                                                  'Usuario:',
+                                                  tribuData['usuario'] ?? '',
+                                                  Icons.account_circle,
+                                                ),
+                                                const SizedBox(height: 8),
+                                                _buildInfoRowEnhanced(
+                                                  'Contraseña:',
+                                                  tribuData['contrasena'] ?? '',
+                                                  Icons.password,
+                                                ),
+                                                const SizedBox(height: 16),
+                                                Container(
+                                                  padding:
+                                                      const EdgeInsets.all(12),
+                                                  decoration: BoxDecoration(
+                                                    color:
+                                                        const Color(0xFF1B998B)
+                                                            .withOpacity(0.05),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            10),
+                                                    border: Border.all(
+                                                      color: const Color(
+                                                              0xFF1B998B)
+                                                          .withOpacity(0.2),
+                                                    ),
+                                                  ),
+                                                  child:
+                                                      _buildEstadisticasTribu(
+                                                          tribu.id),
+                                                ),
+                                                const SizedBox(height: 16),
+                                                Row(
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment.end,
+                                                  children: [
+                                                    IconButton(
+                                                      icon: const Icon(
+                                                          Icons.edit),
+                                                      onPressed: () =>
+                                                          _mostrarDialogoEditarTribu(
+                                                              tribu.id,
+                                                              tribuData),
+                                                      tooltip: 'Editar',
+                                                      style:
+                                                          IconButton.styleFrom(
+                                                        backgroundColor:
+                                                            const Color(
+                                                                    0xFF1B998B)
+                                                                .withOpacity(
+                                                                    0.1),
+                                                        foregroundColor:
+                                                            const Color(
+                                                                0xFF1B998B),
+                                                      ),
+                                                    ),
+                                                    const SizedBox(width: 8),
+                                                    IconButton(
+                                                      icon: const Icon(
+                                                          Icons.delete),
+                                                      onPressed: () =>
+                                                          _mostrarDialogoConfirmarEliminarTribu(
+                                                              tribu.id),
+                                                      tooltip: 'Eliminar',
+                                                      style:
+                                                          IconButton.styleFrom(
+                                                        backgroundColor: Colors
+                                                            .red
+                                                            .withOpacity(0.1),
+                                                        foregroundColor:
+                                                            Colors.red,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(width: 8),
+                                                    ElevatedButton.icon(
+                                                      icon: const Icon(
+                                                          Icons.visibility),
+                                                      label: const Text(
+                                                          'Ver Detalles'),
+                                                      onPressed: () {
+                                                        Navigator.push(
+                                                          context,
+                                                          MaterialPageRoute(
+                                                            builder: (context) =>
+                                                                TribusScreen(
+                                                              tribuId: tribu.id,
+                                                              tribuNombre:
+                                                                  tribuData[
+                                                                          'nombre'] ??
+                                                                      '',
+                                                            ),
+                                                          ),
+                                                        );
+                                                      },
+                                                      style: ElevatedButton
+                                                          .styleFrom(
+                                                        backgroundColor:
+                                                            const Color(
+                                                                0xFF1B998B),
+                                                        foregroundColor:
+                                                            Colors.white,
+                                                        elevation: 2,
+                                                        shadowColor:
+                                                            const Color(
+                                                                    0xFF1B998B)
+                                                                .withOpacity(
+                                                                    0.5),
+                                                        shape:
+                                                            RoundedRectangleBorder(
+                                                          borderRadius:
+                                                              BorderRadius
+                                                                  .circular(10),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ],
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+// Enhanced info row with icon
+  Widget _buildInfoRowEnhanced(String label, String value, IconData icon) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1B998B).withOpacity(0.05),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: const Color(0xFF1B998B)),
+          const SizedBox(width: 8),
+          Text(
+            label,
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF2C3E50),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(color: Color(0xFF2C3E50)),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+// Method to edit ministry leader (you'll need to implement this function)
+  void _editarLiderMinisterio(String id, Map<String, dynamic> data) {
+    // Create a form to edit the leader's information
+    final nombreController = TextEditingController(text: data['nombre']);
+    final apellidoController = TextEditingController(text: data['apellido']);
+    final usuarioController = TextEditingController(text: data['usuario']);
+    final contrasenaController =
+        TextEditingController(text: data['contrasena']);
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            const Icon(Icons.edit, color: Color(0xFF1B998B)),
+            const SizedBox(width: 8),
+            Text('Editar Líder de ${data['ministerio']}'),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nombreController,
+                decoration: const InputDecoration(
+                  labelText: 'Nombre',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.person, color: Color(0xFF1B998B)),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: apellidoController,
+                decoration: const InputDecoration(
+                  labelText: 'Apellido',
+                  border: OutlineInputBorder(),
+                  prefixIcon:
+                      Icon(Icons.person_outline, color: Color(0xFF1B998B)),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: usuarioController,
+                decoration: const InputDecoration(
+                  labelText: 'Usuario',
+                  border: OutlineInputBorder(),
+                  prefixIcon:
+                      Icon(Icons.account_circle, color: Color(0xFF1B998B)),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: contrasenaController,
+                decoration: const InputDecoration(
+                  labelText: 'Contraseña',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.password, color: Color(0xFF1B998B)),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              // Update the leader information in Firestore
+              _firestore.collection('lideresMinisterio').doc(id).update({
+                'nombre': nombreController.text.trim(),
+                'apellido': apellidoController.text.trim(),
+                'usuario': usuarioController.text.trim(),
+                'contrasena': contrasenaController.text.trim(),
+              }).then((_) {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Líder actualizado con éxito'),
+                    backgroundColor: Color(0xFF1B998B),
+                  ),
+                );
+              }).catchError((error) {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Error: $error'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              });
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF1B998B),
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Guardar'),
+          ),
+        ],
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      ),
+    );
+  }
+
+  Widget _actionButton(
+      String text, IconData icon, Color color, VoidCallback onPressed) {
+    return ElevatedButton.icon(
+      icon: Icon(icon, color: Colors.white, size: 18),
+      label: Text(
+        text,
+        style: GoogleFonts.poppins(
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+          color: Colors.white,
+        ),
+      ),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: color,
+        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+      ),
+      onPressed: onPressed,
+    );
+  }
+
+  InputDecoration _inputDecoration(String label, IconData icon) {
+    return InputDecoration(
+      labelText: label,
+      labelStyle: TextStyle(color: kTextColor.withOpacity(0.7)),
+      prefixIcon: Icon(icon, color: kPrimaryColor),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: BorderSide(color: kPrimaryColor.withOpacity(0.3)),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: BorderSide(color: kPrimaryColor, width: 2),
+      ),
+      contentPadding: EdgeInsets.symmetric(vertical: 16),
+      filled: true,
+      fillColor: Colors.white,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: BorderSide(color: kPrimaryColor.withOpacity(0.5)),
+      ),
+    );
+  }
+
+  Future<void> _crearLiderMinisterio(String ministerio) async {
+    // Verificar si ya existe un líder para el ministerio
+    final snapshot = await _firestore
+        .collection('lideresMinisterio')
+        .where('ministerio', isEqualTo: ministerio)
+        .get();
+    if (snapshot.docs.isNotEmpty) {
+      _mostrarSnackBar('Ya existe un líder para este ministerio');
+      return;
+    }
+
+    // Mostrar diálogo para capturar datos del líder
+    final TextEditingController nombreController = TextEditingController();
+    final TextEditingController apellidoController = TextEditingController();
+    final TextEditingController usuarioController = TextEditingController();
+    final TextEditingController contrasenaController = TextEditingController();
+
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('Crear Líder de $ministerio'),
+          content: SingleChildScrollView(
+            child: Column(
+              children: [
+                TextField(
+                  controller: nombreController,
+                  decoration: const InputDecoration(labelText: 'Nombre'),
+                ),
+                TextField(
+                  controller: apellidoController,
+                  decoration: const InputDecoration(labelText: 'Apellido'),
+                ),
+                TextField(
+                  controller: usuarioController,
+                  decoration: const InputDecoration(labelText: 'Usuario'),
+                ),
+                TextField(
+                  controller: contrasenaController,
+                  decoration: const InputDecoration(labelText: 'Contraseña'),
+                  obscureText: true,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                if (nombreController.text.isEmpty ||
+                    apellidoController.text.isEmpty ||
+                    usuarioController.text.isEmpty ||
+                    contrasenaController.text.isEmpty) {
+                  _mostrarSnackBar('Complete todos los campos');
+                  return;
+                }
+                // Crear líder en Firebase
+                await _firestore.collection('lideresMinisterio').add({
+                  'nombre': nombreController.text,
+                  'apellido': apellidoController.text,
+                  'usuario': usuarioController.text,
+                  'contrasena': contrasenaController.text,
+                  'ministerio': ministerio,
+                  'createdAt': FieldValue.serverTimestamp(),
+                });
+                // También se crea el usuario en la colección de usuarios si es necesario
+                await _firestore.collection('usuarios').add({
+                  'usuario': usuarioController.text,
+                  'contrasena': contrasenaController.text,
+                  'rol': 'liderMinisterio',
+                  'ministerio': ministerio,
+                });
+                Navigator.pop(context);
+                _mostrarSnackBar('Líder creado exitosamente');
+                setState(() {});
+              },
+              child: const Text('Guardar'),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -743,6 +1581,7 @@ class _AdminPastoresState extends State<AdminPastores>
       _mostrarSnackBar('Error al unir las tribus: $e');
     }
   }
+
   Widget _buildLiderConsolidacionTab() {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
@@ -768,6 +1607,12 @@ class _AdminPastoresState extends State<AdminPastores>
   }
 
   Widget _buildFormularioTribu() {
+    final List<String> categoriasTribu = [
+      "Ministerio Juvenil",
+      "Ministerio de Damas",
+      "Ministerio de Caballeros"
+    ];
+
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(
@@ -830,6 +1675,27 @@ class _AdminPastoresState extends State<AdminPastores>
               label: 'Contraseña',
               icon: Icons.lock_outline,
               isPassword: true,
+            ),
+            const SizedBox(height: 16),
+            // Nuevo campo de categoría
+            DropdownButtonFormField<String>(
+              value: categoriaSeleccionada,
+              decoration: InputDecoration(
+                labelText: 'Categoría de Tribu',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.category),
+              ),
+              items: categoriasTribu.map((categoria) {
+                return DropdownMenuItem(
+                  value: categoria,
+                  child: Text(categoria),
+                );
+              }).toList(),
+              onChanged: (value) {
+                setState(() {
+                  categoriaSeleccionada = value;
+                });
+              },
             ),
             const SizedBox(height: 24),
             Row(
@@ -994,10 +1860,7 @@ class _AdminPastoresState extends State<AdminPastores>
 
   Widget _buildListaTribus() {
     return StreamBuilder<QuerySnapshot>(
-      stream: _firestore
-          .collection('tribus')
-          .orderBy('createdAt', descending: true)
-          .snapshots(),
+      stream: _firestore.collection('tribus').snapshots(),
       builder: (context, snapshot) {
         if (snapshot.hasError) {
           return _buildErrorWidget('Error: ${snapshot.error}');
@@ -1011,11 +1874,26 @@ class _AdminPastoresState extends State<AdminPastores>
           );
         }
 
-        final tribus = snapshot.data?.docs ?? [];
+        final allTribus = snapshot.data?.docs ?? [];
+
+        // Filtrar las tribus del ministerio juvenil en memoria
+        final tribus = allTribus.where((doc) {
+          final data = doc.data() as Map<String, dynamic>;
+          return data['categoria'] == 'Ministerio Juvenil';
+        }).toList();
 
         if (tribus.isEmpty) {
           return _buildEmptyState();
         }
+
+        // Ordenar por fecha de creación manualmente
+        tribus.sort((a, b) {
+          final aData = a.data() as Map<String, dynamic>;
+          final bData = b.data() as Map<String, dynamic>;
+          final aDate = aData['createdAt'] as Timestamp;
+          final bDate = bData['createdAt'] as Timestamp;
+          return bDate.compareTo(aDate); // orden descendente
+        });
 
         return ListView.builder(
           shrinkWrap: true,
@@ -1137,23 +2015,27 @@ class _AdminPastoresState extends State<AdminPastores>
         final Map<int, Map<String, int>> registrosPorAnio = {};
 
         for (var registro in registros) {
-          final fecha =
-              (registro['fechaAsignacionTribu'] as Timestamp).toDate();
-          final ano = fecha.year;
-          final mesNombre = _getMesNombre(fecha.month);
+          final data = registro.data() as Map<String, dynamic>;
 
-          // Inicializar el año si no existe
-          if (!registrosPorAnio.containsKey(ano)) {
-            registrosPorAnio[ano] = {};
+          if (data.containsKey('fechaAsignacionTribu') &&
+              data['fechaAsignacionTribu'] != null) {
+            final fecha = (data['fechaAsignacionTribu'] as Timestamp).toDate();
+            final ano = fecha.year;
+            final mesNombre = _getMesNombre(fecha.month);
+
+            if (!registrosPorAnio.containsKey(ano)) {
+              registrosPorAnio[ano] = {};
+            }
+
+            if (!registrosPorAnio[ano]!.containsKey(mesNombre)) {
+              registrosPorAnio[ano]![mesNombre] = 0;
+            }
+
+            registrosPorAnio[ano]![mesNombre] =
+                registrosPorAnio[ano]![mesNombre]! + 1;
+          } else {
+            print('Registro sin fechaAsignacionTribu: ${registro.id}');
           }
-
-          // Inicializar el mes si no existe
-          if (!registrosPorAnio[ano]!.containsKey(mesNombre)) {
-            registrosPorAnio[ano]![mesNombre] = 0;
-          }
-
-          registrosPorAnio[ano]![mesNombre] =
-              registrosPorAnio[ano]![mesNombre]! + 1;
         }
 
         // Ordenar los años de más reciente a más antiguo

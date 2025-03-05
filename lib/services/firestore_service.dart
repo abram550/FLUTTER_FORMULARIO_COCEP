@@ -37,6 +37,19 @@ class FirestoreService {
             }).toList());
   }
 
+// Obtener todos los registros sin stream, para consultas puntuales
+  Future<List<Registro>> obtenerTodosLosRegistros() async {
+    try {
+      final snapshot = await _firestore.collection('registros').get();
+      return snapshot.docs.map((doc) {
+        return Registro.fromFirestore(doc); // Usamos tu método ya existente
+      }).toList();
+    } catch (e) {
+      print('Error al obtener todos los registros: $e');
+      return [];
+    }
+  }
+
   // Verificar credenciales de usuario
   Future<bool> verificarCredenciales(String usuario, String contrasena) async {
     try {

@@ -60,6 +60,11 @@ class AuthService {
                 };
               }
               return null;
+            case 'liderMinisterio':
+              return {
+                'role': 'liderMinisterio',
+                'ministerio': userData['ministerio'] ?? '',
+              };
             default:
               print('Rol no reconocido: ${userData['rol']}');
               return null;
@@ -100,6 +105,21 @@ class AuthService {
           'role': 'timoteo',
           'timoteoId': timoteoData.id,
           'timoteoNombre': '${timoteoData['nombre']} ${timoteoData['apellido']}'
+        };
+      }
+
+      // Verificar líderes de ministerio en su colección específica
+      final liderMinisterioQuery = await FirebaseFirestore.instance
+          .collection('lideresMinisterio')
+          .where('usuario', isEqualTo: username)
+          .where('contrasena', isEqualTo: password)
+          .get();
+
+      if (liderMinisterioQuery.docs.isNotEmpty) {
+        final liderData = liderMinisterioQuery.docs.first;
+        return {
+          'role': 'liderMinisterio',
+          'ministerio': liderData['ministerio'],
         };
       }
 

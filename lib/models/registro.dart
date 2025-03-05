@@ -24,7 +24,10 @@ class Registro {
   String referenciaInvitacion;
   String? observaciones;
   String? tribuAsignada;
-  
+  // Campos nuevos a agregar
+  String? estadoFonovisita;
+  String? observaciones2;
+
   Registro({
     this.id,
     required this.nombre,
@@ -47,6 +50,9 @@ class Registro {
     required this.tieneHijos,
     required this.referenciaInvitacion,
     this.observaciones,
+    this.tribuAsignada,
+    this.estadoFonovisita,
+    this.observaciones2,
   });
 
   Map<String, dynamic> toLocalMap() {
@@ -72,6 +78,9 @@ class Registro {
       'tieneHijos': tieneHijos ? 1 : 0,
       'referenciaInvitacion': referenciaInvitacion,
       'observaciones': observaciones,
+      'tribuAsignada': tribuAsignada,
+      'estadoFonovisita': estadoFonovisita,
+      'observaciones2': observaciones2,
     };
   }
 
@@ -97,6 +106,9 @@ class Registro {
       'tieneHijos': tieneHijos,
       'referenciaInvitacion': referenciaInvitacion,
       'observaciones': observaciones,
+      'tribuAsignada': tribuAsignada,
+      'estadoFonovisita': estadoFonovisita,
+      'observaciones2': observaciones2,
     };
   }
 
@@ -123,6 +135,9 @@ class Registro {
       tieneHijos: map['tieneHijos'] == 1,
       referenciaInvitacion: map['referenciaInvitacion'] ?? '',
       observaciones: map['observaciones'],
+      tribuAsignada: map['tribuAsignada'],
+      estadoFonovisita: map['estadoFonovisita'],
+      observaciones2: map['observaciones2'],
     );
   }
 
@@ -150,6 +165,9 @@ class Registro {
       tieneHijos: data['tieneHijos'] ?? false,
       referenciaInvitacion: data['referenciaInvitacion'] ?? '',
       observaciones: data['observaciones'],
+      tribuAsignada: data['tribuAsignada'],
+      estadoFonovisita: data['estadoFonovisita'],
+      observaciones2: data['observaciones2'],
     );
   }
 }

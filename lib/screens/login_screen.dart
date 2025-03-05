@@ -3,6 +3,7 @@ import 'package:formulario_app/screens/TimoteosScreen.dart';
 import 'package:formulario_app/screens/admin_screen.dart';
 import 'package:formulario_app/services/auth_service.dart';
 import 'package:formulario_app/utils/error_handler.dart';
+import 'package:go_router/go_router.dart';
 import 'TribusScreen.dart';
 import 'CoordinadorScreen.dart';
 
@@ -13,7 +14,8 @@ class LoginPage extends StatefulWidget {
   _LoginPageState createState() => _LoginPageState();
 }
 
-class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMixin {
+class _LoginPageState extends State<LoginPage>
+    with SingleTickerProviderStateMixin {
   final AuthService _authService = AuthService();
   final _formKey = GlobalKey<FormState>();
   final _usuarioController = TextEditingController();
@@ -24,8 +26,10 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
   late Animation<double> _fadeAnimation;
 
   // Definimos los colores personalizados de COCEP
-  final Color cocepTeal = const Color(0xFF1D8B96);  // Color turquesa/verde azulado
-  final Color cocepOrange = const Color(0xFFFF5722); // Color naranja/rojo para el degradado
+  final Color cocepTeal =
+      const Color(0xFF1D8B96); // Color turquesa/verde azulado
+  final Color cocepOrange =
+      const Color(0xFFFF5722); // Color naranja/rojo para el degradado
 
   @override
   void initState() {
@@ -48,113 +52,91 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
     super.dispose();
   }
 
-Future<void> _login() async {
-  if (!_formKey.currentState!.validate()) return;
+  Future<void> _login() async {
+    if (!_formKey.currentState!.validate()) return;
 
-  setState(() => _isLoading = true);
+    setState(() => _isLoading = true);
 
-  try {
-    final result = await _authService.login(
-      _usuarioController.text.trim(),
-      _contrasenaController.text.trim(),
-    );
+    try {
+      final result = await _authService.login(
+        _usuarioController.text.trim(),
+        _contrasenaController.text.trim(),
+      );
 
-    if (!mounted) return;
+      if (!mounted) return;
 
-    if (result != null) {
-      switch (result['role']) {
-        case 'adminPastores':
-          if (mounted) {
-            Navigator.pushReplacementNamed(context, '/adminPastores'); // Navegar a AdminPastores
-          }
-          break;
-        case 'liderConsolidacion':
-          if (mounted) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => const AdminPanel()),
-            );
-          }
-          break;
-
+      if (result != null) {
+        switch (result['role']) {
+          case 'adminPastores':
+            if (mounted) {
+              context.go('/admin_pastores');
+            }
+            break;
+          case 'liderConsolidacion':
+            if (mounted) {
+              context.go('/admin');
+            }
+            break;
           case 'coordinador':
-  if (mounted) {
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (context) => CoordinadorScreen(
-          coordinadorId: result['coordinadorId'] ?? '',
-          coordinadorNombre: result['coordinadorNombre'] ?? '',
-        ),
-      ),
-    );
-  }
-  break;
-
-
-
-        case 'tribu':
-          if (mounted) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) => TribusScreen(
-                  tribuId: result['tribuId'] ?? '',
-                  tribuNombre: result['nombreTribu'] ?? '', // Pasar el nombre correcto
-                ),
-              ),
-            );
-          }
-          break;
-
-
+            if (mounted) {
+              final coordinadorId = result['coordinadorId'] ?? '';
+              final coordinadorNombre = result['coordinadorNombre'] ?? '';
+              context.go('/coordinador/$coordinadorId/$coordinadorNombre');
+            }
+            break;
+          case 'tribu':
+            if (mounted) {
+              final tribuId = result['tribuId'] ?? '';
+              final nombreTribu = result['nombreTribu'] ?? '';
+              context.go('/tribus/$tribuId/$nombreTribu');
+            }
+            break;
           case 'timoteo':
             if (mounted) {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => TimoteoScreen(
-                    timoteoId: result['timoteoId'] ?? '',
-                    timoteoNombre: result['timoteoNombre'] ?? '',
-                  ),
-                ),
-              );
+              final timoteoId = result['timoteoId'] ?? '';
+              final timoteoNombre = result['timoteoNombre'] ?? '';
+              context.go('/timoteos/$timoteoId/$timoteoNombre');
             }
-          break;
-                default:
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Rol no reconocido')),
-                    );
-                  }
-              }
-            } else {
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Credenciales inválidas'),
-                    backgroundColor: Colors.redAccent,
-                  ),
-                );
-              }
+            break;
+          case 'liderMinisterio':
+            if (mounted) {
+              final ministerio = result['ministerio'] ?? '';
+              context
+                  .go('/ministerio_lider', extra: {'ministerio': ministerio});
             }
-          } catch (e, stackTrace) {
-            ErrorHandler.logError(e, stackTrace); // Ahora pasa dos argumentos
+            break;
+
+          default:
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Ocurrió un error al iniciar sesión'),
-                  backgroundColor: Colors.redAccent,
-                ),
+                const SnackBar(content: Text('Rol no reconocido')),
               );
             }
-          } finally {
-            if (mounted) setState(() => _isLoading = false);
-          }
         }
-
-
-
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Credenciales inválidas'),
+              backgroundColor: Colors.redAccent,
+            ),
+          );
+        }
+      }
+    } catch (e, stackTrace) {
+      ErrorHandler.logError(e, stackTrace);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Ocurrió un error al iniciar sesión'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -257,8 +239,9 @@ Future<void> _login() async {
                             controller: _usuarioController,
                             label: 'Usuario',
                             icon: Icons.person,
-                            validator: (value) =>
-                                value?.isEmpty ?? true ? 'Por favor ingresa el usuario' : null,
+                            validator: (value) => value?.isEmpty ?? true
+                                ? 'Por favor ingresa el usuario'
+                                : null,
                           ),
                           const SizedBox(height: 20),
                           _buildTextField(
@@ -268,15 +251,18 @@ Future<void> _login() async {
                             obscureText: _obscureText,
                             suffixIcon: IconButton(
                               icon: Icon(
-                                _obscureText ? Icons.visibility : Icons.visibility_off,
+                                _obscureText
+                                    ? Icons.visibility
+                                    : Icons.visibility_off,
                                 color: cocepTeal,
                               ),
                               onPressed: () {
                                 setState(() => _obscureText = !_obscureText);
                               },
                             ),
-                            validator: (value) =>
-                                value?.isEmpty ?? true ? 'Por favor ingresa la contraseña' : null,
+                            validator: (value) => value?.isEmpty ?? true
+                                ? 'Por favor ingresa la contraseña'
+                                : null,
                           ),
                           const SizedBox(height: 40),
                           // Botón de login con gradiente de COCEP
@@ -313,7 +299,8 @@ Future<void> _login() async {
                               ),
                               child: _isLoading
                                   ? const CircularProgressIndicator(
-                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                          Colors.white),
                                     )
                                   : const Text(
                                       'INICIAR SESIÓN',
@@ -375,7 +362,8 @@ Future<void> _login() async {
           ),
           filled: true,
           fillColor: Colors.transparent,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         ),
         validator: validator,
       ),
