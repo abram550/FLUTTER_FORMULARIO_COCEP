@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'TimoteosScreen.dart';
 import '../utils/email_service.dart';
 import 'package:table_calendar/table_calendar.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 
 // Color scheme based on the COCEP logo
 const kPrimaryColor = Color(0xFF1B8C8C); // Turquesa
@@ -2360,7 +2361,7 @@ class PersonasAsignadasTab extends StatelessWidget {
             'icon': Icons.work_outline
           },
           {
-            'key': 'descripcionOcupacion',
+            'key': 'descripcionOcupaciones',
             'label': 'Descripción',
             'icon': Icons.description_outlined
           },
@@ -2739,6 +2740,13 @@ class PersonasAsignadasTab extends StatelessWidget {
     final accentGrey = Color(0xFF78909C);
     final backgroundGrey = Color(0xFFF5F5F5);
 
+    // Controlador para el buscador
+    final TextEditingController _searchController = TextEditingController();
+    final ValueNotifier<String> _searchQuery = ValueNotifier<String>('');
+    final ValueNotifier<bool> _isAsignadosExpanded = ValueNotifier<bool>(true);
+    final ValueNotifier<bool> _isNoAsignadosExpanded =
+        ValueNotifier<bool>(true);
+
     return Container(
       color: backgroundGrey,
       child: StreamBuilder(
@@ -2773,145 +2781,365 @@ class PersonasAsignadasTab extends StatelessWidget {
             );
           }
 
-          final asignados = snapshot.data!.docs.where((doc) {
-            try {
-              return doc.get('timoteoAsignado') != null;
-            } catch (e) {
-              return false;
-            }
-          }).toList();
+          return StatefulBuilder(
+            builder: (context, setState) {
+              // Filtrar registros según la búsqueda
+              String searchText = _searchQuery.value.toLowerCase();
 
-          final noAsignados = snapshot.data!.docs.where((doc) {
-            try {
-              return doc.get('timoteoAsignado') == null;
-            } catch (e) {
-              return true;
-            }
-          }).toList();
+              final allDocs = snapshot.data!.docs;
 
-          // Contador de personas asignadas al coordinador
-          final totalPersonasAsignadas = snapshot.data!.docs.length;
+              // Filtrar documentos según búsqueda
+              var filteredDocs = searchText.isEmpty
+                  ? allDocs
+                  : allDocs.where((doc) {
+                      final nombre = doc['nombre'].toString().toLowerCase();
+                      final apellido = doc['apellido'].toString().toLowerCase();
+                      final nombreCompleto = '$nombre $apellido';
 
-          return SingleChildScrollView(
-            padding: EdgeInsets.all(16),
-            child: Column(
-              children: [
-                // Contador de personas asignadas
-                Container(
-                  margin: EdgeInsets.only(bottom: 16),
-                  padding: EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [primaryTeal, primaryTeal.withOpacity(0.8)],
+                      return nombreCompleto.contains(searchText);
+                    }).toList();
+
+              // Separar en asignados y no asignados
+              final asignados = filteredDocs.where((doc) {
+                try {
+                  return doc.get('timoteoAsignado') != null;
+                } catch (e) {
+                  return false;
+                }
+              }).toList();
+
+              final noAsignados = filteredDocs.where((doc) {
+                try {
+                  return doc.get('timoteoAsignado') == null;
+                } catch (e) {
+                  return true;
+                }
+              }).toList();
+
+              // Contador de personas asignadas al coordinador
+              final totalPersonasAsignadas = allDocs.length;
+              final totalFiltrados = filteredDocs.length;
+
+              return Column(
+                children: [
+                  // Buscador
+                  Container(
+                    margin: EdgeInsets.fromLTRB(16, 16, 16, 8),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 10,
+                          offset: Offset(0, 4),
+                        ),
+                      ],
                     ),
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: primaryTeal.withOpacity(0.2),
-                        blurRadius: 10,
-                        offset: Offset(0, 5),
+                    child: TextField(
+                      controller: _searchController,
+                      onChanged: (value) {
+                        setState(() {
+                          _searchQuery.value = value;
+
+                          // Expandir grupos automáticamente cuando hay búsqueda
+                          if (value.isNotEmpty) {
+                            _isAsignadosExpanded.value = true;
+                            _isNoAsignadosExpanded.value = true;
+                          }
+                        });
+                      },
+                      decoration: InputDecoration(
+                        hintText: 'Buscar por nombre o apellido...',
+                        prefixIcon: Icon(Icons.search, color: primaryTeal),
+                        suffixIcon: _searchQuery.value.isNotEmpty
+                            ? IconButton(
+                                icon: Icon(Icons.clear, color: accentGrey),
+                                onPressed: () {
+                                  setState(() {
+                                    _searchController.clear();
+                                    _searchQuery.value = '';
+                                  });
+                                },
+                              )
+                            : null,
+                        border: InputBorder.none,
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
+                        ),
                       ),
-                    ],
+                    ),
                   ),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          Icons.people_alt_outlined,
-                          color: Colors.white,
-                          size: 28,
-                        ),
+
+                  // Badge de resultados de búsqueda
+                  if (_searchQuery.value.isNotEmpty)
+                    Container(
+                      margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: primaryTeal.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(20),
                       ),
-                      SizedBox(width: 16),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
+                          Icon(
+                            Icons.filter_alt_outlined,
+                            size: 16,
+                            color: primaryTeal,
+                          ),
+                          SizedBox(width: 6),
                           Text(
-                            'Total de Personas',
+                            'Mostrando $totalFiltrados de $totalPersonasAsignadas registros',
                             style: TextStyle(
-                              color: Colors.white.withOpacity(0.9),
-                              fontSize: 14,
+                              color: primaryTeal,
                               fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          SizedBox(height: 4),
-                          Text(
-                            '$totalPersonasAsignadas',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
                             ),
                           ),
                         ],
                       ),
-                      Spacer(),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          _buildCounterBadge('Asignados', asignados.length,
-                              primaryTeal, Colors.white),
-                          SizedBox(height: 8),
-                          _buildCounterBadge('Por asignar', noAsignados.length,
-                              secondaryOrange, Colors.white),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
+                    ),
 
-                if (noAsignados.isNotEmpty) ...[
-                  _buildSectionHeader(
-                    'Personas por asignar',
-                    Icons.person_add_alt,
-                    secondaryOrange,
-                  ),
-                  ListView.builder(
-                    shrinkWrap: true,
-                    physics: NeverScrollableScrollPhysics(),
-                    itemCount: noAsignados.length,
-                    itemBuilder: (context, index) => _buildPersonCard(
-                      context,
-                      noAsignados[index],
-                      isAssigned: false,
-                      primaryTeal: primaryTeal,
-                      secondaryOrange: secondaryOrange,
-                      accentGrey: accentGrey,
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: EdgeInsets.all(16),
+                      child: Column(
+                        children: [
+                          // Contador de personas asignadas
+                          Container(
+                            margin: EdgeInsets.only(bottom: 16),
+                            padding: EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [
+                                  primaryTeal,
+                                  primaryTeal.withOpacity(0.8)
+                                ],
+                              ),
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: primaryTeal.withOpacity(0.2),
+                                  blurRadius: 10,
+                                  offset: Offset(0, 5),
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.2),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(
+                                    Icons.people_alt_outlined,
+                                    color: Colors.white,
+                                    size: 28,
+                                  ),
+                                ),
+                                SizedBox(width: 16),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Total de Personas',
+                                      style: TextStyle(
+                                        color: Colors.white.withOpacity(0.9),
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    SizedBox(height: 4),
+                                    Text(
+                                      '$totalPersonasAsignadas',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 24,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                Spacer(),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    _buildCounterBadge(
+                                      'Asignados',
+                                      allDocs.where((doc) {
+                                        try {
+                                          return doc.get('timoteoAsignado') !=
+                                              null;
+                                        } catch (e) {
+                                          return false;
+                                        }
+                                      }).length,
+                                      primaryTeal,
+                                      Colors.white,
+                                    ),
+                                    SizedBox(height: 8),
+                                    _buildCounterBadge(
+                                      'Por asignar',
+                                      allDocs.where((doc) {
+                                        try {
+                                          return doc.get('timoteoAsignado') ==
+                                              null;
+                                        } catch (e) {
+                                          return true;
+                                        }
+                                      }).length,
+                                      secondaryOrange,
+                                      Colors.white,
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          if (noAsignados.isNotEmpty) ...[
+                            GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  _isNoAsignadosExpanded.value =
+                                      !_isNoAsignadosExpanded.value;
+                                });
+                              },
+                              child: _buildExpandableHeader(
+                                'Personas por asignar (${noAsignados.length})',
+                                Icons.person_add_alt,
+                                secondaryOrange,
+                                _isNoAsignadosExpanded.value,
+                              ),
+                            ),
+                            if (_isNoAsignadosExpanded.value)
+                              AnimatedContainer(
+                                duration: Duration(milliseconds: 300),
+                                child: ListView.builder(
+                                  shrinkWrap: true,
+                                  physics: NeverScrollableScrollPhysics(),
+                                  itemCount: noAsignados.length,
+                                  itemBuilder: (context, index) =>
+                                      _buildPersonCard(
+                                    context,
+                                    noAsignados[index],
+                                    isAssigned: false,
+                                    primaryTeal: primaryTeal,
+                                    secondaryOrange: secondaryOrange,
+                                    accentGrey: accentGrey,
+                                  ),
+                                ),
+                              ),
+                            SizedBox(height: 24),
+                          ],
+
+                          if (asignados.isNotEmpty) ...[
+                            GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  _isAsignadosExpanded.value =
+                                      !_isAsignadosExpanded.value;
+                                });
+                              },
+                              child: _buildExpandableHeader(
+                                'Personas asignadas (${asignados.length})',
+                                Icons.people,
+                                primaryTeal,
+                                _isAsignadosExpanded.value,
+                              ),
+                            ),
+                            if (_isAsignadosExpanded.value)
+                              AnimatedContainer(
+                                duration: Duration(milliseconds: 300),
+                                child: ListView.builder(
+                                  shrinkWrap: true,
+                                  physics: NeverScrollableScrollPhysics(),
+                                  itemCount: asignados.length,
+                                  itemBuilder: (context, index) =>
+                                      _buildPersonCard(
+                                    context,
+                                    asignados[index],
+                                    isAssigned: true,
+                                    primaryTeal: primaryTeal,
+                                    secondaryOrange: secondaryOrange,
+                                    accentGrey: accentGrey,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ],
+                      ),
                     ),
                   ),
-                  SizedBox(height: 24),
                 ],
-                if (asignados.isNotEmpty) ...[
-                  _buildSectionHeader(
-                    'Personas asignadas',
-                    Icons.people,
-                    primaryTeal,
-                  ),
-                  ListView.builder(
-                    shrinkWrap: true,
-                    physics: NeverScrollableScrollPhysics(),
-                    itemCount: asignados.length,
-                    itemBuilder: (context, index) => _buildPersonCard(
-                      context,
-                      asignados[index],
-                      isAssigned: true,
-                      primaryTeal: primaryTeal,
-                      secondaryOrange: secondaryOrange,
-                      accentGrey: accentGrey,
-                    ),
-                  ),
-                ],
-              ],
-            ),
+              );
+            },
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildExpandableHeader(
+    String title,
+    IconData icon,
+    Color color,
+    bool isExpanded,
+  ) {
+    return Container(
+      margin: EdgeInsets.only(bottom: isExpanded ? 16 : 8),
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: color, size: 24),
+          SizedBox(width: 12),
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+          Spacer(),
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              title.contains('por asignar') ? 'Pendientes' : 'Activos',
+              style: TextStyle(
+                color: color,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          SizedBox(width: 8),
+          Icon(
+            isExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+            color: color,
+          ),
+        ],
       ),
     );
   }
@@ -3104,79 +3332,92 @@ class PersonasAsignadasTab extends StatelessWidget {
               ),
             ],
             SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                // Añadido botón de ver detalles
-                _buildActionButton(
-                  icon: Icons.visibility_outlined,
-                  label: 'Ver detalles',
-                  color: primaryTeal,
-                  onPressed: () {
-                    _mostrarDetallesRegistro(
-                      context,
-                      registro.data() as Map<String, dynamic>,
-                    );
-                  },
-                ),
-                SizedBox(width: 8),
-                if (!isAssigned)
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  // Botón de editar
                   _buildActionButton(
-                    icon: Icons.person_add,
-                    label: 'Asignar',
-                    color: secondaryOrange,
-                    onPressed: () => _asignarATimoteo(context, registro),
-                  )
-                else
-                  _buildActionButton(
-                    icon: Icons.person_remove,
-                    label: 'Desasignar',
-                    color: Colors.red,
-                    onPressed: () async {
-                      try {
-                        await FirebaseFirestore.instance
-                            .collection('registros')
-                            .doc(registro.id)
-                            .update({
-                          'timoteoAsignado': null,
-                          'nombreTimoteo': null,
-                          'fechaAsignacion': null,
-                        });
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Registro desasignado exitosamente'),
-                            backgroundColor: Colors.green,
-                          ),
-                        );
-                      } catch (e) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content:
-                                Text('Error al desasignar el registro: $e'),
-                            backgroundColor: Colors.red,
-                          ),
-                        );
-                      }
+                    icon: Icons.edit_outlined,
+                    label: 'Editar',
+                    color: accentGrey,
+                    onPressed: () {
+                      _editarRegistro( context, registro);
                     },
                   ),
-                SizedBox(width: 8),
-                IconButton(
-                  icon: Icon(Icons.copy, color: primaryTeal),
-                  tooltip: 'Copiar teléfono',
-                  onPressed: () {
-                    Clipboard.setData(
-                      ClipboardData(text: registro.get('telefono')),
-                    );
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Teléfono copiado al portapapeles'),
-                        duration: Duration(seconds: 1),
-                        backgroundColor: primaryTeal,
-                      ),
-                    );
-                  },
-                ),
-              ],
+                  SizedBox(width: 8),
+                  _buildActionButton(
+                    icon: Icons.visibility_outlined,
+                    label: 'Ver',
+                    color: primaryTeal,
+                    onPressed: () {
+                      _mostrarDetallesRegistro(
+                        context,
+                        registro.data() as Map<String, dynamic>,
+                      );
+                    },
+                  ),
+                  SizedBox(width: 8),
+                  if (!isAssigned)
+                    _buildActionButton(
+                      icon: Icons.person_add,
+                      label: 'Asignar',
+                      color: secondaryOrange,
+                      onPressed: () => _asignarATimoteo(context, registro),
+                    )
+                  else
+                    _buildActionButton(
+                      icon: Icons.person_remove,
+                      label: 'Desasignar',
+                      color: Colors.red,
+                      onPressed: () async {
+                        try {
+                          await FirebaseFirestore.instance
+                              .collection('registros')
+                              .doc(registro.id)
+                              .update({
+                            'timoteoAsignado': null,
+                            'nombreTimoteo': null,
+                            'fechaAsignacion': null,
+                          });
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content:
+                                  Text('Registro desasignado exitosamente'),
+                              backgroundColor: Colors.green,
+                            ),
+                          );
+                        } catch (e) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content:
+                                  Text('Error al desasignar el registro: $e'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        }
+                      },
+                    ),
+                  SizedBox(width: 8),
+                  IconButton(
+                    icon: Icon(Icons.copy, color: primaryTeal),
+                    tooltip: 'Copiar teléfono',
+                    onPressed: () {
+                      Clipboard.setData(
+                        ClipboardData(text: registro.get('telefono')),
+                      );
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Teléfono copiado al portapapeles'),
+                          duration: Duration(seconds: 1),
+                          backgroundColor: primaryTeal,
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -3203,5 +3444,678 @@ class PersonasAsignadasTab extends StatelessWidget {
       ),
       onPressed: onPressed,
     );
+  }
+
+//logica para ediar los registro
+  void _editarRegistro(BuildContext context, DocumentSnapshot registro) {
+    // Colores de la aplicación
+    const Color primaryTeal = Color(0xFF1B998B);
+    const Color secondaryOrange = Color(0xFFFF7E00);
+    final Color lightTeal = primaryTeal.withOpacity(0.1);
+
+    // Flag para rastrear si hay cambios sin guardar
+    bool hayModificaciones = false;
+
+    // Función mejorada para obtener un valor seguro del documento con mejor manejo de nulos
+    T? getSafeValue<T>(String field) {
+      try {
+        // Check if data() is null first
+        final data = registro.data();
+        if (data == null) return null;
+
+        // Comprobar que data es un Map antes de intentar acceder a sus elementos
+        if (data is Map) {
+          // Comprobar que el campo existe y es del tipo correcto
+          final value = data[field];
+          if (value is T) {
+            return value;
+          } else if (value != null) {
+            // Intentar convertir al tipo correcto si es posible
+            if (T == String && value != null) {
+              return value.toString() as T;
+            } else if (T == int && value is num) {
+              return value.toInt() as T;
+            } else if (T == double && value is num) {
+              return value.toDouble() as T;
+            }
+          }
+        }
+        return null;
+      } catch (e) {
+        print('Error getting field $field: $e');
+        return null;
+      }
+    }
+
+    // Controladores para los campos (solo se crean para campos que existen)
+    final Map<String, TextEditingController> controllers = {};
+
+    // Estado para campos de selección con valores predeterminados para evitar nulos
+    String estadoCivilSeleccionado =
+        getSafeValue<String>('estadoCivil') ?? 'Soltero(a)';
+    String sexoSeleccionado = getSafeValue<String>('sexo') ?? 'Hombre';
+
+    // Opciones para los campos de selección
+    final List<String> opcionesEstadoCivil = [
+      'Casado(a)',
+      'Soltero(a)',
+      'Unión Libre',
+      'Separado(a)',
+      'Viudo(a)',
+    ];
+
+    final List<String> opcionesSexo = [
+      'Hombre',
+      'Mujer',
+    ];
+
+    // Definición de campos con sus iconos y tipos
+    final Map<String, Map<String, dynamic>> camposDefinicion = {
+      'nombre': {'icon': Icons.person, 'type': 'text'},
+      'apellido': {'icon': Icons.person_outline, 'type': 'text'},
+      'telefono': {'icon': Icons.phone, 'type': 'text'},
+      'direccion': {'icon': Icons.location_on, 'type': 'text'},
+      'barrio': {'icon': Icons.home, 'type': 'text'},
+      'estadoCivil': {'icon': Icons.family_restroom, 'type': 'dropdown'},
+      'nombrePareja': {'icon': Icons.favorite, 'type': 'text'},
+      'ocupaciones': {'icon': Icons.work, 'type': 'list'},
+      'descripcionOcupacion': {'icon': Icons.note, 'type': 'text'},
+      'referenciaInvitacion': {'icon': Icons.link, 'type': 'text'},
+      'observaciones': {'icon': Icons.comment, 'type': 'text'},
+      'estadoFonovisita': {'icon': Icons.assignment, 'type': 'text'},
+      'observaciones2': {'icon': Icons.notes, 'type': 'text'},
+      'edad': {'icon': Icons.cake, 'type': 'int'},
+      'peticiones': {'icon': Icons.volunteer_activism, 'type': 'text'},
+      'sexo': {'icon': Icons.wc, 'type': 'dropdown'},
+    };
+
+    // Inicializar controladores de manera segura
+    camposDefinicion.forEach((key, value) {
+      if (key != 'estadoCivil' && key != 'sexo') {
+        // Estos se manejan con dropdowns
+        var fieldValue = getSafeValue(key);
+
+        // Crear controladores para todos los campos definidos para evitar errores de nullability
+        if (value['type'] == 'list' && fieldValue is List) {
+          controllers[key] = TextEditingController(text: fieldValue.join(', '));
+        } else if (value['type'] == 'int' && fieldValue != null) {
+          controllers[key] = TextEditingController(text: fieldValue.toString());
+        } else if (fieldValue != null) {
+          controllers[key] = TextEditingController(text: fieldValue.toString());
+        } else {
+          // Crear controladores vacíos para todos los campos para evitar problemas de nulabilidad
+          controllers[key] = TextEditingController();
+        }
+      }
+    });
+
+    // Asegurar que nombrePareja siempre tenga un controlador para evitar null errors
+    if (controllers['nombrePareja'] == null) {
+      controllers['nombrePareja'] = TextEditingController();
+    }
+
+    // Función para verificar si se debe mostrar el campo de nombre de pareja
+    bool mostrarNombrePareja() {
+      return estadoCivilSeleccionado == 'Casado(a)' ||
+          estadoCivilSeleccionado == 'Unión Libre';
+    }
+
+    // Función para mostrar el diálogo de confirmación con manejo seguro de context
+    Future<bool> confirmarSalida() async {
+      if (!hayModificaciones) return true;
+
+      // Verificar que el contexto sigue siendo válido
+      if (!context.mounted) return false;
+
+      bool confirmar = false;
+      await showDialog(
+        context: context,
+        barrierDismissible: false, // Evitar cierre accidental
+        builder: (BuildContext dialogContext) => AlertDialog(
+          title: Row(
+            children: [
+              Icon(Icons.warning, color: Colors.amber),
+              SizedBox(width: 10),
+              Text('Cambios sin guardar'),
+            ],
+          ),
+          content: Text(
+              '¿Estás seguro de que deseas salir sin guardar los cambios?'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+                confirmar = false;
+              },
+              child:
+                  Text('Cancelar', style: TextStyle(color: Colors.grey[700])),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: secondaryOrange,
+              ),
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+                confirmar = true;
+              },
+              child: Text('Salir sin guardar'),
+            ),
+          ],
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        ),
+      );
+
+      return confirmar;
+    }
+
+    // Mostrar el nombre del registro en lugar del ID con manejo seguro de nulos
+    String getNombreCompleto() {
+      String nombre = getSafeValue<String>('nombre') ?? '';
+      String apellido = getSafeValue<String>('apellido') ?? '';
+
+      if (nombre.isNotEmpty || apellido.isNotEmpty) {
+        return '$nombre $apellido'.trim();
+      }
+
+      return 'Registro ${registro.id}';
+    }
+
+    // Verificar si el contexto es válido antes de mostrar el diálogo
+    if (!context.mounted) return;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false, // No se cierra al tocar fuera
+      builder: (BuildContext dialogContext) {
+        return StatefulBuilder(builder: (stateContext, setState) {
+          return WillPopScope(
+            onWillPop: () async {
+              bool confirmar = await confirmarSalida();
+              return confirmar;
+            },
+            child: Dialog(
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20)),
+              child: Container(
+                constraints: BoxConstraints(
+                  maxWidth: 500,
+                  maxHeight: MediaQuery.of(dialogContext).size.height * 0.8,
+                ),
+                child: SingleChildScrollView(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Encabezado
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: lightTeal,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.edit, color: primaryTeal, size: 28),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  'Editar Registro',
+                                  style: TextStyle(
+                                      fontSize: 22,
+                                      fontWeight: FontWeight.bold,
+                                      color: primaryTeal),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+
+                        // Información del registro
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.grey.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.person,
+                                        color: Colors.grey[700], size: 18),
+                                    SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        getNombreCompleto(),
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          color: Colors.grey[800],
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 24),
+
+                        // Datos del formulario
+                        // Campos normales
+                        ...camposDefinicion.entries.map((entry) {
+                          final fieldName = entry.key;
+                          final fieldData = entry.value;
+                          final controller = controllers[fieldName];
+                          final fieldIcon =
+                              fieldData['icon'] ?? Icons.help_outline;
+
+                          // Manejar dropdown para estado civil
+                          if (fieldName == 'estadoCivil') {
+                            return _buildDropdownField(
+                              label: 'Estado Civil',
+                              icon: fieldIcon,
+                              value: estadoCivilSeleccionado,
+                              items: opcionesEstadoCivil,
+                              primaryColor: primaryTeal,
+                              onChanged: (newValue) {
+                                if (newValue != null) {
+                                  setState(() {
+                                    estadoCivilSeleccionado = newValue;
+                                    hayModificaciones = true;
+                                  });
+                                }
+                              },
+                            );
+                          }
+
+                          // Manejar dropdown para sexo
+                          else if (fieldName == 'sexo') {
+                            return _buildDropdownField(
+                              label: 'Sexo',
+                              icon: fieldIcon,
+                              value: sexoSeleccionado,
+                              items: opcionesSexo,
+                              primaryColor: primaryTeal,
+                              onChanged: (newValue) {
+                                if (newValue != null) {
+                                  setState(() {
+                                    sexoSeleccionado = newValue;
+                                    hayModificaciones = true;
+                                  });
+                                }
+                              },
+                            );
+                          }
+
+                          // Solo mostrar campo de nombre de pareja si es necesario
+                          else if (fieldName == 'nombrePareja') {
+                            if (mostrarNombrePareja() && controller != null) {
+                              return _buildAnimatedTextField(
+                                label: 'Nombre de Pareja',
+                                icon: fieldIcon,
+                                controller: controller,
+                                primaryColor: primaryTeal,
+                                onChanged: (value) {
+                                  hayModificaciones = true;
+                                },
+                              );
+                            } else {
+                              return SizedBox.shrink();
+                            }
+                          }
+
+                          // Otros campos de texto normales
+                          else if (controller != null) {
+                            return _buildAnimatedTextField(
+                              label: _formatFieldName(fieldName),
+                              icon: fieldIcon,
+                              controller: controller,
+                              primaryColor: primaryTeal,
+                              onChanged: (value) {
+                                hayModificaciones = true;
+                              },
+                            );
+                          } else {
+                            return SizedBox.shrink();
+                          }
+                        }).toList(),
+
+                        const SizedBox(height: 24),
+
+                        // Botones de acción
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            TextButton.icon(
+                              onPressed: () async {
+                                bool confirmar = await confirmarSalida();
+                                if (confirmar && dialogContext.mounted) {
+                                  Navigator.pop(dialogContext);
+                                }
+                              },
+                              icon: Icon(Icons.cancel, color: Colors.grey[700]),
+                              label: Text('Cancelar',
+                                  style: TextStyle(
+                                      color: Colors.grey[700], fontSize: 16)),
+                              style: TextButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 12),
+                              ),
+                            ),
+                            ElevatedButton.icon(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: secondaryOrange,
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 24, vertical: 12),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12)),
+                                elevation: 2,
+                              ),
+                              icon: const Icon(Icons.save, color: Colors.white),
+                              label: const Text('Guardar Cambios',
+                                  style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold)),
+                              onPressed: () async {
+                                try {
+                                  // Crear mapa para actualización con solo los campos que existen
+                                  final Map<String, dynamic> updateData = {};
+
+                                  // Agregar campos de dropdown
+                                  updateData['estadoCivil'] =
+                                      estadoCivilSeleccionado;
+                                  updateData['sexo'] = sexoSeleccionado;
+
+                                  // Agregar otros campos de texto con manejo seguro
+                                  controllers.forEach((key, controller) {
+                                    if (controller != null) {
+                                      final fieldType =
+                                          camposDefinicion[key]?['type'];
+                                      if (fieldType == 'list') {
+                                        updateData[key] =
+                                            controller.text.isEmpty
+                                                ? []
+                                                : controller.text
+                                                    .split(',')
+                                                    .map((e) => e.trim())
+                                                    .toList();
+                                      } else if (fieldType == 'int') {
+                                        // Manejo seguro para valores numéricos
+                                        int? parsedValue =
+                                            int.tryParse(controller.text);
+                                        updateData[key] = parsedValue ?? 0;
+                                      } else {
+                                        updateData[key] = controller.text;
+                                      }
+                                    }
+                                  });
+
+                                  // Verificar que tenemos una referencia válida a Firestore
+                                  if (FirebaseFirestore.instance != null) {
+                                    // Actualizar en Firestore de manera segura
+                                    await FirebaseFirestore.instance
+                                        .collection('registros')
+                                        .doc(registro.id)
+                                        .update(updateData);
+
+                                    // Cerrar el diálogo si el contexto sigue siendo válido
+                                    if (dialogContext.mounted) {
+                                      Navigator.pop(dialogContext);
+                                    }
+
+                                    // Mostrar notificación de éxito si el contexto sigue siendo válido
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        SnackBar(
+                                          content: Row(
+                                            children: const [
+                                              Icon(Icons.check_circle,
+                                                  color: Colors.white),
+                                              SizedBox(width: 12),
+                                              Text(
+                                                'Registro actualizado correctamente',
+                                                style: TextStyle(fontSize: 16),
+                                              ),
+                                            ],
+                                          ),
+                                          backgroundColor: Colors.green,
+                                          behavior: SnackBarBehavior.floating,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(10),
+                                          ),
+                                          margin: const EdgeInsets.all(12),
+                                          padding: const EdgeInsets.symmetric(
+                                              vertical: 14, horizontal: 20),
+                                          duration: const Duration(seconds: 3),
+                                        ),
+                                      );
+                                    }
+                                  } else {
+                                    throw Exception(
+                                        "No se pudo conectar con Firestore");
+                                  }
+                                } catch (e) {
+                                  // Mostrar error si el contexto sigue siendo válido
+                                  if (dialogContext.mounted) {
+                                    Navigator.pop(dialogContext);
+                                  }
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Row(
+                                          children: [
+                                            const Icon(Icons.error,
+                                                color: Colors.white),
+                                            const SizedBox(width: 12),
+                                            Expanded(
+                                              child: Text(
+                                                'Error al actualizar: ${e.toString()}',
+                                                style: const TextStyle(
+                                                    fontSize: 16),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        backgroundColor: Colors.red,
+                                        behavior: SnackBarBehavior.floating,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(10),
+                                        ),
+                                        margin: const EdgeInsets.all(12),
+                                        padding: const EdgeInsets.symmetric(
+                                            vertical: 14, horizontal: 20),
+                                        duration: const Duration(seconds: 5),
+                                      ),
+                                    );
+                                  }
+                                }
+                              },
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+        });
+      },
+    );
+  }
+
+// Widget para campos de texto con animación y mejor diseño
+  Widget _buildAnimatedTextField({
+    required String label,
+    required IconData icon,
+    required TextEditingController controller,
+    required Color primaryColor,
+    required Function(String) onChanged,
+  }) {
+    // Asegurar que el controlador nunca sea nulo
+    final TextEditingController safeController =
+        controller ?? TextEditingController();
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16.0),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        child: TextField(
+          controller: safeController,
+          onChanged: onChanged,
+          decoration: InputDecoration(
+            labelText: label,
+            labelStyle: TextStyle(
+              color: primaryColor.withOpacity(0.8),
+              fontWeight: FontWeight.w500,
+            ),
+            prefixIcon: Icon(icon, color: primaryColor),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: primaryColor.withOpacity(0.3)),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: primaryColor.withOpacity(0.5)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: primaryColor, width: 2),
+            ),
+            filled: true,
+            fillColor: Colors.white,
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          ),
+          style: const TextStyle(fontSize: 16),
+        ),
+      ),
+    );
+  }
+
+// Widget para campos de selección dropdown con mejor manejo de nulos
+  Widget _buildDropdownField({
+    required String label,
+    required IconData icon,
+    required String? value,
+    required List<String> items,
+    required Color primaryColor,
+    required Function(String?) onChanged,
+  }) {
+    // Asegurar que value no sea nulo
+    final String safeValue = value ?? (items.isNotEmpty ? items[0] : '');
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16.0),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: primaryColor.withOpacity(0.5)),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12.0),
+          child: Row(
+            children: [
+              Icon(icon, color: primaryColor),
+              SizedBox(width: 12),
+              Expanded(
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: items.contains(safeValue)
+                        ? safeValue
+                        : (items.isNotEmpty ? items[0] : null),
+                    hint: Text(
+                      'Seleccionar $label',
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                    icon: Icon(Icons.arrow_drop_down, color: primaryColor),
+                    isExpanded: true,
+                    onChanged: onChanged,
+                    style: TextStyle(
+                      color: Colors.black87,
+                      fontSize: 16,
+                    ),
+                    dropdownColor: Colors.white,
+                    items: items.map<DropdownMenuItem<String>>((String value) {
+                      return DropdownMenuItem<String>(
+                        value: value,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8.0),
+                          child: Text(value),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+// Función para formatear nombres de campos
+  String _formatFieldName(String fieldName) {
+    // Convertir camelCase a palabras separadas y capitalizar
+    final formattedName = fieldName.replaceAllMapped(
+        RegExp(r'([A-Z])'), (match) => ' ${match.group(0)}');
+
+    return formattedName[0].toUpperCase() + formattedName.substring(1);
+  }
+
+// Manejador para inicializar Firebase Messaging de manera segura
+  Future<void> initializeFirebaseMessaging() async {
+    try {
+      // Comprobar si Firebase Messaging está disponible
+      if (FirebaseMessaging.instance != null) {
+        // Solicitar permisos de manera silenciosa, sin mostrar pop-up si es posible
+        NotificationSettings settings =
+            await FirebaseMessaging.instance.requestPermission(
+          alert: true,
+          announcement: false,
+          badge: true,
+          carPlay: false,
+          criticalAlert: false,
+          provisional: true, // Usar notificaciones provisionales para iOS
+          sound: true,
+        );
+
+        // Solo intentar obtener el token si el usuario ha dado permiso
+        if (settings.authorizationStatus == AuthorizationStatus.authorized ||
+            settings.authorizationStatus == AuthorizationStatus.provisional) {
+          // Obtener token de manera segura
+          try {
+            String? token = await FirebaseMessaging.instance.getToken();
+            if (token != null) {
+              print('Token FCM: $token');
+              // Guardar el token en algún lugar si es necesario
+            }
+          } catch (e) {
+            print('Error al obtener token FCM: $e');
+            // No mostrar error al usuario, manejar silenciosamente
+          }
+        } else {
+          print(
+              'Permisos de notificación no concedidos: ${settings.authorizationStatus}');
+          // No mostrar error al usuario, manejar silenciosamente
+        }
+      }
+    } catch (e) {
+      print('Error al inicializar Firebase Messaging: $e');
+      // No mostrar error al usuario, manejar silenciosamente
+    }
   }
 }

@@ -156,189 +156,444 @@ class _MinisterioLiderScreenState extends State<MinisterioLiderScreen>
   }
 
   /// Pestaña 2: Mostrar personas asignadas para el ministerio actual
-  Widget _buildPersonasAsignadasTab() {
-    return Container(
-      color: backgroundColor,
-      child: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance
-            .collection('registros')
-            .where('ministerioAsignado', isEqualTo: widget.ministerio)
-            .snapshots(),
-        builder: (context, snapshot) {
-          if (!snapshot.hasData) {
-            return Center(
-              child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(secondaryColor),
+/// Pestaña 2: Mostrar personas asignadas para el ministerio actual con grupos y búsqueda
+Widget _buildPersonasAsignadasTab() {
+  // Controller para el campo de búsqueda
+  final TextEditingController searchController = TextEditingController();
+  // Variable para el estado de búsqueda
+  final ValueNotifier<String> searchQuery = ValueNotifier<String>('');
+  // Variables para controlar la expansión de los grupos
+  final ValueNotifier<bool> assignedExpanded = ValueNotifier<bool>(true);
+  final ValueNotifier<bool> unassignedExpanded = ValueNotifier<bool>(true);
+
+  return Container(
+    color: backgroundColor,
+    child: Column(
+      children: [
+        // Campo de búsqueda
+        Padding(
+          padding: const EdgeInsets.all(12.0),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: primaryColor.withOpacity(0.1),
+                  blurRadius: 8,
+                  offset: Offset(0, 3),
+                ),
+              ],
+            ),
+            child: TextField(
+              controller: searchController,
+              decoration: InputDecoration(
+                hintText: 'Buscar por nombre o apellido...',
+                prefixIcon: Icon(Icons.search, color: primaryColor),
+                suffixIcon: ValueListenableBuilder<String>(
+                  valueListenable: searchQuery,
+                  builder: (context, query, _) {
+                    return query.isNotEmpty
+                        ? IconButton(
+                            icon: Icon(Icons.close, color: secondaryColor),
+                            onPressed: () {
+                              searchController.clear();
+                              searchQuery.value = '';
+                              FocusScope.of(context).unfocus();
+                            },
+                          )
+                        : SizedBox.shrink();
+                  },
+                ),
+                border: InputBorder.none,
+                contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               ),
-            );
-          }
-
-          final registros = snapshot.data!.docs;
-
-          if (registros.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.person_off,
-                    size: 80,
-                    color: grayColor.withOpacity(0.6),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'No hay personas asignadas a este ministerio.',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: grayColor,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }
-
-          return Padding(
-            padding: const EdgeInsets.all(12.0),
-            child: ListView.builder(
-              itemCount: registros.length,
-              itemBuilder: (context, index) {
-                final data = registros[index].data() as Map<String, dynamic>;
-                final String nombre = data['nombre'] ?? '';
-                final String apellido = data['apellido'] ?? '';
-                final String nombreTribu =
-                    data['nombreTribu'] ?? 'Sin tribu asignada';
-                final bool tieneTribuAsignada = data['nombreTribu'] != null;
-
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  elevation: 2,
-                  shadowColor: primaryColor.withOpacity(0.3),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                      gradient: LinearGradient(
-                        begin: Alignment.topRight,
-                        end: Alignment.bottomLeft,
-                        colors: [
-                          Colors.white,
-                          tieneTribuAsignada
-                              ? accentColor.withOpacity(0.1)
-                              : grayColor.withOpacity(0.1),
-                        ],
-                      ),
-                    ),
-                    child: ListTile(
-                      contentPadding: const EdgeInsets.symmetric(
-                          vertical: 8, horizontal: 16),
-                      leading: CircleAvatar(
-                        backgroundColor:
-                            tieneTribuAsignada ? secondaryColor : grayColor,
-                        child: Text(
-                          nombre.isNotEmpty ? nombre[0] : '?',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                      title: Text(
-                        '$nombre $apellido',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                      subtitle: Padding(
-                        padding: const EdgeInsets.only(top: 4.0),
-                        child: Row(
-                          children: [
-                            Icon(
-                              tieneTribuAsignada
-                                  ? Icons.group
-                                  : Icons.group_off,
-                              size: 16,
-                              color: tieneTribuAsignada
-                                  ? secondaryColor
-                                  : grayColor,
-                            ),
-                            const SizedBox(width: 4),
-                            Expanded(
-                              child: Text(
-                                'Tribu: $nombreTribu',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.black87,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            decoration: BoxDecoration(
-                              color: primaryColor.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: IconButton(
-                              icon: Icon(Icons.visibility_outlined,
-                                  color: primaryColor),
-                              tooltip: 'Ver detalles',
-                              onPressed: () =>
-                                  _mostrarDetallesRegistroActualizado(data),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          // Condicionalmente mostrar botón de asignar o cambiar tribu
-                          if (data['nombreTribu'] == null)
-                            Container(
-                              decoration: BoxDecoration(
-                                color: secondaryColor.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: IconButton(
-                                icon: Icon(Icons.group_add,
-                                    color: secondaryColor),
-                                tooltip: 'Asignar tribu',
-                                onPressed: () => _mostrarDialogoAsignarTribu(
-                                    registros[index].id, data),
-                              ),
-                            )
-                          else
-                            Container(
-                              decoration: BoxDecoration(
-                                color: accentColor.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: IconButton(
-                                icon:
-                                    Icon(Icons.swap_horiz, color: accentColor),
-                                tooltip: 'Cambiar tribu',
-                                onPressed: () => _mostrarDialogoCambiarTribu(
-                                    registros[index].id, data),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ),
-                );
+              onChanged: (value) {
+                searchQuery.value = value;
               },
             ),
-          );
-        },
+          ),
+        ),
+        
+        // Lista de registros agrupados
+        Expanded(
+          child: StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance
+                .collection('registros')
+                .where('ministerioAsignado', isEqualTo: widget.ministerio)
+                .snapshots(),
+            builder: (context, snapshot) {
+              if (!snapshot.hasData) {
+                return Center(
+                  child: CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(secondaryColor),
+                  ),
+                );
+              }
+
+              final registros = snapshot.data!.docs;
+
+              if (registros.isEmpty) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.person_off,
+                        size: 80,
+                        color: grayColor.withOpacity(0.6),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'No hay personas asignadas a este ministerio.',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: grayColor,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }
+
+              // Filtrar registros según la búsqueda
+              return ValueListenableBuilder<String>(
+                valueListenable: searchQuery,
+                builder: (context, query, _) {
+                  // Agrupar registros en asignados y no asignados
+                  final registrosFiltrados = registros.where((doc) {
+                    final data = doc.data() as Map<String, dynamic>;
+                    final nombre = data['nombre']?.toString().toLowerCase() ?? '';
+                    final apellido = data['apellido']?.toString().toLowerCase() ?? '';
+                    final nombreCompleto = '$nombre $apellido';
+                    
+                    return query.isEmpty ||
+                        nombre.contains(query.toLowerCase()) ||
+                        apellido.contains(query.toLowerCase()) ||
+                        nombreCompleto.contains(query.toLowerCase());
+                  }).toList();
+
+                  final registrosAsignados = registrosFiltrados
+                      .where((doc) {
+                        final data = doc.data() as Map<String, dynamic>;
+                        return data['nombreTribu'] != null;
+                      })
+                      .toList();
+
+                  final registrosNoAsignados = registrosFiltrados
+                      .where((doc) {
+                        final data = doc.data() as Map<String, dynamic>;
+                        return data['nombreTribu'] == null;
+                      })
+                      .toList();
+
+                  // Si hay búsqueda activa, expandir automáticamente
+                  if (query.isNotEmpty) {
+                    assignedExpanded.value = registrosAsignados.isNotEmpty;
+                    unassignedExpanded.value = registrosNoAsignados.isNotEmpty;
+                  }
+
+                  return ListView(
+                    padding: const EdgeInsets.all(12.0),
+                    children: [
+                      // Grupo de registros asignados
+                      if (registrosAsignados.isNotEmpty)
+                        _buildGroupHeader(
+                          title: 'Con tribu asignada',
+                          count: registrosAsignados.length,
+                          icon: Icons.check_circle_outline,
+                          color: secondaryColor,
+                          expandedNotifier: assignedExpanded,
+                        ),
+                      
+                      // Lista de registros asignados
+                      ValueListenableBuilder<bool>(
+                        valueListenable: assignedExpanded,
+                        builder: (context, expanded, _) {
+                          return expanded && registrosAsignados.isNotEmpty
+                              ? Column(
+                                  children: registrosAsignados.map((doc) {
+                                    final data = doc.data() as Map<String, dynamic>;
+                                    return _buildPersonaCard(doc.id, data, true);
+                                  }).toList(),
+                                )
+                              : SizedBox.shrink();
+                        },
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // Grupo de registros no asignados
+                      if (registrosNoAsignados.isNotEmpty)
+                        _buildGroupHeader(
+                          title: 'Sin tribu asignada',
+                          count: registrosNoAsignados.length,
+                          icon: Icons.person_outline,
+                          color: accentColor,
+                          expandedNotifier: unassignedExpanded,
+                        ),
+                      
+                      // Lista de registros no asignados
+                      ValueListenableBuilder<bool>(
+                        valueListenable: unassignedExpanded,
+                        builder: (context, expanded, _) {
+                          return expanded && registrosNoAsignados.isNotEmpty
+                              ? Column(
+                                  children: registrosNoAsignados.map((doc) {
+                                    final data = doc.data() as Map<String, dynamic>;
+                                    return _buildPersonaCard(doc.id, data, false);
+                                  }).toList(),
+                                )
+                              : SizedBox.shrink();
+                        },
+                      ),
+
+                      // Mensaje si no hay resultados en la búsqueda
+                      if (query.isNotEmpty && registrosFiltrados.isEmpty)
+                        Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const SizedBox(height: 32),
+                              Icon(
+                                Icons.search_off,
+                                size: 64,
+                                color: grayColor.withOpacity(0.6),
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                'No se encontraron resultados para "$query"',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: grayColor,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  );
+                },
+              );
+            },
+          ),
+        ),
+      ],
+    ),
+  );
+}
+/// Construye un encabezado para grupo de registros con contador y botón expandible
+Widget _buildGroupHeader({
+  required String title,
+  required int count,
+  required IconData icon,
+  required Color color,
+  required ValueNotifier<bool> expandedNotifier,
+}) {
+  return ValueListenableBuilder<bool>(
+    valueListenable: expandedNotifier,
+    builder: (context, expanded, _) {
+      return GestureDetector(
+        onTap: () => expandedNotifier.value = !expanded,
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topRight,
+              end: Alignment.bottomLeft,
+              colors: [
+                color.withOpacity(0.1),
+                color.withOpacity(0.2),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: color.withOpacity(0.1),
+                blurRadius: 4,
+                offset: Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  icon,
+                  color: color,
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: color,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '$count ${count == 1 ? 'persona' : 'personas'}',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.black87,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.8),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  expanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                  color: color,
+                  size: 20,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
+}
+
+
+/// Construye una tarjeta para mostrar la información de una persona
+Widget _buildPersonaCard(String docId, Map<String, dynamic> data, bool tieneTribuAsignada) {
+  final String nombre = data['nombre'] ?? '';
+  final String apellido = data['apellido'] ?? '';
+  final String nombreTribu = data['nombreTribu'] ?? 'Sin tribu asignada';
+
+  return Card(
+    margin: const EdgeInsets.only(bottom: 12, left: 8, right: 2),
+    elevation: 2,
+    shadowColor: primaryColor.withOpacity(0.3),
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(12),
+    ),
+    child: Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        gradient: LinearGradient(
+          begin: Alignment.topRight,
+          end: Alignment.bottomLeft,
+          colors: [
+            Colors.white,
+            tieneTribuAsignada
+                ? accentColor.withOpacity(0.1)
+                : grayColor.withOpacity(0.1),
+          ],
+        ),
       ),
-    );
-  }
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+        leading: CircleAvatar(
+          backgroundColor: tieneTribuAsignada ? secondaryColor : grayColor,
+          child: Text(
+            nombre.isNotEmpty ? nombre[0] : '?',
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+        title: Text(
+          '$nombre $apellido',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+          ),
+        ),
+        subtitle: Padding(
+          padding: const EdgeInsets.only(top: 4.0),
+          child: Row(
+            children: [
+              Icon(
+                tieneTribuAsignada ? Icons.group : Icons.group_off,
+                size: 16,
+                color: tieneTribuAsignada ? secondaryColor : grayColor,
+              ),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  'Tribu: $nombreTribu',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.black87,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        ),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              decoration: BoxDecoration(
+                color: primaryColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: IconButton(
+                icon: Icon(Icons.visibility_outlined, color: primaryColor),
+                tooltip: 'Ver detalles',
+                onPressed: () => _mostrarDetallesRegistroActualizado(data),
+              ),
+            ),
+            const SizedBox(width: 8),
+            // Condicionalmente mostrar botón de asignar o cambiar tribu
+            if (data['nombreTribu'] == null)
+              Container(
+                decoration: BoxDecoration(
+                  color: secondaryColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: IconButton(
+                  icon: Icon(Icons.group_add, color: secondaryColor),
+                  tooltip: 'Asignar tribu',
+                  onPressed: () => _mostrarDialogoAsignarTribu(docId, data),
+                ),
+              )
+            else
+              Container(
+                decoration: BoxDecoration(
+                  color: accentColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: IconButton(
+                  icon: Icon(Icons.swap_horiz, color: accentColor),
+                  tooltip: 'Cambiar tribu',
+                  onPressed: () => _mostrarDialogoCambiarTribu(docId, data),
+                ),
+              ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
 
   void _mostrarDetallesRegistroActualizado(Map<String, dynamic> data) {
     // Función para formatear fechas

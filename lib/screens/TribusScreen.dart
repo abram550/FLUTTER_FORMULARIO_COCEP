@@ -1,3 +1,4 @@
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/services.dart';
@@ -27,63 +28,73 @@ class TribusScreen extends StatelessWidget {
 // Función para guardar registro en Firebase
   void _guardarRegistroEnFirebase(BuildContext context,
       Map<String, dynamic> registro, String tribuId) async {
-    try {
-      print("Buscando tribu con ID: $tribuId");
+    // Mostrar pantalla de carga
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(
+          color: Color(0xFF038C7F),
+        ),
+      ),
+    );
 
+    try {
       final tribuSnapshot = await FirebaseFirestore.instance
           .collection('tribus')
           .doc(tribuId)
           .get();
 
       if (!tribuSnapshot.exists) {
-        print("Error: No se encontró la tribu con ID $tribuId");
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: La tribu no existe'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        if (context.mounted) {
+          Navigator.of(context, rootNavigator: true).pop(); // Cierra el loading
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Error: La tribu no existe'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
         return;
       }
 
       final tribuData = tribuSnapshot.data() as Map<String, dynamic>;
-      print("Datos obtenidos de la tribu: $tribuData");
-
       final tribuNombre = tribuData['nombreTribu'] ?? 'Desconocida';
       final ministerioAsignado = tribuData['ministerioAsignado'] ??
           tribuData['ministerio'] ??
-          tribuData['categoria'] ?? // Agregar esta opción si aplica
+          tribuData['categoria'] ??
           _determinarMinisterio(tribuNombre);
 
-      print("Tribu: $tribuNombre, Ministerio: $ministerioAsignado");
-
-      // Guardar el ID de la tribu en lugar del nombre
       registro['tribuAsignada'] = tribuId;
       registro['ministerioAsignado'] = ministerioAsignado;
 
       await FirebaseFirestore.instance.collection('registros').add(registro);
-      Navigator.pop(context);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              Icon(Icons.check_circle, color: Colors.white),
-              SizedBox(width: 8),
-              Text('Registro guardado correctamente'),
-            ],
+      if (context.mounted) {
+        Navigator.of(context, rootNavigator: true).pop(); // Cierra el loading
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: const [
+                Icon(Icons.check_circle, color: Colors.white),
+                SizedBox(width: 8),
+                Text('Registro guardado correctamente'),
+              ],
+            ),
+            backgroundColor: Colors.green,
           ),
-          backgroundColor: Colors.green,
-        ),
-      );
+        );
+      }
     } catch (e) {
-      print("Error al guardar registro: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error al guardar el registro: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (context.mounted) {
+        Navigator.of(context, rootNavigator: true).pop(); // Cierra el loading
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al guardar el registro: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -3963,7 +3974,8 @@ class RegistrosAsignadosTab extends StatelessWidget {
                                                       BorderRadius.circular(12),
                                                   onTap: () {
                                                     // Lógica para editar registro
-                                                    // _editarRegistro(context, registro);
+                                                    _editarRegistro(
+                                                        context, registro);
                                                   },
                                                   child: Container(
                                                     padding: EdgeInsets.all(12),
@@ -4005,7 +4017,8 @@ class RegistrosAsignadosTab extends StatelessWidget {
                                                       BorderRadius.circular(12),
                                                   onTap: () {
                                                     // Lógica para cambiar ministerio o tribu
-                                                    // _cambiarMinisterioTribu(context, registro);
+                                                    _cambiarMinisterioTribu(
+                                                        context, registro);
                                                   },
                                                   child: Container(
                                                     padding: EdgeInsets.all(12),
@@ -4058,6 +4071,1243 @@ class RegistrosAsignadosTab extends StatelessWidget {
         );
       },
     );
+  }
+
+// Agregar después de la función _editarRegistro o antes del método build
+  Future<void> _cambiarMinisterioTribu(
+      BuildContext context, DocumentSnapshot registro) async {
+    if (context == null || registro == null) {
+      print('Error: Contexto o registro nulo');
+      return;
+    }
+
+    final registroId = registro.id;
+    final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+    final Color primaryTeal = Color(0xFF038C7F);
+    final Color secondaryOrange = Color(0xFFFF5722);
+    final Color accentGrey = Color(0xFF78909C);
+
+    try {
+      final registroDoc =
+          await _firestore.collection('registros').doc(registroId).get();
+      if (!registroDoc.exists) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('El registro no existe o ha sido eliminado.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+
+      List<DropdownMenuItem<String>> opciones = [];
+      String? opcionSeleccionada;
+
+      try {
+        opciones.addAll([
+          DropdownMenuItem(
+            value: 'Ministerio de Damas',
+            child: _buildOption(
+                'Ministerio de Damas', Icons.female, Colors.pinkAccent),
+          ),
+          DropdownMenuItem(
+            value: 'Ministerio de Caballeros',
+            child: _buildOption(
+                'Ministerio de Caballeros', Icons.male, Colors.blueAccent),
+          ),
+          DropdownMenuItem(
+            value: 'separator',
+            enabled: false,
+            child: Divider(thickness: 2, color: Colors.grey.shade400),
+          ),
+          DropdownMenuItem(
+            value: 'juveniles_title',
+            enabled: false,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8.0),
+              child: Text(
+                'Tribus del Ministerio Juvenil',
+                style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: primaryTeal,
+                    fontSize: 16),
+              ),
+            ),
+          ),
+        ]);
+
+        final tribusSnapshot = await _firestore
+            .collection('tribus')
+            .where('categoria', isEqualTo: 'Ministerio Juvenil')
+            .get();
+
+        final sortedDocs = tribusSnapshot.docs
+          ..sort((a, b) => (a.data()?['nombre'] as String? ?? '')
+              .compareTo(b.data()?['nombre'] as String? ?? ''));
+
+        for (var doc in sortedDocs) {
+          final nombre = doc.data()?['nombre'] ?? 'Sin nombre';
+          opciones.add(DropdownMenuItem(
+            value: doc.id,
+            child: _buildOption(nombre, Icons.people, primaryTeal),
+          ));
+        }
+
+        if (opciones.length <= 4 && context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content:
+                  Text('No hay tribus juveniles disponibles para asignar.'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+          return;
+        }
+
+        // Obtener el valor actual para preseleccionar
+        final data = registroDoc.data() as Map<String, dynamic>?;
+        if (data == null) {
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                    'Error: No se pudieron cargar los datos del registro.'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+          return;
+        }
+
+        final ministerioActual = data['ministerioAsignado'] as String?;
+        final tribuActual = data['tribuAsignada'] as String?;
+
+        if (ministerioActual != null &&
+            ministerioActual.contains('Ministerio')) {
+          opcionSeleccionada = ministerioActual;
+        } else if (tribuActual != null) {
+          opcionSeleccionada = tribuActual;
+        }
+
+        if (!context.mounted) return;
+
+        await showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) {
+            return StatefulBuilder(
+              builder: (context, setState) {
+                return AlertDialog(
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20)),
+                  title: Row(
+                    children: [
+                      Icon(Icons.swap_horiz, color: primaryTeal),
+                      SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'Cambiar Ministerio o Tribu',
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold, color: primaryTeal),
+                        ),
+                      ),
+                    ],
+                  ),
+                  content: Container(
+                    width: double.maxFinite,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Seleccione el nuevo ministerio o tribu para:',
+                          style: TextStyle(fontSize: 14, color: accentGrey),
+                        ),
+                        SizedBox(height: 5),
+                        Text(
+                          '${data['nombre'] ?? ''} ${data['apellido'] ?? ''}',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: secondaryOrange,
+                          ),
+                        ),
+                        SizedBox(height: 15),
+                        Text(
+                          'Asignación actual:',
+                          style: TextStyle(fontSize: 14, color: accentGrey),
+                        ),
+                        SizedBox(height: 5),
+                        Container(
+                          padding: EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: primaryTeal.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(10),
+                            border:
+                                Border.all(color: primaryTeal.withOpacity(0.3)),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                ministerioActual?.contains('Damas') == true
+                                    ? Icons.female
+                                    : ministerioActual
+                                                ?.contains('Caballeros') ==
+                                            true
+                                        ? Icons.male
+                                        : Icons.people,
+                                color: primaryTeal,
+                              ),
+                              SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  ministerioActual == null
+                                      ? 'Sin asignación'
+                                      : tribuActual != null
+                                          ? 'Ministerio Juvenil - ${data['nombreTribu'] ?? 'Tribu sin nombre'}'
+                                          : ministerioActual.contains('Damas')
+                                              ? 'Ministerio de Damas'
+                                              : ministerioActual
+                                                      .contains('Caballeros')
+                                                  ? 'Ministerio de Caballeros'
+                                                  : ministerioActual,
+                                  style: TextStyle(color: primaryTeal),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        SizedBox(height: 20),
+                        DropdownButtonFormField<String>(
+                          value: opcionSeleccionada,
+                          items: opciones,
+                          onChanged: (value) {
+                            if (value != null &&
+                                value != 'separator' &&
+                                value != 'juveniles_title') {
+                              setState(() {
+                                opcionSeleccionada = value;
+                              });
+                            }
+                          },
+                          decoration: InputDecoration(
+                            labelText: 'Nueva asignación',
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(color: primaryTeal),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide:
+                                  BorderSide(color: primaryTeal, width: 2),
+                            ),
+                            labelStyle: TextStyle(color: primaryTeal),
+                            prefixIcon:
+                                Icon(Icons.swap_horiz, color: primaryTeal),
+                          ),
+                          isExpanded: true,
+                        ),
+                      ],
+                    ),
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: Text(
+                        'Cancelar',
+                        style: TextStyle(color: accentGrey),
+                      ),
+                    ),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: primaryTeal,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      onPressed: opcionSeleccionada == null
+                          ? null
+                          : () async {
+                              try {
+                                // Mostrar confirmación antes de realizar el cambio
+                                String mensajeConfirmacion =
+                                    opcionSeleccionada!.contains('Ministerio')
+                                        ? opcionSeleccionada!
+                                        : 'Ministerio Juvenil - ' +
+                                            await _obtenerNombreTribu(
+                                                opcionSeleccionada!);
+
+                                bool confirmar = await _mostrarConfirmacion(
+                                  context,
+                                  'Confirmar cambio',
+                                  '¿Está seguro de cambiar a "$mensajeConfirmacion"?',
+                                  primaryTeal,
+                                  secondaryOrange,
+                                );
+
+                                if (confirmar) {
+                                  Navigator.pop(context);
+                                  if (context.mounted) {
+                                    _procesarCambioAsignacion(
+                                        context,
+                                        registroId,
+                                        opcionSeleccionada!,
+                                        primaryTeal);
+                                  }
+                                }
+                              } catch (e) {
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                          'Error al procesar la confirmación: ${e.toString()}'),
+                                      backgroundColor: Colors.red,
+                                    ),
+                                  );
+                                }
+                              }
+                            },
+                      child: Padding(
+                        padding:
+                            EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        child: Text('Cambiar'),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            );
+          },
+        );
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error al cargar las opciones: ${e.toString()}'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error inesperado: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<bool> _mostrarConfirmacion(
+    BuildContext context,
+    String titulo,
+    String mensaje,
+    Color primaryColor,
+    Color secondaryColor,
+  ) async {
+    if (context == null) {
+      print('Error: Contexto nulo en mostrarConfirmacion');
+      return false;
+    }
+
+    bool resultado = false;
+
+    try {
+      await showDialog(
+        context: context,
+        builder: (dialogContext) {
+          if (dialogContext == null) return Container();
+
+          return AlertDialog(
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: Row(
+              children: [
+                Icon(Icons.help_outline, color: primaryColor),
+                SizedBox(width: 10),
+                Text(titulo,
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold, color: primaryColor)),
+              ],
+            ),
+            content: Text(mensaje ?? 'Confirmar acción'),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  resultado = false;
+                  Navigator.pop(dialogContext);
+                },
+                child: Text('Cancelar', style: TextStyle(color: Colors.grey)),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: primaryColor,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                onPressed: () {
+                  resultado = true;
+                  Navigator.pop(dialogContext);
+                },
+                child: Text('Confirmar'),
+              ),
+            ],
+          );
+        },
+      );
+    } catch (e) {
+      print('Error en diálogo de confirmación: $e');
+      return false;
+    }
+
+    return resultado;
+  }
+
+  Future<String> _obtenerNombreTribu(String tribuId) async {
+    if (tribuId == null || tribuId.isEmpty) {
+      return 'Tribu sin nombre';
+    }
+
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('tribus')
+          .doc(tribuId)
+          .get();
+      if (doc.exists && doc.data() != null) {
+        return doc.data()?['nombre'] ?? 'Tribu sin nombre';
+      }
+    } catch (e) {
+      print('Error al obtener nombre de tribu: $e');
+    }
+    return 'Tribu sin nombre';
+  }
+
+  Future<void> _procesarCambioAsignacion(
+    BuildContext context,
+    String registroId,
+    String opcionSeleccionada,
+    Color primaryColor,
+  ) async {
+    if (context == null || registroId == null || opcionSeleccionada == null) {
+      print('Error: Parámetros nulos en _procesarCambioAsignacion');
+      return;
+    }
+
+    final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+    BuildContext? dialogContext;
+
+    // Mostrar indicador de carga y capturar su contexto
+    if (!context.mounted) return;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (loadingContext) {
+        dialogContext = loadingContext; // Guardar el contexto del diálogo
+        return Center(
+          child: CircularProgressIndicator(color: primaryColor),
+        );
+      },
+    );
+
+    try {
+      Map<String, dynamic> datosActualizacion = {
+        'tribuAsignada': null,
+        'ministerioAsignado': null,
+        'coordinadorAsignado': null,
+        'timoteoAsignado': null,
+        'nombreTimoteo': null,
+        'fechaAsignacion': FieldValue.serverTimestamp(),
+      };
+
+      String mensajeExito = '';
+
+      if (opcionSeleccionada.contains('Ministerio')) {
+        // Es un ministerio
+        datosActualizacion['ministerioAsignado'] = opcionSeleccionada;
+        datosActualizacion['tribuAsignada'] = null;
+        datosActualizacion['nombreTribu'] = null;
+        mensajeExito =
+            'Registro asignado a "$opcionSeleccionada" correctamente';
+      } else {
+        // Es una tribu
+        datosActualizacion['ministerioAsignado'] = 'Ministerio Juvenil';
+        datosActualizacion['tribuAsignada'] = opcionSeleccionada;
+
+        String nombreTribu = 'Sin nombre';
+        try {
+          // Obtener el nombre de la tribu
+          final tribuDoc = await _firestore
+              .collection('tribus')
+              .doc(opcionSeleccionada)
+              .get();
+          if (tribuDoc.exists && tribuDoc.data() != null) {
+            nombreTribu = tribuDoc.data()?['nombre'] ?? 'Sin nombre';
+          }
+        } catch (e) {
+          print('Error al obtener nombre de tribu: $e');
+        }
+
+        datosActualizacion['nombreTribu'] = nombreTribu;
+        mensajeExito =
+            'Registro asignado a "Ministerio Juvenil - $nombreTribu" correctamente';
+      }
+
+      // Realizar la actualización
+      await _firestore
+          .collection('registros')
+          .doc(registroId)
+          .update(datosActualizacion);
+
+      // Cerrar el diálogo de carga siempre, usando el contexto específico del diálogo
+      if (dialogContext != null && Navigator.canPop(dialogContext!)) {
+        Navigator.pop(dialogContext!);
+      }
+
+      // Mostrar mensaje de éxito
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.white),
+                SizedBox(width: 8),
+                Text(mensajeExito),
+              ],
+            ),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      print('Error en _procesarCambioAsignacion: $e');
+
+      // Cerrar el diálogo de carga siempre, usando el contexto específico del diálogo
+      if (dialogContext != null && Navigator.canPop(dialogContext!)) {
+        Navigator.pop(dialogContext!);
+      } else {
+        // Intento alternativo de cierre
+        try {
+          if (context.mounted) {
+            Navigator.of(context, rootNavigator: true).pop();
+          }
+        } catch (navError) {
+          print('Error al cerrar diálogo alternativo: $navError');
+        }
+      }
+
+      // Mostrar error
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al cambiar asignación: ${e.toString()}'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
+
+// Agregar esta función para cerrar el diálogo de forma segura
+  void _cerrarDialogo(BuildContext context) {
+    if (context.mounted && Navigator.canPop(context)) {
+      try {
+        Navigator.of(context, rootNavigator: true).pop();
+      } catch (e) {
+        print('Error al cerrar diálogo: $e');
+      }
+    }
+  }
+
+  Widget _buildOption(String title, IconData icon, Color color) {
+    return Row(
+      children: [
+        Icon(icon ?? Icons.error_outline, color: color),
+        SizedBox(width: 10),
+        Text(title ?? 'Opción', style: TextStyle(fontSize: 16)),
+      ],
+    );
+  }
+
+//logica para ediar los registro
+  void _editarRegistro(BuildContext context, DocumentSnapshot registro) {
+    // Colores de la aplicación
+    const Color primaryTeal = Color(0xFF1B998B);
+    const Color secondaryOrange = Color(0xFFFF7E00);
+    final Color lightTeal = primaryTeal.withOpacity(0.1);
+
+    // Flag para rastrear si hay cambios sin guardar
+    bool hayModificaciones = false;
+
+    // Función mejorada para obtener un valor seguro del documento con mejor manejo de nulos
+    T? getSafeValue<T>(String field) {
+      try {
+        // Check if data() is null first
+        final data = registro.data();
+        if (data == null) return null;
+
+        // Comprobar que data es un Map antes de intentar acceder a sus elementos
+        if (data is Map) {
+          // Comprobar que el campo existe y es del tipo correcto
+          final value = data[field];
+          if (value is T) {
+            return value;
+          } else if (value != null) {
+            // Intentar convertir al tipo correcto si es posible
+            if (T == String && value != null) {
+              return value.toString() as T;
+            } else if (T == int && value is num) {
+              return value.toInt() as T;
+            } else if (T == double && value is num) {
+              return value.toDouble() as T;
+            }
+          }
+        }
+        return null;
+      } catch (e) {
+        print('Error getting field $field: $e');
+        return null;
+      }
+    }
+
+    // Controladores para los campos (solo se crean para campos que existen)
+    final Map<String, TextEditingController> controllers = {};
+
+    // Estado para campos de selección con valores predeterminados para evitar nulos
+    String estadoCivilSeleccionado =
+        getSafeValue<String>('estadoCivil') ?? 'Soltero(a)';
+    String sexoSeleccionado = getSafeValue<String>('sexo') ?? 'Hombre';
+
+    // Opciones para los campos de selección
+    final List<String> opcionesEstadoCivil = [
+      'Casado(a)',
+      'Soltero(a)',
+      'Unión Libre',
+      'Separado(a)',
+      'Viudo(a)',
+    ];
+
+    final List<String> opcionesSexo = [
+      'Hombre',
+      'Mujer',
+    ];
+
+    // Definición de campos con sus iconos y tipos
+    final Map<String, Map<String, dynamic>> camposDefinicion = {
+      'nombre': {'icon': Icons.person, 'type': 'text'},
+      'apellido': {'icon': Icons.person_outline, 'type': 'text'},
+      'telefono': {'icon': Icons.phone, 'type': 'text'},
+      'direccion': {'icon': Icons.location_on, 'type': 'text'},
+      'barrio': {'icon': Icons.home, 'type': 'text'},
+      'estadoCivil': {'icon': Icons.family_restroom, 'type': 'dropdown'},
+      'nombrePareja': {'icon': Icons.favorite, 'type': 'text'},
+      'ocupaciones': {'icon': Icons.work, 'type': 'list'},
+      'descripcionOcupacion': {'icon': Icons.note, 'type': 'text'},
+      'referenciaInvitacion': {'icon': Icons.link, 'type': 'text'},
+      'observaciones': {'icon': Icons.comment, 'type': 'text'},
+      'estadoFonovisita': {'icon': Icons.assignment, 'type': 'text'},
+      'observaciones2': {'icon': Icons.notes, 'type': 'text'},
+      'edad': {'icon': Icons.cake, 'type': 'int'},
+      'peticiones': {'icon': Icons.volunteer_activism, 'type': 'text'},
+      'sexo': {'icon': Icons.wc, 'type': 'dropdown'},
+    };
+
+    // Inicializar controladores de manera segura
+    camposDefinicion.forEach((key, value) {
+      if (key != 'estadoCivil' && key != 'sexo') {
+        // Estos se manejan con dropdowns
+        var fieldValue = getSafeValue(key);
+
+        // Crear controladores para todos los campos definidos para evitar errores de nullability
+        if (value['type'] == 'list' && fieldValue is List) {
+          controllers[key] = TextEditingController(text: fieldValue.join(', '));
+        } else if (value['type'] == 'int' && fieldValue != null) {
+          controllers[key] = TextEditingController(text: fieldValue.toString());
+        } else if (fieldValue != null) {
+          controllers[key] = TextEditingController(text: fieldValue.toString());
+        } else {
+          // Crear controladores vacíos para todos los campos para evitar problemas de nulabilidad
+          controllers[key] = TextEditingController();
+        }
+      }
+    });
+
+    // Asegurar que nombrePareja siempre tenga un controlador para evitar null errors
+    if (controllers['nombrePareja'] == null) {
+      controllers['nombrePareja'] = TextEditingController();
+    }
+
+    // Función para verificar si se debe mostrar el campo de nombre de pareja
+    bool mostrarNombrePareja() {
+      return estadoCivilSeleccionado == 'Casado(a)' ||
+          estadoCivilSeleccionado == 'Unión Libre';
+    }
+
+    // Función para mostrar el diálogo de confirmación con manejo seguro de context
+    Future<bool> confirmarSalida() async {
+      if (!hayModificaciones) return true;
+
+      // Verificar que el contexto sigue siendo válido
+      if (!context.mounted) return false;
+
+      bool confirmar = false;
+      await showDialog(
+        context: context,
+        barrierDismissible: false, // Evitar cierre accidental
+        builder: (BuildContext dialogContext) => AlertDialog(
+          title: Row(
+            children: [
+              Icon(Icons.warning, color: Colors.amber),
+              SizedBox(width: 10),
+              Text('Cambios sin guardar'),
+            ],
+          ),
+          content: Text(
+              '¿Estás seguro de que deseas salir sin guardar los cambios?'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+                confirmar = false;
+              },
+              child:
+                  Text('Cancelar', style: TextStyle(color: Colors.grey[700])),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: secondaryOrange,
+              ),
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+                confirmar = true;
+              },
+              child: Text('Salir sin guardar'),
+            ),
+          ],
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        ),
+      );
+
+      return confirmar;
+    }
+
+    // Mostrar el nombre del registro en lugar del ID con manejo seguro de nulos
+    String getNombreCompleto() {
+      String nombre = getSafeValue<String>('nombre') ?? '';
+      String apellido = getSafeValue<String>('apellido') ?? '';
+
+      if (nombre.isNotEmpty || apellido.isNotEmpty) {
+        return '$nombre $apellido'.trim();
+      }
+
+      return 'Registro ${registro.id}';
+    }
+
+    // Verificar si el contexto es válido antes de mostrar el diálogo
+    if (!context.mounted) return;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false, // No se cierra al tocar fuera
+      builder: (BuildContext dialogContext) {
+        return StatefulBuilder(builder: (stateContext, setState) {
+          return WillPopScope(
+            onWillPop: () async {
+              bool confirmar = await confirmarSalida();
+              return confirmar;
+            },
+            child: Dialog(
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20)),
+              child: Container(
+                constraints: BoxConstraints(
+                  maxWidth: 500,
+                  maxHeight: MediaQuery.of(dialogContext).size.height * 0.8,
+                ),
+                child: SingleChildScrollView(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Encabezado
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: lightTeal,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.edit, color: primaryTeal, size: 28),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  'Editar Registro',
+                                  style: TextStyle(
+                                      fontSize: 22,
+                                      fontWeight: FontWeight.bold,
+                                      color: primaryTeal),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+
+                        // Información del registro
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.grey.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.person,
+                                        color: Colors.grey[700], size: 18),
+                                    SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        getNombreCompleto(),
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          color: Colors.grey[800],
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 24),
+
+                        // Datos del formulario
+                        // Campos normales
+                        ...camposDefinicion.entries.map((entry) {
+                          final fieldName = entry.key;
+                          final fieldData = entry.value;
+                          final controller = controllers[fieldName];
+                          final fieldIcon =
+                              fieldData['icon'] ?? Icons.help_outline;
+
+                          // Manejar dropdown para estado civil
+                          if (fieldName == 'estadoCivil') {
+                            return _buildDropdownField(
+                              label: 'Estado Civil',
+                              icon: fieldIcon,
+                              value: estadoCivilSeleccionado,
+                              items: opcionesEstadoCivil,
+                              primaryColor: primaryTeal,
+                              onChanged: (newValue) {
+                                if (newValue != null) {
+                                  setState(() {
+                                    estadoCivilSeleccionado = newValue;
+                                    hayModificaciones = true;
+                                  });
+                                }
+                              },
+                            );
+                          }
+
+                          // Manejar dropdown para sexo
+                          else if (fieldName == 'sexo') {
+                            return _buildDropdownField(
+                              label: 'Sexo',
+                              icon: fieldIcon,
+                              value: sexoSeleccionado,
+                              items: opcionesSexo,
+                              primaryColor: primaryTeal,
+                              onChanged: (newValue) {
+                                if (newValue != null) {
+                                  setState(() {
+                                    sexoSeleccionado = newValue;
+                                    hayModificaciones = true;
+                                  });
+                                }
+                              },
+                            );
+                          }
+
+                          // Solo mostrar campo de nombre de pareja si es necesario
+                          else if (fieldName == 'nombrePareja') {
+                            if (mostrarNombrePareja() && controller != null) {
+                              return _buildAnimatedTextField(
+                                label: 'Nombre de Pareja',
+                                icon: fieldIcon,
+                                controller: controller,
+                                primaryColor: primaryTeal,
+                                onChanged: (value) {
+                                  hayModificaciones = true;
+                                },
+                              );
+                            } else {
+                              return SizedBox.shrink();
+                            }
+                          }
+
+                          // Otros campos de texto normales
+                          else if (controller != null) {
+                            return _buildAnimatedTextField(
+                              label: _formatFieldName(fieldName),
+                              icon: fieldIcon,
+                              controller: controller,
+                              primaryColor: primaryTeal,
+                              onChanged: (value) {
+                                hayModificaciones = true;
+                              },
+                            );
+                          } else {
+                            return SizedBox.shrink();
+                          }
+                        }).toList(),
+
+                        const SizedBox(height: 24),
+
+                        // Botones de acción
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            TextButton.icon(
+                              onPressed: () async {
+                                bool confirmar = await confirmarSalida();
+                                if (confirmar && dialogContext.mounted) {
+                                  Navigator.pop(dialogContext);
+                                }
+                              },
+                              icon: Icon(Icons.cancel, color: Colors.grey[700]),
+                              label: Text('Cancelar',
+                                  style: TextStyle(
+                                      color: Colors.grey[700], fontSize: 16)),
+                              style: TextButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 12),
+                              ),
+                            ),
+                            ElevatedButton.icon(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: secondaryOrange,
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 24, vertical: 12),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12)),
+                                elevation: 2,
+                              ),
+                              icon: const Icon(Icons.save, color: Colors.white),
+                              label: const Text('Guardar Cambios',
+                                  style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold)),
+                              onPressed: () async {
+                                try {
+                                  // Crear mapa para actualización con solo los campos que existen
+                                  final Map<String, dynamic> updateData = {};
+
+                                  // Agregar campos de dropdown
+                                  updateData['estadoCivil'] =
+                                      estadoCivilSeleccionado;
+                                  updateData['sexo'] = sexoSeleccionado;
+
+                                  // Agregar otros campos de texto con manejo seguro
+                                  controllers.forEach((key, controller) {
+                                    if (controller != null) {
+                                      final fieldType =
+                                          camposDefinicion[key]?['type'];
+                                      if (fieldType == 'list') {
+                                        updateData[key] =
+                                            controller.text.isEmpty
+                                                ? []
+                                                : controller.text
+                                                    .split(',')
+                                                    .map((e) => e.trim())
+                                                    .toList();
+                                      } else if (fieldType == 'int') {
+                                        // Manejo seguro para valores numéricos
+                                        int? parsedValue =
+                                            int.tryParse(controller.text);
+                                        updateData[key] = parsedValue ?? 0;
+                                      } else {
+                                        updateData[key] = controller.text;
+                                      }
+                                    }
+                                  });
+
+                                  // Verificar que tenemos una referencia válida a Firestore
+                                  if (FirebaseFirestore.instance != null) {
+                                    // Actualizar en Firestore de manera segura
+                                    await FirebaseFirestore.instance
+                                        .collection('registros')
+                                        .doc(registro.id)
+                                        .update(updateData);
+
+                                    // Cerrar el diálogo si el contexto sigue siendo válido
+                                    if (dialogContext.mounted) {
+                                      Navigator.pop(dialogContext);
+                                    }
+
+                                    // Mostrar notificación de éxito si el contexto sigue siendo válido
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        SnackBar(
+                                          content: Row(
+                                            children: const [
+                                              Icon(Icons.check_circle,
+                                                  color: Colors.white),
+                                              SizedBox(width: 12),
+                                              Text(
+                                                'Registro actualizado correctamente',
+                                                style: TextStyle(fontSize: 16),
+                                              ),
+                                            ],
+                                          ),
+                                          backgroundColor: Colors.green,
+                                          behavior: SnackBarBehavior.floating,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(10),
+                                          ),
+                                          margin: const EdgeInsets.all(12),
+                                          padding: const EdgeInsets.symmetric(
+                                              vertical: 14, horizontal: 20),
+                                          duration: const Duration(seconds: 3),
+                                        ),
+                                      );
+                                    }
+                                  } else {
+                                    throw Exception(
+                                        "No se pudo conectar con Firestore");
+                                  }
+                                } catch (e) {
+                                  // Mostrar error si el contexto sigue siendo válido
+                                  if (dialogContext.mounted) {
+                                    Navigator.pop(dialogContext);
+                                  }
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Row(
+                                          children: [
+                                            const Icon(Icons.error,
+                                                color: Colors.white),
+                                            const SizedBox(width: 12),
+                                            Expanded(
+                                              child: Text(
+                                                'Error al actualizar: ${e.toString()}',
+                                                style: const TextStyle(
+                                                    fontSize: 16),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        backgroundColor: Colors.red,
+                                        behavior: SnackBarBehavior.floating,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(10),
+                                        ),
+                                        margin: const EdgeInsets.all(12),
+                                        padding: const EdgeInsets.symmetric(
+                                            vertical: 14, horizontal: 20),
+                                        duration: const Duration(seconds: 5),
+                                      ),
+                                    );
+                                  }
+                                }
+                              },
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+        });
+      },
+    );
+  }
+
+// Widget para campos de texto con animación y mejor diseño
+  Widget _buildAnimatedTextField({
+    required String label,
+    required IconData icon,
+    required TextEditingController controller,
+    required Color primaryColor,
+    required Function(String) onChanged,
+  }) {
+    // Asegurar que el controlador nunca sea nulo
+    final TextEditingController safeController =
+        controller ?? TextEditingController();
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16.0),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        child: TextField(
+          controller: safeController,
+          onChanged: onChanged,
+          decoration: InputDecoration(
+            labelText: label,
+            labelStyle: TextStyle(
+              color: primaryColor.withOpacity(0.8),
+              fontWeight: FontWeight.w500,
+            ),
+            prefixIcon: Icon(icon, color: primaryColor),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: primaryColor.withOpacity(0.3)),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: primaryColor.withOpacity(0.5)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: primaryColor, width: 2),
+            ),
+            filled: true,
+            fillColor: Colors.white,
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          ),
+          style: const TextStyle(fontSize: 16),
+        ),
+      ),
+    );
+  }
+
+// Widget para campos de selección dropdown con mejor manejo de nulos
+  Widget _buildDropdownField({
+    required String label,
+    required IconData icon,
+    required String? value,
+    required List<String> items,
+    required Color primaryColor,
+    required Function(String?) onChanged,
+  }) {
+    // Asegurar que value no sea nulo
+    final String safeValue = value ?? (items.isNotEmpty ? items[0] : '');
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16.0),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: primaryColor.withOpacity(0.5)),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12.0),
+          child: Row(
+            children: [
+              Icon(icon, color: primaryColor),
+              SizedBox(width: 12),
+              Expanded(
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: items.contains(safeValue)
+                        ? safeValue
+                        : (items.isNotEmpty ? items[0] : null),
+                    hint: Text(
+                      'Seleccionar $label',
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                    icon: Icon(Icons.arrow_drop_down, color: primaryColor),
+                    isExpanded: true,
+                    onChanged: onChanged,
+                    style: TextStyle(
+                      color: Colors.black87,
+                      fontSize: 16,
+                    ),
+                    dropdownColor: Colors.white,
+                    items: items.map<DropdownMenuItem<String>>((String value) {
+                      return DropdownMenuItem<String>(
+                        value: value,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8.0),
+                          child: Text(value),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+// Función para formatear nombres de campos
+  String _formatFieldName(String fieldName) {
+    // Convertir camelCase a palabras separadas y capitalizar
+    final formattedName = fieldName.replaceAllMapped(
+        RegExp(r'([A-Z])'), (match) => ' ${match.group(0)}');
+
+    return formattedName[0].toUpperCase() + formattedName.substring(1);
+  }
+
+// Manejador para inicializar Firebase Messaging de manera segura
+  Future<void> initializeFirebaseMessaging() async {
+    try {
+      // Comprobar si Firebase Messaging está disponible
+      if (FirebaseMessaging.instance != null) {
+        // Solicitar permisos de manera silenciosa, sin mostrar pop-up si es posible
+        NotificationSettings settings =
+            await FirebaseMessaging.instance.requestPermission(
+          alert: true,
+          announcement: false,
+          badge: true,
+          carPlay: false,
+          criticalAlert: false,
+          provisional: true, // Usar notificaciones provisionales para iOS
+          sound: true,
+        );
+
+        // Solo intentar obtener el token si el usuario ha dado permiso
+        if (settings.authorizationStatus == AuthorizationStatus.authorized ||
+            settings.authorizationStatus == AuthorizationStatus.provisional) {
+          // Obtener token de manera segura
+          try {
+            String? token = await FirebaseMessaging.instance.getToken();
+            if (token != null) {
+              print('Token FCM: $token');
+              // Guardar el token en algún lugar si es necesario
+            }
+          } catch (e) {
+            print('Error al obtener token FCM: $e');
+            // No mostrar error al usuario, manejar silenciosamente
+          }
+        } else {
+          print(
+              'Permisos de notificación no concedidos: ${settings.authorizationStatus}');
+          // No mostrar error al usuario, manejar silenciosamente
+        }
+      }
+    } catch (e) {
+      print('Error al inicializar Firebase Messaging: $e');
+      // No mostrar error al usuario, manejar silenciosamente
+    }
   }
 
   void _quitarAsignacion(
