@@ -3233,495 +3233,922 @@ class RegistrosAsignadosTab extends StatelessWidget {
     final accentGrey = Color(0xFF78909C);
     final backgroundGrey = Color(0xFFF5F5F5);
 
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            primaryTeal.withOpacity(0.05),
-            backgroundGrey,
-          ],
+    // Controlador para el campo de búsqueda
+    final TextEditingController searchController = TextEditingController();
+    // Estado de búsqueda
+    bool isSearching = false;
+    // Término de búsqueda
+    String searchTerm = '';
+
+    return StatefulBuilder(builder: (context, setState) {
+      return Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              primaryTeal.withOpacity(0.05),
+              backgroundGrey,
+            ],
+          ),
         ),
-      ),
-      child: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance
-            .collection('registros')
-            .where('tribuAsignada', isEqualTo: tribuId)
-            .snapshots(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(
-              child: CircularProgressIndicator(
-                color: primaryTeal,
-              ),
-            );
-          }
-
-          if (!snapshot.hasData || snapshot.data?.docs.isEmpty == true) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.group_off_outlined,
-                    size: 64,
-                    color: accentGrey,
-                  ),
-                  SizedBox(height: 16),
-                  Text(
-                    'No hay jóvenes asignados a esta tribu',
-                    style: TextStyle(
-                      fontSize: 18,
-                      color: accentGrey,
-                      fontWeight: FontWeight.w500,
+        child: Column(
+          children: [
+            // Barra de búsqueda
+            Padding(
+              padding: EdgeInsets.all(16),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: primaryTeal.withOpacity(0.1),
+                      blurRadius: 5,
+                      offset: Offset(0, 2),
                     ),
-                  ),
-                ],
-              ),
-            );
-          }
-
-          // Usamos ? para acceso seguro en lugar de !
-          final allDocs = snapshot.data?.docs ?? [];
-          final docs = allDocs.where((doc) {
-            // Verificamos si existe la clave antes de intentar acceder
-            final data = doc.data() as Map<String, dynamic>?;
-            if (data == null) return false;
-
-            // Verificamos si coordinadorAsignado existe y es nulo
-            return !data.containsKey('coordinadorAsignado') ||
-                data['coordinadorAsignado'] == null;
-          }).toList();
-
-          if (docs.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.check_circle_outline,
-                    size: 64,
-                    color: secondaryOrange,
-                  ),
-                  SizedBox(height: 16),
-                  Text(
-                    '¡Todos los jóvenes están asignados!',
-                    style: TextStyle(
-                      fontSize: 18,
+                  ],
+                ),
+                child: TextField(
+                  controller: searchController,
+                  decoration: InputDecoration(
+                    hintText: 'Buscar por nombre o apellido...',
+                    prefixIcon: Icon(
+                      Icons.search,
                       color: primaryTeal,
-                      fontWeight: FontWeight.w500,
                     ),
-                  ),
-                ],
-              ),
-            );
-          }
-
-          // Mantenemos un Map para guardar los estados de expansión
-          // Esta línea debe estar fuera del itemBuilder para preservar el estado
-          final Map<String, bool> expandedStates = {};
-
-          return Padding(
-            padding: EdgeInsets.all(16),
-            child: ListView.builder(
-              itemCount: docs.length,
-              itemBuilder: (context, index) {
-                final registro = docs[index];
-                final data = registro.data() as Map<String, dynamic>? ?? {};
-                final registroId =
-                    registro.id; // Usamos el ID del documento como clave única
-
-                // Acceso seguro con valores por defecto
-                final nombre = data['nombre'] as String? ?? '';
-                final apellido = data['apellido'] as String? ?? '';
-                final telefono = data['telefono'] as String? ?? 'No disponible';
-                final ministerioAsignado =
-                    data['ministerioAsignado'] ?? 'Sin ministerio';
-
-                String iniciales = '';
-                if (nombre.isNotEmpty && nombre.length >= 1) {
-                  iniciales += nombre[0];
-                }
-                if (apellido.isNotEmpty && apellido.length >= 1) {
-                  iniciales += apellido[0];
-                }
-                if (iniciales.isEmpty) {
-                  iniciales = '?';
-                }
-
-                // Determinamos un color de fondo aleatorio pero consistente para las iniciales
-                final List<Color> avatarColors = [
-                  primaryTeal,
-                  secondaryOrange,
-                  accentGrey,
-                ];
-
-                // Usamos la suma de los códigos de caracteres para generar un índice
-                int colorIndex = 0;
-                if (iniciales.isNotEmpty) {
-                  colorIndex = iniciales.codeUnits.reduce((a, b) => a + b) %
-                      avatarColors.length;
-                }
-
-                // Utilizamos un StatefulBuilder para manejar el estado de expansión
-                return StatefulBuilder(
-                  builder: (BuildContext context, StateSetter setState) {
-                    // Inicializamos el estado de expansión si no existe
-                    expandedStates[registroId] ??= false;
-
-                    return Card(
-                      margin: EdgeInsets.only(bottom: 12),
-                      elevation: 3,
-                      shadowColor: primaryTeal.withOpacity(0.1),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        side: BorderSide(
-                          color: primaryTeal.withOpacity(0.1),
-                          width: 1,
-                        ),
-                      ),
-                      child: Column(
-                        children: [
-                          // Parte superior de la tarjeta con información básica
-                          GestureDetector(
-                            onTap: () {
+                    suffixIcon: searchController.text.isNotEmpty || isSearching
+                        ? IconButton(
+                            icon: Icon(
+                              Icons.close,
+                              color: accentGrey,
+                            ),
+                            onPressed: () {
+                              searchController.clear();
                               setState(() {
-                                // Invertimos el estado de expansión al tocar
-                                expandedStates[registroId] =
-                                    !expandedStates[registroId]!;
+                                isSearching = false;
+                                searchTerm = '';
                               });
                             },
-                            child: Padding(
-                              padding: EdgeInsets.all(16),
-                              child: Row(
-                                children: [
-                                  // Avatar con iniciales
-                                  Container(
-                                    width: 50,
-                                    height: 50,
-                                    decoration: BoxDecoration(
-                                      color: avatarColors[colorIndex]
-                                          .withOpacity(0.2),
-                                      borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(
-                                        color: avatarColors[colorIndex]
-                                            .withOpacity(0.5),
-                                        width: 1.5,
-                                      ),
-                                    ),
-                                    child: Center(
-                                      child: Text(
-                                        iniciales,
-                                        style: TextStyle(
-                                          fontSize: 20,
-                                          fontWeight: FontWeight.bold,
-                                          color: avatarColors[colorIndex],
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  SizedBox(width: 16),
-                                  // Información del registro
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          '$nombre $apellido',
-                                          style: TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.bold,
-                                            color: primaryTeal,
-                                          ),
-                                        ),
-                                        SizedBox(height: 4),
-                                        Row(
-                                          children: [
-                                            Icon(
-                                              Icons.phone_outlined,
-                                              size: 14,
-                                              color: accentGrey,
-                                            ),
-                                            SizedBox(width: 4),
-                                            Text(
-                                              telefono,
-                                              style: TextStyle(
-                                                color: accentGrey,
-                                                fontSize: 14,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        SizedBox(height: 4),
-                                        Row(
-                                          children: [
-                                            Icon(
-                                              Icons.account_tree_outlined,
-                                              size: 14,
-                                              color: accentGrey,
-                                            ),
-                                            SizedBox(width: 4),
-                                            Text(
-                                              'Ministerio: $ministerioAsignado',
-                                              style: TextStyle(
-                                                color: accentGrey,
-                                                fontSize: 14,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        SizedBox(height: 4),
-                                        Row(
-                                          children: [
-                                            Icon(
-                                              Icons.group_outlined,
-                                              size: 14,
-                                              color: accentGrey,
-                                            ),
-                                            SizedBox(width: 4),
-                                          ],
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  // Botones de acción
-                                  Row(
-                                    children: [
-                                      // Botón de ver detalles
-                                      Material(
-                                        color: Colors.transparent,
-                                        child: InkWell(
-                                          borderRadius:
-                                              BorderRadius.circular(12),
-                                          onTap: () => _mostrarDetallesRegistro(
-                                            context,
-                                            data,
-                                            primaryTeal,
-                                            secondaryOrange,
-                                            accentGrey,
-                                            backgroundGrey,
-                                          ),
-                                          child: Container(
-                                            padding: EdgeInsets.all(10),
-                                            decoration: BoxDecoration(
-                                              color:
-                                                  primaryTeal.withOpacity(0.1),
-                                              borderRadius:
-                                                  BorderRadius.circular(12),
-                                            ),
-                                            child: Icon(
-                                              Icons.visibility_outlined,
-                                              color: primaryTeal,
-                                              size: 22,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                      SizedBox(width: 8),
-                                      // Botón de asignar
-                                      Material(
-                                        color: Colors.transparent,
-                                        child: InkWell(
-                                          borderRadius:
-                                              BorderRadius.circular(12),
-                                          onTap: () => _asignarACoordinador(
-                                              context, registro),
-                                          child: Container(
-                                            padding: EdgeInsets.all(10),
-                                            decoration: BoxDecoration(
-                                              color: secondaryOrange
-                                                  .withOpacity(0.1),
-                                              borderRadius:
-                                                  BorderRadius.circular(12),
-                                            ),
-                                            child: Icon(
-                                              Icons.person_add_alt_1_outlined,
-                                              color: secondaryOrange,
-                                              size: 22,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
+                          )
+                        : null,
+                    border: InputBorder.none,
+                    contentPadding: EdgeInsets.symmetric(vertical: 15),
+                  ),
+                  onChanged: (value) {
+                    setState(() {
+                      searchTerm = value.toLowerCase();
+                      isSearching = value.isNotEmpty;
+                    });
+                  },
+                ),
+              ),
+            ),
+
+            // Contenido principal con StreamBuilder
+            Expanded(
+              child: StreamBuilder<QuerySnapshot>(
+                stream: FirebaseFirestore.instance
+                    .collection('registros')
+                    .where('tribuAsignada', isEqualTo: tribuId)
+                    .snapshots(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return Center(
+                      child: CircularProgressIndicator(
+                        color: primaryTeal,
+                      ),
+                    );
+                  }
+
+                  if (!snapshot.hasData ||
+                      snapshot.data?.docs.isEmpty == true) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.group_off_outlined,
+                            size: 64,
+                            color: accentGrey,
+                          ),
+                          SizedBox(height: 16),
+                          Text(
+                            'No hay jóvenes asignados a esta tribu',
+                            style: TextStyle(
+                              fontSize: 18,
+                              color: accentGrey,
+                              fontWeight: FontWeight.w500,
                             ),
                           ),
-                          // Botón para expandir en la parte inferior de la tarjeta
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: Padding(
-                              padding: EdgeInsets.only(right: 16, bottom: 8),
-                              child: InkWell(
+                        ],
+                      ),
+                    );
+                  }
+
+                  final allDocs = snapshot.data?.docs ?? [];
+
+// Filtrar documentos según el término de búsqueda
+                  final filteredDocs = isSearching
+                      ? allDocs.where((doc) {
+                          final data = doc.data() as Map<String, dynamic>;
+                          final nombre =
+                              (data['nombre'] as String? ?? '').toLowerCase();
+                          final apellido =
+                              (data['apellido'] as String? ?? '').toLowerCase();
+                          final nombreCompleto =
+                              '$nombre $apellido'.toLowerCase();
+
+                          // Buscar en nombre, apellido o nombre completo
+                          return nombre.contains(searchTerm) ||
+                              apellido.contains(searchTerm) ||
+                              nombreCompleto.contains(searchTerm);
+                        }).toList()
+                      : allDocs;
+
+                  // Si hay búsqueda y no se encuentran resultados
+                  if (isSearching && filteredDocs.isEmpty) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.search_off,
+                            size: 64,
+                            color: accentGrey,
+                          ),
+                          SizedBox(height: 16),
+                          Text(
+                            'No se encontraron resultados para "$searchTerm"',
+                            style: TextStyle(
+                              fontSize: 18,
+                              color: accentGrey,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+
+                  // Organizar los registros en dos grupos
+                  List<DocumentSnapshot> sinCoordinador = [];
+                  Map<String, List<DocumentSnapshot>> porCoordinador = {};
+                  List<String> idsCoordinadores = [];
+
+                  for (var doc in filteredDocs) {
+                    var data = doc.data() as Map<String, dynamic>;
+                    if (data['coordinadorAsignado'] == null) {
+                      sinCoordinador.add(doc);
+                    } else {
+                      String coordinadorId = data['coordinadorAsignado'];
+                      if (!porCoordinador.containsKey(coordinadorId)) {
+                        porCoordinador[coordinadorId] = [];
+                        idsCoordinadores.add(coordinadorId);
+                      }
+                      porCoordinador[coordinadorId]!.add(doc);
+                    }
+                  }
+
+                  return FutureBuilder<Map<String, String>>(
+                    future: obtenerNombresCoordinadores(idsCoordinadores),
+                    builder: (context, futureSnapshot) {
+                      if (!futureSnapshot.hasData) {
+                        return Center(child: CircularProgressIndicator());
+                      }
+
+                      Map<String, String> nombresCoordinadores =
+                          futureSnapshot.data ?? {};
+
+                      // Para la búsqueda, forzamos a que los grupos estén expandidos
+                      Map<String, bool> groupExpandedStates = {};
+                      Map<String, bool> expandedStates = {};
+
+                      // Si estamos buscando, expandimos todos los grupos automáticamente
+                      if (isSearching) {
+                        if (sinCoordinador.isNotEmpty) {
+                          groupExpandedStates['Sin_Coordinador'] = true;
+                        }
+
+                        porCoordinador.keys.forEach((key) {
+                          groupExpandedStates['Coordinador_${key}'] = true;
+                        });
+
+                        // Expandimos todos los registros encontrados
+                        for (var doc in filteredDocs) {
+                          expandedStates[doc.id] = true;
+                        }
+                      }
+
+                      return Padding(
+                        padding: EdgeInsets.all(16),
+                        child: ListView(
+                          children: [
+                            if (sinCoordinador.isNotEmpty)
+                              _buildGrupo(
+                                context,
+                                'Sin Coordinador',
+                                sinCoordinador,
+                                primaryTeal,
+                                secondaryOrange,
+                                accentGrey,
+                                backgroundGrey,
+                                expandedStates,
+                                groupExpandedStates,
+                              ),
+                            ...porCoordinador.entries
+                                .map((entry) => _buildGrupo(
+                                      context,
+                                      'Coordinador: ${nombresCoordinadores[entry.key] ?? "Desconocido"}',
+                                      entry.value,
+                                      primaryTeal,
+                                      secondaryOrange,
+                                      accentGrey,
+                                      backgroundGrey,
+                                      expandedStates,
+                                      groupExpandedStates,
+                                    )),
+                          ],
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      );
+    });
+  }
+
+// Nueva función para obtener nombres de coordinadores
+  Future<Map<String, String>> obtenerNombresCoordinadores(
+      List<String> coordinadorIds) async {
+    Map<String, String> nombresCoordinadores = {};
+
+    if (coordinadorIds.isEmpty) return nombresCoordinadores;
+
+    try {
+      var snapshot = await FirebaseFirestore.instance
+          .collection('coordinadores')
+          .where(FieldPath.documentId, whereIn: coordinadorIds)
+          .get();
+
+      for (var doc in snapshot.docs) {
+        var data = doc.data();
+        nombresCoordinadores[doc.id] = "${data['nombre']} ${data['apellido']}";
+      }
+    } catch (e) {
+      print("Error obteniendo nombres de coordinadores: $e");
+    }
+
+    return nombresCoordinadores;
+  }
+
+  Widget _buildGrupo(
+      BuildContext context,
+      String titulo,
+      List<DocumentSnapshot> registros,
+      Color primaryTeal,
+      Color secondaryOrange,
+      Color accentGrey,
+      Color backgroundGrey,
+      Map<String, bool> expandedStates,
+      Map<String, bool> groupExpandedStates) {
+    final String groupId = titulo.replaceAll(' ', '_');
+
+    // Inicializa el estado de expansión del grupo si no existe
+    groupExpandedStates[groupId] ??= false;
+
+    return StatefulBuilder(
+      builder: (BuildContext context, StateSetter setState) {
+        return Card(
+          margin: EdgeInsets.only(bottom: 16),
+          elevation: 3,
+          shadowColor: primaryTeal.withOpacity(0.1),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(
+              color: primaryTeal.withOpacity(0.1),
+              width: 1,
+            ),
+          ),
+          child: Column(
+            children: [
+              // Encabezado del grupo
+              GestureDetector(
+                onTap: () {
+                  setState(() {
+                    groupExpandedStates[groupId] =
+                        !groupExpandedStates[groupId]!;
+                  });
+                },
+                child: Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 50,
+                        height: 50,
+                        decoration: BoxDecoration(
+                          color: primaryTeal.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: primaryTeal.withOpacity(0.5),
+                            width: 1.5,
+                          ),
+                        ),
+                        child: Center(
+                          child: Icon(
+                            titulo.contains('Sin')
+                                ? Icons.person_off_outlined
+                                : Icons.supervisor_account,
+                            color: primaryTeal,
+                            size: 24,
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              titulo,
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: primaryTeal,
+                              ),
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              '${registros.length} ${registros.length == 1 ? 'joven' : 'jóvenes'}',
+                              style: TextStyle(
+                                color: accentGrey,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Icon(
+                        groupExpandedStates[groupId]!
+                            ? Icons.keyboard_arrow_up
+                            : Icons.keyboard_arrow_down,
+                        size: 24,
+                        color: primaryTeal,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              // Lista de registros si el grupo está expandido
+              if (groupExpandedStates[groupId]!)
+                ListView.builder(
+                  shrinkWrap: true,
+                  physics: NeverScrollableScrollPhysics(),
+                  itemCount: registros.length,
+                  itemBuilder: (context, index) {
+                    final registro = registros[index];
+                    final data = registro.data() as Map<String, dynamic>? ?? {};
+                    final registroId = registro.id;
+
+                    // Acceso seguro con valores por defecto
+                    final nombre = data['nombre'] as String? ?? '';
+                    final apellido = data['apellido'] as String? ?? '';
+                    final telefono =
+                        data['telefono'] as String? ?? 'No disponible';
+                    final ministerioAsignado =
+                        data['ministerioAsignado'] ?? 'Sin ministerio';
+
+                    String iniciales = '';
+                    if (nombre.isNotEmpty && nombre.length >= 1) {
+                      iniciales += nombre[0];
+                    }
+                    if (apellido.isNotEmpty && apellido.length >= 1) {
+                      iniciales += apellido[0];
+                    }
+                    if (iniciales.isEmpty) {
+                      iniciales = '?';
+                    }
+
+                    // Determinamos un color de fondo aleatorio pero consistente para las iniciales
+                    final List<Color> avatarColors = [
+                      primaryTeal,
+                      secondaryOrange,
+                      accentGrey,
+                    ];
+
+                    // Usamos la suma de los códigos de caracteres para generar un índice
+                    int colorIndex = 0;
+                    if (iniciales.isNotEmpty) {
+                      colorIndex = iniciales.codeUnits.reduce((a, b) => a + b) %
+                          avatarColors.length;
+                    }
+
+                    // Utilizamos un StatefulBuilder para manejar el estado de expansión
+                    return StatefulBuilder(
+                      builder: (BuildContext context, StateSetter setState) {
+                        // Inicializamos el estado de expansión si no existe
+                        expandedStates[registroId] ??= false;
+
+                        return Card(
+                          margin:
+                              EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          elevation: 2,
+                          shadowColor: primaryTeal.withOpacity(0.1),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            side: BorderSide(
+                              color: primaryTeal.withOpacity(0.1),
+                              width: 1,
+                            ),
+                          ),
+                          child: Column(
+                            children: [
+                              // Parte superior de la tarjeta con información básica
+                              GestureDetector(
                                 onTap: () {
                                   setState(() {
-                                    // Invertimos el estado de expansión con el botón
+                                    // Invertimos el estado de expansión al tocar
                                     expandedStates[registroId] =
                                         !expandedStates[registroId]!;
                                   });
                                 },
-                                child: Container(
-                                  padding: EdgeInsets.symmetric(
-                                      horizontal: 12, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: primaryTeal.withOpacity(0.1),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
+                                child: Padding(
+                                  padding: EdgeInsets.all(16),
                                   child: Row(
-                                    mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      Text(
-                                        expandedStates[registroId]!
-                                            ? 'Menos'
-                                            : 'Más',
-                                        style: TextStyle(
-                                          color: primaryTeal,
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.bold,
+                                      // Avatar con iniciales
+                                      Container(
+                                        width: 40,
+                                        height: 40,
+                                        decoration: BoxDecoration(
+                                          color: avatarColors[colorIndex]
+                                              .withOpacity(0.2),
+                                          borderRadius:
+                                              BorderRadius.circular(10),
+                                          border: Border.all(
+                                            color: avatarColors[colorIndex]
+                                                .withOpacity(0.5),
+                                            width: 1.5,
+                                          ),
+                                        ),
+                                        child: Center(
+                                          child: Text(
+                                            iniciales,
+                                            style: TextStyle(
+                                              fontSize: 18,
+                                              fontWeight: FontWeight.bold,
+                                              color: avatarColors[colorIndex],
+                                            ),
+                                          ),
                                         ),
                                       ),
-                                      SizedBox(width: 4),
-                                      Icon(
-                                        expandedStates[registroId]!
-                                            ? Icons.keyboard_arrow_up
-                                            : Icons.keyboard_arrow_down,
-                                        size: 16,
-                                        color: primaryTeal,
+                                      SizedBox(width: 16),
+                                      // Información del registro
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              '$nombre $apellido',
+                                              style: TextStyle(
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.bold,
+                                                color: primaryTeal,
+                                              ),
+                                            ),
+                                            SizedBox(height: 4),
+                                            Row(
+                                              children: [
+                                                Icon(
+                                                  Icons.phone_outlined,
+                                                  size: 14,
+                                                  color: accentGrey,
+                                                ),
+                                                SizedBox(width: 4),
+                                                Text(
+                                                  telefono,
+                                                  style: TextStyle(
+                                                    color: accentGrey,
+                                                    fontSize: 14,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            SizedBox(height: 4),
+                                            Row(
+                                              children: [
+                                                Icon(
+                                                  Icons.account_tree_outlined,
+                                                  size: 14,
+                                                  color: accentGrey,
+                                                ),
+                                                SizedBox(width: 4),
+                                                Text(
+                                                  'Ministerio: $ministerioAsignado',
+                                                  style: TextStyle(
+                                                    color: accentGrey,
+                                                    fontSize: 14,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
+                                        ),
                                       ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                          // Sección expandible
-                          if (expandedStates[registroId]!)
-                            Container(
-                              padding: EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: backgroundGrey.withOpacity(0.5),
-                                borderRadius: BorderRadius.only(
-                                  bottomLeft: Radius.circular(16),
-                                  bottomRight: Radius.circular(16),
-                                ),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Detalles Adicionales',
-                                    style: TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                      color: primaryTeal,
-                                    ),
-                                  ),
-                                  SizedBox(height: 16),
-                                  Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceEvenly,
-                                    children: [
-                                      Column(
+                                      // Botones de acción
+                                      Row(
                                         children: [
+                                          // Botón de ver detalles
                                           Material(
                                             color: Colors.transparent,
                                             child: InkWell(
                                               borderRadius:
                                                   BorderRadius.circular(12),
-                                              onTap: () {
-                                                // Lógica para editar registro
-                                                // _editarRegistro(context, registro);
-                                              },
+                                              onTap: () =>
+                                                  _mostrarDetallesRegistro(
+                                                context,
+                                                data,
+                                                primaryTeal,
+                                                secondaryOrange,
+                                                accentGrey,
+                                                backgroundGrey,
+                                              ),
                                               child: Container(
-                                                padding: EdgeInsets.all(12),
+                                                padding: EdgeInsets.all(10),
                                                 decoration: BoxDecoration(
                                                   color: primaryTeal
                                                       .withOpacity(0.1),
                                                   borderRadius:
                                                       BorderRadius.circular(12),
                                                 ),
-                                                child: Column(
-                                                  children: [
-                                                    Icon(
-                                                      Icons.edit_outlined,
-                                                      color: primaryTeal,
-                                                      size: 28,
-                                                    ),
-                                                    SizedBox(height: 4),
-                                                    Text(
-                                                      'Editar',
-                                                      style: TextStyle(
-                                                        color: primaryTeal,
-                                                        fontSize: 12,
-                                                      ),
-                                                    ),
-                                                  ],
+                                                child: Icon(
+                                                  Icons.visibility_outlined,
+                                                  color: primaryTeal,
+                                                  size: 22,
                                                 ),
                                               ),
                                             ),
                                           ),
-                                        ],
-                                      ),
-                                      Column(
-                                        children: [
-                                          Material(
-                                            color: Colors.transparent,
-                                            child: InkWell(
-                                              borderRadius:
-                                                  BorderRadius.circular(12),
-                                              onTap: () {
-                                                // Lógica para cambiar ministerio o tribu
-                                                // _cambiarMinisterioTribu(context, registro);
-                                              },
-                                              child: Container(
-                                                padding: EdgeInsets.all(12),
-                                                decoration: BoxDecoration(
-                                                  color: secondaryOrange
-                                                      .withOpacity(0.1),
-                                                  borderRadius:
-                                                      BorderRadius.circular(12),
-                                                ),
-                                                child: Column(
-                                                  children: [
-                                                    Icon(
-                                                      Icons.swap_horiz_outlined,
-                                                      color: secondaryOrange,
-                                                      size: 28,
-                                                    ),
-                                                    SizedBox(height: 4),
-                                                    Text(
-                                                      'Cambiar',
-                                                      style: TextStyle(
-                                                        color: secondaryOrange,
-                                                        fontSize: 12,
+                                          SizedBox(width: 8),
+                                          // Botón condicional basado en si tiene coordinador asignado
+                                          data.containsKey(
+                                                      'coordinadorAsignado') &&
+                                                  data['coordinadorAsignado'] !=
+                                                      null
+                                              ? Material(
+                                                  color: Colors.transparent,
+                                                  child: InkWell(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            12),
+                                                    onTap: () =>
+                                                        _quitarAsignacion(
+                                                            context,
+                                                            registroId,
+                                                            primaryTeal),
+                                                    child: Container(
+                                                      padding:
+                                                          EdgeInsets.all(10),
+                                                      decoration: BoxDecoration(
+                                                        color: Colors.red
+                                                            .withOpacity(0.1),
+                                                        borderRadius:
+                                                            BorderRadius
+                                                                .circular(12),
+                                                      ),
+                                                      child: Icon(
+                                                        Icons
+                                                            .person_remove_outlined,
+                                                        color: Colors.red,
+                                                        size: 22,
                                                       ),
                                                     ),
-                                                  ],
+                                                  ),
+                                                )
+                                              : !data.containsKey(
+                                                          'coordinadorAsignado') ||
+                                                      data['coordinadorAsignado'] ==
+                                                          null
+                                                  ? Material(
+                                                      color: Colors.transparent,
+                                                      child: InkWell(
+                                                        borderRadius:
+                                                            BorderRadius
+                                                                .circular(12),
+                                                        onTap: () =>
+                                                            _asignarACoordinador(
+                                                                context,
+                                                                registro),
+                                                        child: Container(
+                                                          padding:
+                                                              EdgeInsets.all(
+                                                                  10),
+                                                          decoration:
+                                                              BoxDecoration(
+                                                            color:
+                                                                secondaryOrange
+                                                                    .withOpacity(
+                                                                        0.1),
+                                                            borderRadius:
+                                                                BorderRadius
+                                                                    .circular(
+                                                                        12),
+                                                          ),
+                                                          child: Icon(
+                                                            Icons
+                                                                .person_add_alt_1_outlined,
+                                                            color:
+                                                                secondaryOrange,
+                                                            size: 22,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    )
+                                                  : SizedBox(),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              // Botón para expandir en la parte inferior de la tarjeta
+                              Align(
+                                alignment: Alignment.centerRight,
+                                child: Padding(
+                                  padding:
+                                      EdgeInsets.only(right: 16, bottom: 8),
+                                  child: InkWell(
+                                    onTap: () {
+                                      setState(() {
+                                        // Invertimos el estado de expansión con el botón
+                                        expandedStates[registroId] =
+                                            !expandedStates[registroId]!;
+                                      });
+                                    },
+                                    child: Container(
+                                      padding: EdgeInsets.symmetric(
+                                          horizontal: 12, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: primaryTeal.withOpacity(0.1),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(
+                                            expandedStates[registroId]!
+                                                ? 'Menos'
+                                                : 'Más',
+                                            style: TextStyle(
+                                              color: primaryTeal,
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                          SizedBox(width: 4),
+                                          Icon(
+                                            expandedStates[registroId]!
+                                                ? Icons.keyboard_arrow_up
+                                                : Icons.keyboard_arrow_down,
+                                            size: 16,
+                                            color: primaryTeal,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              // Sección expandible
+                              if (expandedStates[registroId]!)
+                                Container(
+                                  padding: EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color: backgroundGrey.withOpacity(0.5),
+                                    borderRadius: BorderRadius.only(
+                                      bottomLeft: Radius.circular(16),
+                                      bottomRight: Radius.circular(16),
+                                    ),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Detalles Adicionales',
+                                        style: TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
+                                          color: primaryTeal,
+                                        ),
+                                      ),
+                                      SizedBox(height: 16),
+                                      Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceEvenly,
+                                        children: [
+                                          Column(
+                                            children: [
+                                              Material(
+                                                color: Colors.transparent,
+                                                child: InkWell(
+                                                  borderRadius:
+                                                      BorderRadius.circular(12),
+                                                  onTap: () {
+                                                    // Lógica para editar registro
+                                                    // _editarRegistro(context, registro);
+                                                  },
+                                                  child: Container(
+                                                    padding: EdgeInsets.all(12),
+                                                    decoration: BoxDecoration(
+                                                      color: primaryTeal
+                                                          .withOpacity(0.1),
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                              12),
+                                                    ),
+                                                    child: Column(
+                                                      children: [
+                                                        Icon(
+                                                          Icons.edit_outlined,
+                                                          color: primaryTeal,
+                                                          size: 28,
+                                                        ),
+                                                        SizedBox(height: 4),
+                                                        Text(
+                                                          'Editar',
+                                                          style: TextStyle(
+                                                            color: primaryTeal,
+                                                            fontSize: 12,
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
                                                 ),
                                               ),
-                                            ),
+                                            ],
+                                          ),
+                                          Column(
+                                            children: [
+                                              Material(
+                                                color: Colors.transparent,
+                                                child: InkWell(
+                                                  borderRadius:
+                                                      BorderRadius.circular(12),
+                                                  onTap: () {
+                                                    // Lógica para cambiar ministerio o tribu
+                                                    // _cambiarMinisterioTribu(context, registro);
+                                                  },
+                                                  child: Container(
+                                                    padding: EdgeInsets.all(12),
+                                                    decoration: BoxDecoration(
+                                                      color: secondaryOrange
+                                                          .withOpacity(0.1),
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                              12),
+                                                    ),
+                                                    child: Column(
+                                                      children: [
+                                                        Icon(
+                                                          Icons
+                                                              .swap_horiz_outlined,
+                                                          color:
+                                                              secondaryOrange,
+                                                          size: 28,
+                                                        ),
+                                                        SizedBox(height: 4),
+                                                        Text(
+                                                          'Cambiar',
+                                                          style: TextStyle(
+                                                            color:
+                                                                secondaryOrange,
+                                                            fontSize: 12,
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
                                           ),
                                         ],
                                       ),
                                     ],
                                   ),
-                                ],
-                              ),
-                            ),
-                        ],
-                      ),
+                                ),
+                            ],
+                          ),
+                        );
+                      },
                     );
                   },
-                );
-              },
-            ),
-          );
-        },
-      ),
+                ),
+            ],
+          ),
+        );
+      },
     );
+  }
+
+  void _quitarAsignacion(
+      BuildContext context, String registroId, Color primaryTeal) async {
+    // Mostrar diálogo de confirmación
+    bool confirmar = await showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: Text(
+                "Confirmar",
+                style: TextStyle(
+                  color: primaryTeal,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              content: Text(
+                "¿Estás seguro de quitar la asignación del coordinador?",
+                style: TextStyle(fontSize: 16),
+              ),
+              actions: [
+                TextButton(
+                  child: Text(
+                    "Cancelar",
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                  onPressed: () {
+                    Navigator.of(context).pop(false);
+                  },
+                ),
+                TextButton(
+                  child: Text(
+                    "Confirmar",
+                    style: TextStyle(
+                        color: primaryTeal, fontWeight: FontWeight.bold),
+                  ),
+                  onPressed: () {
+                    Navigator.of(context).pop(true);
+                  },
+                ),
+              ],
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+            );
+          },
+        ) ??
+        false;
+
+    if (confirmar) {
+      try {
+        await FirebaseFirestore.instance
+            .collection('registros')
+            .doc(registroId)
+            .update({
+          'coordinadorAsignado': null,
+          'coordinadorNombre': null,
+          'timoteoAsignado': null,
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              "Se ha quitado la asignación correctamente",
+              style: TextStyle(color: Colors.white),
+            ),
+            backgroundColor: primaryTeal,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            margin: EdgeInsets.all(10),
+          ),
+        );
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              "Error al quitar la asignación: ${e.toString()}",
+              style: TextStyle(color: Colors.white),
+            ),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            margin: EdgeInsets.all(10),
+          ),
+        );
+      }
+    }
   }
 
   void _mostrarDetallesRegistro(
