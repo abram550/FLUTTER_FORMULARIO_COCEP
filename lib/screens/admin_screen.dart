@@ -3243,154 +3243,43 @@ class _AdminPanelState extends State<AdminPanel>
                   );
                 }
 
-                return Card(
-                  margin: const EdgeInsets.all(16),
-                  elevation: 8,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(20),
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [Colors.white, primaryTeal.withOpacity(0.05)],
-                      ),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.people_alt_rounded,
-                                size: 26,
-                                color: secondaryOrange,
-                              ),
-                              const SizedBox(width: 12),
-                              Text(
-                                'Perfiles de Redes Sociales',
-                                style: TextStyle(
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.bold,
-                                  color: primaryTeal,
-                                ),
-                              ),
-                              const Spacer(),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 12, vertical: 6),
-                                decoration: BoxDecoration(
-                                  color: primaryTeal,
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                child: Text(
-                                  '${filteredPerfiles.length} registros',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const Divider(height: 24),
-                        ListView.builder(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          padding: const EdgeInsets.all(16),
-                          itemCount: filteredPerfiles.length,
-                          itemBuilder: (context, index) {
-                            final perfil = filteredPerfiles[index];
-                            return Card(
-                              margin: const EdgeInsets.symmetric(vertical: 8),
-                              elevation: 2,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(15),
-                              ),
-                              child: ListTile(
-                                contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 16, vertical: 8),
-                                leading: CircleAvatar(
-                                  radius: 24,
-                                  backgroundColor:
-                                      secondaryOrange.withOpacity(0.2),
-                                  child: Text(
-                                    perfil.name[0].toUpperCase(),
-                                    style: TextStyle(
-                                      fontSize: 20,
-                                      color: secondaryOrange,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                                title: Text(
-                                  '${perfil.name} ${perfil.lastName}',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    color: primaryTeal,
-                                  ),
-                                ),
-                                subtitle: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const SizedBox(height: 4),
-                                    Row(
-                                      children: [
-                                        Icon(Icons.cake,
-                                            size: 16, color: Colors.grey[600]),
-                                        const SizedBox(width: 4),
-                                        Text('${perfil.age} años'),
-                                        const SizedBox(width: 12),
-                                        Icon(
-                                            perfil.gender.toLowerCase() ==
-                                                    'masculino'
-                                                ? Icons.male
-                                                : Icons.female,
-                                            size: 16,
-                                            color: Colors.grey[600]),
-                                        const SizedBox(width: 4),
-                                        Text(perfil.gender),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Row(
-                                      children: [
-                                        Icon(Icons.public,
-                                            size: 16, color: Colors.grey[600]),
-                                        const SizedBox(width: 4),
-                                        Text(perfil.socialNetwork),
-                                        const SizedBox(width: 12),
-                                        Icon(Icons.calendar_today,
-                                            size: 16, color: Colors.grey[600]),
-                                        const SizedBox(width: 4),
-                                        Text(DateFormat('dd/MM/yyyy')
-                                            .format(perfil.createdAt)),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                                trailing: IconButton(
-                                  icon: Icon(
-                                    Icons.visibility,
-                                    color: primaryTeal,
-                                  ),
-                                  tooltip: 'Ver detalles',
-                                  onPressed: () =>
-                                      _mostrarDetallesPerfil(context, perfil),
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
+                // Agrupar perfiles por año, mes, semana y día
+                Map<int, Map<int, Map<int, Map<String, List<SocialProfile>>>>>
+                    groupedPerfiles = {};
+
+                // Obtener los años únicos para inicializar
+                Set<int> years = {};
+
+                for (var perfil in filteredPerfiles) {
+                  final DateTime date = perfil.createdAt;
+                  final int year = date.year;
+                  final int month = date.month;
+                  final int weekNumber = _getWeekNumber(date);
+                  final String weekday = _getWeekdayName(date.weekday);
+
+                  years.add(year);
+
+                  // Inicializar estructuras anidadas si no existen
+                  groupedPerfiles[year] ??= {};
+                  groupedPerfiles[year]![month] ??= {};
+                  groupedPerfiles[year]![month]![weekNumber] ??= {};
+                  groupedPerfiles[year]![month]![weekNumber]![weekday] ??= [];
+
+                  // Agregar perfil al grupo correspondiente
+                  groupedPerfiles[year]![month]![weekNumber]![weekday]!
+                      .add(perfil);
+                }
+
+                // Convertir a lista ordenada por año
+                List<int> orderedYears = years.toList()
+                  ..sort((a, b) => b.compareTo(a)); // Orden descendente
+
+                return _buildGroupedPerfilesView(
+                  context,
+                  groupedPerfiles,
+                  orderedYears,
+                  primaryTeal,
+                  secondaryOrange,
                 );
               },
             ),
@@ -3398,6 +3287,364 @@ class _AdminPanelState extends State<AdminPanel>
         ),
       ),
     );
+  }
+
+  Widget _buildGroupedPerfilesView(
+    BuildContext context,
+    Map<int, Map<int, Map<int, Map<String, List<SocialProfile>>>>>
+        groupedPerfiles,
+    List<int> years,
+    Color primaryTeal,
+    Color secondaryOrange,
+  ) {
+    return Column(
+      children: years.map((year) {
+        return _buildYearGroup(context, year, groupedPerfiles[year]!,
+            primaryTeal, secondaryOrange);
+      }).toList(),
+    );
+  }
+
+  Widget _buildYearGroup(
+    BuildContext context,
+    int year,
+    Map<int, Map<int, Map<String, List<SocialProfile>>>> yearData,
+    Color primaryTeal,
+    Color secondaryOrange,
+  ) {
+    // Calcular el total de perfiles en este año
+    int totalProfilesInYear = 0;
+    yearData.forEach((month, monthData) {
+      monthData.forEach((week, weekData) {
+        weekData.forEach((day, profiles) {
+          totalProfilesInYear += profiles.length;
+        });
+      });
+    });
+
+    // Obtener los meses en orden cronológico
+    List<int> months = yearData.keys.toList()..sort();
+
+    return ExpansionCard(
+      title: 'Año $year',
+      subtitle: '$totalProfilesInYear perfiles',
+      icon: Icons.calendar_today_rounded,
+      iconColor: secondaryOrange,
+      textColor: primaryTeal,
+      expandedColor: primaryTeal.withOpacity(0.1),
+      children: months.map((month) {
+        return _buildMonthGroup(
+          context,
+          month,
+          year,
+          yearData[month]!,
+          primaryTeal,
+          secondaryOrange,
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildMonthGroup(
+    BuildContext context,
+    int month,
+    int year,
+    Map<int, Map<String, List<SocialProfile>>> monthData,
+    Color primaryTeal,
+    Color secondaryOrange,
+  ) {
+    // Calcular el total de perfiles en este mes
+    int totalProfilesInMonth = 0;
+    monthData.forEach((week, weekData) {
+      weekData.forEach((day, profiles) {
+        totalProfilesInMonth += profiles.length;
+      });
+    });
+
+    // Obtener las semanas en orden cronológico
+    List<int> weeks = monthData.keys.toList()..sort();
+
+    return Padding(
+      padding: const EdgeInsets.only(left: 16.0),
+      child: ExpansionCard(
+        title: _getMonthName(month),
+        subtitle: '$totalProfilesInMonth perfiles',
+        icon: Icons.event,
+        iconColor: secondaryOrange,
+        textColor: primaryTeal,
+        expandedColor: primaryTeal.withOpacity(0.05),
+        children: weeks.map((week) {
+          return _buildWeekGroup(
+            context,
+            week,
+            month,
+            year,
+            monthData[week]!,
+            primaryTeal,
+            secondaryOrange,
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildWeekGroup(
+    BuildContext context,
+    int week,
+    int month,
+    int year,
+    Map<String, List<SocialProfile>> weekData,
+    Color primaryTeal,
+    Color secondaryOrange,
+  ) {
+    // Calcular el total de perfiles en esta semana
+    int totalProfilesInWeek = 0;
+    weekData.forEach((day, profiles) {
+      totalProfilesInWeek += profiles.length;
+    });
+
+    // Ordenar los días según el orden de la semana (lunes a domingo)
+    List<String> weekdayOrder = [
+      'Lunes',
+      'Martes',
+      'Miércoles',
+      'Jueves',
+      'Viernes',
+      'Sábado',
+      'Domingo'
+    ];
+    List<String> days = weekData.keys.toList()
+      ..sort(
+          (a, b) => weekdayOrder.indexOf(a).compareTo(weekdayOrder.indexOf(b)));
+
+    DateTime startDate = _getFirstDayOfWeek(year, month, week);
+    DateTime endDate = startDate.add(const Duration(days: 6));
+
+    return Padding(
+      padding: const EdgeInsets.only(left: 16.0),
+      child: ExpansionCard(
+        title: 'Semana $week',
+        subtitle:
+            '$totalProfilesInWeek perfiles · ${DateFormat('dd/MM').format(startDate)} - ${DateFormat('dd/MM').format(endDate)}',
+        icon: Icons.view_week_rounded,
+        iconColor: secondaryOrange,
+        textColor: primaryTeal,
+        expandedColor: primaryTeal.withOpacity(0.02),
+        children: days.map((day) {
+          return _buildDayGroup(
+            context,
+            day,
+            weekData[day]!,
+            primaryTeal,
+            secondaryOrange,
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildDayGroup(
+    BuildContext context,
+    String day,
+    List<SocialProfile> profiles,
+    Color primaryTeal,
+    Color secondaryOrange,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 16.0),
+      child: ExpansionCard(
+        title: day,
+        subtitle: '${profiles.length} perfiles',
+        icon: _getDayIcon(day),
+        iconColor: secondaryOrange,
+        textColor: primaryTeal,
+        expandedColor: Colors.transparent,
+        children: [
+          ListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+            itemCount: profiles.length,
+            itemBuilder: (context, index) {
+              final perfil = profiles[index];
+              return Card(
+                margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 0),
+                elevation: 2,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: ListTile(
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  leading: CircleAvatar(
+                    radius: 22,
+                    backgroundColor: secondaryOrange.withOpacity(0.2),
+                    child: Text(
+                      perfil.name[0].toUpperCase(),
+                      style: TextStyle(
+                        fontSize: 18,
+                        color: secondaryOrange,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  title: Text(
+                    '${perfil.name} ${perfil.lastName}',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                      color: primaryTeal,
+                    ),
+                  ),
+                  subtitle: Row(
+                    children: [
+                      Icon(_getSocialNetworkIcon(perfil.socialNetwork),
+                          size: 14, color: Colors.grey[600]),
+                      const SizedBox(width: 4),
+                      Text(perfil.socialNetwork,
+                          style: TextStyle(fontSize: 13)),
+                      const SizedBox(width: 8),
+                      Icon(Icons.schedule, size: 14, color: Colors.grey[600]),
+                      const SizedBox(width: 4),
+                      Text(DateFormat('HH:mm').format(perfil.createdAt),
+                          style: TextStyle(fontSize: 13)),
+                    ],
+                  ),
+                  trailing: IconButton(
+                    icon: Icon(
+                      Icons.visibility,
+                      color: primaryTeal,
+                      size: 20,
+                    ),
+                    tooltip: 'Ver detalles',
+                    onPressed: () => _mostrarDetallesPerfil(context, perfil),
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+// Funciones auxiliares para manejar fechas y nombres
+  String _getMonthName(int month) {
+    switch (month) {
+      case 1:
+        return 'Enero';
+      case 2:
+        return 'Febrero';
+      case 3:
+        return 'Marzo';
+      case 4:
+        return 'Abril';
+      case 5:
+        return 'Mayo';
+      case 6:
+        return 'Junio';
+      case 7:
+        return 'Julio';
+      case 8:
+        return 'Agosto';
+      case 9:
+        return 'Septiembre';
+      case 10:
+        return 'Octubre';
+      case 11:
+        return 'Noviembre';
+      case 12:
+        return 'Diciembre';
+      default:
+        return 'Mes $month';
+    }
+  }
+
+  String _getWeekdayName(int weekday) {
+    switch (weekday) {
+      case 1: // DateTime.monday
+        return 'Lunes';
+      case 2:
+        return 'Martes';
+      case 3:
+        return 'Miércoles';
+      case 4:
+        return 'Jueves';
+      case 5:
+        return 'Viernes';
+      case 6:
+        return 'Sábado';
+      case 7: // DateTime.sunday
+        return 'Domingo';
+      default:
+        return 'Desconocido';
+    }
+  }
+
+  IconData _getDayIcon(String day) {
+    switch (day) {
+      case 'Lunes':
+        return Icons.start;
+      case 'Martes':
+        return Icons.looks_two;
+      case 'Miércoles':
+        return Icons.looks_3;
+      case 'Jueves':
+        return Icons.looks_4;
+      case 'Viernes':
+        return Icons.weekend;
+      case 'Sábado':
+        return Icons.sports_bar;
+      case 'Domingo':
+        return Icons.brightness_5;
+      default:
+        return Icons.calendar_today;
+    }
+  }
+
+// Obtener el número de semana (asumiendo que la semana comienza el lunes)
+  int _getWeekNumber(DateTime date) {
+    // Encontrar el primer día del mes
+    final DateTime firstDayOfMonth = DateTime(date.year, date.month, 1);
+
+    // Calcular días hasta el primer lunes
+    int daysUntilFirstMonday = (8 - firstDayOfMonth.weekday) % 7;
+
+    // Primer lunes del mes
+    final DateTime firstMonday =
+        firstDayOfMonth.add(Duration(days: daysUntilFirstMonday));
+
+    // Si la fecha es anterior al primer lunes, está en la semana 0
+    if (date.isBefore(firstMonday)) {
+      return 0;
+    }
+
+    // Calcular la diferencia en días entre la fecha y el primer lunes
+    final int dayDifference = date.difference(firstMonday).inDays;
+
+    // Calcular el número de semana (empezando por 1 para la primera semana completa)
+    return (dayDifference / 7).floor() + 1;
+  }
+
+// Obtener el primer día de una semana específica en un mes y año
+  DateTime _getFirstDayOfWeek(int year, int month, int weekNumber) {
+    // Primer día del mes
+    final DateTime firstDayOfMonth = DateTime(year, month, 1);
+
+    // Calcular días hasta el primer lunes
+    int daysUntilFirstMonday = (8 - firstDayOfMonth.weekday) % 7;
+
+    // Primer lunes del mes
+    final DateTime firstMonday =
+        firstDayOfMonth.add(Duration(days: daysUntilFirstMonday));
+
+    // Si es la semana 0 (parcial, antes del primer lunes)
+    if (weekNumber == 0) {
+      return firstDayOfMonth;
+    }
+
+    // Calcular el primer día de la semana solicitada
+    return firstMonday.add(Duration(days: (weekNumber - 1) * 7));
   }
 
   void _mostrarDetallesPerfil(BuildContext context, SocialProfile perfil) {
@@ -4638,4 +4885,125 @@ class ChartData {
   final Color color;
 
   ChartData(this.label, this.value, {this.color = Colors.blue});
+}
+
+// Componente de tarjeta expansible personalizada
+class ExpansionCard extends StatefulWidget {
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final Color iconColor;
+  final Color textColor;
+  final Color expandedColor;
+  final List<Widget> children;
+
+  const ExpansionCard({
+    Key? key,
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.iconColor,
+    required this.textColor,
+    required this.expandedColor,
+    required this.children,
+  }) : super(key: key);
+
+  @override
+  _ExpansionCardState createState() => _ExpansionCardState();
+}
+
+class _ExpansionCardState extends State<ExpansionCard> {
+  bool _isExpanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Card(
+          margin: const EdgeInsets.symmetric(vertical: 6),
+          elevation: 2,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: () {
+              setState(() {
+                _isExpanded = !_isExpanded;
+              });
+            },
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: widget.iconColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(
+                      widget.icon,
+                      color: widget.iconColor,
+                      size: 22,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          widget.title,
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: widget.textColor,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          widget.subtitle,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  AnimatedRotation(
+                    turns: _isExpanded ? 0.5 : 0,
+                    duration: const Duration(milliseconds: 300),
+                    child: Icon(
+                      Icons.keyboard_arrow_down,
+                      color: widget.textColor,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        AnimatedCrossFade(
+          firstChild: const SizedBox(height: 0),
+          secondChild: Container(
+            decoration: BoxDecoration(
+              color: widget.expandedColor,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            margin: const EdgeInsets.only(top: 2, bottom: 8, left: 4, right: 4),
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Column(
+              children: widget.children,
+            ),
+          ),
+          crossFadeState: _isExpanded
+              ? CrossFadeState.showSecond
+              : CrossFadeState.showFirst,
+          duration: const Duration(milliseconds: 300),
+        ),
+      ],
+    );
+  }
 }

@@ -2442,6 +2442,18 @@ class PersonasAsignadasTab extends StatelessWidget {
           },
         ]
       },
+      {
+        'titulo': 'Estado del Proceso',
+        'icono': Icons.track_changes_outlined,
+        'color': secondaryOrange,
+        'campos': [
+          {
+            'key': 'estadoProceso',
+            'label': 'Estado en la Iglesia',
+            'icon': Icons.verified_outlined
+          },
+        ]
+      },
     ];
 
     // Crear lista de widgets para el contenido del diálogo
@@ -3343,7 +3355,7 @@ class PersonasAsignadasTab extends StatelessWidget {
                     label: 'Editar',
                     color: accentGrey,
                     onPressed: () {
-                      _editarRegistro( context, registro);
+                      _editarRegistro(context, registro);
                     },
                   ),
                   SizedBox(width: 8),
@@ -3527,6 +3539,7 @@ class PersonasAsignadasTab extends StatelessWidget {
       'edad': {'icon': Icons.cake, 'type': 'int'},
       'peticiones': {'icon': Icons.volunteer_activism, 'type': 'text'},
       'sexo': {'icon': Icons.wc, 'type': 'dropdown'},
+      'estadoProceso': {'icon': Icons.track_changes_outlined, 'type': 'text'},
     };
 
     // Inicializar controladores de manera segura
@@ -3769,6 +3782,19 @@ class PersonasAsignadasTab extends StatelessWidget {
                             } else {
                               return SizedBox.shrink();
                             }
+                          }
+
+                          // Campo para Estado en la Iglesia (estadoProceso)
+                          else if (fieldName == 'estadoProceso') {
+                            return _buildAnimatedTextField(
+                              label: 'Estado en la Iglesia',
+                              icon: fieldIcon,
+                              controller: controller!,
+                              primaryColor: primaryTeal,
+                              onChanged: (value) {
+                                hayModificaciones = true;
+                              },
+                            );
                           }
 
                           // Otros campos de texto normales

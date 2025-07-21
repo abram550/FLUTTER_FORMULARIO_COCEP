@@ -47,20 +47,21 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyA0AmSY4J1AIi8_Iu5dagJzwgjAhEO3uvM',
-    appId: '1:313954033619:web:910e9f3f4be0cc1c2e1926',
-    messagingSenderId: '313954033619',
-    projectId: 'consolidacion-5b340',
-    authDomain: 'consolidacion-5b340.firebaseapp.com',
-    storageBucket: 'consolidacion-5b340.firebasestorage.app',
+    apiKey: 'AIzaSyA1_GOvHf1Uf_u8DvadQaDZ3kvPYNm1lNo',
+    appId: '1:291565929295:web:7029cf45a25fe251253b3a',
+    messagingSenderId: '291565929295',
+    projectId: 'cocep-consolidacion-b95de',
+    authDomain: 'cocep-consolidacion-b95de.firebaseapp.com',
+    storageBucket: 'cocep-consolidacion-b95de.firebasestorage.app',
+    measurementId: 'G-VZ5M2TMYE8',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyDIeptUqYQ9oxH6jlDt-BKoaR0VN2Mqtxw',
-    appId: '1:313954033619:android:abeddfa68b4960e92e1926',
-    messagingSenderId: '313954033619',
-    projectId: 'consolidacion-5b340',
-    storageBucket: 'consolidacion-5b340.firebasestorage.app',
+    apiKey: 'AIzaSyDZVQ6woQQicghTNGcdkG-Rr_74bPUq33w',
+    appId: '1:291565929295:android:7501acbdeac0fa5a253b3a',
+    messagingSenderId: '291565929295',
+    projectId: 'cocep-consolidacion-b95de',
+    storageBucket: 'cocep-consolidacion-b95de.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(

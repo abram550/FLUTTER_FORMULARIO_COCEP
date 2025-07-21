@@ -35,6 +35,8 @@ class ExcelService {
         'Ocupaciones',
         'Referencia',
         'Observaciones',
+        'Estado Fonovisita',
+        'Observaciones 2',
         'Consolidador'
       ]);
     }
@@ -60,7 +62,9 @@ class ExcelService {
         'Edad',
         'Género',
         'Teléfono',
+        'Dirección',        // Campo añadido
         'Ciudad',
+        'Petición de Oración', // Campo añadido
         'Red Social'
       ]);
     }
@@ -72,7 +76,7 @@ class ExcelService {
     }
 
     final String fileName =
-        '${prefix ?? 'registros'}_${DateTime.now().millisecondsSinceEpoch}.xlsx';
+        '${prefix ?? 'registros_exportacion'}_${DateTime.now().millisecondsSinceEpoch}.xlsx';
 
     return kIsWeb
         ? _exportarWeb(excel, fileName)
@@ -122,21 +126,29 @@ class ExcelService {
         perfil.age.toString(),
         perfil.gender,
         perfil.phone,
+        perfil.address ?? '',       // Campo añadido
         perfil.city,
+        perfil.prayerRequest ?? '', // Campo añadido
         perfil.socialNetwork,
       ];
 
       for (var j = 0; j < rowData.length; j++) {
         final cell = sheet.cell(
             CellIndex.indexByColumnRow(columnIndex: j, rowIndex: rowIndex));
-        cell.value = rowData[j];
+        // Formatear texto para mejorar visibilidad (simulando wrap text)
+        String valor = rowData[j].toString();
+        // Aplicar saltos de línea a campos largos como dirección y peticiones de oración
+        if (valor.length > 30 && (j == 6 || j == 8)) {
+          valor = _insertarSaltosDeLinea(valor, 30);
+        }
+        cell.value = valor;
         cell.cellStyle = isEvenRow ? dataStyleEven : dataStyleOdd;
       }
     }
 
     // Ajustar ancho de columnas automáticamente
     for (var i = 0; i < headers.length; i++) {
-      sheet.setColWidth(i, 15.0);
+      sheet.setColAutoFit(i);  // Usa autofit para ajustar al contenido
     }
   }
 
@@ -194,6 +206,8 @@ class ExcelService {
           registro.ocupaciones.join(', '),
           registro.referenciaInvitacion,
           registro.observaciones ?? '',
+          registro.estadoFonovisita ?? '',
+          registro.observaciones2 ?? '',
           registro.consolidador ?? ''
         ];
       } else {
@@ -212,19 +226,52 @@ class ExcelService {
       for (var j = 0; j < rowData.length; j++) {
         final cell = sheet.cell(
             CellIndex.indexByColumnRow(columnIndex: j, rowIndex: rowIndex));
-        cell.value = rowData[j];
+        // Para campos largos como direcciones, motivo o peticiones
+        // podemos insertar saltos de línea para mejorar la legibilidad
+        String valor = rowData[j].toString();
+        if (valor.length > 30 && (j == 6 || j == 5 || j == 6 || j == 13 || j == 15)) { 
+          // Añadimos los nuevos campos a la lista de campos que pueden requerir saltos de línea
+          // (observaciones y observaciones2)
+          valor = _insertarSaltosDeLinea(valor, 30);
+        }
+        cell.value = valor;
         cell.cellStyle = isEvenRow ? dataStyleEven : dataStyleOdd;
       }
     }
 
     // Ajustar ancho de columnas automáticamente
     for (var i = 0; i < headers.length; i++) {
-      sheet.setColWidth(i, 15.0);
+      sheet.setColAutoFit(i);  // Usa autofit para ajustar al contenido
     }
   }
 
+  // Función para insertar saltos de línea en textos largos
+  String _insertarSaltosDeLinea(String texto, int longitudMaxima) {
+    if (texto.length <= longitudMaxima) return texto;
+    
+    final List<String> palabras = texto.split(' ');
+    final StringBuilder = StringBuffer();
+    int longitudActual = 0;
+    
+    for (final palabra in palabras) {
+      if (longitudActual + palabra.length > longitudMaxima) {
+        StringBuilder.write('\n');
+        longitudActual = 0;
+      } else if (longitudActual > 0) {
+        StringBuilder.write(' ');
+        longitudActual += 1;
+      }
+      
+      StringBuilder.write(palabra);
+      longitudActual += palabra.length;
+    }
+    
+    return StringBuilder.toString();
+  }
+
   String _exportarWeb(Excel excel, String fileName) {
-    final bytes = excel.save();
+    // Usa encode() en lugar de save() para evitar archivos temporales
+    final bytes = excel.encode();
     if (bytes == null) throw Exception('Error al codificar el archivo Excel');
 
     final blob = html.Blob([bytes]);
@@ -254,7 +301,8 @@ class ExcelService {
     final String filePath = '${directory.path}/$fileName';
     final file = File(filePath);
 
-    final bytes = excel.save();
+    // Usa encode() en lugar de save() para evitar archivos temporales
+    final bytes = excel.encode();
     if (bytes == null) throw Exception('Error al codificar el archivo Excel');
 
     await file.writeAsBytes(bytes);

@@ -19,7 +19,7 @@ class AuthService {
       print('Intentando login con usuario: $username');
 
       // Verificar si las credenciales son las del usuario por defecto
-      if (username.toLowerCase() == 'admin' && password == '123') {
+      if (username.toLowerCase() == 'admincocep' && password == 'Cocep2025!') {
         return {'role': 'adminPastores'};
       }
 

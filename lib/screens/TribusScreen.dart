@@ -2,6 +2,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/services.dart';
+import 'package:formulario_app/utils/excel_exporter.dart';
 import 'package:formulario_app/utils/theme_constants.dart';
 import 'package:intl/intl.dart';
 import 'TimoteosScreen.dart';
@@ -534,9 +535,37 @@ class TribusScreen extends StatelessWidget {
               children: [
                 _buildTabContent(TimoteosTab(tribuId: tribuId)),
                 _buildTabContent(CoordinadoresTab(tribuId: tribuId)),
-                _buildTabContent(RegistrosAsignadosTab(
-                    tribuId: tribuId,
-                    tribuNombre: tribuNombre)), // Aquí modificamos
+                _buildTabContent(
+  Column(
+    children: [
+      Padding(
+        padding: const EdgeInsets.all(12.0),
+        child: ElevatedButton.icon(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: secondaryOrange,
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          icon: Icon(Icons.download, color: Colors.white),
+          label: Text(
+            'Descargar Excel',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          ),
+          onPressed: () => _descargarExcel(context, tribuId, tribuNombre),
+        ),
+      ),
+      Expanded(
+        child: RegistrosAsignadosTab(
+          tribuId: tribuId,
+          tribuNombre: tribuNombre,
+        ),
+      ),
+    ],
+  ),
+),
+ // Aquí modificamos
                 _buildTabContent(AsistenciasTab(tribuId: tribuId)),
               ],
             ),
@@ -554,6 +583,140 @@ class TribusScreen extends StatelessWidget {
     );
   }
 
+// Función mejorada para descargar Excel
+void _descargarExcel(BuildContext context, String tribuId, String tribuNombre) async {
+  // Colores de la aplicación
+  const Color primaryTeal = Color(0xFF1B998B);
+  const Color secondaryOrange = Color(0xFFFF7E00);
+  final Color lightTeal = primaryTeal.withOpacity(0.1);
+  
+  // Mostrar un diálogo de carga
+  showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (BuildContext dialogContext) {
+      return Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: lightTeal,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.file_download, color: primaryTeal, size: 28),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Exportando Registros',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: primaryTeal,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+              CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(primaryTeal),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                'Preparando el archivo Excel...',
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.grey[800],
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
+
+  try {
+    // Instanciar el exportador de Excel
+    final excelGenerator = ExcelExporter();
+    
+    // Llamar al método de exportación con context y datos necesarios
+    await excelGenerator.exportarRegistros(context, tribuId, tribuNombre);
+    
+    // Cerrar el diálogo de carga si el contexto sigue siendo válido
+    if (context.mounted) {
+      Navigator.of(context, rootNavigator: true).pop();
+      
+      // Mostrar mensaje de éxito actualizado
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.check_circle, color: Colors.white),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Archivo "Datos de las personas - $tribuNombre" generado correctamente',
+                  style: TextStyle(fontSize: 16),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.green,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          margin: const EdgeInsets.all(12),
+          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
+  } catch (e) {
+    // Cerrar el diálogo de carga si el contexto sigue siendo válido
+    if (context.mounted) {
+      Navigator.of(context, rootNavigator: true).pop();
+      
+      // Mostrar mensaje de error
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.error, color: Colors.white),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Error al generar el archivo: ${e.toString()}',
+                  style: TextStyle(fontSize: 16),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          margin: const EdgeInsets.all(12),
+          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
+          duration: const Duration(seconds: 5),
+        ),
+      );
+    }
+  }
+}
+  
+  
+  
   Widget _buildTab(IconData icon, String text) {
     return Tab(
       child: Padding(
@@ -4718,6 +4881,7 @@ class RegistrosAsignadosTab extends StatelessWidget {
       'edad': {'icon': Icons.cake, 'type': 'int'},
       'peticiones': {'icon': Icons.volunteer_activism, 'type': 'text'},
       'sexo': {'icon': Icons.wc, 'type': 'dropdown'},
+      'estadoProceso': {'icon': Icons.track_changes_outlined, 'type': 'text'},
     };
 
     // Inicializar controladores de manera segura
@@ -4962,6 +5126,19 @@ class RegistrosAsignadosTab extends StatelessWidget {
                             }
                           }
 
+                          // Campo para Estado en la Iglesia (estadoProceso)
+                          else if (fieldName == 'estadoProceso') {
+                            return _buildAnimatedTextField(
+                              label: 'Estado en la Iglesia',
+                              icon: fieldIcon,
+                              controller: controller!,
+                              primaryColor: primaryTeal,
+                              onChanged: (value) {
+                                hayModificaciones = true;
+                              },
+                            );
+                          }
+
                           // Otros campos de texto normales
                           else if (controller != null) {
                             return _buildAnimatedTextField(
@@ -5146,7 +5323,6 @@ class RegistrosAsignadosTab extends StatelessWidget {
       },
     );
   }
-
 // Widget para campos de texto con animación y mejor diseño
   Widget _buildAnimatedTextField({
     required String label,
@@ -5583,6 +5759,18 @@ class RegistrosAsignadosTab extends StatelessWidget {
             'key': 'observaciones2',
             'label': 'Observaciones 2',
             'icon': Icons.note_add_outlined
+          },
+        ]
+      },
+      {
+        'titulo': 'Estado del Proceso',
+        'icono': Icons.track_changes_outlined,
+        'color': secondaryOrange,
+        'campos': [
+          {
+            'key': 'estadoProceso',
+            'label': 'Estado en la Iglesia',
+            'icon': Icons.verified_outlined
           },
         ]
       },
