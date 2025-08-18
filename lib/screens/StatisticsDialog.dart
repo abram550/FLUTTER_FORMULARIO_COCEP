@@ -278,21 +278,26 @@ class _StatisticsDialogState extends State<StatisticsDialog>
 
   @override
   Widget build(BuildContext context) {
-    // Obtener el tamaño de la pantalla para hacer cálculos adaptativos
     final Size screenSize = MediaQuery.of(context).size;
+    final bool isSmallScreen = screenSize.width < 600;
+    final bool isVerySmallScreen = screenSize.width < 400;
 
     return Dialog(
       backgroundColor: backgroundColor,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: Container(
         constraints: BoxConstraints(
-          maxWidth: screenSize.width * 0.95,
-          maxHeight: screenSize.height * 0.9,
+          maxWidth:
+              isSmallScreen ? screenSize.width * 0.95 : screenSize.width * 0.9,
+          maxHeight: screenSize.height * 0.95,
         ),
         child: LayoutBuilder(
           builder: (context, constraints) {
-            // Calculamos una altura fija para el chart basada en el constraint
-            final double chartHeight = constraints.maxHeight * 0.4;
+            final double chartHeight = isVerySmallScreen
+                ? constraints.maxHeight * 0.35
+                : isSmallScreen
+                    ? constraints.maxHeight * 0.4
+                    : constraints.maxHeight * 0.45;
 
             return SingleChildScrollView(
               physics: const ClampingScrollPhysics(),
@@ -302,13 +307,14 @@ class _StatisticsDialogState extends State<StatisticsDialog>
                   minWidth: constraints.maxWidth,
                 ),
                 child: Container(
-                  padding: const EdgeInsets.all(20),
-                  width: screenSize.width * 0.9,
+                  padding: EdgeInsets.all(isVerySmallScreen ? 12 : 20),
+                  width: constraints.maxWidth,
                   child: isLoading
                       ? _buildLoadingState()
                       : hasError
                           ? _buildErrorState()
-                          : _buildContentWithFixedChart(chartHeight),
+                          : _buildContentWithFixedChart(
+                              chartHeight, isSmallScreen, isVerySmallScreen),
                 ),
               ),
             );
@@ -363,22 +369,22 @@ class _StatisticsDialogState extends State<StatisticsDialog>
     );
   }
 
-// Versión modificada de _buildContent que acepta una altura fija para el chart
-  Widget _buildContentWithFixedChart(double chartHeight) {
+  Widget _buildContentWithFixedChart(
+      double chartHeight, bool isSmallScreen, bool isVerySmallScreen) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _buildHeader(),
-        const SizedBox(height: 10),
-        _buildTabBar(),
-        const SizedBox(height: 15),
-        _buildFilters(),
+        _buildHeader(isVerySmallScreen), // Pasar el parámetro
+        SizedBox(height: isVerySmallScreen ? 8 : 10),
+        _buildTabBar(isVerySmallScreen),
+        SizedBox(height: isVerySmallScreen ? 10 : 15),
+        _buildFilters(isSmallScreen, isVerySmallScreen),
         const Divider(height: 30),
-        // En lugar de Expanded, usamos un Container con altura fija
         Container(
           height: chartHeight,
-          child: _buildChart(),
+          child:
+              _buildChart(isSmallScreen, isVerySmallScreen), // Pasar parámetros
         ),
         const SizedBox(height: 10),
         _buildCloseButton(),
@@ -386,24 +392,25 @@ class _StatisticsDialogState extends State<StatisticsDialog>
     );
   }
 
-  Widget _buildContent() {
+  Widget _buildContent(
+      [bool isSmallScreen = false, bool isVerySmallScreen = false]) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _buildHeader(),
+        _buildHeader(isVerySmallScreen),
         const SizedBox(height: 10),
-        _buildTabBar(),
+        _buildTabBar(isVerySmallScreen),
         const SizedBox(height: 15),
-        _buildFilters(),
+        _buildFilters(isSmallScreen, isVerySmallScreen),
         const Divider(height: 30),
-        Expanded(child: _buildChart()),
+        Expanded(child: _buildChart(isSmallScreen, isVerySmallScreen)),
         const SizedBox(height: 10),
         _buildCloseButton(),
       ],
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader([bool isVerySmallScreen = false]) {
     return Row(
       children: [
         Container(
@@ -441,7 +448,7 @@ class _StatisticsDialogState extends State<StatisticsDialog>
     );
   }
 
-  Widget _buildTabBar() {
+  Widget _buildTabBar(bool isVerySmallScreen) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -462,17 +469,19 @@ class _StatisticsDialogState extends State<StatisticsDialog>
         ),
         labelColor: Colors.white,
         unselectedLabelColor: textColor,
-        tabs: const [
+        labelStyle: TextStyle(fontSize: isVerySmallScreen ? 11 : 14),
+        unselectedLabelStyle: TextStyle(fontSize: isVerySmallScreen ? 11 : 14),
+        tabs: [
           Tab(
-            icon: Icon(Icons.bar_chart),
+            icon: Icon(Icons.bar_chart, size: isVerySmallScreen ? 18 : 24),
             text: "Barras",
           ),
           Tab(
-            icon: Icon(Icons.show_chart),
+            icon: Icon(Icons.show_chart, size: isVerySmallScreen ? 18 : 24),
             text: "Líneas",
           ),
           Tab(
-            icon: Icon(Icons.pie_chart),
+            icon: Icon(Icons.pie_chart, size: isVerySmallScreen ? 18 : 24),
             text: "Círculos",
           ),
         ],
@@ -480,9 +489,9 @@ class _StatisticsDialogState extends State<StatisticsDialog>
     );
   }
 
-  Widget _buildFilters() {
+  Widget _buildFilters(bool isSmallScreen, bool isVerySmallScreen) {
     return Container(
-      padding: const EdgeInsets.all(15),
+      padding: EdgeInsets.all(isVerySmallScreen ? 10 : 15),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(15),
@@ -500,150 +509,338 @@ class _StatisticsDialogState extends State<StatisticsDialog>
           Text(
             "Filtros",
             style: TextStyle(
-              fontSize: 16,
+              fontSize: isVerySmallScreen ? 14 : 16,
               fontWeight: FontWeight.bold,
               color: textColor,
             ),
           ),
-          const SizedBox(height: 15),
-          Wrap(
-            spacing: 20,
-            runSpacing: 15,
-            children: [
-              _buildFilterGroup(
-                title: "Período",
-                child: ToggleButtons(
-                  onPressed: (index) {
-                    setState(() {
-                      if (index == 0) {
-                        selectedFilter = "anual";
-                        selectedMonth = null;
-                        selectedWeek = null;
-                      } else if (index == 1) {
-                        selectedFilter = "mensual";
-                        selectedMonth = null;
-                        selectedWeek = null;
-                      } else {
-                        selectedFilter = "semanal";
-                        selectedMonth = months[DateTime.now().month - 1];
-                        selectedWeek = null; // No pre-select specific week
-                      }
-                    });
-                  },
-                  borderRadius: BorderRadius.circular(20),
-                  selectedBorderColor: primaryColor,
-                  selectedColor: Colors.white,
-                  fillColor: primaryColor,
-                  color: textColor,
-                  constraints:
-                      const BoxConstraints(minWidth: 80, minHeight: 36),
-                  isSelected: [
-                    selectedFilter == "anual",
-                    selectedFilter == "mensual",
-                    selectedFilter == "semanal",
-                  ],
-                  children: const [
-                    Text("Anual"),
-                    Text("Mensual"),
-                    Text("Semanal"),
-                  ],
-                ),
-              ),
-              _buildFilterGroup(
-                title: "Año",
-                child: DropdownButton<int?>(
-                  value: selectedYear,
-                  items: [
-                    const DropdownMenuItem<int?>(
-                      value: null,
-                      child: Text("Todos los años"),
-                    ),
-                    ...availableYears.map((int year) {
-                      return DropdownMenuItem<int?>(
-                        value: year,
-                        child: Text(year.toString()),
-                      );
-                    }).toList(),
-                  ],
-                  onChanged: (value) => setState(() => selectedYear = value),
-                  underline: Container(height: 1, color: primaryColor),
-                ),
-              ),
-              if (selectedFilter == "semanal")
-                _buildFilterGroup(
-                  title: "Mes",
-                  child: DropdownButton<String>(
-                    value: selectedMonth,
-                    items: months.map((String month) {
-                      return DropdownMenuItem<String>(
-                        value: month,
-                        child: Text(month),
-                      );
-                    }).toList(),
-                    onChanged: (value) => setState(() => selectedMonth = value),
-                    underline: Container(height: 1, color: primaryColor),
-                  ),
-                ),
-              _buildFilterGroup(
-                title: "Ministerio",
-                child: DropdownButton<String>(
-                  value: selectedMinistry,
-                  items: ministerioTribus.keys.map((String ministry) {
-                    return DropdownMenuItem<String>(
-                      value: ministry,
-                      child: Text(ministry),
-                    );
-                  }).toList(),
-                  onChanged: (value) {
-                    setState(() {
-                      selectedMinistry = value!;
-                      selectedTribe = null; // Reset selected tribe
-                    });
-                  },
-                  underline: Container(height: 1, color: primaryColor),
-                ),
-              ),
-              if (ministerioTribus.containsKey(selectedMinistry) &&
-                  ministerioTribus[selectedMinistry]!.isNotEmpty)
-                _buildFilterGroup(
-                  title: "Tribu",
-                  child: DropdownButton<String>(
-                    value: selectedTribe,
-                    hint: const Text("Seleccione tribu"),
-                    items: [
-                      const DropdownMenuItem<String>(
-                        value: null,
-                        child: Text("Todas las tribus"),
+          SizedBox(height: isVerySmallScreen ? 10 : 15),
+          isSmallScreen
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _buildFilterGroup(
+                      title: "Período",
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: ToggleButtons(
+                          onPressed: (index) {
+                            setState(() {
+                              if (index == 0) {
+                                selectedFilter = "anual";
+                                selectedMonth = null;
+                                selectedWeek = null;
+                              } else if (index == 1) {
+                                selectedFilter = "mensual";
+                                selectedMonth = null;
+                                selectedWeek = null;
+                              } else {
+                                selectedFilter = "semanal";
+                                selectedMonth =
+                                    months[DateTime.now().month - 1];
+                                selectedWeek = null;
+                              }
+                            });
+                          },
+                          borderRadius: BorderRadius.circular(20),
+                          selectedBorderColor: primaryColor,
+                          selectedColor: Colors.white,
+                          fillColor: primaryColor,
+                          color: textColor,
+                          constraints: BoxConstraints(
+                              minWidth: isVerySmallScreen ? 60 : 80,
+                              minHeight: isVerySmallScreen ? 32 : 36),
+                          isSelected: [
+                            selectedFilter == "anual",
+                            selectedFilter == "mensual",
+                            selectedFilter == "semanal",
+                          ],
+                          children: [
+                            Text("Anual",
+                                style: TextStyle(
+                                    fontSize: isVerySmallScreen ? 11 : 14)),
+                            Text("Mensual",
+                                style: TextStyle(
+                                    fontSize: isVerySmallScreen ? 11 : 14)),
+                            Text("Semanal",
+                                style: TextStyle(
+                                    fontSize: isVerySmallScreen ? 11 : 14)),
+                          ],
+                        ),
                       ),
-                      ...ministerioTribus[selectedMinistry]!
-                          .map((String tribe) {
-                        // Extraer solo el nombre de la tribu sin el paréntesis
-                        String tribeName = tribe.split(" (")[0];
-                        return DropdownMenuItem<String>(
-                          value: tribe,
-                          child: Text(tribeName),
-                        );
-                      }).toList(),
+                      isSmallScreen: isSmallScreen,
+                      isVerySmallScreen: isVerySmallScreen,
+                    ),
+                    SizedBox(height: isVerySmallScreen ? 12 : 15),
+                    _buildFilterGroup(
+                      title: "Año",
+                      child: DropdownButton<int?>(
+                        value: selectedYear,
+                        isExpanded: true,
+                        style: TextStyle(
+                            fontSize: isVerySmallScreen ? 12 : 14,
+                            color: textColor),
+                        items: [
+                          const DropdownMenuItem<int?>(
+                            value: null,
+                            child: Text("Todos los años"),
+                          ),
+                          ...availableYears.map((int year) {
+                            return DropdownMenuItem<int?>(
+                              value: year,
+                              child: Text(year.toString()),
+                            );
+                          }).toList(),
+                        ],
+                        onChanged: (value) =>
+                            setState(() => selectedYear = value),
+                        underline: Container(height: 1, color: primaryColor),
+                      ),
+                      isSmallScreen: isSmallScreen,
+                      isVerySmallScreen: isVerySmallScreen,
+                    ),
+                    if (selectedFilter == "semanal") ...[
+                      SizedBox(height: isVerySmallScreen ? 12 : 15),
+                      _buildFilterGroup(
+                        title: "Mes",
+                        child: DropdownButton<String>(
+                          value: selectedMonth,
+                          isExpanded: true,
+                          style: TextStyle(
+                              fontSize: isVerySmallScreen ? 12 : 14,
+                              color: textColor),
+                          items: months.map((String month) {
+                            return DropdownMenuItem<String>(
+                              value: month,
+                              child: Text(month),
+                            );
+                          }).toList(),
+                          onChanged: (value) =>
+                              setState(() => selectedMonth = value),
+                          underline: Container(height: 1, color: primaryColor),
+                        ),
+                        isSmallScreen: isSmallScreen,
+                        isVerySmallScreen: isVerySmallScreen,
+                      ),
                     ],
-                    onChanged: (value) => setState(() => selectedTribe = value),
-                    underline: Container(height: 1, color: primaryColor),
-                  ),
+                    SizedBox(height: isVerySmallScreen ? 12 : 15),
+                    _buildFilterGroup(
+                      title: "Ministerio",
+                      child: DropdownButton<String>(
+                        value: selectedMinistry,
+                        isExpanded: true,
+                        style: TextStyle(
+                            fontSize: isVerySmallScreen ? 12 : 14,
+                            color: textColor),
+                        items: ministerioTribus.keys.map((String ministry) {
+                          return DropdownMenuItem<String>(
+                            value: ministry,
+                            child: Text(ministry),
+                          );
+                        }).toList(),
+                        onChanged: (value) {
+                          setState(() {
+                            selectedMinistry = value!;
+                            selectedTribe = null;
+                          });
+                        },
+                        underline: Container(height: 1, color: primaryColor),
+                      ),
+                      isSmallScreen: isSmallScreen,
+                      isVerySmallScreen: isVerySmallScreen,
+                    ),
+                    if (ministerioTribus.containsKey(selectedMinistry) &&
+                        ministerioTribus[selectedMinistry]!.isNotEmpty) ...[
+                      SizedBox(height: isVerySmallScreen ? 12 : 15),
+                      _buildFilterGroup(
+                        title: "Tribu",
+                        child: DropdownButton<String>(
+                          value: selectedTribe,
+                          hint: Text("Seleccione tribu",
+                              style: TextStyle(
+                                  fontSize: isVerySmallScreen ? 12 : 14)),
+                          isExpanded: true,
+                          style: TextStyle(
+                              fontSize: isVerySmallScreen ? 12 : 14,
+                              color: textColor),
+                          items: [
+                            const DropdownMenuItem<String>(
+                              value: null,
+                              child: Text("Todas las tribus"),
+                            ),
+                            ...ministerioTribus[selectedMinistry]!
+                                .map((String tribe) {
+                              String tribeName = tribe.split(" (")[0];
+                              return DropdownMenuItem<String>(
+                                value: tribe,
+                                child: Text(tribeName),
+                              );
+                            }).toList(),
+                          ],
+                          onChanged: (value) =>
+                              setState(() => selectedTribe = value),
+                          underline: Container(height: 1, color: primaryColor),
+                        ),
+                        isSmallScreen: isSmallScreen,
+                        isVerySmallScreen: isVerySmallScreen,
+                      ),
+                    ],
+                  ],
+                )
+              : Wrap(
+                  spacing: 20,
+                  runSpacing: 15,
+                  children: [
+                    _buildFilterGroup(
+                      title: "Período",
+                      child: ToggleButtons(
+                        onPressed: (index) {
+                          setState(() {
+                            if (index == 0) {
+                              selectedFilter = "anual";
+                              selectedMonth = null;
+                              selectedWeek = null;
+                            } else if (index == 1) {
+                              selectedFilter = "mensual";
+                              selectedMonth = null;
+                              selectedWeek = null;
+                            } else {
+                              selectedFilter = "semanal";
+                              selectedMonth = months[DateTime.now().month - 1];
+                              selectedWeek = null;
+                            }
+                          });
+                        },
+                        borderRadius: BorderRadius.circular(20),
+                        selectedBorderColor: primaryColor,
+                        selectedColor: Colors.white,
+                        fillColor: primaryColor,
+                        color: textColor,
+                        constraints:
+                            const BoxConstraints(minWidth: 80, minHeight: 36),
+                        isSelected: [
+                          selectedFilter == "anual",
+                          selectedFilter == "mensual",
+                          selectedFilter == "semanal",
+                        ],
+                        children: const [
+                          Text("Anual"),
+                          Text("Mensual"),
+                          Text("Semanal"),
+                        ],
+                      ),
+                      isSmallScreen: isSmallScreen,
+                      isVerySmallScreen: isVerySmallScreen,
+                    ),
+                    _buildFilterGroup(
+                      title: "Año",
+                      child: DropdownButton<int?>(
+                        value: selectedYear,
+                        items: [
+                          const DropdownMenuItem<int?>(
+                            value: null,
+                            child: Text("Todos los años"),
+                          ),
+                          ...availableYears.map((int year) {
+                            return DropdownMenuItem<int?>(
+                              value: year,
+                              child: Text(year.toString()),
+                            );
+                          }).toList(),
+                        ],
+                        onChanged: (value) =>
+                            setState(() => selectedYear = value),
+                        underline: Container(height: 1, color: primaryColor),
+                      ),
+                      isSmallScreen: isSmallScreen,
+                      isVerySmallScreen: isVerySmallScreen,
+                    ),
+                    if (selectedFilter == "semanal")
+                      _buildFilterGroup(
+                        title: "Mes",
+                        child: DropdownButton<String>(
+                          value: selectedMonth,
+                          items: months.map((String month) {
+                            return DropdownMenuItem<String>(
+                              value: month,
+                              child: Text(month),
+                            );
+                          }).toList(),
+                          onChanged: (value) =>
+                              setState(() => selectedMonth = value),
+                          underline: Container(height: 1, color: primaryColor),
+                        ),
+                        isSmallScreen: isSmallScreen,
+                        isVerySmallScreen: isVerySmallScreen,
+                      ),
+                    _buildFilterGroup(
+                      title: "Ministerio",
+                      child: DropdownButton<String>(
+                        value: selectedMinistry,
+                        items: ministerioTribus.keys.map((String ministry) {
+                          return DropdownMenuItem<String>(
+                            value: ministry,
+                            child: Text(ministry),
+                          );
+                        }).toList(),
+                        onChanged: (value) {
+                          setState(() {
+                            selectedMinistry = value!;
+                            selectedTribe = null;
+                          });
+                        },
+                        underline: Container(height: 1, color: primaryColor),
+                      ),
+                      isSmallScreen: isSmallScreen,
+                      isVerySmallScreen: isVerySmallScreen,
+                    ),
+                    if (ministerioTribus.containsKey(selectedMinistry) &&
+                        ministerioTribus[selectedMinistry]!.isNotEmpty)
+                      _buildFilterGroup(
+                        title: "Tribu",
+                        child: DropdownButton<String>(
+                          value: selectedTribe,
+                          hint: const Text("Seleccione tribu"),
+                          items: [
+                            const DropdownMenuItem<String>(
+                              value: null,
+                              child: Text("Todas las tribus"),
+                            ),
+                            ...ministerioTribus[selectedMinistry]!
+                                .map((String tribe) {
+                              String tribeName = tribe.split(" (")[0];
+                              return DropdownMenuItem<String>(
+                                value: tribe,
+                                child: Text(tribeName),
+                              );
+                            }).toList(),
+                          ],
+                          onChanged: (value) =>
+                              setState(() => selectedTribe = value),
+                          underline: Container(height: 1, color: primaryColor),
+                        ),
+                        isSmallScreen: isSmallScreen,
+                        isVerySmallScreen: isVerySmallScreen,
+                      ),
+                  ],
                 ),
-            ],
-          ),
         ],
       ),
     );
   }
 
-  Widget _buildFilterGroup({required String title, required Widget child}) {
+  Widget _buildFilterGroup(
+      {required String title,
+      required Widget child,
+      bool isSmallScreen = false,
+      bool isVerySmallScreen = false}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           title,
           style: TextStyle(
-            fontSize: 12,
+            fontSize: isVerySmallScreen ? 11 : 12,
             color: textColor.withOpacity(0.7),
           ),
         ),
@@ -653,7 +850,8 @@ class _StatisticsDialogState extends State<StatisticsDialog>
     );
   }
 
-  Widget _buildChart() {
+  Widget _buildChart(
+      [bool isSmallScreen = false, bool isVerySmallScreen = false]) {
     return FutureBuilder<Map<String, int>>(
       future: fetchStatistics(),
       builder: (context, snapshot) {
@@ -721,13 +919,16 @@ class _StatisticsDialogState extends State<StatisticsDialog>
               ),
               Expanded(
                 child: selectedGraph == "barras"
-                    ? _buildBarChart(snapshot.data!)
+                    ? _buildBarChart(
+                        snapshot.data!, isSmallScreen, isVerySmallScreen)
                     : selectedGraph == "lineal"
-                        ? _buildLineChart(snapshot.data!)
-                        : _buildPieChart(snapshot.data!),
+                        ? _buildLineChart(
+                            snapshot.data!, isSmallScreen, isVerySmallScreen)
+                        : _buildPieChart(
+                            snapshot.data!, isSmallScreen, isVerySmallScreen),
               ),
               const SizedBox(height: 10),
-              _buildChartLegend(snapshot.data!),
+              _buildChartLegend(snapshot.data!, isVerySmallScreen),
             ],
           ),
         );
@@ -753,9 +954,10 @@ class _StatisticsDialogState extends State<StatisticsDialog>
     return "$period - $ministry - $tribe";
   }
 
-  Widget _buildBarChart(Map<String, int> data) {
+  Widget _buildBarChart(
+      Map<String, int> data, bool isSmallScreen, bool isVerySmallScreen) {
     return Padding(
-      padding: const EdgeInsets.all(8.0),
+      padding: EdgeInsets.all(isVerySmallScreen ? 4.0 : 8.0),
       child: BarChart(
         BarChartData(
           alignment: BarChartAlignment.spaceAround,
@@ -765,19 +967,26 @@ class _StatisticsDialogState extends State<StatisticsDialog>
           barTouchData: BarTouchData(
             enabled: true,
             touchTooltipData: BarTouchTooltipData(
-              tooltipBgColor: Colors.white.withOpacity(0.8),
-              tooltipPadding: const EdgeInsets.all(8),
-              tooltipMargin: 8,
+              tooltipBgColor: Colors.white.withOpacity(0.9),
+              tooltipPadding: EdgeInsets.all(isVerySmallScreen ? 6 : 8),
+              tooltipMargin: isVerySmallScreen ? 6 : 8,
               getTooltipItem: (group, groupIndex, rod, rodIndex) {
                 String xValue = data.keys.elementAt(group.x.toInt());
                 return BarTooltipItem(
                   '$xValue\n',
-                  TextStyle(color: textColor, fontWeight: FontWeight.bold),
+                  TextStyle(
+                    color: textColor,
+                    fontWeight: FontWeight.bold,
+                    fontSize: isVerySmallScreen ? 11 : 13,
+                  ),
                   children: [
                     TextSpan(
                       text: '${rod.toY.toInt()} registros',
                       style: TextStyle(
-                          color: primaryColor, fontWeight: FontWeight.w500),
+                        color: primaryColor,
+                        fontWeight: FontWeight.w500,
+                        fontSize: isVerySmallScreen ? 10 : 12,
+                      ),
                     ),
                   ],
                 );
@@ -792,25 +1001,27 @@ class _StatisticsDialogState extends State<StatisticsDialog>
                 getTitlesWidget: (value, meta) {
                   if (value >= 0 && value < data.length) {
                     String text = data.keys.elementAt(value.toInt());
-                    // Acortar el texto si es demasiado largo
-                    if (text.length > 5 && data.length > 6) {
+                    if (isVerySmallScreen && text.length > 3) {
+                      text = text.substring(0, 2) + "..";
+                    } else if (text.length > 5 && data.length > 6) {
                       text = text.substring(0, 3) + "..";
                     }
                     return Padding(
-                      padding: const EdgeInsets.only(top: 8.0),
+                      padding:
+                          EdgeInsets.only(top: isVerySmallScreen ? 4.0 : 8.0),
                       child: Text(
                         text,
                         style: TextStyle(
                           color: textColor,
                           fontWeight: FontWeight.bold,
-                          fontSize: 10,
+                          fontSize: isVerySmallScreen ? 8 : 10,
                         ),
                       ),
                     );
                   }
                   return const SizedBox();
                 },
-                reservedSize: 30,
+                reservedSize: isVerySmallScreen ? 25 : 30,
               ),
             ),
             leftTitles: AxisTitles(
@@ -822,17 +1033,18 @@ class _StatisticsDialogState extends State<StatisticsDialog>
                         .ceilToDouble(),
                 getTitlesWidget: (value, meta) {
                   return Padding(
-                    padding: const EdgeInsets.only(right: 8.0),
+                    padding:
+                        EdgeInsets.only(right: isVerySmallScreen ? 4.0 : 8.0),
                     child: Text(
                       value.toInt().toString(),
                       style: TextStyle(
                         color: textColor,
-                        fontSize: 10,
+                        fontSize: isVerySmallScreen ? 8 : 10,
                       ),
                     ),
                   );
                 },
-                reservedSize: 30,
+                reservedSize: isVerySmallScreen ? 25 : 30,
               ),
             ),
             topTitles:
@@ -850,9 +1062,7 @@ class _StatisticsDialogState extends State<StatisticsDialog>
               );
             },
           ),
-          borderData: FlBorderData(
-            show: false,
-          ),
+          borderData: FlBorderData(show: false),
           barGroups: data.entries.map((entry) {
             final index = data.keys.toList().indexOf(entry.key);
             return BarChartGroupData(
@@ -861,7 +1071,7 @@ class _StatisticsDialogState extends State<StatisticsDialog>
                 BarChartRodData(
                   toY: entry.value.toDouble(),
                   color: chartColors[index % chartColors.length],
-                  width: 15,
+                  width: isVerySmallScreen ? 12 : 15,
                   borderRadius: const BorderRadius.only(
                     topLeft: Radius.circular(6),
                     topRight: Radius.circular(6),
@@ -884,7 +1094,8 @@ class _StatisticsDialogState extends State<StatisticsDialog>
     );
   }
 
-  Widget _buildLineChart(Map<String, int> data) {
+  Widget _buildLineChart(
+      Map<String, int> data, bool isSmallScreen, bool isVerySmallScreen) {
     final spots = data.entries.map((entry) {
       final index = data.keys.toList().indexOf(entry.key);
       return FlSpot(index.toDouble(), entry.value.toDouble());
@@ -907,18 +1118,23 @@ class _StatisticsDialogState extends State<StatisticsDialog>
           ),
         ],
       ),
-      margin: const EdgeInsets.all(12.0),
-      padding: const EdgeInsets.fromLTRB(8, 24, 8, 12),
+      margin: EdgeInsets.all(isVerySmallScreen ? 6.0 : 12.0),
+      padding: EdgeInsets.fromLTRB(
+          isVerySmallScreen ? 4 : 8,
+          isVerySmallScreen ? 16 : 24,
+          isVerySmallScreen ? 4 : 8,
+          isVerySmallScreen ? 6 : 12),
       child: LineChart(
         LineChartData(
           lineTouchData: LineTouchData(
             enabled: true,
             touchTooltipData: LineTouchTooltipData(
               tooltipBgColor: Colors.white,
-              tooltipRoundedRadius: 12,
-              tooltipMargin: 8,
-              tooltipPadding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              tooltipRoundedRadius: isVerySmallScreen ? 8 : 12,
+              tooltipMargin: isVerySmallScreen ? 6 : 8,
+              tooltipPadding: EdgeInsets.symmetric(
+                  horizontal: isVerySmallScreen ? 10 : 16,
+                  vertical: isVerySmallScreen ? 6 : 10),
               getTooltipItems: (List<LineBarSpot> touchedSpots) {
                 return touchedSpots.map((LineBarSpot touchedSpot) {
                   final spotIndex = touchedSpot.x.toInt();
@@ -930,7 +1146,7 @@ class _StatisticsDialogState extends State<StatisticsDialog>
                       TextStyle(
                         color: Colors.blueGrey.shade800,
                         fontWeight: FontWeight.bold,
-                        fontSize: 14,
+                        fontSize: isVerySmallScreen ? 11 : 14,
                       ),
                       children: [
                         TextSpan(
@@ -938,16 +1154,15 @@ class _StatisticsDialogState extends State<StatisticsDialog>
                           style: TextStyle(
                             color: accentColor,
                             fontWeight: FontWeight.w600,
-                            fontSize: 16,
+                            fontSize: isVerySmallScreen ? 13 : 16,
                           ),
                         ),
                         TextSpan(
-                          text:
-                              'registros 📈', // Se reemplaza el ícono con emoji
+                          text: 'registros 📈',
                           style: TextStyle(
                             color: Colors.blueGrey.shade600,
                             fontWeight: FontWeight.w400,
-                            fontSize: 14,
+                            fontSize: isVerySmallScreen ? 11 : 14,
                           ),
                         ),
                       ],
@@ -957,7 +1172,7 @@ class _StatisticsDialogState extends State<StatisticsDialog>
                 }).toList();
               },
             ),
-            touchSpotThreshold: 20,
+            touchSpotThreshold: isVerySmallScreen ? 15 : 20,
           ),
           titlesData: FlTitlesData(
             show: true,
@@ -967,12 +1182,14 @@ class _StatisticsDialogState extends State<StatisticsDialog>
                 getTitlesWidget: (value, meta) {
                   if (value >= 0 && value < data.length) {
                     String text = data.keys.elementAt(value.toInt());
-                    // Acortar texto si es muy largo
-                    if (text.length > 5) {
+                    if (isVerySmallScreen && text.length > 3) {
+                      text = text.substring(0, 2);
+                    } else if (text.length > 5) {
                       text = text.substring(0, 3);
                     }
                     return Container(
-                      padding: const EdgeInsets.only(top: 10.0),
+                      padding:
+                          EdgeInsets.only(top: isVerySmallScreen ? 6.0 : 10.0),
                       decoration: BoxDecoration(
                         border: value.toInt() % 2 == 0
                             ? Border(
@@ -988,16 +1205,16 @@ class _StatisticsDialogState extends State<StatisticsDialog>
                         children: [
                           Icon(
                             Icons.calendar_today,
-                            size: 12,
+                            size: isVerySmallScreen ? 8 : 12,
                             color: Colors.blueGrey.shade400,
                           ),
-                          const SizedBox(height: 4),
+                          SizedBox(height: isVerySmallScreen ? 2 : 4),
                           Text(
                             text,
                             style: TextStyle(
                               color: Colors.blueGrey.shade700,
                               fontWeight: FontWeight.bold,
-                              fontSize: 12,
+                              fontSize: isVerySmallScreen ? 8 : 12,
                             ),
                           ),
                         ],
@@ -1006,7 +1223,7 @@ class _StatisticsDialogState extends State<StatisticsDialog>
                   }
                   return const SizedBox();
                 },
-                reservedSize: 50,
+                reservedSize: isVerySmallScreen ? 35 : 50,
                 interval: 1,
               ),
             ),
@@ -1019,21 +1236,22 @@ class _StatisticsDialogState extends State<StatisticsDialog>
                         .ceilToDouble(),
                 getTitlesWidget: (value, meta) {
                   return Container(
-                    padding: const EdgeInsets.only(right: 12.0),
+                    padding:
+                        EdgeInsets.only(right: isVerySmallScreen ? 6.0 : 12.0),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(
                           Icons.bar_chart,
-                          size: 10,
+                          size: isVerySmallScreen ? 6 : 10,
                           color: Colors.blueGrey.shade400,
                         ),
-                        const SizedBox(width: 4),
+                        SizedBox(width: isVerySmallScreen ? 2 : 4),
                         Text(
                           value.toInt().toString(),
                           style: TextStyle(
                             color: Colors.blueGrey.shade600,
-                            fontSize: 12,
+                            fontSize: isVerySmallScreen ? 8 : 12,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -1041,7 +1259,7 @@ class _StatisticsDialogState extends State<StatisticsDialog>
                     ),
                   );
                 },
-                reservedSize: 50,
+                reservedSize: isVerySmallScreen ? 35 : 50,
               ),
             ),
             topTitles:
@@ -1095,15 +1313,15 @@ class _StatisticsDialogState extends State<StatisticsDialog>
                 begin: Alignment.bottomCenter,
                 end: Alignment.topCenter,
               ),
-              barWidth: 4,
+              barWidth: isVerySmallScreen ? 3 : 4,
               isStrokeCapRound: true,
               dotData: FlDotData(
                 show: true,
                 getDotPainter: (spot, percent, barData, index) {
                   return FlDotCirclePainter(
-                    radius: 6,
+                    radius: isVerySmallScreen ? 4 : 6,
                     color: Colors.white,
-                    strokeWidth: 3,
+                    strokeWidth: isVerySmallScreen ? 2 : 3,
                     strokeColor: accentColor,
                   );
                 },
@@ -1138,11 +1356,13 @@ class _StatisticsDialogState extends State<StatisticsDialog>
                       label: HorizontalLineLabel(
                         show: true,
                         alignment: Alignment.topRight,
-                        padding: const EdgeInsets.only(right: 8, bottom: 4),
+                        padding: EdgeInsets.only(
+                            right: isVerySmallScreen ? 4 : 8,
+                            bottom: isVerySmallScreen ? 2 : 4),
                         style: TextStyle(
                           color: Colors.redAccent.withOpacity(0.8),
                           fontWeight: FontWeight.bold,
-                          fontSize: 10,
+                          fontSize: isVerySmallScreen ? 8 : 10,
                         ),
                         labelResolver: (line) => 'Máximo',
                       ),
@@ -1157,11 +1377,13 @@ class _StatisticsDialogState extends State<StatisticsDialog>
                       label: HorizontalLineLabel(
                         show: true,
                         alignment: Alignment.topRight,
-                        padding: const EdgeInsets.only(right: 8, bottom: 4),
+                        padding: EdgeInsets.only(
+                            right: isVerySmallScreen ? 4 : 8,
+                            bottom: isVerySmallScreen ? 2 : 4),
                         style: TextStyle(
                           color: Colors.amber.withOpacity(0.8),
                           fontWeight: FontWeight.bold,
-                          fontSize: 10,
+                          fontSize: isVerySmallScreen ? 8 : 10,
                         ),
                         labelResolver: (line) => 'Promedio',
                       ),
@@ -1174,11 +1396,18 @@ class _StatisticsDialogState extends State<StatisticsDialog>
     );
   }
 
-  Widget _buildPieChart(Map<String, int> data) {
+  Widget _buildPieChart(
+      Map<String, int> data, bool isSmallScreen, bool isVerySmallScreen) {
     return data.isEmpty
         ? Center(
-            child: Text("No hay datos disponibles",
-                style: TextStyle(color: textColor)))
+            child: Text(
+              "No hay datos disponibles",
+              style: TextStyle(
+                color: textColor,
+                fontSize: isVerySmallScreen ? 12 : 14,
+              ),
+            ),
+          )
         : PieChart(
             PieChartData(
               pieTouchData: PieTouchData(
@@ -1187,14 +1416,15 @@ class _StatisticsDialogState extends State<StatisticsDialog>
                 },
                 enabled: true,
               ),
-              sectionsSpace: 2,
-              centerSpaceRadius: 40,
-              sections: _getSections(data),
+              sectionsSpace: isVerySmallScreen ? 1 : 2,
+              centerSpaceRadius: isVerySmallScreen ? 25 : 40,
+              sections: _getSections(data, isVerySmallScreen),
             ),
           );
   }
 
-  List<PieChartSectionData> _getSections(Map<String, int> data) {
+  List<PieChartSectionData> _getSections(
+      Map<String, int> data, bool isVerySmallScreen) {
     return data.entries.map((entry) {
       final index = data.keys.toList().indexOf(entry.key);
       final value = entry.value;
@@ -1206,81 +1436,120 @@ class _StatisticsDialogState extends State<StatisticsDialog>
         color: chartColors[index % chartColors.length],
         value: value.toDouble(),
         title: '$percentage%',
-        radius: 100,
-        titleStyle: const TextStyle(
-          fontSize: 12,
+        radius: isVerySmallScreen ? 70 : 100,
+        titleStyle: TextStyle(
+          fontSize: isVerySmallScreen ? 10 : 12,
           fontWeight: FontWeight.bold,
           color: Colors.white,
         ),
         badgeWidget: _Badge(
           entry.key,
-          size: 40,
+          size: isVerySmallScreen ? 25 : 40,
           borderColor: chartColors[index % chartColors.length],
+          isVerySmallScreen: isVerySmallScreen,
         ),
-        badgePositionPercentageOffset: 1.2,
+        badgePositionPercentageOffset: isVerySmallScreen ? 1.1 : 1.2,
       );
     }).toList();
   }
 
-  Widget _buildChartLegend(Map<String, int> data) {
+  Widget _buildChartLegend(Map<String, int> data, bool isVerySmallScreen) {
     final total = data.values.fold(0, (sum, item) => sum + item);
 
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: EdgeInsets.symmetric(vertical: isVerySmallScreen ? 6 : 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                "Total de registros: $total",
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: textColor,
+              Expanded(
+                child: Text(
+                  "Total de registros: $total",
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: textColor,
+                    fontSize: isVerySmallScreen ? 11 : 14,
+                  ),
                 ),
               ),
-              if (selectedGraph == "circular")
+              if (selectedGraph == "circular" && !isVerySmallScreen)
                 const Text(
                   "Toca las secciones para más detalles",
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: 10,
                     fontStyle: FontStyle.italic,
                   ),
                 ),
             ],
           ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 16,
-            runSpacing: 8,
-            children: data.entries.map((entry) {
-              final index = data.keys.toList().indexOf(entry.key);
-              final color = chartColors[index % chartColors.length];
+          SizedBox(height: isVerySmallScreen ? 6 : 8),
+          isVerySmallScreen
+              ? SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: data.entries.map((entry) {
+                      final index = data.keys.toList().indexOf(entry.key);
+                      final color = chartColors[index % chartColors.length];
 
-              return Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 12,
-                    height: 12,
-                    decoration: BoxDecoration(
-                      color: color,
-                      shape: BoxShape.circle,
-                    ),
+                      return Container(
+                        margin: const EdgeInsets.only(right: 12),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: BoxDecoration(
+                                color: color,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 3),
+                            Text(
+                              "${entry.key}: ${entry.value}",
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: textColor,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
                   ),
-                  const SizedBox(width: 4),
-                  Text(
-                    "${entry.key}: ${entry.value}",
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: textColor,
-                    ),
-                  ),
-                ],
-              );
-            }).toList(),
-          ),
+                )
+              : Wrap(
+                  spacing: 16,
+                  runSpacing: 8,
+                  children: data.entries.map((entry) {
+                    final index = data.keys.toList().indexOf(entry.key);
+                    final color = chartColors[index % chartColors.length];
+
+                    return Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 12,
+                          height: 12,
+                          decoration: BoxDecoration(
+                            color: color,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          "${entry.key}: ${entry.value}",
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: textColor,
+                          ),
+                        ),
+                      ],
+                    );
+                  }).toList(),
+                ),
         ],
       ),
     );
@@ -1311,12 +1580,14 @@ class _Badge extends StatelessWidget {
   final String title;
   final double size;
   final Color borderColor;
+  final bool isVerySmallScreen;
 
   const _Badge(
     this.title, {
     Key? key,
     required this.size,
     required this.borderColor,
+    this.isVerySmallScreen = false,
   }) : super(key: key);
 
   @override
@@ -1330,7 +1601,7 @@ class _Badge extends StatelessWidget {
         shape: BoxShape.circle,
         border: Border.all(
           color: borderColor,
-          width: 2,
+          width: isVerySmallScreen ? 1.5 : 2,
         ),
         boxShadow: [
           BoxShadow(
@@ -1342,9 +1613,11 @@ class _Badge extends StatelessWidget {
       ),
       child: Center(
         child: Text(
-          title.length > 3 ? title.substring(0, 3) : title,
+          title.length > (isVerySmallScreen ? 2 : 3)
+              ? title.substring(0, isVerySmallScreen ? 2 : 3)
+              : title,
           style: TextStyle(
-            fontSize: 10,
+            fontSize: isVerySmallScreen ? 7 : 10,
             fontWeight: FontWeight.bold,
             color: borderColor,
           ),

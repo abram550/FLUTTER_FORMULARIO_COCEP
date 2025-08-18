@@ -4310,23 +4310,96 @@ class _AdminPanelState extends State<AdminPanel>
                     setState(() => _isLoading = true);
                     Navigator.pop(context);
 
+                    // ✅ CORRECCIÓN PRINCIPAL: Determinar el ministerio correcto
+                    String? ministerioAsignado;
+                    String? tribuAsignada;
+                    String? nombreTribu;
+
+                    if (seleccion!.contains('Ministerio')) {
+                      // Es un ministerio directo (Damas o Caballeros)
+                      ministerioAsignado = seleccion;
+                      tribuAsignada = null;
+                      nombreTribu = null;
+                    } else {
+                      // Es una tribu del Ministerio Juvenil
+                      tribuAsignada = seleccion;
+                      ministerioAsignado =
+                          'Ministerio Juvenil'; // ✅ SIEMPRE asignar Ministerio Juvenil
+
+                      // Obtener el nombre de la tribu
+                      final tribuDoc = tribusSnapshot.docs.firstWhere(
+                        (doc) => doc.id == seleccion,
+                        orElse: () => throw Exception('Tribu no encontrada'),
+                      );
+                      nombreTribu = tribuDoc['nombre'] ?? 'Tribu sin nombre';
+                    }
+
+                    print('=== DEBUG ASIGNACIÓN ===');
+                    print('Selección: $seleccion');
+                    print('Ministerio asignado: $ministerioAsignado');
+                    print('Tribu asignada: $tribuAsignada');
+                    print('Nombre tribu: $nombreTribu');
+                    print('=======================');
+
+                    // ✅ ACTUALIZAR CON LOS DATOS CORRECTOS
+                    Map<String, dynamic> updateData = {
+                      'ministerioAsignado': ministerioAsignado,
+                      'tribuAsignada': tribuAsignada,
+                      'fechaAsignacion': FieldValue.serverTimestamp(),
+                    };
+
+                    // Solo agregar nombreTribu si existe
+                    if (nombreTribu != null) {
+                      updateData['nombreTribu'] = nombreTribu;
+                    }
+
+                    // Limpiar campos relacionados si es necesario
+                    if (tribuAsignada == null) {
+                      updateData['nombreTribu'] = null;
+                    }
+
                     await FirebaseFirestore.instance
                         .collection('registros')
                         .doc(registro.id)
-                        .update({
-                      'tribuAsignada':
-                          seleccion!.contains('Ministerio') ? null : seleccion,
-                      'ministerioAsignado':
-                          seleccion!.contains('Ministerio') ? seleccion : null,
-                      'fechaAsignacion': FieldValue.serverTimestamp(),
-                    });
+                        .update(updateData);
+
+                    // ✅ VERIFICACIÓN POST-ASIGNACIÓN
+                    await Future.delayed(Duration(milliseconds: 500));
+                    final docVerificacion = await FirebaseFirestore.instance
+                        .collection('registros')
+                        .doc(registro.id)
+                        .get();
+
+                    if (docVerificacion.exists) {
+                      final data =
+                          docVerificacion.data() as Map<String, dynamic>;
+                      print('=== VERIFICACIÓN POST-ASIGNACIÓN ===');
+                      print(
+                          'ministerioAsignado guardado: ${data['ministerioAsignado']}');
+                      print('tribuAsignada guardada: ${data['tribuAsignada']}');
+                      print('nombreTribu guardado: ${data['nombreTribu']}');
+                      print('==================================');
+                    }
 
                     setState(() => _isLoading = false);
+
+                    // Mensaje de éxito más específico
+                    String mensajeExito;
+                    if (ministerioAsignado != null && tribuAsignada != null) {
+                      mensajeExito =
+                          'Asignado a tribu "$nombreTribu" del $ministerioAsignado';
+                    } else if (ministerioAsignado != null) {
+                      mensajeExito = 'Asignado al $ministerioAsignado';
+                    } else {
+                      mensajeExito = 'Registro asignado exitosamente';
+                    }
+
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text('Registro asignado exitosamente'),
+                        content: Text(mensajeExito),
                         backgroundColor: Colors.green,
                         behavior: SnackBarBehavior.floating,
+                        duration: Duration(seconds: 3),
                       ),
                     );
                   }

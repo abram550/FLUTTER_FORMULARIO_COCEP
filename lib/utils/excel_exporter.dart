@@ -25,7 +25,158 @@ class ExcelExporter {
     {'nombre': 'Observaciones 2', 'campo': 'observaciones2'},
     {'nombre': 'Peticiones', 'campo': 'peticiones'},
     {'nombre': 'Estado en la Iglesia', 'campo': 'estadoProceso'},
+    {'nombre': 'Activo', 'campo': 'activo'},
+    {
+      'nombre': 'Fecha de Nacimiento',
+      'campo': 'fechaNacimiento'
+    }, // ✅ NUEVO CAMPO
   ];
+
+// ✅ MEJORADO: Método para obtener el valor de un campo con detección de variantes
+  dynamic obtenerValorCampo(Map<String, dynamic> registro, String campo) {
+    // Si el campo existe directamente, lo devolvemos
+    if (registro.containsKey(campo)) {
+      return registro[campo];
+    }
+
+    // ✅ MODIFICACIÓN: Detección especial para descripcionOcupacion
+    if (campo == 'descripcionOcupacion') {
+      // Buscar primero 'descripcionOcupacion', luego 'descripcionOcupaciones'
+      if (registro.containsKey('descripcionOcupacion')) {
+        return registro['descripcionOcupacion'];
+      } else if (registro.containsKey('descripcionOcupaciones')) {
+        return registro['descripcionOcupaciones'];
+      }
+    }
+
+    // ✅ CORREGIDO: Detección especial para fechaNacimiento - manejo robusto de Timestamp
+    if (campo == 'fechaNacimiento') {
+      if (registro.containsKey('fechaNacimiento') &&
+          registro['fechaNacimiento'] != null) {
+        var fecha = registro['fechaNacimiento'];
+
+        // Si es un Timestamp de Firebase, convertir a DateTime
+        if (fecha is Timestamp) {
+          return fecha.toDate();
+        }
+        // Si ya es DateTime, devolverlo directamente
+        else if (fecha is DateTime) {
+          return fecha;
+        }
+        // Si es String, intentar parsearlo
+        else if (fecha is String) {
+          try {
+            return DateTime.parse(fecha);
+          } catch (e) {
+            print('Error al parsear fecha desde String: $e');
+            return null;
+          }
+        }
+        // Si es un Map (como puede venir de algunos casos de Firebase)
+        else if (fecha is Map) {
+          try {
+            // Intentar extraer seconds si viene como Map
+            if (fecha.containsKey('seconds')) {
+              int seconds = fecha['seconds'];
+              return DateTime.fromMillisecondsSinceEpoch(seconds * 1000);
+            }
+          } catch (e) {
+            print('Error al procesar fecha desde Map: $e');
+            return null;
+          }
+        }
+      }
+    }
+
+    // Si no se encuentra el campo, devolver null
+    return null;
+  }
+
+  // ✅ NUEVO: Método mejorado para ajustar ancho de columnas
+  void ajustarAnchoColumnas(Sheet sheet, {bool incluirCoordinador = false}) {
+    int offset = incluirCoordinador ? 1 : 0;
+
+    if (incluirCoordinador) {
+      sheet.setColWidth(0, 25); // Coordinador
+    }
+
+    for (var i = 0; i < camposExportacion.length; i++) {
+      String nombreCampo = camposExportacion[i]['nombre'] as String;
+      String campo = camposExportacion[i]['campo'] as String;
+
+      // Calcular ancho base según el nombre del campo
+      int anchoBase = nombreCampo.length + 3;
+
+      // Ajustes especiales según el tipo de campo
+      int anchoFinal;
+      switch (campo) {
+        case 'nombre':
+        case 'apellido':
+        case 'direccion':
+          anchoFinal = anchoBase < 18 ? 18 : (anchoBase > 30 ? 30 : anchoBase);
+          break;
+        case 'telefono':
+          anchoFinal = 15;
+          break;
+        case 'fechaNacimiento':
+          anchoFinal = 18; // Para formato DD/MM/YYYY
+          break;
+        case 'descripcionOcupacion':
+        case 'observaciones':
+        case 'observaciones2':
+        case 'referenciaInvitacion':
+          anchoFinal = anchoBase < 20 ? 20 : (anchoBase > 35 ? 35 : anchoBase);
+          break;
+        case 'ocupaciones':
+        case 'peticiones':
+          anchoFinal = anchoBase < 25 ? 25 : (anchoBase > 40 ? 40 : anchoBase);
+          break;
+        default:
+          anchoFinal = anchoBase < 12 ? 12 : (anchoBase > 32 ? 32 : anchoBase);
+      }
+
+      sheet.setColWidth(i + offset, anchoFinal.toDouble());
+    }
+  }
+
+// ✅ CORREGIDO: Método mejorado para formatear valores con manejo robusto de fechas
+  String formatearValor(dynamic value, String fieldName) {
+    if (value == null) {
+      return '';
+    } else if (value is List) {
+      return value.join(', ');
+    } else if (fieldName == 'activo') {
+      return value == true ? 'Sí' : 'No';
+    } else if (fieldName == 'fechaNacimiento') {
+      // Manejar diferentes tipos de fecha
+      DateTime? fechaDateTime;
+
+      if (value is Timestamp) {
+        fechaDateTime = value.toDate();
+      } else if (value is DateTime) {
+        fechaDateTime = value;
+      } else if (value is String) {
+        try {
+          fechaDateTime = DateTime.parse(value);
+        } catch (e) {
+          return value
+              .toString(); // Si no se puede parsear, mostrar el string original
+        }
+      } else {
+        return value
+            .toString(); // Para cualquier otro tipo, mostrar como string
+      }
+
+      // Formatear fecha como DD/MM/YYYY (solo la fecha de nacimiento)
+      if (fechaDateTime != null) {
+        return '${fechaDateTime.day.toString().padLeft(2, '0')}/${fechaDateTime.month.toString().padLeft(2, '0')}/${fechaDateTime.year}';
+      } else {
+        return '';
+      }
+    } else {
+      return value.toString();
+    }
+  }
 
   Future<void> exportarRegistros(
       BuildContext context, String tribuId, String tribuNombre) async {
@@ -121,10 +272,11 @@ class ExcelExporter {
         }
       }
 
-      // Agrupar registros por coordinador usando nombres reales
-      Map<String, List<Map<String, dynamic>>> registrosPorCoordinador = {};
+      // ✅ Separar registros activos y no activos
+      List<Map<String, dynamic>> registrosActivos = [];
+      List<Map<String, dynamic>> registrosNoActivos = [];
 
-      // CORRECCIÓN: Reemplazar el ID del coordinador con su nombre real en todos los registros
+      // CORRECCIÓN: Procesar todos los registros y separarlos por estado activo
       for (var doc in registrosSnapshot.docs) {
         final data = doc.data();
 
@@ -146,15 +298,28 @@ class ExcelExporter {
         }
 
         // CORRECCIÓN: Reemplazar el ID del coordinador con su nombre real en los datos
-        // para asegurar que se use el nombre en todos los lugares
         data['coordinadorAsignado'] = nombreCoordinador;
 
-        // Usar el nombre real del coordinador como clave para agrupar
-        if (!registrosPorCoordinador.containsKey(nombreCoordinador)) {
-          registrosPorCoordinador[nombreCoordinador] = [];
+        // ✅ Separar registros según estado activo
+        if (data['activo'] == true) {
+          registrosActivos.add(data);
+        } else {
+          registrosNoActivos.add(data);
+        }
+      }
+
+      // Agrupar registros ACTIVOS por coordinador usando nombres reales
+      Map<String, List<Map<String, dynamic>>> registrosActivosPorCoordinador =
+          {};
+
+      for (var registro in registrosActivos) {
+        final nombreCoordinador = registro['coordinadorAsignado'];
+
+        if (!registrosActivosPorCoordinador.containsKey(nombreCoordinador)) {
+          registrosActivosPorCoordinador[nombreCoordinador] = [];
         }
 
-        registrosPorCoordinador[nombreCoordinador]!.add(data);
+        registrosActivosPorCoordinador[nombreCoordinador]!.add(registro);
       }
 
       // Crear una hoja de resumen
@@ -194,7 +359,7 @@ class ExcelExporter {
           CellIndex.indexByString('A2'), CellIndex.indexByString('C2'));
 
       // Encabezados de resumen
-      var headerRow = ['Coordinador', 'Total de Registros'];
+      var headerRow = ['Hoja', 'Total de Registros'];
       for (var i = 0; i < headerRow.length; i++) {
         var cell = resumenSheet
             .cell(CellIndex.indexByString('${String.fromCharCode(65 + i)}4'));
@@ -204,9 +369,10 @@ class ExcelExporter {
 
       // Datos del resumen
       int fila = 5;
-      int totalRegistros = 0;
+      int totalRegistrosActivos = 0;
 
-      registrosPorCoordinador.forEach((coordinador, registros) {
+      // ✅ Resumen de registros activos por coordinador
+      registrosActivosPorCoordinador.forEach((coordinador, registros) {
         var cellCoord = resumenSheet.cell(CellIndex.indexByString('A$fila'));
         cellCoord.value = coordinador;
 
@@ -219,9 +385,22 @@ class ExcelExporter {
           cellTotal.cellStyle = alternateCellStyle;
         }
 
-        totalRegistros += registros.length;
+        totalRegistrosActivos += registros.length;
         fila++;
       });
+
+      // ✅ Añadir fila para registros no activos
+      var cellNoActivos = resumenSheet.cell(CellIndex.indexByString('A$fila'));
+      cellNoActivos.value = 'No Activos';
+      var cellTotalNoActivos =
+          resumenSheet.cell(CellIndex.indexByString('B$fila'));
+      cellTotalNoActivos.value = registrosNoActivos.length;
+
+      if (fila % 2 == 1) {
+        cellNoActivos.cellStyle = alternateCellStyle;
+        cellTotalNoActivos.cellStyle = alternateCellStyle;
+      }
+      fila++;
 
       // Añadir total general
       var cellTotalLabel =
@@ -231,15 +410,15 @@ class ExcelExporter {
 
       var cellTotalValue =
           resumenSheet.cell(CellIndex.indexByString('B${fila + 1}'));
-      cellTotalValue.value = totalRegistros;
+      cellTotalValue.value = totalRegistrosActivos + registrosNoActivos.length;
       cellTotalValue.cellStyle = CellStyle(bold: true);
 
-      // Ajustar ancho de columnas en hoja de resumen mediante setColWidth
+      // Ajustar ancho de columnas en hoja de resumen
       resumenSheet.setColWidth(0, 25); // Ancho aproximado de 200px
       resumenSheet.setColWidth(1, 19); // Ancho aproximado de 150px
 
-      // Crear hojas en el Excel para cada coordinador
-      registrosPorCoordinador.forEach((coordinador, registros) {
+      // Crear hojas en el Excel para cada coordinador (SOLO REGISTROS ACTIVOS)
+      registrosActivosPorCoordinador.forEach((coordinador, registros) {
         // Crear una hoja para cada coordinador (limitar nombre a 31 caracteres para Excel)
         String sheetName = coordinador.length > 25
             ? '${coordinador.substring(0, 25)}...'
@@ -300,16 +479,12 @@ class ExcelExporter {
             var cell =
                 sheet.cell(CellIndex.indexByString('$columnLetter$rowIndex'));
             var fieldName = camposExportacion[i]['campo'] as String;
-            var value = registro[fieldName];
 
-            // Formatear valor según el tipo
-            if (value == null) {
-              cell.value = '';
-            } else if (value is List) {
-              cell.value = value.join(', ');
-            } else {
-              cell.value = value.toString();
-            }
+            // ✅ USAR EL NUEVO MÉTODO PARA OBTENER EL VALOR
+            var value = obtenerValorCampo(registro, fieldName);
+
+            // ✅ USAR EL NUEVO MÉTODO PARA FORMATEAR VALOR
+            cell.value = formatearValor(value, fieldName);
 
             // Aplicar estilo para filas alternas
             if (rowIndex % 2 == 0) {
@@ -319,14 +494,8 @@ class ExcelExporter {
           rowIndex++;
         }
 
-        // Ajustar ancho de columnas (usando setColWidth en lugar de setColumnWidth)
-        for (var i = 0; i < camposExportacion.length; i++) {
-          // Calcular el ancho basado en el nombre del campo (mínimo 12, máximo 32)
-          // Nota: los valores son aproximados ya que la escala es diferente
-          int ancho = (camposExportacion[i]['nombre'] as String).length + 3;
-          ancho = ancho < 12 ? 12 : (ancho > 32 ? 32 : ancho);
-          sheet.setColWidth(i, ancho.toDouble());
-        }
+        // ✅ USAR MÉTODO MEJORADO PARA AJUSTAR COLUMNAS
+        ajustarAnchoColumnas(sheet);
 
         // En lugar de freezeRows, podemos usar una configuración de estilo para destacar la fila de encabezados
         // Asegurando que todas las celdas de la fila de encabezados tengan el estilo adecuado
@@ -341,12 +510,12 @@ class ExcelExporter {
         }
       });
 
-      // Crear una hoja con todos los registros juntos
-      final allSheet = excel['Todos los Registros'];
+      // ✅ Crear hoja con todos los registros ACTIVOS
+      final allSheet = excel['Todos los Registros Activos'];
 
       // Añadir título
       var cellAllTitulo = allSheet.cell(CellIndex.indexByString('A1'));
-      cellAllTitulo.value = 'Todos los Registros - Tribu $tribuNombre';
+      cellAllTitulo.value = 'Todos los Registros Activos - Tribu $tribuNombre';
       cellAllTitulo.cellStyle = CellStyle(
         bold: true,
         fontSize: 14,
@@ -376,9 +545,9 @@ class ExcelExporter {
         cell.cellStyle = headerStyle;
       }
 
-      // CORRECCIÓN: Datos de todos los registros, usando el nombre real del coordinador
+      // CORRECCIÓN: Datos de todos los registros ACTIVOS, usando el nombre real del coordinador
       int allRowIndex = 4;
-      registrosPorCoordinador.forEach((coordinador, registros) {
+      registrosActivosPorCoordinador.forEach((coordinador, registros) {
         for (var registro in registros) {
           // Añadir coordinador con su nombre real (esto ya está en "coordinador")
           var cellCoord =
@@ -394,16 +563,12 @@ class ExcelExporter {
             var cell = allSheet
                 .cell(CellIndex.indexByString('$columnLetter$allRowIndex'));
             var fieldName = camposExportacion[i]['campo'] as String;
-            var value = registro[fieldName];
 
-            // Formatear valor
-            if (value == null) {
-              cell.value = '';
-            } else if (value is List) {
-              cell.value = value.join(', ');
-            } else {
-              cell.value = value.toString();
-            }
+            // ✅ USAR EL NUEVO MÉTODO PARA OBTENER EL VALOR
+            var value = obtenerValorCampo(registro, fieldName);
+
+            // ✅ USAR EL NUEVO MÉTODO PARA FORMATEAR VALOR
+            cell.value = formatearValor(value, fieldName);
 
             // Aplicar estilo para filas alternas
             if (allRowIndex % 2 == 0) {
@@ -415,14 +580,8 @@ class ExcelExporter {
         }
       });
 
-      // Ajustar ancho de columnas (usando setColWidth en lugar de setColumnWidth)
-      allSheet.setColWidth(0, 25); // Coordinador (aproximadamente 200px)
-      for (var i = 0; i < camposExportacion.length; i++) {
-        // Calcular el ancho basado en el nombre del campo (mínimo 12, máximo 32)
-        int ancho = (camposExportacion[i]['nombre'] as String).length + 3;
-        ancho = ancho < 12 ? 12 : (ancho > 32 ? 32 : ancho);
-        allSheet.setColWidth(i + 1, ancho.toDouble());
-      }
+      // ✅ USAR MÉTODO MEJORADO PARA AJUSTAR COLUMNAS
+      ajustarAnchoColumnas(allSheet, incluirCoordinador: true);
 
       // En lugar de freezeRows/freezeColumns, aplicamos un estilo destacado
       // Asegurando que todas las celdas de la fila de encabezados tengan el estilo adecuado
@@ -434,6 +593,96 @@ class ExcelExporter {
         var headerCell =
             allSheet.cell(CellIndex.indexByString('${columnLetter}3'));
         headerCell.cellStyle = headerStyle;
+      }
+
+      // ✅ Crear hoja exclusiva para registros NO ACTIVOS
+      if (registrosNoActivos.isNotEmpty) {
+        final noActivosSheet = excel['No Activos'];
+
+        // Añadir título
+        var cellNoActivosTitulo =
+            noActivosSheet.cell(CellIndex.indexByString('A1'));
+        cellNoActivosTitulo.value = 'Registros No Activos - Tribu $tribuNombre';
+        cellNoActivosTitulo.cellStyle = CellStyle(
+          bold: true,
+          fontSize: 14,
+          horizontalAlign: HorizontalAlign.Center,
+          backgroundColorHex: '#FF6B6B', // Color rojo suave para diferenciar
+          fontColorHex: '#FFFFFF',
+        );
+
+        // Combinar celdas para el título
+        int lastNoActivosColumnIndex = camposExportacion.length;
+        String lastNoActivosColumn =
+            String.fromCharCode(65 + (lastNoActivosColumnIndex > 25 ? 1 : 0)) +
+                (lastNoActivosColumnIndex > 25
+                    ? String.fromCharCode(65 + (lastNoActivosColumnIndex % 26))
+                    : String.fromCharCode(65 + lastNoActivosColumnIndex));
+        noActivosSheet.merge(CellIndex.indexByString('A1'),
+            CellIndex.indexByString('${lastNoActivosColumn}1'));
+
+        // Estilo especial para encabezados de no activos
+        var headerNoActivosStyle = CellStyle(
+          backgroundColorHex: '#FF6B6B',
+          fontColorHex: '#FFFFFF',
+          bold: true,
+          horizontalAlign: HorizontalAlign.Center,
+        );
+
+        // Encabezados de columnas (añadiendo Coordinador al inicio)
+        List<String> noActivosHeaders = ['Coordinador'] +
+            camposExportacion
+                .map((campo) => campo['nombre'] as String)
+                .toList();
+        for (var i = 0; i < noActivosHeaders.length; i++) {
+          String columnLetter = i > 25
+              ? '${String.fromCharCode(65 + (i ~/ 26) - 1)}${String.fromCharCode(65 + (i % 26))}'
+              : String.fromCharCode(65 + i);
+
+          var cell =
+              noActivosSheet.cell(CellIndex.indexByString('${columnLetter}3'));
+          cell.value = noActivosHeaders[i];
+          cell.cellStyle = headerNoActivosStyle;
+        }
+
+        // Datos de registros no activos
+        int noActivosRowIndex = 4;
+        for (var registro in registrosNoActivos) {
+          // Añadir coordinador
+          var cellCoord = noActivosSheet
+              .cell(CellIndex.indexByString('A$noActivosRowIndex'));
+          cellCoord.value = registro['coordinadorAsignado'];
+
+          // Añadir datos del registro
+          for (var i = 0; i < camposExportacion.length; i++) {
+            String columnLetter = (i + 1) > 25
+                ? '${String.fromCharCode(65 + ((i + 1) ~/ 26) - 1)}${String.fromCharCode(65 + ((i + 1) % 26))}'
+                : String.fromCharCode(65 + (i + 1));
+
+            var cell = noActivosSheet.cell(
+                CellIndex.indexByString('$columnLetter$noActivosRowIndex'));
+            var fieldName = camposExportacion[i]['campo'] as String;
+
+            // ✅ USAR EL NUEVO MÉTODO PARA OBTENER EL VALOR
+            var value = obtenerValorCampo(registro, fieldName);
+
+            // ✅ USAR EL NUEVO MÉTODO PARA FORMATEAR VALOR
+            cell.value = formatearValor(value, fieldName);
+
+            // Aplicar estilo para filas alternas con color suave
+            if (noActivosRowIndex % 2 == 0) {
+              var noActivosAlternateStyle = CellStyle(
+                backgroundColorHex: '#FFE5E5', // Color rosa muy suave
+              );
+              cell.cellStyle = noActivosAlternateStyle;
+              cellCoord.cellStyle = noActivosAlternateStyle;
+            }
+          }
+          noActivosRowIndex++;
+        }
+
+        // ✅ USAR MÉTODO MEJORADO PARA AJUSTAR COLUMNAS
+        ajustarAnchoColumnas(noActivosSheet, incluirCoordinador: true);
       }
 
       // MEJORA 2: Solución al problema de descarga duplicada

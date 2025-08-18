@@ -21,7 +21,152 @@ import 'package:formulario_app/screens/TribusScreen.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+// 🔽 IMPORTACIÓN NUEVA - Agrega este import
+import 'package:cloud_firestore/cloud_firestore.dart';
 
+// =============================================================================
+// 🆕 NUEVA CLASE: Servicio de Limpieza Automática de Eventos
+// Colócala DESPUÉS de los imports y ANTES de la clase AppColors
+// =============================================================================
+
+/// Servicio para gestionar la eliminación automática de eventos vencidos
+class ServicioLimpiezaEventos {
+  static Timer? _timer;
+
+  /// Inicializa la limpieza automática de eventos
+  /// Se ejecuta cada 24 horas y una vez al iniciar la aplicación
+  static void iniciarLimpiezaAutomatica() {
+    try {
+      print('🚀 Iniciando servicio de limpieza automática de eventos...');
+
+      // Ejecutar limpieza inmediatamente al iniciar
+      _ejecutarLimpieza();
+
+      // Programar limpieza cada 24 horas
+      _timer = Timer.periodic(Duration(hours: 24), (timer) {
+        print('⏰ Ejecutando limpieza programada cada 24 horas...');
+        _ejecutarLimpieza();
+      });
+
+      print('✅ Servicio de limpieza automática configurado correctamente');
+    } catch (e) {
+      print('❌ Error al iniciar servicio de limpieza: $e');
+      ErrorHandler.logError(e, StackTrace.current);
+    }
+  }
+
+  /// Detiene el servicio de limpieza automática
+  static void detenerLimpiezaAutomatica() {
+    _timer?.cancel();
+    _timer = null;
+    print('🛑 Servicio de limpieza automática detenido');
+  }
+
+  /// Ejecuta la limpieza de eventos vencidos
+  static Future<void> _ejecutarLimpieza() async {
+    try {
+      await eliminarEventosVencidos();
+    } catch (e) {
+      print('❌ Error en limpieza automática: $e');
+      ErrorHandler.logError(e, StackTrace.current);
+    }
+  }
+
+  /// Elimina todos los eventos que ya cumplieron su fecha de eliminación automática
+  /// Esta función busca eventos con 'fechaEliminacionAutomatica' vencida
+  static Future<void> eliminarEventosVencidos() async {
+    try {
+      final ahora = DateTime.now();
+
+      print('🧹 Iniciando limpieza de eventos vencidos...');
+      print('📅 Fecha actual: ${ahora.toString()}');
+
+      // Buscar eventos cuya fecha de eliminación automática ya pasó
+      final querySnapshot = await FirebaseFirestore.instance
+          .collection('eventos')
+          .where('fechaEliminacionAutomatica',
+              isLessThan: Timestamp.fromDate(ahora))
+          .get();
+
+      print(
+          '📋 Encontrados ${querySnapshot.docs.length} eventos para eliminar');
+
+      // Si no hay eventos para eliminar, terminar
+      if (querySnapshot.docs.isEmpty) {
+        print('✅ No hay eventos vencidos para eliminar');
+        return;
+      }
+
+      // Preparar eliminación en lotes para mejor rendimiento
+      WriteBatch batch = FirebaseFirestore.instance.batch();
+      int contador = 0;
+      List<String> nombresEliminados = [];
+
+      // Procesar cada evento a eliminar
+      for (var doc in querySnapshot.docs) {
+        // Agregar operación de eliminación al batch
+        batch.delete(doc.reference);
+        contador++;
+
+        // Guardar nombre del evento para el log
+        final data = doc.data() as Map<String, dynamic>;
+        final nombreEvento = data['nombre'] ?? 'Sin nombre';
+        final fechaEliminacion =
+            data['fechaEliminacionAutomatica'] as Timestamp?;
+
+        nombresEliminados.add(nombreEvento);
+        print(
+            '🗑️ Programado para eliminar: $nombreEvento (vencido: ${fechaEliminacion?.toDate()})');
+
+        // Firebase permite máximo 500 operaciones por batch
+        if (contador >= 500) {
+          await batch.commit();
+          batch = FirebaseFirestore.instance.batch();
+          contador = 0;
+          print('📦 Ejecutado lote de 500 eliminaciones');
+        }
+      }
+
+      // Ejecutar el último batch si tiene operaciones pendientes
+      if (contador > 0) {
+        await batch.commit();
+        print('📦 Ejecutado lote final de $contador eliminaciones');
+      }
+
+      // Mostrar resumen de eliminaciones
+      print(
+          '✅ LIMPIEZA COMPLETADA - Eliminados ${querySnapshot.docs.length} eventos vencidos:');
+      for (int i = 0; i < nombresEliminados.length; i++) {
+        print('   ${i + 1}. ${nombresEliminados[i]}');
+      }
+    } catch (e) {
+      print('❌ Error al eliminar eventos vencidos: $e');
+      ErrorHandler.logError(e, StackTrace.current);
+      rethrow; // Re-lanzar para que el error se maneje en el nivel superior
+    }
+  }
+
+  /// Función auxiliar para verificar si un evento específico debe eliminarse
+  /// Útil para mostrar información en la UI
+  static bool debeEliminarseEvento(DateTime fechaFinEvento) {
+    final ahora = DateTime.now();
+    final fechaLimite = DateTime(ahora.year - 1, ahora.month, ahora.day);
+    return fechaFinEvento.isBefore(fechaLimite);
+  }
+
+  /// Calcula los días restantes antes de que un evento sea eliminado
+  /// Retorna 0 si ya debe eliminarse
+  static int diasRestantesParaEliminacion(DateTime fechaFinEvento) {
+    final ahora = DateTime.now();
+    final fechaEliminacion = DateTime(
+        fechaFinEvento.year + 1, fechaFinEvento.month, fechaFinEvento.day);
+
+    if (fechaEliminacion.isBefore(ahora)) return 0;
+    return fechaEliminacion.difference(ahora).inDays;
+  }
+}
+
+// Tu clase AppColors existente (sin cambios)
 class AppColors {
   static const Color primary = Color(0xFF1A7A8B);
   static const Color secondary = Color(0xFFFF6B35);
@@ -49,16 +194,11 @@ class AppColors {
   );
 }
 
-// Configuración del Router
+// Tu configuración del Router existente (sin cambios)
 final GoRouter router = GoRouter(
   initialLocation: '/login',
-  errorBuilder: (context, state) =>
-      const SplashScreen(), // Página por defecto en caso de error
+  errorBuilder: (context, state) => const SplashScreen(),
   routes: [
-    /*GoRoute(
-      path: '/splash',
-      builder: (context, state) => const SplashScreen(),
-    ),*/
     GoRoute(
       path: '/login',
       builder: (context, state) => const LoginPage(),
@@ -121,6 +261,8 @@ final GoRouter router = GoRouter(
     ),
   ],
 );
+
+// Tu función existente (sin cambios)
 Future<void> initializeFirebaseMessaging() async {
   try {
     final messaging = FirebaseMessaging.instance;
@@ -132,7 +274,6 @@ Future<void> initializeFirebaseMessaging() async {
 
     if (settings.authorizationStatus == AuthorizationStatus.authorized) {
       final token = await messaging.getToken();
-      // Store or use token as needed
       print('Firebase Messaging Token: $token');
     }
   } catch (e) {
@@ -140,6 +281,10 @@ Future<void> initializeFirebaseMessaging() async {
     ErrorHandler.logError(e, StackTrace.current);
   }
 }
+
+// =============================================================================
+// 🔄 FUNCIÓN MAIN MODIFICADA - Aquí se activa la limpieza automática
+// =============================================================================
 
 void main() async {
   await runZonedGuarded(() async {
@@ -149,16 +294,21 @@ void main() async {
     ErrorHandler.initialize();
 
     try {
+      // Inicializar Firebase
       await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform,
       );
+
       if (!kIsWeb) {
-        // Only initialize messaging for mobile platforms
         await initializeFirebaseMessaging();
       }
 
       final syncService = SyncService();
       await syncService.initialize();
+
+      // 🆕 NUEVO: Iniciar servicio de limpieza automática de eventos
+      // Esto se ejecutará cada 24 horas y también al iniciar la app
+      ServicioLimpiezaEventos.iniciarLimpiezaAutomatica();
 
       runApp(
         MultiProvider(
@@ -179,6 +329,7 @@ void main() async {
   });
 }
 
+// Tus clases existentes (sin cambios)
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 

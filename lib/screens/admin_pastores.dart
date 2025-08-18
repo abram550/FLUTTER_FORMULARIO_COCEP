@@ -3,7 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:go_router/go_router.dart';
-import 'TribusScreen.dart';
+import 'TribusScreen.dart' hide showDialog;
 import 'admin_screen.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -126,47 +126,98 @@ class _AdminPastoresState extends State<AdminPastores>
     }
   }
 
+// Variables de estado para loading
+  bool _isEditingTribu = false;
+
+// Colores definidos
+  final Color primaryColor = Color(0xFF1B998B);
+  final Color backgroundColor = Color(0xFFF5F5F5);
+
+// Función para editar tribu - CORREGIDA
   Future<void> _editarTribu(String docId, Map<String, dynamic> datos) async {
     try {
+      setState(() => _isEditingTribu = true);
+
       print('Iniciando edición de tribu con ID: $docId');
 
-      // Actualizar documento en la colección tribus
-      await _firestore.collection('tribus').doc(docId).update({
-        'nombre': datos['nombre'],
-        'nombreLider': datos['nombreLider'],
-        'apellidoLider': datos['apellidoLider'],
-        'usuario': datos['usuario'].trim(),
-        'contrasena': datos['contrasena'].trim(),
-        'categoria': datos['categoria'],
-      });
+      // Primero obtenemos los datos actuales de la tribu para preservar campos que no se están editando
+      final tribuDoc = await _firestore.collection('tribus').doc(docId).get();
+      if (!tribuDoc.exists) {
+        throw Exception('La tribu no existe');
+      }
 
-      print('Tribu actualizada, buscando usuario correspondiente');
+      final datosActuales = tribuDoc.data() as Map<String, dynamic>;
+
+      // Preparar datos para actualización, preservando campos existentes
+      final datosActualizacion = <String, dynamic>{
+        'nombre': datos['nombre']?.toString().trim() ?? datosActuales['nombre'],
+        'nombreLider': datos['nombreLider']?.toString().trim() ??
+            datosActuales['nombreLider'],
+        'apellidoLider': datos['apellidoLider']?.toString().trim() ??
+            datosActuales['apellidoLider'],
+        'usuario':
+            datos['usuario']?.toString().trim() ?? datosActuales['usuario'],
+        'contrasena': datos['contrasena']?.toString().trim() ??
+            datosActuales['contrasena'],
+        'categoria': datos['categoria'] ??
+            datosActuales['categoria'], // Preserva la categoría
+        // Preservar otros campos importantes
+        'rol': datosActuales['rol'] ?? 'tribu',
+        'createdAt': datosActuales['createdAt'],
+      };
+
+      // Actualizar documento en la colección tribus
+      await _firestore
+          .collection('tribus')
+          .doc(docId)
+          .update(datosActualizacion);
+      print('Tribu actualizada exitosamente');
 
       // Actualizar en la colección de usuarios
-      final usuarioSnapshot = await _firestore
+      final usuarioQuery = await _firestore
           .collection('usuarios')
           .where('tribuId', isEqualTo: docId)
+          .limit(1)
           .get();
 
-      if (usuarioSnapshot.docs.isNotEmpty) {
+      if (usuarioQuery.docs.isNotEmpty) {
         print('Usuario encontrado, actualizando datos');
 
-        await usuarioSnapshot.docs.first.reference.update({
-          'usuario': datos['usuario'].trim(),
-          'contrasena': datos['contrasena'].trim(),
-          'nombre': datos['nombre'],
-          'categoria': datos['categoria'],
+        final usuarioDoc = usuarioQuery.docs.first;
+        await usuarioDoc.reference.update({
+          'usuario': datosActualizacion['usuario'],
+          'contrasena': datosActualizacion['contrasena'],
+          'nombre': datosActualizacion['nombre'],
+          'categoria': datosActualizacion['categoria'],
+          'rol': 'tribu',
         });
 
         print('Usuario actualizado exitosamente');
       } else {
-        print('No se encontró usuario asociado a la tribu');
+        print('No se encontró usuario asociado, creando nuevo usuario');
+        // Si no existe el usuario, lo creamos
+        await _firestore.collection('usuarios').add({
+          'usuario': datosActualizacion['usuario'],
+          'contrasena': datosActualizacion['contrasena'],
+          'rol': 'tribu',
+          'tribuId': docId,
+          'nombre': datosActualizacion['nombre'],
+          'categoria': datosActualizacion['categoria'],
+        });
       }
 
-      _mostrarSnackBar('Tribu actualizada exitosamente');
+      _mostrarSnackBar('Tribu actualizada exitosamente', isSuccess: true);
+
+      // Pequeña pausa para mostrar el feedback antes de cerrar
+      await Future.delayed(Duration(milliseconds: 300));
     } catch (e) {
       print('Error al actualizar tribu: $e');
-      _mostrarSnackBar('Error al actualizar la tribu: $e');
+      _mostrarSnackBar('Error al actualizar la tribu: ${e.toString()}',
+          isSuccess: false);
+    } finally {
+      if (mounted) {
+        setState(() => _isEditingTribu = false);
+      }
     }
   }
 
@@ -212,34 +263,106 @@ class _AdminPastoresState extends State<AdminPastores>
     }
   }
 
+// Variables de estado para loading
+  bool _isEditingLiderConsolidacion = false;
+
+// Función para editar líder de consolidación - CORREGIDA Y MEJORADA
   Future<void> _editarLiderConsolidacion(
       String docId, Map<String, dynamic> datos) async {
     try {
+      setState(() => _isEditingLiderConsolidacion = true);
+
+      print('Iniciando edición de líder de consolidación con ID: $docId');
+
+      // Primero obtenemos los datos actuales para preservar información
+      final liderDoc =
+          await _firestore.collection('lideresConsolidacion').doc(docId).get();
+      if (!liderDoc.exists) {
+        throw Exception('El líder de consolidación no existe');
+      }
+
+      final datosActuales = liderDoc.data() as Map<String, dynamic>;
+
+      // Preparar datos para actualización, preservando campos existentes
+      final datosActualizacion = <String, dynamic>{
+        'nombre': datos['nombre']?.toString().trim() ?? datosActuales['nombre'],
+        'apellido':
+            datos['apellido']?.toString().trim() ?? datosActuales['apellido'],
+        'usuario':
+            datos['usuario']?.toString().trim() ?? datosActuales['usuario'],
+        'contrasena': datos['contrasena']?.toString().trim() ??
+            datosActuales['contrasena'],
+        // Preservar otros campos importantes
+        'rol': datosActuales['rol'] ?? 'liderConsolidacion',
+        'createdAt': datosActuales['createdAt'],
+      };
+
+      // Verificar si el nuevo usuario ya existe (si se está cambiando)
+      if (datos['usuario']?.toString().trim() != datosActuales['usuario']) {
+        final usuarioExistente = await _firestore
+            .collection('usuarios')
+            .where('usuario', isEqualTo: datosActualizacion['usuario'])
+            .limit(1)
+            .get();
+
+        if (usuarioExistente.docs.isNotEmpty) {
+          throw Exception('El nombre de usuario ya está en uso');
+        }
+      }
+
       // Actualizar el documento en la colección 'lideresConsolidacion'
-      await _firestore.collection('lideresConsolidacion').doc(docId).update({
-        'nombre': datos['nombre'],
-        'apellido': datos['apellido'],
-        'usuario': datos['usuario'],
-        'contrasena': datos['contrasena'],
-      });
+      await _firestore
+          .collection('lideresConsolidacion')
+          .doc(docId)
+          .update(datosActualizacion);
+      print('Líder de consolidación actualizado exitosamente');
 
       // Buscar y actualizar el usuario en la colección 'usuarios'
-      final usuarioSnapshot = await _firestore
+      // Buscar por el usuario anterior para evitar problemas
+      final usuarioQuery = await _firestore
           .collection('usuarios')
           .where('rol', isEqualTo: 'liderConsolidacion')
-          .where('usuario', isEqualTo: datos['usuario'])
+          .where('usuario', isEqualTo: datosActuales['usuario'])
+          .limit(1)
           .get();
 
-      if (usuarioSnapshot.docs.isNotEmpty) {
-        await usuarioSnapshot.docs.first.reference.update({
-          'usuario': datos['usuario'],
-          'contrasena': datos['contrasena'],
+      if (usuarioQuery.docs.isNotEmpty) {
+        print('Usuario encontrado, actualizando datos');
+
+        await usuarioQuery.docs.first.reference.update({
+          'usuario': datosActualizacion['usuario'],
+          'contrasena': datosActualizacion['contrasena'],
+          'nombre': datosActualizacion['nombre'],
+          'apellido': datosActualizacion['apellido'],
+          'rol': 'liderConsolidacion',
+        });
+
+        print('Usuario actualizado exitosamente');
+      } else {
+        print('No se encontró usuario asociado, creando nuevo usuario');
+        // Si no existe el usuario, lo creamos
+        await _firestore.collection('usuarios').add({
+          'usuario': datosActualizacion['usuario'],
+          'contrasena': datosActualizacion['contrasena'],
+          'rol': 'liderConsolidacion',
+          'nombre': datosActualizacion['nombre'],
+          'apellido': datosActualizacion['apellido'],
         });
       }
 
-      _mostrarSnackBar('Líder de consolidación actualizado exitosamente');
+      _mostrarSnackBar('Líder de consolidación actualizado exitosamente',
+          isSuccess: true);
+
+      // Pequeña pausa para mostrar el feedback antes de cerrar
+      await Future.delayed(Duration(milliseconds: 300));
     } catch (e) {
-      _mostrarSnackBar('Error al actualizar el líder de consolidación: $e');
+      print('Error al actualizar líder de consolidación: $e');
+      _mostrarSnackBar('Error al actualizar el líder: ${e.toString()}',
+          isSuccess: false);
+    } finally {
+      if (mounted) {
+        setState(() => _isEditingLiderConsolidacion = false);
+      }
     }
   }
 
@@ -258,16 +381,47 @@ class _AdminPastoresState extends State<AdminPastores>
     _contrasenaLiderConsolidacionController.clear();
   }
 
-  void _mostrarSnackBar(String mensaje) {
+// Función mejorada para mostrar SnackBar - MEJORADA
+  void _mostrarSnackBar(String mensaje, {bool isSuccess = true}) {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).clearSnackBars();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(mensaje),
-        backgroundColor: kPrimaryColor,
+        content: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                isSuccess ? Icons.check_circle_rounded : Icons.error_rounded,
+                color: Colors.white,
+                size: 20,
+              ),
+            ),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                mensaje,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: isSuccess ? primaryColor : Colors.red[600],
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(12),
         ),
-        margin: EdgeInsets.all(8),
+        margin: EdgeInsets.all(16),
+        duration: Duration(seconds: isSuccess ? 2 : 4),
+        elevation: 6,
       ),
     );
   }
@@ -1083,91 +1237,282 @@ class _AdminPastoresState extends State<AdminPastores>
     );
   }
 
+// Función para crear líder de ministerio - MEJORADA
   Future<void> _crearLiderMinisterio(String ministerio) async {
-    // Verificar si ya existe un líder para el ministerio
-    final snapshot = await _firestore
-        .collection('lideresMinisterio')
-        .where('ministerio', isEqualTo: ministerio)
-        .get();
-    if (snapshot.docs.isNotEmpty) {
-      _mostrarSnackBar('Ya existe un líder para este ministerio');
-      return;
-    }
+    try {
+      // Verificar si ya existe un líder para el ministerio
+      final snapshot = await _firestore
+          .collection('lideresMinisterio')
+          .where('ministerio', isEqualTo: ministerio)
+          .limit(1)
+          .get();
 
-    // Mostrar diálogo para capturar datos del líder
-    final TextEditingController nombreController = TextEditingController();
-    final TextEditingController apellidoController = TextEditingController();
-    final TextEditingController usuarioController = TextEditingController();
-    final TextEditingController contrasenaController = TextEditingController();
+      if (snapshot.docs.isNotEmpty) {
+        _mostrarSnackBar('Ya existe un líder para este ministerio',
+            isSuccess: false);
+        return;
+      }
 
-    await showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text('Crear Líder de $ministerio'),
-          content: SingleChildScrollView(
-            child: Column(
-              children: [
-                TextField(
-                  controller: nombreController,
-                  decoration: const InputDecoration(labelText: 'Nombre'),
+      // Mostrar diálogo para capturar datos del líder
+      final TextEditingController nombreController = TextEditingController();
+      final TextEditingController apellidoController = TextEditingController();
+      final TextEditingController usuarioController = TextEditingController();
+      final TextEditingController contrasenaController =
+          TextEditingController();
+      bool isCreatingLeader = false;
+
+      await showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) {
+          return StatefulBuilder(
+            builder: (context, setDialogState) => AlertDialog(
+              backgroundColor: backgroundColor,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              title: Container(
+                padding: EdgeInsets.symmetric(vertical: 10),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: primaryColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(
+                        Icons.admin_panel_settings_rounded,
+                        color: primaryColor,
+                        size: 24,
+                      ),
+                    ),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Crear Líder',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: primaryColor,
+                            ),
+                          ),
+                          Text(
+                            'Ministerio: $ministerio',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey[600],
+                              fontWeight: FontWeight.normal,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-                TextField(
-                  controller: apellidoController,
-                  decoration: const InputDecoration(labelText: 'Apellido'),
+              ),
+              content: Container(
+                width: double.maxFinite,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _buildEditTextField(
+                        controller: nombreController,
+                        label: 'Nombre',
+                        icon: Icons.person_rounded,
+                        enabled: !isCreatingLeader,
+                      ),
+                      SizedBox(height: 16),
+                      _buildEditTextField(
+                        controller: apellidoController,
+                        label: 'Apellido',
+                        icon: Icons.person_outline_rounded,
+                        enabled: !isCreatingLeader,
+                      ),
+                      SizedBox(height: 16),
+                      _buildEditTextField(
+                        controller: usuarioController,
+                        label: 'Usuario',
+                        icon: Icons.account_circle_rounded,
+                        enabled: !isCreatingLeader,
+                      ),
+                      SizedBox(height: 16),
+                      _buildEditTextField(
+                        controller: contrasenaController,
+                        label: 'Contraseña',
+                        icon: Icons.lock_rounded,
+                        obscureText: true,
+                        enabled: !isCreatingLeader,
+                      ),
+                    ],
+                  ),
                 ),
-                TextField(
-                  controller: usuarioController,
-                  decoration: const InputDecoration(labelText: 'Usuario'),
-                ),
-                TextField(
-                  controller: contrasenaController,
-                  decoration: const InputDecoration(labelText: 'Contraseña'),
-                  obscureText: true,
+              ),
+              actions: [
+                Container(
+                  width: double.maxFinite,
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: TextButton(
+                          onPressed: isCreatingLeader
+                              ? null
+                              : () => Navigator.pop(context),
+                          style: TextButton.styleFrom(
+                            padding: EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                          child: Text(
+                            'Cancelar',
+                            style: TextStyle(
+                              color: Colors.grey[600],
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: isCreatingLeader
+                              ? null
+                              : () async {
+                                  if (nombreController.text.trim().isEmpty ||
+                                      apellidoController.text.trim().isEmpty ||
+                                      usuarioController.text.trim().isEmpty ||
+                                      contrasenaController.text
+                                          .trim()
+                                          .isEmpty) {
+                                    _mostrarSnackBar(
+                                        'Complete todos los campos',
+                                        isSuccess: false);
+                                    return;
+                                  }
+
+                                  setDialogState(() => isCreatingLeader = true);
+
+                                  try {
+                                    // Verificar si el usuario ya existe
+                                    final usuarioExistente = await _firestore
+                                        .collection('usuarios')
+                                        .where('usuario',
+                                            isEqualTo:
+                                                usuarioController.text.trim())
+                                        .limit(1)
+                                        .get();
+
+                                    if (usuarioExistente.docs.isNotEmpty) {
+                                      _mostrarSnackBar('El usuario ya existe',
+                                          isSuccess: false);
+                                      setDialogState(
+                                          () => isCreatingLeader = false);
+                                      return;
+                                    }
+
+                                    // Crear líder en Firebase
+                                    await _firestore
+                                        .collection('lideresMinisterio')
+                                        .add({
+                                      'nombre': nombreController.text.trim(),
+                                      'apellido':
+                                          apellidoController.text.trim(),
+                                      'usuario': usuarioController.text.trim(),
+                                      'contrasena':
+                                          contrasenaController.text.trim(),
+                                      'ministerio': ministerio,
+                                      'createdAt': FieldValue.serverTimestamp(),
+                                    });
+
+                                    // Crear usuario en la colección de usuarios
+                                    await _firestore
+                                        .collection('usuarios')
+                                        .add({
+                                      'usuario': usuarioController.text.trim(),
+                                      'contrasena':
+                                          contrasenaController.text.trim(),
+                                      'rol': 'liderMinisterio',
+                                      'ministerio': ministerio,
+                                      'nombre': nombreController.text.trim(),
+                                      'apellido':
+                                          apellidoController.text.trim(),
+                                    });
+
+                                    Navigator.pop(context);
+                                    _mostrarSnackBar(
+                                        'Líder creado exitosamente',
+                                        isSuccess: true);
+
+                                    if (mounted) {
+                                      setState(() {});
+                                    }
+                                  } catch (e) {
+                                    print('Error al crear líder: $e');
+                                    _mostrarSnackBar(
+                                        'Error al crear el líder: ${e.toString()}',
+                                        isSuccess: false);
+                                    setDialogState(
+                                        () => isCreatingLeader = false);
+                                  }
+                                },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: primaryColor,
+                            foregroundColor: Colors.white,
+                            padding: EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            elevation: 2,
+                          ),
+                          child: isCreatingLeader
+                              ? Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    SizedBox(
+                                      width: 16,
+                                      height: 16,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(
+                                                Colors.white),
+                                      ),
+                                    ),
+                                    SizedBox(width: 8),
+                                    Text('Creando...'),
+                                  ],
+                                )
+                              : Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.add_rounded, size: 18),
+                                    SizedBox(width: 6),
+                                    Text(
+                                      'Crear',
+                                      style: TextStyle(
+                                          fontWeight: FontWeight.w600),
+                                    ),
+                                  ],
+                                ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancelar'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                if (nombreController.text.isEmpty ||
-                    apellidoController.text.isEmpty ||
-                    usuarioController.text.isEmpty ||
-                    contrasenaController.text.isEmpty) {
-                  _mostrarSnackBar('Complete todos los campos');
-                  return;
-                }
-                // Crear líder en Firebase
-                await _firestore.collection('lideresMinisterio').add({
-                  'nombre': nombreController.text,
-                  'apellido': apellidoController.text,
-                  'usuario': usuarioController.text,
-                  'contrasena': contrasenaController.text,
-                  'ministerio': ministerio,
-                  'createdAt': FieldValue.serverTimestamp(),
-                });
-                // También se crea el usuario en la colección de usuarios si es necesario
-                await _firestore.collection('usuarios').add({
-                  'usuario': usuarioController.text,
-                  'contrasena': contrasenaController.text,
-                  'rol': 'liderMinisterio',
-                  'ministerio': ministerio,
-                });
-                Navigator.pop(context);
-                _mostrarSnackBar('Líder creado exitosamente');
-                setState(() {});
-              },
-              child: const Text('Guardar'),
-            ),
-          ],
-        );
-      },
-    );
+          );
+        },
+      );
+    } catch (e) {
+      print('Error en _crearLiderMinisterio: $e');
+      _mostrarSnackBar('Error inesperado: ${e.toString()}', isSuccess: false);
+    }
   }
 
   Widget _buildTribusTab() {
@@ -1177,39 +1522,84 @@ class _AdminPastoresState extends State<AdminPastores>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (!_mostrarFormularioTribu)
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                ElevatedButton.icon(
-                  onPressed: () =>
-                      setState(() => _mostrarFormularioTribu = true),
-                  icon: const Icon(Icons.add, color: Colors.white),
-                  label: const Text('Crear Nueva Tribu'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1B998B),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 20, vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    const Color(0xFF1B998B).withOpacity(0.1),
+                    const Color(0xFF1B998B).withOpacity(0.05),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
-                ElevatedButton.icon(
-                  onPressed: _mostrarDialogoSeleccionTribus,
-                  icon: const Icon(Icons.merge_type, color: Colors.white),
-                  label: const Text('Unir Tribus'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1B998B),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 20, vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
+                borderRadius: BorderRadius.circular(15),
+                border: Border.all(
+                  color: const Color(0xFF1B998B).withOpacity(0.2),
+                  width: 1,
                 ),
-              ],
+              ),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  bool isSmallScreen = constraints.maxWidth < 600;
+
+                  return isSmallScreen
+                      ? Column(
+                          children: [
+                            _buildActionButton(
+                              onPressed: () => setState(
+                                  () => _mostrarFormularioTribu = true),
+                              icon: Icons.add_circle_outline,
+                              label: 'Crear Nueva Tribu',
+                              color: const Color(0xFF1B998B),
+                              isFullWidth: true,
+                            ),
+                            const SizedBox(height: 12),
+                            _buildActionButton(
+                              onPressed: _mostrarDialogoSeleccionTribus,
+                              icon: Icons.merge_type,
+                              label: 'Unir Tribus',
+                              color: const Color(0xFF1B998B),
+                              isFullWidth: true,
+                              gradient: LinearGradient(
+                                colors: [
+                                  const Color(0xFF1B998B),
+                                  const Color(0xFF159B8C),
+                                ],
+                              ),
+                            ),
+                          ],
+                        )
+                      : Row(
+                          children: [
+                            Expanded(
+                              child: _buildActionButton(
+                                onPressed: () => setState(
+                                    () => _mostrarFormularioTribu = true),
+                                icon: Icons.add_circle_outline,
+                                label: 'Crear Nueva Tribu',
+                                color: const Color(0xFF1B998B),
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: _buildActionButton(
+                                onPressed: _mostrarDialogoSeleccionTribus,
+                                icon: Icons.merge_type,
+                                label: 'Unir Tribus',
+                                color: const Color(0xFF1B998B),
+                                gradient: LinearGradient(
+                                  colors: [
+                                    const Color(0xFF1B998B),
+                                    const Color(0xFF159B8C),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        );
+                },
+              ),
             ),
           if (_mostrarFormularioTribu) ...[
             _buildFormularioTribu(),
@@ -1222,7 +1612,54 @@ class _AdminPastoresState extends State<AdminPastores>
     );
   }
 
+  Widget _buildActionButton({
+    required VoidCallback onPressed,
+    required IconData icon,
+    required String label,
+    required Color color,
+    Gradient? gradient,
+    bool isFullWidth = false,
+  }) {
+    return Container(
+      width: isFullWidth ? double.infinity : null,
+      child: ElevatedButton.icon(
+        onPressed: onPressed,
+        icon: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.2),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, color: Colors.white, size: 20),
+        ),
+        label: Text(
+          label,
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.5,
+          ),
+        ),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: gradient == null ? color : null,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          elevation: 4,
+          shadowColor: color.withOpacity(0.3),
+        ).copyWith(
+          backgroundColor: gradient != null
+              ? MaterialStateProperty.all(Colors.transparent)
+              : null,
+        ),
+      ),
+    );
+  }
+
   Future<void> _mostrarDialogoSeleccionTribus() async {
+    String? ministerioSeleccionado;
     String? tribu1Id;
     String? tribu2Id;
     String? nuevoNombre;
@@ -1231,175 +1668,674 @@ class _AdminPastoresState extends State<AdminPastores>
     String? nuevoUsuario;
     String? nuevaContrasena;
     bool mantenerDatos = true;
+    bool isLoading = false;
 
-    final tribusSnapshot = await _firestore.collection('tribus').get();
-
-    if (tribusSnapshot.docs.length < 2) {
-      _mostrarSnackBar('Se necesitan al menos 2 tribus para realizar la unión');
-      return;
-    }
-
-    final List<DropdownMenuItem<String>> tribuItems =
-        tribusSnapshot.docs.map((doc) {
-      final data = doc.data();
-      return DropdownMenuItem(
-        value: doc.id,
-        child: Text(data['nombre']),
-      );
-    }).toList();
+    final List<Map<String, dynamic>> ministerios = [
+      {
+        'nombre': 'Ministerio Juvenil',
+        'icon': Icons.group,
+        'color': const Color(0xFF1B998B),
+      },
+      {
+        'nombre': 'Ministerio de Damas',
+        'icon': Icons.woman,
+        'color': const Color(0xFF1B998B),
+      },
+      {
+        'nombre': 'Ministerio de Caballeros',
+        'icon': Icons.man,
+        'color': const Color(0xFF1B998B),
+      },
+    ];
 
     await showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (BuildContext context) {
         return StatefulBuilder(
           builder: (context, setState) {
             return AlertDialog(
-              title: Row(
-                children: const [
-                  Icon(Icons.merge_type, color: Color(0xFF1B998B)),
-                  SizedBox(width: 10),
-                  Text('Unir Tribus'),
-                ],
+              backgroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              title: Container(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            const Color(0xFF1B998B),
+                            const Color(0xFF159B8C),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        Icons.merge_type,
+                        color: Colors.white,
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 15),
+                    const Expanded(
+                      child: Text(
+                        'Unir Tribus por Ministerio',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF2C3E50),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
               content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Selecciona las tribus que deseas unir:',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 16),
-                    DropdownButtonFormField<String>(
-                      items: tribuItems,
-                      onChanged: (value) {
-                        setState(() {
-                          tribu1Id = value;
-                        });
-                      },
-                      decoration: InputDecoration(
-                        labelText: 'Primera tribu',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    DropdownButtonFormField<String>(
-                      items: tribuItems
-                          .where((item) => item.value != tribu1Id)
-                          .toList(),
-                      onChanged: (value) {
-                        setState(() {
-                          tribu2Id = value;
-                        });
-                      },
-                      decoration: InputDecoration(
-                        labelText: 'Segunda tribu',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    CheckboxListTile(
-                      value: mantenerDatos,
-                      onChanged: (value) {
-                        setState(() {
-                          mantenerDatos = value ?? true;
-                        });
-                      },
-                      title: const Text('Mantener datos de la primera tribu'),
-                      controlAffinity: ListTileControlAffinity.leading,
-                    ),
-                    if (!mantenerDatos) ...[
-                      const SizedBox(height: 16),
-                      TextField(
-                        onChanged: (value) => nuevoNombre = value,
-                        decoration: InputDecoration(
-                          labelText: 'Nuevo nombre de tribu',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
+                child: Container(
+                  width: MediaQuery.of(context).size.width * 0.8,
+                  constraints: const BoxConstraints(maxWidth: 500),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Selección de Ministerio
+                      const Text(
+                        '1. Selecciona el Ministerio',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: Color(0xFF2C3E50),
                         ),
                       ),
                       const SizedBox(height: 12),
-                      TextField(
-                        onChanged: (value) => nuevoNombreLider = value,
-                        decoration: InputDecoration(
-                          labelText: 'Nuevo nombre del líder',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
+                      Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: const Color(0xFF1B998B).withOpacity(0.3),
                           ),
                         ),
-                      ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        onChanged: (value) => nuevoApellidoLider = value,
-                        decoration: InputDecoration(
-                          labelText: 'Nuevo apellido del líder',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
+                        child: DropdownButtonFormField<String>(
+                          value: ministerioSeleccionado,
+                          decoration: InputDecoration(
+                            prefixIcon: Container(
+                              margin: const EdgeInsets.all(8),
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF1B998B).withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Icon(
+                                Icons.church,
+                                color: const Color(0xFF1B998B),
+                                size: 20,
+                              ),
+                            ),
+                            labelText: 'Ministerio',
+                            border: InputBorder.none,
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 16,
+                            ),
                           ),
+                          items: ministerios.map((ministerio) {
+                            return DropdownMenuItem<String>(
+                              value: ministerio['nombre'],
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    ministerio['icon'],
+                                    color: ministerio['color'],
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Text(
+                                    ministerio['nombre'],
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }).toList(),
+                          onChanged: isLoading
+                              ? null
+                              : (value) {
+                                  setState(() {
+                                    ministerioSeleccionado = value;
+                                    tribu1Id = null;
+                                    tribu2Id = null;
+                                  });
+                                },
                         ),
                       ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        onChanged: (value) => nuevoUsuario = value,
-                        decoration: InputDecoration(
-                          labelText: 'Nuevo usuario',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
+
+                      if (ministerioSeleccionado != null) ...[
+                        const SizedBox(height: 24),
+                        const Text(
+                          '2. Selecciona las Tribus a Unir',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            color: Color(0xFF2C3E50),
                           ),
                         ),
-                      ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        onChanged: (value) => nuevaContrasena = value,
-                        decoration: InputDecoration(
-                          labelText: 'Nueva contraseña',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
+                        const SizedBox(height: 12),
+                        FutureBuilder<QuerySnapshot>(
+                          future: _firestore
+                              .collection('tribus')
+                              .where('categoria',
+                                  isEqualTo: ministerioSeleccionado)
+                              .get(),
+                          builder: (context, snapshot) {
+                            if (snapshot.connectionState ==
+                                ConnectionState.waiting) {
+                              return Container(
+                                height: 100,
+                                child: Center(
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      SizedBox(
+                                        width: 30,
+                                        height: 30,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 3,
+                                          valueColor:
+                                              AlwaysStoppedAnimation<Color>(
+                                            const Color(0xFF1B998B),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 12),
+                                      const Text(
+                                        'Cargando tribus...',
+                                        style: TextStyle(
+                                          color: Color(0xFF7F8C8D),
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            }
+
+                            if (snapshot.hasError) {
+                              return Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: Colors.red.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: Colors.red.withOpacity(0.3),
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.error_outline,
+                                        color: Colors.red),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        'Error al cargar las tribus',
+                                        style: TextStyle(color: Colors.red),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }
+
+                            if (!snapshot.hasData ||
+                                snapshot.data!.docs.isEmpty) {
+                              return Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: Colors.orange.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: Colors.orange.withOpacity(0.3),
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.info_outline,
+                                        color: Colors.orange),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        'No hay tribus disponibles en este ministerio',
+                                        style: TextStyle(
+                                            color: Colors.orange.shade700),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }
+
+                            final tribus = snapshot.data!.docs;
+
+                            if (tribus.length < 2) {
+                              return Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: Colors.orange.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: Colors.orange.withOpacity(0.3),
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.warning_outlined,
+                                        color: Colors.orange),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        'Se necesitan al menos 2 tribus para realizar la unión',
+                                        style: TextStyle(
+                                            color: Colors.orange.shade700),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }
+
+                            final dropdownItems = tribus.map((doc) {
+                              final data = doc.data() as Map<String, dynamic>;
+                              return DropdownMenuItem<String>(
+                                value: doc.id,
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(6),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF1B998B)
+                                            .withOpacity(0.1),
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: Icon(
+                                        Icons.groups,
+                                        color: const Color(0xFF1B998B),
+                                        size: 16,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Text(
+                                        data['nombre'] ?? 'Sin nombre',
+                                        style: const TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }).toList();
+
+                            return Column(
+                              children: [
+                                // Primera Tribu
+                                Container(
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: const Color(0xFF1B998B)
+                                          .withOpacity(0.3),
+                                    ),
+                                  ),
+                                  child: DropdownButtonFormField<String>(
+                                    value: tribu1Id,
+                                    decoration: InputDecoration(
+                                      prefixIcon: Container(
+                                        margin: const EdgeInsets.all(8),
+                                        padding: const EdgeInsets.all(8),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFF1B998B)
+                                              .withOpacity(0.1),
+                                          borderRadius:
+                                              BorderRadius.circular(8),
+                                        ),
+                                        child: Text(
+                                          '1',
+                                          style: TextStyle(
+                                            color: const Color(0xFF1B998B),
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                      labelText: 'Primera Tribu (Destino)',
+                                      border: InputBorder.none,
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(
+                                        horizontal: 16,
+                                        vertical: 16,
+                                      ),
+                                    ),
+                                    items: dropdownItems,
+                                    onChanged: isLoading
+                                        ? null
+                                        : (value) {
+                                            setState(() {
+                                              tribu1Id = value;
+                                              if (tribu2Id == value) {
+                                                tribu2Id = null;
+                                              }
+                                            });
+                                          },
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+
+                                // Segunda Tribu
+                                Container(
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: const Color(0xFF1B998B)
+                                          .withOpacity(0.3),
+                                    ),
+                                  ),
+                                  child: DropdownButtonFormField<String>(
+                                    value: tribu2Id,
+                                    decoration: InputDecoration(
+                                      prefixIcon: Container(
+                                        margin: const EdgeInsets.all(8),
+                                        padding: const EdgeInsets.all(8),
+                                        decoration: BoxDecoration(
+                                          color: Colors.orange.withOpacity(0.1),
+                                          borderRadius:
+                                              BorderRadius.circular(8),
+                                        ),
+                                        child: Text(
+                                          '2',
+                                          style: TextStyle(
+                                            color: Colors.orange.shade700,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                      labelText: 'Segunda Tribu (Se eliminará)',
+                                      border: InputBorder.none,
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(
+                                        horizontal: 16,
+                                        vertical: 16,
+                                      ),
+                                    ),
+                                    items: dropdownItems
+                                        .where((item) => item.value != tribu1Id)
+                                        .toList(),
+                                    onChanged: isLoading
+                                        ? null
+                                        : (value) {
+                                            setState(() {
+                                              tribu2Id = value;
+                                            });
+                                          },
+                                  ),
+                                ),
+                              ],
+                            );
+                          },
+                        ),
+                      ],
+
+                      if (tribu1Id != null && tribu2Id != null) ...[
+                        const SizedBox(height: 24),
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                const Color(0xFF1B998B).withOpacity(0.1),
+                                const Color(0xFF1B998B).withOpacity(0.05),
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: const Color(0xFF1B998B).withOpacity(0.3),
+                            ),
+                          ),
+                          child: Column(
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.info_outline,
+                                    color: const Color(0xFF1B998B),
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  const Expanded(
+                                    child: Text(
+                                      'Configuración de Unión',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: Color(0xFF2C3E50),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              CheckboxListTile(
+                                value: mantenerDatos,
+                                onChanged: isLoading
+                                    ? null
+                                    : (value) {
+                                        setState(() {
+                                          mantenerDatos = value ?? true;
+                                        });
+                                      },
+                                title: const Text(
+                                  'Mantener datos de la primera tribu',
+                                  style: TextStyle(fontSize: 14),
+                                ),
+                                subtitle: const Text(
+                                  'Si se desmarca, podrás establecer nuevos datos',
+                                  style: TextStyle(
+                                      fontSize: 12, color: Color(0xFF7F8C8D)),
+                                ),
+                                controlAffinity:
+                                    ListTileControlAffinity.leading,
+                                activeColor: const Color(0xFF1B998B),
+                              ),
+                            ],
                           ),
                         ),
-                        obscureText: true,
-                      ),
+                        if (!mantenerDatos) ...[
+                          const SizedBox(height: 16),
+                          const Text(
+                            '3. Nuevos Datos para la Tribu Unificada',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                              color: Color(0xFF2C3E50),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          _buildCustomTextField(
+                            onChanged: (value) => nuevoNombre = value,
+                            labelText: 'Nuevo nombre de tribu',
+                            icon: Icons.group_outlined,
+                            enabled: !isLoading,
+                          ),
+                          const SizedBox(height: 12),
+                          _buildCustomTextField(
+                            onChanged: (value) => nuevoNombreLider = value,
+                            labelText: 'Nuevo nombre del líder',
+                            icon: Icons.person_outline,
+                            enabled: !isLoading,
+                          ),
+                          const SizedBox(height: 12),
+                          _buildCustomTextField(
+                            onChanged: (value) => nuevoApellidoLider = value,
+                            labelText: 'Nuevo apellido del líder',
+                            icon: Icons.person_outline,
+                            enabled: !isLoading,
+                          ),
+                          const SizedBox(height: 12),
+                          _buildCustomTextField(
+                            onChanged: (value) => nuevoUsuario = value,
+                            labelText: 'Nuevo usuario',
+                            icon: Icons.account_circle_outlined,
+                            enabled: !isLoading,
+                          ),
+                          const SizedBox(height: 12),
+                          _buildCustomTextField(
+                            onChanged: (value) => nuevaContrasena = value,
+                            labelText: 'Nueva contraseña',
+                            icon: Icons.lock_outline,
+                            isPassword: true,
+                            enabled: !isLoading,
+                          ),
+                        ],
+                      ],
                     ],
-                  ],
+                  ),
                 ),
               ),
               actions: [
                 TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Cancelar'),
-                ),
-                ElevatedButton(
-                  onPressed: tribu1Id == null || tribu2Id == null
-                      ? null
-                      : () {
-                          Navigator.pop(context);
-                          _unirTribusConNuevosDatos(
-                            tribu1Id!,
-                            tribu2Id!,
-                            mantenerDatos,
-                            nuevoNombre,
-                            nuevoNombreLider,
-                            nuevoApellidoLider,
-                            nuevoUsuario,
-                            nuevaContrasena,
-                          );
-                        },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1B998B),
+                  onPressed: isLoading ? null : () => Navigator.pop(context),
+                  child: Text(
+                    'Cancelar',
+                    style: TextStyle(
+                      color: isLoading ? Colors.grey : const Color(0xFF7F8C8D),
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
-                  child: const Text('Unir'),
+                ),
+                Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        const Color(0xFF1B998B),
+                        const Color(0xFF159B8C),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: ElevatedButton.icon(
+                    onPressed:
+                        (tribu1Id != null && tribu2Id != null && !isLoading)
+                            ? () async {
+                                setState(() {
+                                  isLoading = true;
+                                });
+
+                                try {
+                                  Navigator.pop(context);
+                                  await _unirTribusConNuevosDatos(
+                                    tribu1Id!,
+                                    tribu2Id!,
+                                    mantenerDatos,
+                                    nuevoNombre,
+                                    nuevoNombreLider,
+                                    nuevoApellidoLider,
+                                    nuevoUsuario,
+                                    nuevaContrasena,
+                                  );
+                                } catch (e) {
+                                  setState(() {
+                                    isLoading = false;
+                                  });
+                                  _mostrarSnackBar(
+                                      'Error al unir las tribus: ${e.toString()}');
+                                }
+                              }
+                            : null,
+                    icon: isLoading
+                        ? SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Colors.white,
+                              ),
+                            ),
+                          )
+                        : const Icon(Icons.merge_type,
+                            color: Colors.white, size: 18),
+                    label: Text(
+                      isLoading ? 'Uniendo...' : 'Unir Tribus',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.transparent,
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 20, vertical: 12),
+                    ),
+                  ),
                 ),
               ],
             );
           },
         );
       },
+    );
+  }
+
+  Widget _buildCustomTextField({
+    required Function(String) onChanged,
+    required String labelText,
+    required IconData icon,
+    bool isPassword = false,
+    bool enabled = true,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: const Color(0xFF1B998B).withOpacity(0.3),
+        ),
+      ),
+      child: TextField(
+        onChanged: onChanged,
+        obscureText: isPassword,
+        enabled: enabled,
+        decoration: InputDecoration(
+          prefixIcon: Container(
+            margin: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1B998B).withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              icon,
+              color: const Color(0xFF1B998B),
+              size: 20,
+            ),
+          ),
+          labelText: labelText,
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 16,
+          ),
+          labelStyle: TextStyle(
+            color: enabled ? const Color(0xFF7F8C8D) : Colors.grey,
+          ),
+        ),
+      ),
     );
   }
 
@@ -1413,152 +2349,291 @@ class _AdminPastoresState extends State<AdminPastores>
     String? nuevoUsuario,
     String? nuevaContrasena,
   ) async {
-    try {
-      // Obtener datos de ambas tribus
-      final tribu1Doc =
-          await _firestore.collection('tribus').doc(tribu1Id).get();
-      final tribu2Doc =
-          await _firestore.collection('tribus').doc(tribu2Id).get();
+    // Mostrar loading overlay
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return WillPopScope(
+          onWillPop: () async => false,
+          child: AlertDialog(
+            backgroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(15),
+            ),
+            content: Container(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 60,
+                    height: 60,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          const Color(0xFF1B998B),
+                          const Color(0xFF159B8C),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                    child: const Icon(
+                      Icons.merge_type,
+                      color: Colors.white,
+                      size: 30,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  const Text(
+                    'Uniendo Tribus',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF2C3E50),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Por favor espera mientras se procesan los datos...',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Color(0xFF7F8C8D),
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  LinearProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      const Color(0xFF1B998B),
+                    ),
+                    backgroundColor: const Color(0xFF1B998B).withOpacity(0.2),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
 
-      if (!tribu1Doc.exists || !tribu2Doc.exists) {
-        throw Exception('Una o ambas tribus no existen');
+    try {
+      // Validaciones iniciales
+      if (tribu1Id.isEmpty || tribu2Id.isEmpty) {
+        throw Exception('IDs de tribus no válidos');
+      }
+
+      if (tribu1Id == tribu2Id) {
+        throw Exception('No se puede unir una tribu consigo misma');
+      }
+
+      // Obtener datos de ambas tribus con timeout
+      final futures = await Future.wait([
+        _firestore.collection('tribus').doc(tribu1Id).get(),
+        _firestore.collection('tribus').doc(tribu2Id).get(),
+      ]).timeout(
+        const Duration(seconds: 10),
+        onTimeout: () =>
+            throw Exception('Tiempo de espera agotado al obtener las tribus'),
+      );
+
+      final tribu1Doc = futures[0];
+      final tribu2Doc = futures[1];
+
+      if (!tribu1Doc.exists) {
+        throw Exception('La primera tribu no existe o fue eliminada');
+      }
+
+      if (!tribu2Doc.exists) {
+        throw Exception('La segunda tribu no existe o fue eliminada');
       }
 
       final tribu1Data = tribu1Doc.data()!;
       final tribu2Data = tribu2Doc.data()!;
 
+      // Validar que ambas tribus pertenezcan al mismo ministerio
+      if (tribu1Data['categoria'] != tribu2Data['categoria']) {
+        throw Exception('Las tribus deben pertenecer al mismo ministerio');
+      }
+
       // Obtener el nombre original de la tribu2 para el historial
-      final nombreTribu2Original = tribu2Data['nombre'];
+      final nombreTribu2Original = tribu2Data['nombre'] ?? 'Sin nombre';
+      final nombreTribu1Original = tribu1Data['nombre'] ?? 'Sin nombre';
+
+      // Batch para operaciones atómicas
+      final batch = _firestore.batch();
 
       // Si no se mantienen los datos, actualizar la tribu1 con los nuevos datos
       if (!mantenerDatos) {
-        await _firestore.collection('tribus').doc(tribu1Id).update({
-          'nombre': nuevoNombre ?? tribu1Data['nombre'],
-          'nombreLider': nuevoNombreLider ?? tribu1Data['nombreLider'],
-          'apellidoLider': nuevoApellidoLider ?? tribu1Data['apellidoLider'],
-          'usuario': nuevoUsuario ?? tribu1Data['usuario'],
-          'contrasena': nuevaContrasena ?? tribu1Data['contrasena'],
+        // Validar campos requeridos
+        if (nuevoNombre?.trim().isEmpty ?? true) {
+          throw Exception('El nuevo nombre de tribu es requerido');
+        }
+        if (nuevoNombreLider?.trim().isEmpty ?? true) {
+          throw Exception('El nuevo nombre del líder es requerido');
+        }
+        if (nuevoApellidoLider?.trim().isEmpty ?? true) {
+          throw Exception('El nuevo apellido del líder es requerido');
+        }
+        if (nuevoUsuario?.trim().isEmpty ?? true) {
+          throw Exception('El nuevo usuario es requerido');
+        }
+        if (nuevaContrasena?.trim().isEmpty ?? true) {
+          throw Exception('La nueva contraseña es requerida');
+        }
+
+        batch.update(_firestore.collection('tribus').doc(tribu1Id), {
+          'nombre': nuevoNombre!.trim(),
+          'nombreLider': nuevoNombreLider!.trim(),
+          'apellidoLider': nuevoApellidoLider!.trim(),
+          'usuario': nuevoUsuario!.trim(),
+          'contrasena': nuevaContrasena!.trim(),
+          'fechaActualizacion': FieldValue.serverTimestamp(),
         });
 
         // Actualizar el usuario correspondiente
         final usuarioTribu1Snapshot = await _firestore
             .collection('usuarios')
             .where('tribuId', isEqualTo: tribu1Id)
-            .get();
+            .limit(1)
+            .get()
+            .timeout(
+              const Duration(seconds: 5),
+              onTimeout: () =>
+                  throw Exception('Tiempo agotado al buscar usuario'),
+            );
 
         if (usuarioTribu1Snapshot.docs.isNotEmpty) {
-          await _firestore
-              .collection('usuarios')
-              .doc(usuarioTribu1Snapshot.docs.first.id)
-              .update({
-            'usuario': nuevoUsuario ?? tribu1Data['usuario'],
-            'contrasena': nuevaContrasena ?? tribu1Data['contrasena'],
-            'nombre': nuevoNombre ?? tribu1Data['nombre'],
-          });
+          batch.update(
+            _firestore
+                .collection('usuarios')
+                .doc(usuarioTribu1Snapshot.docs.first.id),
+            {
+              'usuario': nuevoUsuario!.trim(),
+              'contrasena': nuevaContrasena!.trim(),
+              'nombre': nuevoNombre!.trim(),
+              'fechaActualizacion': FieldValue.serverTimestamp(),
+            },
+          );
         }
       }
 
-      // Obtener todos los registros de la tribu2
+// REEMPLAZAR TODO EL BLOQUE DESDE "// Obtener y transferir todos los registros de la tribu2"
+// HASTA ANTES DE "// Eliminar usuario de la tribu2"
+
+// Obtener y transferir todos los registros de la tribu2
       final registrosTribu2 = await _firestore
           .collection('registros')
           .where('tribuAsignada', isEqualTo: tribu2Id)
-          .get();
+          .get()
+          .timeout(
+            const Duration(seconds: 10),
+            onTimeout: () =>
+                throw Exception('Tiempo agotado al obtener registros'),
+          );
 
-      // Transferir registros uno por uno para asegurar la transferencia
+// Determinar el nombre final de la tribu destino
+      final nombreTribuFinal = mantenerDatos
+          ? nombreTribu1Original
+          : (nuevoNombre?.trim() ?? nombreTribu1Original);
+
+// Transferir registros
       for (var registro in registrosTribu2.docs) {
-        final datosRegistro = Map<String, dynamic>.from(registro.data());
+        try {
+          final datosRegistro = Map<String, dynamic>.from(registro.data());
 
-        // Actualizar los campos necesarios
-        datosRegistro['tribuId'] = tribu1Id;
-        datosRegistro['tribuAsignada'] =
-            tribu1Id; // Actualizar el campo tribuAsignada
-        datosRegistro['tribuOriginal'] = nombreTribu2Original;
-        datosRegistro['fechaUnionTribus'] = FieldValue.serverTimestamp();
+          // Actualizar los campos necesarios CORRECTAMENTE
+          datosRegistro['tribuId'] = tribu1Id;
+          datosRegistro['tribuAsignada'] = tribu1Id;
+          datosRegistro['nombreTribu'] = nombreTribuFinal;
+          datosRegistro['tribuOriginal'] = nombreTribu2Original;
+          datosRegistro['fechaUnionTribus'] = FieldValue.serverTimestamp();
+          datosRegistro['tribuDestinoNombre'] = nombreTribuFinal;
 
-        // Mantener la fecha original de asignación
-        if (datosRegistro.containsKey('fechaAsignacionTribu')) {
-          datosRegistro['fechaAsignacionTribu'] =
-              registro.data()['fechaAsignacionTribu'];
+          // Mantener la fecha original de asignación si existe
+          if (!datosRegistro.containsKey('fechaAsignacionTribu')) {
+            datosRegistro['fechaAsignacionTribu'] =
+                FieldValue.serverTimestamp();
+          }
+
+          // Crear nuevo registro en la tribu1
+          final nuevoRegistroRef = _firestore.collection('registros').doc();
+          batch.set(nuevoRegistroRef, datosRegistro);
+
+          // Eliminar registro original
+          batch.delete(registro.reference);
+        } catch (e) {
+          print('Error al transferir registro ${registro.id}: $e');
+          continue; // Continuar con el siguiente registro
         }
-
-        // Crear nuevo registro en la tribu1
-        await _firestore.collection('registros').add(datosRegistro);
       }
 
-      // Transferir asistencias de tribu2 a tribu1
+// Transferir asistencias
       final asistenciasSnapshot = await _firestore
           .collection('asistencias')
           .where('tribuId', isEqualTo: tribu2Id)
-          .get();
+          .get()
+          .timeout(
+            const Duration(seconds: 10),
+            onTimeout: () =>
+                throw Exception('Tiempo agotado al obtener asistencias'),
+          );
 
       for (var asistencia in asistenciasSnapshot.docs) {
-        final asistenciaData = Map<String, dynamic>.from(asistencia.data());
-        asistenciaData['tribuId'] = tribu1Id; // Actualizar el ID de la tribu
-        asistenciaData['tribuOriginal'] = nombreTribu2Original;
-        asistenciaData['fechaUnionTribus'] = FieldValue.serverTimestamp();
+        try {
+          final asistenciaData = Map<String, dynamic>.from(asistencia.data());
+          asistenciaData['tribuId'] = tribu1Id;
+          asistenciaData['tribuOriginal'] = nombreTribu2Original;
+          asistenciaData['fechaUnionTribus'] = FieldValue.serverTimestamp();
 
-        // Crear nueva asistencia en tribu1
-        await _firestore.collection('asistencias').add(asistenciaData);
-      }
+          // Crear nueva asistencia en tribu1
+          final nuevaAsistenciaRef = _firestore.collection('asistencias').doc();
+          batch.set(nuevaAsistenciaRef, asistenciaData);
 
-      // Transferir coordinadores y timoteos
-      final colecciones = ['coordinadores', 'timoteos'];
-
-      for (var coleccion in colecciones) {
-        final snapshot = await _firestore
-            .collection(coleccion)
-            .where('tribuId', isEqualTo: tribu2Id)
-            .get();
-
-        // Transferir documentos uno por uno
-        for (var doc in snapshot.docs) {
-          final datosDoc = Map<String, dynamic>.from(doc.data());
-
-          datosDoc['tribuId'] = tribu1Id;
-          datosDoc['tribuAsignada'] =
-              tribu1Id; // Actualizar el campo tribuAsignada si existe
-          datosDoc['tribuOriginal'] = nombreTribu2Original;
-          datosDoc['fechaUnionTribus'] = FieldValue.serverTimestamp();
-
-          // Crear nuevo documento
-          await _firestore.collection(coleccion).add(datosDoc);
+          // Eliminar asistencia original
+          batch.delete(asistencia.reference);
+        } catch (e) {
+          print('Error al transferir asistencia ${asistencia.id}: $e');
+          continue;
         }
       }
 
-      // Crear historial de unión
-      await _firestore.collection('historialUnionTribus').add({
-        'tribuDestinoId': tribu1Id,
-        'tribuDestinoNombre': mantenerDatos
-            ? tribu1Data['nombre']
-            : (nuevoNombre ?? tribu1Data['nombre']),
-        'tribuOrigenId': tribu2Id,
-        'tribuOrigenNombre': nombreTribu2Original,
-        'fechaUnion': FieldValue.serverTimestamp(),
-        'mantuvoDatos': mantenerDatos,
-        'cantidadRegistrosTransferidos': registrosTribu2.docs.length,
-        'cantidadAsistenciasTransferidas': asistenciasSnapshot.docs.length,
-      });
+// Transferir coordinadores y timoteos (VERSIÓN CORREGIDA - SIN DUPLICACIÓN)
+      final colecciones = ['coordinadores', 'timoteos'];
 
-      // Una vez que todos los datos se han transferido, eliminar los datos originales
-      // Eliminar registros de la tribu2
-      for (var registro in registrosTribu2.docs) {
-        await registro.reference.delete();
-      }
-
-      // Eliminar asistencias de la tribu2
-      for (var asistencia in asistenciasSnapshot.docs) {
-        await asistencia.reference.delete();
-      }
-
-      // Eliminar coordinadores y timoteos de la tribu2
       for (var coleccion in colecciones) {
-        final snapshot = await _firestore
-            .collection(coleccion)
-            .where('tribuId', isEqualTo: tribu2Id)
-            .get();
+        try {
+          final snapshot = await _firestore
+              .collection(coleccion)
+              .where('tribuId', isEqualTo: tribu2Id)
+              .get()
+              .timeout(
+                const Duration(seconds: 10),
+                onTimeout: () =>
+                    throw Exception('Tiempo agotado al obtener $coleccion'),
+              );
 
-        for (var doc in snapshot.docs) {
-          await doc.reference.delete();
+          for (var doc in snapshot.docs) {
+            try {
+              final datosDoc = Map<String, dynamic>.from(doc.data());
+
+              // Actualizar directamente el documento existente en tribu2
+              batch.update(doc.reference, {
+                'tribuId': tribu1Id,
+                'nombreTribuAsignada': nombreTribuFinal,
+                'tribuAsignada': tribu1Id,
+                'tribuOriginal': nombreTribu2Original,
+                'fechaUnionTribus': FieldValue.serverTimestamp(),
+              });
+            } catch (e) {
+              print(
+                  'Error al actualizar documento ${doc.id} de $coleccion: $e');
+              continue;
+            }
+          }
+        } catch (e) {
+          print('Error al procesar colección $coleccion: $e');
+          continue;
         }
       }
 
@@ -1566,20 +2641,337 @@ class _AdminPastoresState extends State<AdminPastores>
       final usuarioTribu2Snapshot = await _firestore
           .collection('usuarios')
           .where('tribuId', isEqualTo: tribu2Id)
-          .get();
+          .limit(1)
+          .get()
+          .timeout(
+            const Duration(seconds: 5),
+            onTimeout: () =>
+                throw Exception('Tiempo agotado al buscar usuario de tribu2'),
+          );
 
       if (usuarioTribu2Snapshot.docs.isNotEmpty) {
-        await usuarioTribu2Snapshot.docs.first.reference.delete();
+        batch.delete(usuarioTribu2Snapshot.docs.first.reference);
       }
 
-      // Finalmente, eliminar la tribu2
-      await tribu2Doc.reference.delete();
+      // Crear historial de unión
+      final historialRef = _firestore.collection('historialUnionTribus').doc();
+      batch.set(historialRef, {
+        'tribuDestinoId': tribu1Id,
+        'tribuDestinoNombre': mantenerDatos
+            ? nombreTribu1Original
+            : (nuevoNombre?.trim() ?? nombreTribu1Original),
+        'tribuOrigenId': tribu2Id,
+        'tribuOrigenNombre': nombreTribu2Original,
+        'ministerio': tribu1Data['categoria'] ?? 'Sin categoría',
+        'fechaUnion': FieldValue.serverTimestamp(),
+        'mantuvoDatos': mantenerDatos,
+        'cantidadRegistrosTransferidos': registrosTribu2.docs.length,
+        'cantidadAsistenciasTransferidas': asistenciasSnapshot.docs.length,
+        'procesadoPor': 'Sistema',
+        'estado': 'Completado',
+      });
 
-      _mostrarSnackBar('Las tribus se han unido exitosamente');
-    } catch (e) {
+      // Finalmente, eliminar la tribu2
+      batch.delete(tribu2Doc.reference);
+
+      // Ejecutar todas las operaciones en batch
+      await batch.commit().timeout(
+            const Duration(seconds: 30),
+            onTimeout: () =>
+                throw Exception('Tiempo agotado al guardar los cambios'),
+          );
+
+      // Cerrar loading dialog
+      Navigator.of(context, rootNavigator: true).pop();
+
+      // Mostrar mensaje de éxito con detalles
+      _mostrarDialogoExito(
+        nombreTribu1Original,
+        nombreTribu2Original,
+        registrosTribu2.docs.length,
+        asistenciasSnapshot.docs.length,
+        mantenerDatos
+            ? nombreTribu1Original
+            : (nuevoNombre?.trim() ?? nombreTribu1Original),
+      );
+    } catch (e, stackTrace) {
+      // Cerrar loading dialog si está abierto
+      try {
+        Navigator.of(context, rootNavigator: true).pop();
+      } catch (_) {}
+
       print('Error detallado: $e');
-      _mostrarSnackBar('Error al unir las tribus: $e');
+      print('Stack trace: $stackTrace');
+
+      // Mostrar error específico al usuario
+      String mensajeError = 'Error desconocido';
+      if (e.toString().contains('Tiempo')) {
+        mensajeError =
+            'La operación tardó demasiado tiempo. Intenta nuevamente.';
+      } else if (e.toString().contains('network')) {
+        mensajeError =
+            'Error de conexión. Verifica tu internet e intenta nuevamente.';
+      } else if (e.toString().contains('permission')) {
+        mensajeError = 'No tienes permisos para realizar esta operación.';
+      } else {
+        mensajeError = e.toString().replaceFirst('Exception: ', '');
+      }
+
+      _mostrarDialogoError(mensajeError);
     }
+  }
+
+  void _mostrarDialogoExito(
+    String nombreTribu1,
+    String nombreTribu2,
+    int registrosTransferidos,
+    int asistenciasTransferidas,
+    String nombreFinal,
+  ) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          content: Container(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.green,
+                        Colors.green.shade600,
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(40),
+                  ),
+                  child: const Icon(
+                    Icons.check_circle_outline,
+                    color: Colors.white,
+                    size: 40,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  '¡Unión Exitosa!',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF2C3E50),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.green.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: Colors.green.withOpacity(0.3),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Resumen de la operación:',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.green.shade700,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      _buildResumenItem(
+                        Icons.arrow_forward,
+                        '$nombreTribu2 → $nombreFinal',
+                        'Tribu unificada',
+                      ),
+                      _buildResumenItem(
+                        Icons.people,
+                        '$registrosTransferidos',
+                        'Registros transferidos',
+                      ),
+                      _buildResumenItem(
+                        Icons.event_available,
+                        '$asistenciasTransferidas',
+                        'Asistencias transferidas',
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            Container(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  // Refrescar la lista de tribus
+                  setState(() {});
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Text(
+                  'Entendido',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildResumenItem(IconData icon, String valor, String descripcion) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Icon(
+            icon,
+            size: 16,
+            color: Colors.green.shade600,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: RichText(
+              text: TextSpan(
+                children: [
+                  TextSpan(
+                    text: '$valor ',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.green.shade700,
+                      fontSize: 14,
+                    ),
+                  ),
+                  TextSpan(
+                    text: descripcion,
+                    style: const TextStyle(
+                      color: Color(0xFF7F8C8D),
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _mostrarDialogoError(String mensaje) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          content: Container(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.red,
+                        Colors.red.shade600,
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(40),
+                  ),
+                  child: const Icon(
+                    Icons.error_outline,
+                    color: Colors.white,
+                    size: 40,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  'Error en la Unión',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF2C3E50),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: Colors.red.withOpacity(0.3),
+                    ),
+                  ),
+                  child: Text(
+                    mensaje,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.red.shade700,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            Container(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Text(
+                  'Cerrar',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   Widget _buildLiderConsolidacionTab() {
@@ -2517,134 +3909,633 @@ class _AdminPastoresState extends State<AdminPastores>
 
   Future<void> _mostrarDialogoEditarTribu(
       String docId, Map<String, dynamic> datos) async {
-    final nombreController = TextEditingController(text: datos['nombre']);
+    final nombreController =
+        TextEditingController(text: datos['nombre']?.toString() ?? '');
     final nombreLiderController =
-        TextEditingController(text: datos['nombreLider']);
+        TextEditingController(text: datos['nombreLider']?.toString() ?? '');
     final apellidoLiderController =
-        TextEditingController(text: datos['apellidoLider']);
-    final usuarioController = TextEditingController(text: datos['usuario']);
+        TextEditingController(text: datos['apellidoLider']?.toString() ?? '');
+    final usuarioController =
+        TextEditingController(text: datos['usuario']?.toString() ?? '');
     final contrasenaController = TextEditingController();
+
+    String? categoriaSeleccionadaEdit = datos['categoria']?.toString();
+    bool isLoading = false;
 
     await showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Editar Tribu'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nombreController,
-                decoration:
-                    const InputDecoration(labelText: 'Nombre de la Tribu'),
-              ),
-              TextField(
-                controller: nombreLiderController,
-                decoration:
-                    const InputDecoration(labelText: 'Nombre del Líder'),
-              ),
-              TextField(
-                controller: apellidoLiderController,
-                decoration:
-                    const InputDecoration(labelText: 'Apellido del Líder'),
-              ),
-              TextField(
-                controller: usuarioController,
-                decoration: const InputDecoration(labelText: 'Usuario'),
-              ),
-              TextField(
-                controller: contrasenaController,
-                decoration: const InputDecoration(
-                    labelText: 'Nueva Contraseña (opcional)'),
-                obscureText: true,
-              ),
-            ],
+      barrierDismissible: false,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          backgroundColor: backgroundColor,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
           ),
+          title: Container(
+            padding: EdgeInsets.symmetric(vertical: 10),
+            child: Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: primaryColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    Icons.edit_rounded,
+                    color: primaryColor,
+                    size: 24,
+                  ),
+                ),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Editar Tribu',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: primaryColor,
+                        ),
+                      ),
+                      Text(
+                        'Modifica los datos necesarios',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey[600],
+                          fontWeight: FontWeight.normal,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          content: Container(
+            width: double.maxFinite,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _buildEditTextField(
+                    controller: nombreController,
+                    label: 'Nombre de la Tribu',
+                    icon: Icons.group_rounded,
+                    enabled: !isLoading,
+                  ),
+                  SizedBox(height: 16),
+                  _buildEditTextField(
+                    controller: nombreLiderController,
+                    label: 'Nombre del Líder',
+                    icon: Icons.person_rounded,
+                    enabled: !isLoading,
+                  ),
+                  SizedBox(height: 16),
+                  _buildEditTextField(
+                    controller: apellidoLiderController,
+                    label: 'Apellido del Líder',
+                    icon: Icons.person_outline_rounded,
+                    enabled: !isLoading,
+                  ),
+                  SizedBox(height: 16),
+                  _buildEditTextField(
+                    controller: usuarioController,
+                    label: 'Usuario',
+                    icon: Icons.account_circle_rounded,
+                    enabled: !isLoading,
+                  ),
+                  SizedBox(height: 16),
+                  _buildEditTextField(
+                    controller: contrasenaController,
+                    label: 'Nueva Contraseña (opcional)',
+                    icon: Icons.lock_rounded,
+                    obscureText: true,
+                    enabled: !isLoading,
+                  ),
+                  SizedBox(height: 16),
+                  // Dropdown para categoría
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: primaryColor.withOpacity(0.3)),
+                    ),
+                    child: DropdownButtonFormField<String>(
+                      value: categoriaSeleccionadaEdit,
+                      decoration: InputDecoration(
+                        labelText: 'Categoría',
+                        prefixIcon:
+                            Icon(Icons.category_rounded, color: primaryColor),
+                        border: InputBorder.none,
+                        contentPadding:
+                            EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        labelStyle: TextStyle(color: primaryColor),
+                      ),
+                      dropdownColor: backgroundColor,
+                      items: [
+                        'Ministerio Juvenil',
+                        'Ministerio de Damas',
+                        'Ministerio de Caballeros'
+                      ].map((categoria) {
+                        return DropdownMenuItem<String>(
+                          value: categoria,
+                          child: Text(categoria),
+                        );
+                      }).toList(),
+                      onChanged: isLoading
+                          ? null
+                          : (value) {
+                              setDialogState(() {
+                                categoriaSeleccionadaEdit = value;
+                              });
+                            },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            Container(
+              width: double.maxFinite,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed:
+                          isLoading ? null : () => Navigator.pop(context),
+                      style: TextButton.styleFrom(
+                        padding: EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      child: Text(
+                        'Cancelar',
+                        style: TextStyle(
+                          color: Colors.grey[600],
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: isLoading
+                          ? null
+                          : () async {
+                              // Validaciones
+                              if (nombreController.text.trim().isEmpty ||
+                                  nombreLiderController.text.trim().isEmpty ||
+                                  apellidoLiderController.text.trim().isEmpty ||
+                                  usuarioController.text.trim().isEmpty ||
+                                  categoriaSeleccionadaEdit == null) {
+                                _mostrarSnackBar(
+                                    'Por favor complete todos los campos obligatorios',
+                                    isSuccess: false);
+                                return;
+                              }
+
+                              setDialogState(() => isLoading = true);
+
+                              try {
+                                final datosActualizados = {
+                                  'nombre': nombreController.text.trim(),
+                                  'nombreLider':
+                                      nombreLiderController.text.trim(),
+                                  'apellidoLider':
+                                      apellidoLiderController.text.trim(),
+                                  'usuario': usuarioController.text.trim(),
+                                  'categoria': categoriaSeleccionadaEdit,
+                                  'contrasena': contrasenaController.text
+                                          .trim()
+                                          .isNotEmpty
+                                      ? contrasenaController.text.trim()
+                                      : datos['contrasena'],
+                                };
+
+                                await _editarTribu(docId, datosActualizados);
+
+                                if (mounted) {
+                                  Navigator.pop(context);
+                                }
+                              } catch (e) {
+                                setDialogState(() => isLoading = false);
+                                _mostrarSnackBar(
+                                    'Error inesperado: ${e.toString()}',
+                                    isSuccess: false);
+                              }
+                            },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: primaryColor,
+                        foregroundColor: Colors.white,
+                        padding: EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        elevation: 2,
+                      ),
+                      child: isLoading
+                          ? Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                        Colors.white),
+                                  ),
+                                ),
+                                SizedBox(width: 8),
+                                Text('Guardando...'),
+                              ],
+                            )
+                          : Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.save_rounded, size: 18),
+                                SizedBox(width: 6),
+                                Text(
+                                  'Guardar',
+                                  style: TextStyle(fontWeight: FontWeight.w600),
+                                ),
+                              ],
+                            ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              final datosActualizados = {
-                'nombre': nombreController.text,
-                'nombreLider': nombreLiderController.text,
-                'apellidoLider': apellidoLiderController.text,
-                'usuario': usuarioController.text,
-                'nombreAntiguo': datos['nombre'],
-                'contrasena': contrasenaController.text.isNotEmpty
-                    ? contrasenaController.text
-                    : datos['contrasena'],
-              };
-              Navigator.pop(context);
-              _editarTribu(docId, datosActualizados);
-            },
-            child: const Text('Guardar'),
-          ),
-        ],
       ),
     );
   }
 
+// Widget helper para campos de texto - NUEVO
+  Widget _buildEditTextField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    bool obscureText = false,
+    bool enabled = true,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: primaryColor.withOpacity(0.3)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 4,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: TextField(
+        controller: controller,
+        obscureText: obscureText,
+        enabled: enabled,
+        style: TextStyle(
+          color: enabled ? Colors.black87 : Colors.grey[400],
+        ),
+        decoration: InputDecoration(
+          labelText: label,
+          prefixIcon: Icon(
+            icon,
+            color: enabled ? primaryColor : Colors.grey[400],
+          ),
+          border: InputBorder.none,
+          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          labelStyle: TextStyle(
+            color: enabled ? primaryColor : Colors.grey[400],
+          ),
+        ),
+      ),
+    );
+  }
+
+// Función para mostrar diálogo de edición - COMPLETAMENTE MEJORADA
   Future<void> _mostrarDialogoEditarLiderConsolidacion(
       String docId, Map<String, dynamic> datos) async {
-    final nombreController = TextEditingController(text: datos['nombre']);
-    final apellidoController = TextEditingController(text: datos['apellido']);
-    final usuarioController = TextEditingController(text: datos['usuario']);
+    final nombreController =
+        TextEditingController(text: datos['nombre']?.toString() ?? '');
+    final apellidoController =
+        TextEditingController(text: datos['apellido']?.toString() ?? '');
+    final usuarioController =
+        TextEditingController(text: datos['usuario']?.toString() ?? '');
     final contrasenaController = TextEditingController();
+
+    bool isLoading = false;
 
     await showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Editar Líder de Consolidación'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nombreController,
-                decoration: const InputDecoration(labelText: 'Nombre'),
-              ),
-              TextField(
-                controller: apellidoController,
-                decoration: const InputDecoration(labelText: 'Apellido'),
-              ),
-              TextField(
-                controller: usuarioController,
-                decoration: const InputDecoration(labelText: 'Usuario'),
-              ),
-              TextField(
-                controller: contrasenaController,
-                decoration: const InputDecoration(
-                    labelText: 'Nueva Contraseña (opcional)'),
-                obscureText: true,
-              ),
-            ],
+      barrierDismissible: false,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          backgroundColor: backgroundColor,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
           ),
+          title: Container(
+            padding: EdgeInsets.symmetric(vertical: 10),
+            child: Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: primaryColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    Icons.supervisor_account_rounded,
+                    color: primaryColor,
+                    size: 24,
+                  ),
+                ),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Editar Líder',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: primaryColor,
+                        ),
+                      ),
+                      Text(
+                        'Líder de Consolidación',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey[600],
+                          fontWeight: FontWeight.normal,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          content: Container(
+            width: double.maxFinite,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _buildConsolidationTextField(
+                    controller: nombreController,
+                    label: 'Nombre',
+                    icon: Icons.person_rounded,
+                    enabled: !isLoading,
+                  ),
+                  SizedBox(height: 16),
+                  _buildConsolidationTextField(
+                    controller: apellidoController,
+                    label: 'Apellido',
+                    icon: Icons.person_outline_rounded,
+                    enabled: !isLoading,
+                  ),
+                  SizedBox(height: 16),
+                  _buildConsolidationTextField(
+                    controller: usuarioController,
+                    label: 'Usuario',
+                    icon: Icons.account_circle_rounded,
+                    enabled: !isLoading,
+                  ),
+                  SizedBox(height: 16),
+                  _buildConsolidationTextField(
+                    controller: contrasenaController,
+                    label: 'Nueva Contraseña (opcional)',
+                    icon: Icons.lock_rounded,
+                    obscureText: true,
+                    enabled: !isLoading,
+                  ),
+                  SizedBox(height: 12),
+                  // Información adicional
+                  Container(
+                    padding: EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: primaryColor.withOpacity(0.05),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: primaryColor.withOpacity(0.2)),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.info_outline_rounded,
+                          color: primaryColor,
+                          size: 20,
+                        ),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Si no ingresa una nueva contraseña, se mantendrá la actual',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: primaryColor.withOpacity(0.8),
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            Container(
+              width: double.maxFinite,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed:
+                          isLoading ? null : () => Navigator.pop(context),
+                      style: TextButton.styleFrom(
+                        padding: EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      child: Text(
+                        'Cancelar',
+                        style: TextStyle(
+                          color: Colors.grey[600],
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: isLoading
+                          ? null
+                          : () async {
+                              // Validaciones
+                              if (nombreController.text.trim().isEmpty ||
+                                  apellidoController.text.trim().isEmpty ||
+                                  usuarioController.text.trim().isEmpty) {
+                                _mostrarSnackBar(
+                                    'Por favor complete todos los campos obligatorios',
+                                    isSuccess: false);
+                                return;
+                              }
+
+                              // Validar formato de usuario
+                              if (usuarioController.text.trim().length < 3) {
+                                _mostrarSnackBar(
+                                    'El usuario debe tener al menos 3 caracteres',
+                                    isSuccess: false);
+                                return;
+                              }
+
+                              setDialogState(() => isLoading = true);
+
+                              try {
+                                final datosActualizados = {
+                                  'nombre': nombreController.text.trim(),
+                                  'apellido': apellidoController.text.trim(),
+                                  'usuario': usuarioController.text.trim(),
+                                  'contrasena': contrasenaController.text
+                                          .trim()
+                                          .isNotEmpty
+                                      ? contrasenaController.text.trim()
+                                      : datos['contrasena'],
+                                };
+
+                                await _editarLiderConsolidacion(
+                                    docId, datosActualizados);
+
+                                if (mounted) {
+                                  Navigator.pop(context);
+                                }
+                              } catch (e) {
+                                setDialogState(() => isLoading = false);
+                                _mostrarSnackBar(
+                                    'Error inesperado: ${e.toString()}',
+                                    isSuccess: false);
+                              }
+                            },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: primaryColor,
+                        foregroundColor: Colors.white,
+                        padding: EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        elevation: 2,
+                      ),
+                      child: isLoading
+                          ? Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                        Colors.white),
+                                  ),
+                                ),
+                                SizedBox(width: 8),
+                                Text('Guardando...'),
+                              ],
+                            )
+                          : Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.save_rounded, size: 18),
+                                SizedBox(width: 6),
+                                Text(
+                                  'Guardar',
+                                  style: TextStyle(fontWeight: FontWeight.w600),
+                                ),
+                              ],
+                            ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              final datosActualizados = {
-                'nombre': nombreController.text,
-                'apellido': apellidoController.text,
-                'usuario': usuarioController.text,
-                'contrasena': contrasenaController.text.isNotEmpty
-                    ? contrasenaController.text
-                    : datos['contrasena'],
-              };
-              Navigator.pop(context);
-              _editarLiderConsolidacion(docId, datosActualizados);
-            },
-            child: const Text('Guardar'),
+      ),
+    );
+  }
+
+// Widget helper específico para campos de consolidación - NUEVO
+  Widget _buildConsolidationTextField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    bool obscureText = false,
+    bool enabled = true,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: primaryColor.withOpacity(0.3)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 4,
+            offset: Offset(0, 2),
           ),
         ],
+      ),
+      child: TextField(
+        controller: controller,
+        obscureText: obscureText,
+        enabled: enabled,
+        style: TextStyle(
+          color: enabled ? Colors.black87 : Colors.grey[400],
+          fontSize: 16,
+        ),
+        decoration: InputDecoration(
+          labelText: label,
+          prefixIcon: Container(
+            margin: EdgeInsets.all(8),
+            padding: EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: enabled
+                  ? primaryColor.withOpacity(0.1)
+                  : Colors.grey.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              icon,
+              color: enabled ? primaryColor : Colors.grey[400],
+              size: 20,
+            ),
+          ),
+          border: InputBorder.none,
+          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          labelStyle: TextStyle(
+            color: enabled ? primaryColor : Colors.grey[400],
+            fontSize: 14,
+          ),
+          floatingLabelStyle: TextStyle(
+            color: primaryColor,
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
       ),
     );
   }

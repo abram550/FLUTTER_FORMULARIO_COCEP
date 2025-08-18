@@ -27,33 +27,41 @@ class Registro {
   // Campos nuevos a agregar
   String? estadoFonovisita;
   String? observaciones2;
+  // NUEVO CAMPO: Fecha de nacimiento
+  DateTime? fechaNacimiento;
 
-  Registro({
-    this.id,
-    required this.nombre,
-    required this.apellido,
-    required this.telefono,
-    required this.servicio,
-    this.tipo,
-    required this.fecha,
-    this.motivo,
-    this.peticiones,
-    this.consolidador,
-    required this.sexo,
-    required this.edad,
-    required this.direccion,
-    required this.barrio,
-    required this.estadoCivil,
-    this.nombrePareja,
-    required this.ocupaciones,
-    required this.descripcionOcupacion,
-    required this.tieneHijos,
-    required this.referenciaInvitacion,
-    this.observaciones,
-    this.tribuAsignada,
-    this.estadoFonovisita,
-    this.observaciones2,
-  });
+  String? coordinadorAsignado;
+  bool activo;
+
+  Registro(
+      {this.id,
+      required this.nombre,
+      required this.apellido,
+      required this.telefono,
+      required this.servicio,
+      this.tipo,
+      required this.fecha,
+      this.motivo,
+      this.peticiones,
+      this.consolidador,
+      required this.sexo,
+      required this.edad,
+      required this.direccion,
+      required this.barrio,
+      required this.estadoCivil,
+      this.nombrePareja,
+      required this.ocupaciones,
+      required this.descripcionOcupacion,
+      required this.tieneHijos,
+      required this.referenciaInvitacion,
+      this.observaciones,
+      this.tribuAsignada,
+      this.estadoFonovisita,
+      this.observaciones2,
+      // NUEVO CAMPO EN CONSTRUCTOR
+      this.fechaNacimiento,
+      this.coordinadorAsignado,
+      this.activo = true});
 
   Map<String, dynamic> toLocalMap() {
     return {
@@ -81,6 +89,8 @@ class Registro {
       'tribuAsignada': tribuAsignada,
       'estadoFonovisita': estadoFonovisita,
       'observaciones2': observaciones2,
+      // NUEVO CAMPO EN toLocalMap
+      'fechaNacimiento': fechaNacimiento?.toIso8601String(),
     };
   }
 
@@ -109,6 +119,10 @@ class Registro {
       'tribuAsignada': tribuAsignada,
       'estadoFonovisita': estadoFonovisita,
       'observaciones2': observaciones2,
+      // NUEVO CAMPO EN toFirestoreMap
+      'fechaNacimiento': fechaNacimiento,
+      'coordinadorAsignado': coordinadorAsignado,
+      'activo': activo,
     };
   }
 
@@ -138,6 +152,10 @@ class Registro {
       tribuAsignada: map['tribuAsignada'],
       estadoFonovisita: map['estadoFonovisita'],
       observaciones2: map['observaciones2'],
+      // NUEVO CAMPO EN fromLocalMap
+      fechaNacimiento: map['fechaNacimiento'] != null
+          ? DateTime.parse(map['fechaNacimiento'])
+          : null,
     );
   }
 
@@ -168,6 +186,12 @@ class Registro {
       tribuAsignada: data['tribuAsignada'],
       estadoFonovisita: data['estadoFonovisita'],
       observaciones2: data['observaciones2'],
+      // NUEVO CAMPO EN fromFirestore
+      fechaNacimiento: data['fechaNacimiento'] != null
+          ? (data['fechaNacimiento'] as Timestamp).toDate()
+          : null,
+      coordinadorAsignado: data['coordinadorAsignado'],
+      activo: data['activo'] ?? true,
     );
   }
 }

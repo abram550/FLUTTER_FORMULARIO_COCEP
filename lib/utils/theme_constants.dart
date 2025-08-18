@@ -6,7 +6,7 @@ class ThemeConstants {
   static const Color secondaryOrange = Color(0xFFFF5722);
   static const Color accentGrey = Color(0xFF78909C);
   static const Color backgroundLight = Color(0xFFF5F5F5);
-  
+
   static final ThemeData appTheme = ThemeData(
     primaryColor: primaryTeal,
     primarySwatch: MaterialColor(primaryTeal.value, {
@@ -32,7 +32,7 @@ class ThemeConstants {
         color: Colors.white,
       ),
     ),
-    cardTheme: CardTheme(
+    cardTheme: CardThemeData(
       elevation: 4,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
@@ -41,7 +41,8 @@ class ThemeConstants {
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
-        foregroundColor: Colors.white, backgroundColor: secondaryOrange,
+        foregroundColor: Colors.white,
+        backgroundColor: secondaryOrange,
         padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),
@@ -51,7 +52,8 @@ class ThemeConstants {
     ),
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(
-        foregroundColor: primaryTeal, padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        foregroundColor: primaryTeal,
+        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       ),
     ),
     inputDecorationTheme: InputDecorationTheme(
@@ -71,7 +73,7 @@ class ThemeConstants {
       ),
       contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
     ),
-    tabBarTheme: TabBarTheme(
+    tabBarTheme: TabBarThemeData(
       labelColor: Colors.white,
       unselectedLabelColor: Colors.white70,
       indicator: BoxDecoration(

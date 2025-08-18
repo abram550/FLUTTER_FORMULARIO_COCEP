@@ -771,70 +771,317 @@ class JovenesAsignadosTab extends StatelessWidget {
       final DateTime? fechaSeleccionada = await showDatePicker(
         context: context,
         initialDate: DateTime.now(),
-        firstDate: DateTime.now().subtract(Duration(days: 30)),
+        firstDate:
+            DateTime.now().subtract(Duration(days: 90)), // Extendido a 3 meses
         lastDate: DateTime.now(),
+        builder: (context, child) {
+          return Theme(
+            data: Theme.of(context).copyWith(
+              colorScheme: ColorScheme.light(
+                primary: Color(0xFF147B7C),
+                onPrimary: Colors.white,
+                surface: Colors.white,
+              ),
+            ),
+            child: child!,
+          );
+        },
       );
 
       if (fechaSeleccionada == null) return;
 
+      // Verificar duplicados ANTES de mostrar el diálogo
+      final yaRegistrada = await FirebaseFirestore.instance
+          .collection('asistencias')
+          .where('jovenId', isEqualTo: registro.id)
+          .where('fecha',
+              isGreaterThanOrEqualTo: Timestamp.fromDate(DateTime(
+                  fechaSeleccionada.year,
+                  fechaSeleccionada.month,
+                  fechaSeleccionada.day)))
+          .where('fecha',
+              isLessThan: Timestamp.fromDate(DateTime(fechaSeleccionada.year,
+                  fechaSeleccionada.month, fechaSeleccionada.day + 1)))
+          .get();
+
+      if (yaRegistrada.docs.isNotEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.warning, color: Colors.white),
+                SizedBox(width: 8),
+                Expanded(child: Text('Ya existe registro para esta fecha')),
+              ],
+            ),
+            backgroundColor: Color(0xFFFF4B2B),
+            behavior: SnackBarBehavior.floating,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        );
+        return;
+      }
+
       final bool? asistio = await showDialog<bool>(
         context: context,
-        builder: (context) => AlertDialog(
-          title: Text('¿Asistió al servicio?'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                  'Fecha: ${DateFormat('dd/MM/yyyy').format(fechaSeleccionada)}'),
-              SizedBox(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red,
-                    ),
-                    onPressed: () => Navigator.pop(context, false),
-                    child: Text('No Asistió'),
-                  ),
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
-                    ),
-                    onPressed: () => Navigator.pop(context, true),
-                    child: Text('Sí Asistió'),
-                  ),
+        barrierDismissible: false,
+        builder: (context) => Dialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          elevation: 8,
+          child: Container(
+            padding: EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Colors.white,
+                  Color(0xFF147B7C).withOpacity(0.05),
                 ],
               ),
-            ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Color(0xFF147B7C).withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.calendar_today,
+                    size: 32,
+                    color: Color(0xFF147B7C),
+                  ),
+                ),
+                SizedBox(height: 16),
+                Text(
+                  'Registrar Asistencia',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF147B7C),
+                  ),
+                ),
+                SizedBox(height: 8),
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[100],
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    DateFormat('EEEE, dd \'de\' MMMM \'de\' yyyy', 'es')
+                        .format(fechaSeleccionada),
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.grey[700],
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+                SizedBox(height: 24),
+                Text(
+                  '¿${registro.get('nombre')} asistió al servicio?',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey[700],
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Container(
+                        height: 50,
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Color(0xFFFF4B2B),
+                            foregroundColor: Colors.white,
+                            elevation: 2,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          onPressed: () => Navigator.pop(context, false),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.cancel_outlined, size: 20),
+                              SizedBox(width: 8),
+                              Text(
+                                'No Asistió',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Container(
+                        height: 50,
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Color(0xFF147B7C),
+                            foregroundColor: Colors.white,
+                            elevation: 2,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          onPressed: () => Navigator.pop(context, true),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.check_circle_outline, size: 20),
+                              SizedBox(width: 8),
+                              Text(
+                                'Sí Asistió',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 16),
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text(
+                    'Cancelar',
+                    style: TextStyle(
+                      color: Colors.grey[600],
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       );
 
       if (asistio == null) return;
 
+      // Procesar de manera asíncrona sin bloquear la UI
+      _procesarRegistroAsistencia(
+          context, registro, fechaSeleccionada, asistio);
+
+      // Mostrar confirmación inmediata
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(
+                asistio ? Icons.check_circle : Icons.cancel,
+                color: Colors.white,
+              ),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  asistio
+                      ? 'Asistencia registrada correctamente'
+                      : 'Falta registrada correctamente',
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: asistio ? Color(0xFF147B7C) : Color(0xFFFF4B2B),
+          behavior: SnackBarBehavior.floating,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    } catch (e) {
+      print('Error en _registrarAsistencia: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.error, color: Colors.white),
+              SizedBox(width: 8),
+              Expanded(child: Text('Error al procesar: ${e.toString()}')),
+            ],
+          ),
+          backgroundColor: Color(0xFFFF4B2B),
+          behavior: SnackBarBehavior.floating,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
+    }
+  }
+
+// AGREGAR ESTE MÉTODO DESPUÉS DEL MÉTODO _registrarAsistencia
+  Future<void> _procesarRegistroAsistencia(
+      BuildContext context,
+      DocumentSnapshot registro,
+      DateTime fechaSeleccionada,
+      bool asistio) async {
+    try {
+      final registroRef =
+          FirebaseFirestore.instance.collection('registros').doc(registro.id);
       final doc = await registroRef.get();
+
+      if (!doc.exists) {
+        print('El registro no existe');
+        return;
+      }
+
       final data = doc.data() as Map<String, dynamic>;
 
-      // Obtener el ID de la tribu del Timoteo
-      final timoteoDoc = await FirebaseFirestore.instance
-          .collection('timoteos')
-          .doc(timoteoId)
-          .get();
-      final tribuId = timoteoDoc.get('tribuId');
+      // Obtener información de tribu de manera segura
+      DocumentSnapshot? timoteoDoc;
+      String? tribuId;
+      String categoriaTribu = "General";
 
-      // Obtener la categoría de la tribu
-      final tribuDoc = await FirebaseFirestore.instance
-          .collection('tribus')
-          .doc(tribuId)
-          .get();
-      final categoriaTribu =
-          tribuDoc.exists ? tribuDoc.get('categoria') : "General";
+      try {
+        timoteoDoc = await FirebaseFirestore.instance
+            .collection('timoteos')
+            .doc(timoteoId)
+            .get();
 
-      // Obtener el nombre específico del servicio basado en la tribu y el día
+        if (timoteoDoc.exists) {
+          tribuId = timoteoDoc.get('tribuId');
+
+          if (tribuId != null) {
+            final tribuDoc = await FirebaseFirestore.instance
+                .collection('tribus')
+                .doc(tribuId)
+                .get();
+
+            if (tribuDoc.exists) {
+              categoriaTribu = tribuDoc.get('categoria') ?? "General";
+            }
+          }
+        }
+      } catch (e) {
+        print('Error obteniendo información de tribu: $e');
+        // Continuar con valores por defecto
+      }
+
+      // Obtener nombre del servicio
       String nombreServicio =
           obtenerNombreServicio(categoriaTribu, fechaSeleccionada);
 
+      // Calcular faltas consecutivas
       int faltasConsecutivas = data['faltasConsecutivas'] ?? 0;
       if (!asistio) {
         faltasConsecutivas++;
@@ -842,76 +1089,120 @@ class JovenesAsignadosTab extends StatelessWidget {
         faltasConsecutivas = 0;
       }
 
-      // Actualizar documento con las nuevas asistencias y faltas
-      await registroRef.update({
+      // Batch para operaciones atómicas
+      final batch = FirebaseFirestore.instance.batch();
+
+      // Actualizar registro principal
+      batch.update(registroRef, {
         'asistencias': FieldValue.arrayUnion([
           {
             'fecha': Timestamp.fromDate(fechaSeleccionada),
             'asistio': asistio,
-            'nombreServicio':
-                nombreServicio, // Registrar el servicio con nombre específico
+            'nombreServicio': nombreServicio,
           }
         ]),
         'faltasConsecutivas': faltasConsecutivas,
         'ultimaAsistencia': Timestamp.fromDate(fechaSeleccionada),
       });
 
-      // Registrar la asistencia en la colección de asistencias
-      await FirebaseFirestore.instance.collection('asistencias').add({
-        'registroId': registro.id,
+      // Crear documento en colección asistencias
+      final asistenciaRef =
+          FirebaseFirestore.instance.collection('asistencias').doc();
+      batch.set(asistenciaRef, {
+        'jovenId': registro.id,
         'tribuId': tribuId,
         'nombre': '${data['nombre']} ${data['apellido']}',
         'fecha': Timestamp.fromDate(fechaSeleccionada),
-        'nombreServicio':
-            nombreServicio, // Nombre correcto del servicio según el día y tribu
+        'nombreServicio': nombreServicio,
         'asistio': asistio,
         'diaSemana': DateFormat('EEEE', 'es').format(fechaSeleccionada),
+        'fechaRegistro': FieldValue.serverTimestamp(),
       });
 
-      // Mantener el registro de asistencia por tribu si aplica
-      final tribusSnapshot = await FirebaseFirestore.instance
-          .collection('tribus')
-          .where('timoteoId', isEqualTo: timoteoId)
-          .limit(1)
-          .get();
+      // Crear registro en asistenciaTribus si hay tribu
+      if (tribuId != null) {
+        try {
+          final tribusSnapshot = await FirebaseFirestore.instance
+              .collection('tribus')
+              .where('timoteoId', isEqualTo: timoteoId)
+              .limit(1)
+              .get();
 
-      if (tribusSnapshot.docs.isNotEmpty) {
-        final tribuDoc = tribusSnapshot.docs.first;
+          if (tribusSnapshot.docs.isNotEmpty) {
+            final tribuDoc = tribusSnapshot.docs.first;
+            final asistenciaTribuRef =
+                FirebaseFirestore.instance.collection('asistenciaTribus').doc();
 
-        await FirebaseFirestore.instance.collection('asistenciaTribus').add({
-          'tribuId': tribuDoc.id,
-          'tribuNombre': tribuDoc['nombre'],
-          'registroId': registro.id,
-          'nombreJoven': '${data['nombre']} ${data['apellido']}',
-          'fecha': Timestamp.fromDate(fechaSeleccionada),
-          'diaSemana': DateFormat('EEEE', 'es').format(fechaSeleccionada),
-          'nombreServicio': nombreServicio,
-          'asistio': asistio,
-        });
+            batch.set(asistenciaTribuRef, {
+              'tribuId': tribuDoc.id,
+              'tribuNombre': tribuDoc['nombre'],
+              'registroId': registro.id,
+              'nombreJoven': '${data['nombre']} ${data['apellido']}',
+              'fecha': Timestamp.fromDate(fechaSeleccionada),
+              'diaSemana': DateFormat('EEEE', 'es').format(fechaSeleccionada),
+              'nombreServicio': nombreServicio,
+              'asistio': asistio,
+              'fechaRegistro': FieldValue.serverTimestamp(),
+            });
+          }
+        } catch (e) {
+          print('Error al crear registro en asistenciaTribus: $e');
+          // Continuar sin fallar
+        }
       }
 
-      // Crear alerta si las faltas son >= 4
-      if (faltasConsecutivas >= 4) {
-        // Obtener datos del timoteo
-        if (!timoteoDoc.exists) return;
+      // Ejecutar batch
+      await batch.commit();
 
-        final coordinadorId = timoteoDoc.get('coordinadorId');
+      // Procesar alertas si es necesario (sin bloquear)
+      if (faltasConsecutivas >= 3) {
+        _procesarAlertaAsync(
+            context, registro, faltasConsecutivas, timoteoDoc, data);
+      }
+    } catch (e) {
+      print('Error en _procesarRegistroAsistencia: $e');
+      // No mostrar error al usuario ya que la operación principal podría haber funcionado
+    }
+  }
 
-        // Crear nueva alerta
-        await FirebaseFirestore.instance.collection('alertas').add({
-          'tipo': 'faltasConsecutivas',
-          'registroId': registro.id,
-          'timoteoId': timoteoId,
-          'coordinadorId': coordinadorId,
-          'nombreJoven': '${data['nombre']} ${data['apellido']}',
-          'nombreTimoteo': '${timoteoDoc['nombre']} ${timoteoDoc['apellido']}',
-          'cantidadFaltas': faltasConsecutivas,
-          'fecha': FieldValue.serverTimestamp(),
-          'estado': 'pendiente',
-          'procesada': false,
-        });
+// AGREGAR ESTE MÉTODO DESPUÉS DEL MÉTODO _procesarRegistroAsistencia
+  Future<void> _procesarAlertaAsync(
+      BuildContext context,
+      DocumentSnapshot registro,
+      int faltasConsecutivas,
+      DocumentSnapshot? timoteoDoc,
+      Map<String, dynamic> data) async {
+    try {
+      if (timoteoDoc == null || !timoteoDoc.exists) return;
 
-        // Enviar correo electrónico
+      final coordinadorId = timoteoDoc.get('coordinadorId');
+      if (coordinadorId == null) return;
+
+      // Crear alerta
+      await FirebaseFirestore.instance.collection('alertas').add({
+        'tipo': 'faltasConsecutivas',
+        'registroId': registro.id,
+        'timoteoId': timoteoId,
+        'coordinadorId': coordinadorId,
+        'nombreJoven': '${data['nombre']} ${data['apellido']}',
+        'nombreTimoteo': '${timoteoDoc['nombre']} ${timoteoDoc['apellido']}',
+        'cantidadFaltas': faltasConsecutivas,
+        'fecha': FieldValue.serverTimestamp(),
+        'estado': 'pendiente',
+        'procesada': false,
+      });
+
+      // Actualizar visibilidad del registro
+      await FirebaseFirestore.instance
+          .collection('registros')
+          .doc(registro.id)
+          .update({
+        'visible': false,
+        'estadoAlerta': 'pendiente',
+      });
+
+      // Enviar email de manera asíncrona
+      try {
         final coordinadorDoc = await FirebaseFirestore.instance
             .collection('coordinadores')
             .doc(coordinadorId)
@@ -925,20 +1216,12 @@ class JovenesAsignadosTab extends StatelessWidget {
             faltas: faltasConsecutivas,
           );
         }
-
-        // Actualizar visibilidad del registro
-        await registroRef
-            .update({'visible': false, 'estadoAlerta': 'pendiente'});
+      } catch (emailError) {
+        print('Error enviando email de alerta: $emailError');
+        // No interrumpir el flujo por error de email
       }
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Asistencia registrada correctamente')),
-      );
     } catch (e) {
-      print('Error al registrar asistencia: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error al registrar asistencia: $e')),
-      );
+      print('Error en _procesarAlertaAsync: $e');
     }
   }
 
@@ -1068,6 +1351,7 @@ class JovenesAsignadosTab extends StatelessWidget {
     }
   }
 
+// REEMPLAZAR EL MÉTODO build EXISTENTE CON ESTE:
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<QuerySnapshot>(
@@ -1078,27 +1362,106 @@ class JovenesAsignadosTab extends StatelessWidget {
       builder: (context, snapshot) {
         if (snapshot.hasError) {
           return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.error_outline, size: 48, color: Color(0xFFFF4B2B)),
-                SizedBox(height: 16),
-                Text(
-                  'Error al cargar los datos',
-                  style: TextStyle(
-                    fontSize: 18,
-                    color: Color(0xFFFF4B2B),
+            child: Container(
+              padding: EdgeInsets.all(32),
+              margin: EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(0.1),
+                    spreadRadius: 2,
+                    blurRadius: 8,
+                    offset: Offset(0, 4),
                   ),
-                ),
-              ],
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Color(0xFFFF4B2B).withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.error_outline,
+                      size: 48,
+                      color: Color(0xFFFF4B2B),
+                    ),
+                  ),
+                  SizedBox(height: 16),
+                  Text(
+                    'Error al cargar los datos',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFFFF4B2B),
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    'Por favor, intenta nuevamente',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                ],
+              ),
             ),
           );
         }
 
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return Center(
-            child: CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF147B7C)),
+          return Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Color(0xFF147B7C).withOpacity(0.05),
+                  Colors.white,
+                ],
+              ),
+            ),
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Color(0xFF147B7C).withOpacity(0.1),
+                          spreadRadius: 8,
+                          blurRadius: 16,
+                          offset: Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: CircularProgressIndicator(
+                      valueColor:
+                          AlwaysStoppedAnimation<Color>(Color(0xFF147B7C)),
+                      strokeWidth: 3,
+                    ),
+                  ),
+                  SizedBox(height: 24),
+                  Text(
+                    'Cargando discípulos...',
+                    style: TextStyle(
+                      color: Color(0xFF147B7C),
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
             ),
           );
         }
@@ -1106,48 +1469,74 @@ class JovenesAsignadosTab extends StatelessWidget {
         final docs = snapshot.data?.docs ?? [];
 
         if (docs.isEmpty) {
-          return Center(
-            child: Container(
-              padding: EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.grey.withOpacity(0.1),
-                    spreadRadius: 5,
-                    blurRadius: 15,
-                    offset: Offset(0, 3),
-                  ),
+          return Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Color(0xFF147B7C).withOpacity(0.05),
+                  Colors.white,
                 ],
               ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.people_outline,
-                    size: 72,
-                    color: Color(0xFF147B7C),
-                  ),
-                  SizedBox(height: 24),
-                  Text(
-                    'No hay discípulos asignados',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF147B7C),
+            ),
+            child: Center(
+              child: Container(
+                padding: EdgeInsets.all(32),
+                margin: EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.withOpacity(0.1),
+                      spreadRadius: 8,
+                      blurRadius: 20,
+                      offset: Offset(0, 6),
                     ),
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    'Cuando se asignen discípulos, aparecerán aquí',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.grey[600],
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            Color(0xFF147B7C).withOpacity(0.1),
+                            Color(0xFF147B7C).withOpacity(0.05),
+                          ],
+                        ),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.people_outline,
+                        size: 64,
+                        color: Color(0xFF147B7C),
+                      ),
                     ),
-                  ),
-                ],
+                    SizedBox(height: 24),
+                    Text(
+                      'No hay discípulos asignados',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF147B7C),
+                      ),
+                    ),
+                    SizedBox(height: 12),
+                    Text(
+                      'Cuando se asignen discípulos,\naparecerán aquí para su seguimiento',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.grey[600],
+                        height: 1.5,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
               ),
             ),
           );
@@ -1159,98 +1548,260 @@ class JovenesAsignadosTab extends StatelessWidget {
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
               colors: [
-                Color(0xFF147B7C).withOpacity(0.1),
+                Color(0xFF147B7C).withOpacity(0.05),
                 Colors.white,
               ],
             ),
           ),
-          child: ListView.builder(
-            padding: EdgeInsets.all(16),
-            itemCount: docs.length,
-            itemBuilder: (context, index) {
-              final registro = docs[index];
-              final data = registro.data() as Map<String, dynamic>;
+          child: Scrollbar(
+            thumbVisibility: true,
+            thickness: 6,
+            radius: Radius.circular(3),
+            child: RefreshIndicator(
+              onRefresh: () async {
+                // Forzar actualización del stream
+                await Future.delayed(Duration(milliseconds: 500));
+              },
+              color: Color(0xFF147B7C),
+              backgroundColor: Colors.white,
+              child: CustomScrollView(
+                physics: BouncingScrollPhysics(
+                    parent: AlwaysScrollableScrollPhysics()),
+                slivers: [
+                  SliverPadding(
+                    padding: EdgeInsets.all(16),
+                    sliver: SliverList(
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) {
+                          final registro = docs[index];
+                          final data = registro.data() as Map<String, dynamic>;
 
-              final nombre =
-                  getFieldSafely<String>(data, 'nombre') ?? 'Sin nombre';
-              final apellido = getFieldSafely<String>(data, 'apellido') ?? '';
-              final telefono =
-                  getFieldSafely<String>(data, 'telefono') ?? 'No disponible';
-              final faltas =
-                  getFieldSafely<int>(data, 'faltasConsecutivas') ?? 0;
-              final estadoProceso =
-                  getFieldSafely<String>(data, 'estadoProceso') ?? 'Sin estado';
-              final asistencias =
-                  getFieldSafely<List>(data, 'asistencias') ?? [];
+                          final nombre =
+                              getFieldSafely<String>(data, 'nombre') ??
+                                  'Sin nombre';
+                          final apellido =
+                              getFieldSafely<String>(data, 'apellido') ?? '';
+                          final telefono =
+                              getFieldSafely<String>(data, 'telefono') ??
+                                  'No disponible';
+                          final faltas =
+                              getFieldSafely<int>(data, 'faltasConsecutivas') ??
+                                  0;
+                          final estadoProceso =
+                              getFieldSafely<String>(data, 'estadoProceso') ??
+                                  'Sin estado';
+                          final asistencias =
+                              getFieldSafely<List>(data, 'asistencias') ?? [];
+                          final visible =
+                              getFieldSafely<bool>(data, 'visible') ?? true;
 
-              return Card(
-                elevation: 4,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                margin: EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(20),
-                  child: ExpansionTile(
-                    tilePadding:
-                        EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                    backgroundColor: Colors.white,
-                    collapsedBackgroundColor: Colors.white,
-                    leading: CircleAvatar(
-                      backgroundColor: Color(0xFF147B7C),
-                      child: Text(
-                        nombre[0].toUpperCase(),
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
+                          return Container(
+                            margin: EdgeInsets.only(bottom: 16),
+                            child: Card(
+                              elevation: 6,
+                              shadowColor: Colors.grey.withOpacity(0.3),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(20),
+                                  gradient: LinearGradient(
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                    colors: [
+                                      Colors.white,
+                                      visible
+                                          ? Colors.white
+                                          : Color(0xFFFF4B2B).withOpacity(0.03),
+                                    ],
+                                  ),
+                                  border: !visible
+                                      ? Border.all(
+                                          color: Color(0xFFFF4B2B)
+                                              .withOpacity(0.3),
+                                          width: 2,
+                                        )
+                                      : null,
+                                ),
+                                child: ExpansionTile(
+                                  tilePadding: EdgeInsets.all(20),
+                                  childrenPadding: EdgeInsets.all(0),
+                                  backgroundColor: Colors.transparent,
+                                  collapsedBackgroundColor: Colors.transparent,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  collapsedShape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  leading: Stack(
+                                    children: [
+                                      Container(
+                                        width: 50,
+                                        height: 50,
+                                        decoration: BoxDecoration(
+                                          gradient: LinearGradient(
+                                            colors: [
+                                              Color(0xFF147B7C),
+                                              Color(0xFF147B7C)
+                                                  .withOpacity(0.8),
+                                            ],
+                                          ),
+                                          shape: BoxShape.circle,
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: Color(0xFF147B7C)
+                                                  .withOpacity(0.3),
+                                              spreadRadius: 2,
+                                              blurRadius: 6,
+                                              offset: Offset(0, 3),
+                                            ),
+                                          ],
+                                        ),
+                                        child: Center(
+                                          child: Text(
+                                            nombre.isNotEmpty
+                                                ? nombre[0].toUpperCase()
+                                                : '?',
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 18,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      if (!visible)
+                                        Positioned(
+                                          top: -2,
+                                          right: -2,
+                                          child: Container(
+                                            width: 20,
+                                            height: 20,
+                                            decoration: BoxDecoration(
+                                              color: Color(0xFFFF4B2B),
+                                              shape: BoxShape.circle,
+                                              border: Border.all(
+                                                  color: Colors.white,
+                                                  width: 2),
+                                            ),
+                                            child: Icon(
+                                              Icons.warning,
+                                              color: Colors.white,
+                                              size: 12,
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                  title: Text(
+                                    '$nombre $apellido',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFF147B7C),
+                                    ),
+                                  ),
+                                  subtitle: Container(
+                                    margin: EdgeInsets.only(top: 8),
+                                    child: Row(
+                                      children: [
+                                        Container(
+                                          padding: EdgeInsets.symmetric(
+                                              horizontal: 8, vertical: 4),
+                                          decoration: BoxDecoration(
+                                            color: faltas >= 3
+                                                ? Color(0xFFFF4B2B)
+                                                    .withOpacity(0.1)
+                                                : Color(0xFF147B7C)
+                                                    .withOpacity(0.1),
+                                            borderRadius:
+                                                BorderRadius.circular(12),
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(
+                                                faltas >= 3
+                                                    ? Icons.warning
+                                                    : Icons.check_circle,
+                                                size: 14,
+                                                color: faltas >= 3
+                                                    ? Color(0xFFFF4B2B)
+                                                    : Color(0xFF147B7C),
+                                              ),
+                                              SizedBox(width: 4),
+                                              Text(
+                                                'Faltas: $faltas',
+                                                style: TextStyle(
+                                                  color: faltas >= 3
+                                                      ? Color(0xFFFF4B2B)
+                                                      : Color(0xFF147B7C),
+                                                  fontWeight: FontWeight.w600,
+                                                  fontSize: 12,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        if (!visible) ...[
+                                          SizedBox(width: 8),
+                                          Container(
+                                            padding: EdgeInsets.symmetric(
+                                                horizontal: 8, vertical: 4),
+                                            decoration: BoxDecoration(
+                                              color: Color(0xFFFF4B2B)
+                                                  .withOpacity(0.1),
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                            ),
+                                            child: Text(
+                                              'ALERTA ACTIVA',
+                                              style: TextStyle(
+                                                color: Color(0xFFFF4B2B),
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 10,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                  ),
+                                  children: [
+                                    Container(
+                                      margin: EdgeInsets.only(top: 8),
+                                      padding: EdgeInsets.all(20),
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey[50],
+                                        borderRadius: BorderRadius.only(
+                                          bottomLeft: Radius.circular(20),
+                                          bottomRight: Radius.circular(20),
+                                        ),
+                                      ),
+                                      child: _buildExpandedContent(
+                                        context,
+                                        registro,
+                                        nombre,
+                                        telefono,
+                                        estadoProceso,
+                                        asistencias,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                        childCount: docs.length,
                       ),
                     ),
-                    title: Text(
-                      '$nombre $apellido',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF147B7C),
-                      ),
-                    ),
-                    subtitle: Row(
-                      children: [
-                        Icon(
-                          Icons.watch_later_outlined,
-                          size: 16,
-                          color: faltas >= 3
-                              ? Color(0xFFFF4B2B)
-                              : Colors.grey[600],
-                        ),
-                        SizedBox(width: 4),
-                        Text(
-                          'Faltas consecutivas: $faltas',
-                          style: TextStyle(
-                            color: faltas >= 3
-                                ? Color(0xFFFF4B2B)
-                                : Colors.grey[600],
-                            fontWeight: faltas >= 3
-                                ? FontWeight.bold
-                                : FontWeight.normal,
-                          ),
-                        ),
-                      ],
-                    ),
-                    children: [
-                      _buildExpandedContent(
-                        context,
-                        registro,
-                        nombre,
-                        telefono,
-                        estadoProceso,
-                        asistencias,
-                      ),
-                    ],
                   ),
-                ),
-              );
-            },
+                ],
+              ),
+            ),
           ),
         );
       },
@@ -1266,7 +1817,7 @@ class JovenesAsignadosTab extends StatelessWidget {
     List asistencias,
   ) {
     return Container(
-      padding: EdgeInsets.all(24),
+      padding: EdgeInsets.all(16), // Reducido de 24 a 16
       decoration: BoxDecoration(
         color: Colors.grey[50],
         borderRadius: BorderRadius.only(
@@ -1278,26 +1829,27 @@ class JovenesAsignadosTab extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildInfoSection(telefono),
-          SizedBox(height: 16),
+          SizedBox(height: 12), // Reducido de 16 a 12
           _buildEstadoSection(estadoProceso),
-          SizedBox(height: 24),
+          SizedBox(height: 16), // Reducido de 24 a 16
           _buildActionButtons(context, registro),
           if (asistencias.isNotEmpty) ...[
-            SizedBox(height: 24),
+            SizedBox(height: 16), // Reducido de 24 a 16
             _buildAsistenciasSection(asistencias),
           ],
+          SizedBox(height: 8), // Añadido espacio antes de dirección
           Text(
             'Dirección: ${registro.get('direccion') ?? 'No especificada'}',
             style: const TextStyle(
-              fontSize: 14,
+              fontSize: 13, // Reducido de 14 a 13
               color: Color(0xFF147B7C),
             ),
           ),
-          SizedBox(height: 4),
+          SizedBox(height: 3), // Reducido de 4 a 3
           Text(
             'Barrio: ${registro.get('barrio') ?? 'No especificado'}',
             style: const TextStyle(
-              fontSize: 14,
+              fontSize: 13, // Reducido de 14 a 13
               color: Color(0xFF147B7C),
             ),
           ),
@@ -1308,7 +1860,7 @@ class JovenesAsignadosTab extends StatelessWidget {
 
   Widget _buildInfoSection(String telefono) {
     return Container(
-      padding: EdgeInsets.all(16),
+      padding: EdgeInsets.all(12), // Reducido de 16 a 12
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -1316,8 +1868,9 @@ class JovenesAsignadosTab extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(Icons.phone, color: Color(0xFF147B7C)),
-          SizedBox(width: 12),
+          Icon(Icons.phone,
+              color: Color(0xFF147B7C), size: 20), // Tamaño específico
+          SizedBox(width: 10), // Reducido de 12 a 10
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1325,14 +1878,15 @@ class JovenesAsignadosTab extends StatelessWidget {
                 Text(
                   'Teléfono de contacto',
                   style: TextStyle(
-                    fontSize: 14,
+                    fontSize: 13, // Reducido de 14 a 13
                     color: Colors.grey[600],
                   ),
                 ),
+                SizedBox(height: 2), // Añadido espacio mínimo
                 Text(
                   telefono,
                   style: TextStyle(
-                    fontSize: 16,
+                    fontSize: 15, // Reducido de 16 a 15
                     fontWeight: FontWeight.bold,
                     color: Colors.black87,
                   ),
@@ -1341,7 +1895,10 @@ class JovenesAsignadosTab extends StatelessWidget {
             ),
           ),
           IconButton(
-            icon: Icon(Icons.copy, color: Color(0xFF147B7C)),
+            icon: Icon(Icons.copy, color: Color(0xFF147B7C), size: 20),
+            padding: EdgeInsets.all(8), // Reducido padding
+            constraints:
+                BoxConstraints(minWidth: 36, minHeight: 36), // Tamaño mínimo
             onPressed: () {
               Clipboard.setData(ClipboardData(text: telefono));
               // Show snackbar
@@ -1354,7 +1911,7 @@ class JovenesAsignadosTab extends StatelessWidget {
 
   Widget _buildEstadoSection(String estadoProceso) {
     return Container(
-      padding: EdgeInsets.all(16),
+      padding: EdgeInsets.all(12), // Reducido de 16 a 12
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -1365,22 +1922,22 @@ class JovenesAsignadosTab extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(Icons.timeline, color: Color(0xFF147B7C)),
-              SizedBox(width: 12),
+              Icon(Icons.timeline, color: Color(0xFF147B7C), size: 20),
+              SizedBox(width: 10), // Reducido de 12 a 10
               Text(
                 'Estado del proceso',
                 style: TextStyle(
-                  fontSize: 14,
+                  fontSize: 13, // Reducido de 14 a 13
                   color: Colors.grey[600],
                 ),
               ),
             ],
           ),
-          SizedBox(height: 8),
+          SizedBox(height: 6), // Reducido de 8 a 6
           Text(
             estadoProceso,
             style: TextStyle(
-              fontSize: 16,
+              fontSize: 15, // Reducido de 16 a 15
               color: Colors.black87,
             ),
           ),
@@ -1390,307 +1947,813 @@ class JovenesAsignadosTab extends StatelessWidget {
   }
 
   Widget _buildActionButtons(BuildContext context, DocumentSnapshot registro) {
-    return Row(
-      children: [
-        Expanded(
-          child: ElevatedButton.icon(
-            icon: Icon(Icons.edit_note, color: Colors.white),
-            label: Text('Actualizar Estado'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Color(0xFF147B7C),
-              foregroundColor: Colors.white,
-              padding: EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            onPressed: () => _actualizarEstado(context, registro),
-          ),
-        ),
-        SizedBox(width: 12),
-        Expanded(
-          child: ElevatedButton.icon(
-            icon: Icon(Icons.calendar_today, color: Colors.white),
-            label: Text('Registrar Asistencia'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Color(0xFFFF4B2B),
-              foregroundColor: Colors.white,
-              padding: EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            onPressed: () => _registrarAsistencia(context, registro),
-          ),
-        ),
-      ],
-    );
-  }
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Responsivo: si la pantalla es muy pequeña, poner botones en columna
+        bool isSmallScreen = constraints.maxWidth < 320;
 
-  Widget _buildAsistenciasSection(List asistencias) {
-    // Ordenar las asistencias de más reciente a más antigua
-    asistencias.sort((a, b) => (b['fecha'] as Timestamp)
-        .toDate()
-        .compareTo((a['fecha'] as Timestamp).toDate()));
-
-    final asistenciasAgrupadas = agruparAsistenciasPorAnoYMes(asistencias);
-
-    return StatefulBuilder(
-      builder: (context, setState) {
-        Map<int, bool> expandedYears = {};
-        Map<String, bool> expandedMonths = {};
-
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Historial de Asistencias',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF147B7C),
-              ),
-            ),
-            SizedBox(height: 16),
-            Container(
-              height: 300,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Color(0xFF147B7C).withOpacity(0.2)),
-              ),
-              child: SingleChildScrollView(
-                padding: EdgeInsets.all(16),
-                child: Column(
-                  children: asistenciasAgrupadas.entries.map((entradaAno) {
-                    final year = entradaAno.key;
-                    expandedYears.putIfAbsent(year, () => false);
-
-                    return Card(
-                      margin: EdgeInsets.only(bottom: 8),
-                      elevation: 0,
-                      child: ExpansionTile(
-                        initiallyExpanded: expandedYears[year] ?? false,
-                        onExpansionChanged: (expanded) {
-                          setState(() {
-                            expandedYears[year] = expanded;
-                          });
-                        },
-                        title: Container(
-                          padding: EdgeInsets.symmetric(vertical: 8),
-                          decoration: BoxDecoration(
-                            color: Color(0xFF147B7C).withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            'Año ${entradaAno.key}',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF147B7C),
-                            ),
-                          ),
-                        ),
-                        children: entradaAno.value.entries.map((entradaMes) {
-                          final monthKey = '${year}-${entradaMes.key}';
-                          expandedMonths.putIfAbsent(monthKey, () => false);
-
-                          return Card(
-                            margin:
-                                EdgeInsets.only(left: 16, right: 16, bottom: 8),
-                            elevation: 0,
-                            child: ExpansionTile(
-                              initiallyExpanded:
-                                  expandedMonths[monthKey] ?? false,
-                              onExpansionChanged: (expanded) {
-                                setState(() {
-                                  expandedMonths[monthKey] = expanded;
-                                });
-                              },
-                              title: Text(
-                                DateFormat('MMMM', 'es')
-                                    .format(DateTime(2024, entradaMes.key)),
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
-                                  color: Colors.grey[700],
-                                ),
-                              ),
-                              children: [
-                                Container(
-                                  height: 100,
-                                  child: StatefulBuilder(
-                                    builder: (context, setInnerState) {
-                                      final asistenciasMes = entradaMes.value;
-                                      final totalAsistencias =
-                                          asistenciasMes.length;
-                                      final paginas =
-                                          (totalAsistencias / 5).ceil();
-                                      final PageController pageController =
-                                          PageController();
-
-                                      return Column(
-                                        children: [
-                                          Expanded(
-                                            child: PageView.builder(
-                                              controller: pageController,
-                                              itemCount: paginas,
-                                              itemBuilder:
-                                                  (context, pageIndex) {
-                                                final startIndex =
-                                                    pageIndex * 5;
-                                                final endIndex = min(
-                                                    startIndex + 5,
-                                                    asistenciasMes.length);
-                                                final pageItems =
-                                                    asistenciasMes.sublist(
-                                                        startIndex, endIndex);
-
-                                                return ListView.builder(
-                                                  scrollDirection:
-                                                      Axis.horizontal,
-                                                  itemCount: pageItems.length,
-                                                  itemBuilder:
-                                                      (context, index) {
-                                                    final asistencia =
-                                                        pageItems[index];
-                                                    final bool asistio =
-                                                        asistencia['asistio'];
-
-                                                    return Card(
-                                                      elevation: 2,
-                                                      shape:
-                                                          RoundedRectangleBorder(
-                                                        borderRadius:
-                                                            BorderRadius
-                                                                .circular(12),
-                                                      ),
-                                                      color: asistio
-                                                          ? Color(0xFF147B7C)
-                                                              .withOpacity(0.1)
-                                                          : Color(0xFFFF4B2B)
-                                                              .withOpacity(0.1),
-                                                      margin: EdgeInsets.only(
-                                                          right: 8, bottom: 4),
-                                                      child: Container(
-                                                        width: 80,
-                                                        padding:
-                                                            EdgeInsets.all(8),
-                                                        child: Column(
-                                                          mainAxisAlignment:
-                                                              MainAxisAlignment
-                                                                  .center,
-                                                          children: [
-                                                            Icon(
-                                                              asistio
-                                                                  ? Icons
-                                                                      .check_circle
-                                                                  : Icons
-                                                                      .cancel,
-                                                              color: asistio
-                                                                  ? Color(
-                                                                      0xFF147B7C)
-                                                                  : Color(
-                                                                      0xFFFF4B2B),
-                                                              size: 24,
-                                                            ),
-                                                            SizedBox(height: 4),
-                                                            Text(
-                                                              DateFormat(
-                                                                      'dd/MM')
-                                                                  .format(
-                                                                (asistencia['fecha']
-                                                                        as Timestamp)
-                                                                    .toDate(),
-                                                              ),
-                                                              style: TextStyle(
-                                                                fontSize: 12,
-                                                                fontWeight:
-                                                                    FontWeight
-                                                                        .w500,
-                                                                color: asistio
-                                                                    ? Color(
-                                                                        0xFF147B7C)
-                                                                    : Color(
-                                                                        0xFFFF4B2B),
-                                                              ),
-                                                            ),
-                                                            if (asistencia
-                                                                .containsKey(
-                                                                    'nombreServicio')) ...[
-                                                              SizedBox(
-                                                                  height: 2),
-                                                              Text(
-                                                                asistencia[
-                                                                    'nombreServicio'],
-                                                                style:
-                                                                    TextStyle(
-                                                                  fontSize: 10,
-                                                                  fontWeight:
-                                                                      FontWeight
-                                                                          .w400,
-                                                                  color: asistio
-                                                                      ? Color(
-                                                                          0xFF147B7C)
-                                                                      : Color(
-                                                                          0xFFFF4B2B),
-                                                                ),
-                                                                textAlign:
-                                                                    TextAlign
-                                                                        .center,
-                                                                overflow:
-                                                                    TextOverflow
-                                                                        .ellipsis,
-                                                              ),
-                                                            ],
-                                                          ],
-                                                        ),
-                                                      ),
-                                                    );
-                                                  },
-                                                );
-                                              },
-                                            ),
-                                          ),
-                                          if (paginas > 1)
-                                            Row(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment.center,
-                                              children: List.generate(
-                                                paginas,
-                                                (index) => Container(
-                                                  width: 8,
-                                                  height: 8,
-                                                  margin: EdgeInsets.symmetric(
-                                                      horizontal: 4),
-                                                  decoration: BoxDecoration(
-                                                    shape: BoxShape.circle,
-                                                    color: Color(0xFF147B7C)
-                                                        .withOpacity(index == 0
-                                                            ? 1
-                                                            : 0.2),
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                        ],
-                                      );
-                                    },
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        }).toList(),
-                      ),
-                    );
-                  }).toList(),
+        if (isSmallScreen) {
+          return Column(
+            children: [
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  icon: Icon(Icons.edit_note, color: Colors.white, size: 18),
+                  label:
+                      Text('Actualizar Estado', style: TextStyle(fontSize: 14)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Color(0xFF147B7C),
+                    foregroundColor: Colors.white,
+                    padding: EdgeInsets.symmetric(
+                        vertical: 12), // Reducido de 16 a 12
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  onPressed: () => _actualizarEstado(context, registro),
                 ),
+              ),
+              SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  icon:
+                      Icon(Icons.calendar_today, color: Colors.white, size: 18),
+                  label: Text('Registrar Asistencia',
+                      style: TextStyle(fontSize: 14)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Color(0xFFFF4B2B),
+                    foregroundColor: Colors.white,
+                    padding: EdgeInsets.symmetric(
+                        vertical: 12), // Reducido de 16 a 12
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  onPressed: () => _registrarAsistencia(context, registro),
+                ),
+              ),
+            ],
+          );
+        }
+
+        return Row(
+          children: [
+            Expanded(
+              child: ElevatedButton.icon(
+                icon: Icon(Icons.edit_note, color: Colors.white, size: 18),
+                label:
+                    Text('Actualizar Estado', style: TextStyle(fontSize: 14)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Color(0xFF147B7C),
+                  foregroundColor: Colors.white,
+                  padding:
+                      EdgeInsets.symmetric(vertical: 12), // Reducido de 16 a 12
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                onPressed: () => _actualizarEstado(context, registro),
+              ),
+            ),
+            SizedBox(width: 8), // Reducido de 12 a 8
+            Expanded(
+              child: ElevatedButton.icon(
+                icon: Icon(Icons.calendar_today, color: Colors.white, size: 18),
+                label: Text('Registrar Asistencia',
+                    style: TextStyle(fontSize: 14)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Color(0xFFFF4B2B),
+                  foregroundColor: Colors.white,
+                  padding:
+                      EdgeInsets.symmetric(vertical: 12), // Reducido de 16 a 12
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                onPressed: () => _registrarAsistencia(context, registro),
               ),
             ),
           ],
         );
       },
+    );
+  }
+
+// Método para agrupar asistencias por año, mes y semana
+  Map<int, Map<int, Map<String, List<Map<String, dynamic>>>>>
+      agruparAsistenciasPorSemana(List asistencias) {
+    final Map<int, Map<int, Map<String, List<Map<String, dynamic>>>>>
+        agrupadas = {};
+
+    for (var asistencia in asistencias) {
+      try {
+        final fecha = (asistencia['fecha'] as Timestamp).toDate();
+        final year = fecha.year;
+        final month = fecha.month;
+
+        // Calcular el inicio de la semana (lunes)
+        final diasDesdeInicioSemana = (fecha.weekday - 1) % 7;
+        final inicioSemana =
+            fecha.subtract(Duration(days: diasDesdeInicioSemana));
+        final finSemana = inicioSemana.add(Duration(days: 6));
+
+        // Crear clave de semana legible
+        final claveSemanaDel = DateFormat('dd/MM', 'es').format(inicioSemana);
+        final claveSemanaAl = DateFormat('dd/MM', 'es').format(finSemana);
+        final claveSemana = '$claveSemanaDel - $claveSemanaAl';
+
+        // Inicializar estructuras si no existen
+        agrupadas[year] ??= {};
+        agrupadas[year]![month] ??= {};
+        agrupadas[year]![month]![claveSemana] ??= [];
+
+        agrupadas[year]![month]![claveSemana]!.add(asistencia);
+      } catch (e) {
+        print('Error procesando asistencia: $e');
+        continue;
+      }
+    }
+
+    // Ordenar las asistencias dentro de cada semana
+    agrupadas.forEach((year, meses) {
+      meses.forEach((month, semanas) {
+        semanas.forEach((semana, asistenciasSemanales) {
+          asistenciasSemanales.sort((a, b) {
+            try {
+              final fechaA = (a['fecha'] as Timestamp).toDate();
+              final fechaB = (b['fecha'] as Timestamp).toDate();
+              return fechaB.compareTo(fechaA); // Más reciente primero
+            } catch (e) {
+              return 0;
+            }
+          });
+        });
+      });
+    });
+
+    return agrupadas;
+  }
+
+  Widget _buildAsistenciasSection(List asistencias) {
+    if (asistencias.isEmpty) {
+      return Container(
+        padding: EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Color(0xFF147B7C).withOpacity(0.2)),
+        ),
+        child: Column(
+          children: [
+            Icon(
+              Icons.calendar_today_outlined,
+              size: 40,
+              color: Colors.grey[400],
+            ),
+            SizedBox(height: 8),
+            Text(
+              'Sin historial de asistencias',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey[600],
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Ordenar las asistencias de más reciente a más antigua
+    final asistenciasOrdenadas = List.from(asistencias);
+    asistenciasOrdenadas.sort((a, b) {
+      try {
+        return (b['fecha'] as Timestamp)
+            .toDate()
+            .compareTo((a['fecha'] as Timestamp).toDate());
+      } catch (e) {
+        return 0;
+      }
+    });
+
+    final asistenciasAgrupadas =
+        agruparAsistenciasPorSemana(asistenciasOrdenadas);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFF147B7C), Color(0xFF147B7C).withOpacity(0.8)],
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+            ),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.history, color: Colors.white, size: 18),
+              SizedBox(width: 6),
+              Text(
+                'Historial de Asistencias',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+              Spacer(),
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  '${asistencias.length}',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        SizedBox(height: 8),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            double maxHeight = constraints.maxWidth > 600 ? 350 : 300;
+
+            return Container(
+              constraints: BoxConstraints(maxHeight: maxHeight),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Color(0xFF147B7C).withOpacity(0.2)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(0.1),
+                    spreadRadius: 1,
+                    blurRadius: 4,
+                    offset: Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Scrollbar(
+                thumbVisibility: true,
+                thickness: 3,
+                radius: Radius.circular(2),
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.all(12),
+                  child: Column(
+                    children: asistenciasAgrupadas.entries.map((entradaAno) {
+                      final year = entradaAno.key;
+                      final totalAsistenciasAno = entradaAno.value.values.fold(
+                          0,
+                          (sum, meses) =>
+                              sum +
+                              meses.values.fold(
+                                  0,
+                                  (sumMes, semanas) =>
+                                      sumMes + semanas.length));
+
+                      return Container(
+                        margin: EdgeInsets.only(bottom: 12),
+                        decoration: BoxDecoration(
+                          border:
+                              Border.all(color: Colors.grey.withOpacity(0.2)),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: ExpansionTile(
+                          initiallyExpanded: year == DateTime.now().year,
+                          tilePadding:
+                              EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          childrenPadding: EdgeInsets.only(bottom: 8),
+                          backgroundColor: Colors.transparent,
+                          collapsedBackgroundColor: Colors.transparent,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          collapsedShape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          title: Container(
+                            padding: EdgeInsets.symmetric(
+                                vertical: 6, horizontal: 10),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  Color(0xFF147B7C).withOpacity(0.1),
+                                  Color(0xFF147B7C).withOpacity(0.05),
+                                ],
+                              ),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.date_range,
+                                    color: Color(0xFF147B7C), size: 18),
+                                SizedBox(width: 6),
+                                Text(
+                                  'Año $year',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF147B7C),
+                                  ),
+                                ),
+                                Spacer(),
+                                Container(
+                                  padding: EdgeInsets.symmetric(
+                                      horizontal: 6, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: Color(0xFF147B7C).withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Text(
+                                    '$totalAsistenciasAno',
+                                    style: TextStyle(
+                                      color: Color(0xFF147B7C),
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          children: entradaAno.value.entries.map((entradaMes) {
+                            final month = entradaMes.key;
+                            final totalAsistenciasMes = entradaMes.value.values
+                                .fold(
+                                    0, (sum, semanas) => sum + semanas.length);
+
+                            return Container(
+                              margin: EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: Colors.grey[50],
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: ExpansionTile(
+                                initiallyExpanded:
+                                    month == DateTime.now().month &&
+                                        year == DateTime.now().year,
+                                tilePadding: EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 3),
+                                childrenPadding: EdgeInsets.all(6),
+                                backgroundColor: Colors.transparent,
+                                collapsedBackgroundColor: Colors.transparent,
+                                title: Row(
+                                  children: [
+                                    Icon(Icons.calendar_month,
+                                        color: Colors.grey[600], size: 14),
+                                    SizedBox(width: 6),
+                                    Expanded(
+                                      child: Text(
+                                        DateFormat('MMMM', 'es')
+                                            .format(DateTime(year, month)),
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.grey[700],
+                                        ),
+                                      ),
+                                    ),
+                                    Container(
+                                      padding: EdgeInsets.symmetric(
+                                          horizontal: 5, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey[300],
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: Text(
+                                        '$totalAsistenciasMes',
+                                        style: TextStyle(
+                                          color: Colors.grey[700],
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                children: [
+                                  // Aquí mostramos las semanas
+                                  Column(
+                                    children: entradaMes.value.entries
+                                        .map((entradaSemana) {
+                                      final claveSemana = entradaSemana.key;
+                                      final asistenciasSemana =
+                                          entradaSemana.value;
+
+                                      return Container(
+                                        margin: EdgeInsets.only(bottom: 8),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          borderRadius:
+                                              BorderRadius.circular(8),
+                                          border: Border.all(
+                                              color:
+                                                  Colors.grey.withOpacity(0.3)),
+                                        ),
+                                        child: ExpansionTile(
+                                          initiallyExpanded: false,
+                                          tilePadding: EdgeInsets.symmetric(
+                                              horizontal: 8, vertical: 2),
+                                          childrenPadding: EdgeInsets.all(4),
+                                          backgroundColor: Colors.transparent,
+                                          collapsedBackgroundColor:
+                                              Colors.transparent,
+                                          title: Row(
+                                            children: [
+                                              Icon(Icons.view_week,
+                                                  color: Colors.grey[500],
+                                                  size: 12),
+                                              SizedBox(width: 4),
+                                              Expanded(
+                                                child: Text(
+                                                  'Semana $claveSemana',
+                                                  style: TextStyle(
+                                                    fontSize: 11,
+                                                    fontWeight: FontWeight.w500,
+                                                    color: Colors.grey[600],
+                                                  ),
+                                                ),
+                                              ),
+                                              Container(
+                                                padding: EdgeInsets.symmetric(
+                                                    horizontal: 4, vertical: 1),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.grey[200],
+                                                  borderRadius:
+                                                      BorderRadius.circular(4),
+                                                ),
+                                                child: Text(
+                                                  '${asistenciasSemana.length}',
+                                                  style: TextStyle(
+                                                    color: Colors.grey[600],
+                                                    fontSize: 9,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          children: [
+                                            LayoutBuilder(
+                                              builder: (context, constraints) {
+                                                int crossAxisCount = constraints
+                                                            .maxWidth >
+                                                        400
+                                                    ? 5
+                                                    : constraints.maxWidth > 300
+                                                        ? 4
+                                                        : 3;
+
+                                                return Container(
+                                                  constraints: BoxConstraints(
+                                                      maxHeight: 100),
+                                                  child: Scrollbar(
+                                                    thumbVisibility: false,
+                                                    child: GridView.builder(
+                                                      shrinkWrap: true,
+                                                      physics:
+                                                          BouncingScrollPhysics(),
+                                                      padding:
+                                                          EdgeInsets.symmetric(
+                                                              horizontal: 2),
+                                                      gridDelegate:
+                                                          SliverGridDelegateWithFixedCrossAxisCount(
+                                                        crossAxisCount:
+                                                            crossAxisCount,
+                                                        childAspectRatio: 0.9,
+                                                        crossAxisSpacing: 6,
+                                                        mainAxisSpacing: 6,
+                                                      ),
+                                                      itemCount:
+                                                          asistenciasSemana
+                                                              .length,
+                                                      itemBuilder:
+                                                          (context, index) {
+                                                        final asistencia =
+                                                            asistenciasSemana[
+                                                                index];
+                                                        final bool asistio =
+                                                            asistencia[
+                                                                    'asistio'] ??
+                                                                false;
+                                                        final fecha =
+                                                            (asistencia['fecha']
+                                                                    as Timestamp)
+                                                                .toDate();
+                                                        final nombreServicio =
+                                                            asistencia[
+                                                                    'nombreServicio'] ??
+                                                                'Servicio';
+
+                                                        return Container(
+                                                          decoration:
+                                                              BoxDecoration(
+                                                            gradient:
+                                                                LinearGradient(
+                                                              begin: Alignment
+                                                                  .topLeft,
+                                                              end: Alignment
+                                                                  .bottomRight,
+                                                              colors:
+                                                                  asistio
+                                                                      ? [
+                                                                          Color(
+                                                                              0xFF147B7C),
+                                                                          Color(0xFF147B7C)
+                                                                              .withOpacity(0.8)
+                                                                        ]
+                                                                      : [
+                                                                          Color(
+                                                                              0xFFFF4B2B),
+                                                                          Color(0xFFFF4B2B)
+                                                                              .withOpacity(0.8)
+                                                                        ],
+                                                            ),
+                                                            borderRadius:
+                                                                BorderRadius
+                                                                    .circular(
+                                                                        10),
+                                                            boxShadow: [
+                                                              BoxShadow(
+                                                                color: (asistio
+                                                                        ? Color(
+                                                                            0xFF147B7C)
+                                                                        : Color(
+                                                                            0xFFFF4B2B))
+                                                                    .withOpacity(
+                                                                        0.3),
+                                                                spreadRadius: 1,
+                                                                blurRadius: 2,
+                                                                offset: Offset(
+                                                                    0, 1),
+                                                              ),
+                                                            ],
+                                                          ),
+                                                          child: Material(
+                                                            color: Colors
+                                                                .transparent,
+                                                            child: InkWell(
+                                                              borderRadius:
+                                                                  BorderRadius
+                                                                      .circular(
+                                                                          10),
+                                                              onTap: () {
+                                                                _mostrarDetalleAsistencia(
+                                                                    context,
+                                                                    asistencia,
+                                                                    asistio);
+                                                              },
+                                                              child: Padding(
+                                                                padding:
+                                                                    EdgeInsets
+                                                                        .all(6),
+                                                                child: Column(
+                                                                  mainAxisAlignment:
+                                                                      MainAxisAlignment
+                                                                          .center,
+                                                                  children: [
+                                                                    Icon(
+                                                                      asistio
+                                                                          ? Icons
+                                                                              .check_circle
+                                                                          : Icons
+                                                                              .cancel,
+                                                                      color: Colors
+                                                                          .white,
+                                                                      size: 16,
+                                                                    ),
+                                                                    SizedBox(
+                                                                        height:
+                                                                            2),
+                                                                    Text(
+                                                                      DateFormat(
+                                                                              'dd')
+                                                                          .format(
+                                                                              fecha),
+                                                                      style:
+                                                                          TextStyle(
+                                                                        fontSize:
+                                                                            12,
+                                                                        fontWeight:
+                                                                            FontWeight.bold,
+                                                                        color: Colors
+                                                                            .white,
+                                                                      ),
+                                                                    ),
+                                                                    Text(
+                                                                      DateFormat(
+                                                                              'EEE',
+                                                                              'es')
+                                                                          .format(
+                                                                              fecha)
+                                                                          .toUpperCase(),
+                                                                      style:
+                                                                          TextStyle(
+                                                                        fontSize:
+                                                                            7,
+                                                                        color: Colors
+                                                                            .white
+                                                                            .withOpacity(0.9),
+                                                                        fontWeight:
+                                                                            FontWeight.w500,
+                                                                      ),
+                                                                    ),
+                                                                    if (nombreServicio.length <=
+                                                                            12 &&
+                                                                        crossAxisCount <=
+                                                                            4) ...[
+                                                                      SizedBox(
+                                                                          height:
+                                                                              1),
+                                                                      Text(
+                                                                        nombreServicio,
+                                                                        style:
+                                                                            TextStyle(
+                                                                          fontSize:
+                                                                              6,
+                                                                          color: Colors
+                                                                              .white
+                                                                              .withOpacity(0.8),
+                                                                          fontWeight:
+                                                                              FontWeight.w400,
+                                                                        ),
+                                                                        textAlign:
+                                                                            TextAlign.center,
+                                                                        maxLines:
+                                                                            1,
+                                                                        overflow:
+                                                                            TextOverflow.ellipsis,
+                                                                      ),
+                                                                    ],
+                                                                  ],
+                                                                ),
+                                                              ),
+                                                            ),
+                                                          ),
+                                                        );
+                                                      },
+                                                    ),
+                                                  ),
+                                                );
+                                              },
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    }).toList(),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  void _mostrarDetalleAsistencia(
+      BuildContext context, Map<String, dynamic> asistencia, bool asistio) {
+    final fecha = (asistencia['fecha'] as Timestamp).toDate();
+    final nombreServicio = asistencia['nombreServicio'] ?? 'Servicio';
+
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Container(
+          padding: EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Colors.white,
+                (asistio ? Color(0xFF147B7C) : Color(0xFFFF4B2B))
+                    .withOpacity(0.05),
+              ],
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: (asistio ? Color(0xFF147B7C) : Color(0xFFFF4B2B))
+                      .withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  asistio ? Icons.check_circle : Icons.cancel,
+                  color: asistio ? Color(0xFF147B7C) : Color(0xFFFF4B2B),
+                  size: 32,
+                ),
+              ),
+              SizedBox(height: 16),
+              Text(
+                asistio ? 'Asistió al Servicio' : 'No Asistió al Servicio',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: asistio ? Color(0xFF147B7C) : Color(0xFFFF4B2B),
+                ),
+              ),
+              SizedBox(height: 12),
+              Container(
+                padding: EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.grey[100],
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.calendar_today,
+                            size: 16, color: Colors.grey[600]),
+                        SizedBox(width: 8),
+                        Text(
+                          'Fecha:',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w500,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            DateFormat('EEEE, dd \'de\' MMMM \'de\' yyyy', 'es')
+                                .format(fecha),
+                            style: TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Icon(Icons.event, size: 16, color: Colors.grey[600]),
+                        SizedBox(width: 8),
+                        Text(
+                          'Servicio:',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w500,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            nombreServicio,
+                            style: TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Color(0xFF147B7C),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    padding: EdgeInsets.symmetric(vertical: 12),
+                  ),
+                  onPressed: () => Navigator.pop(context),
+                  child: Text('Cerrar'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
