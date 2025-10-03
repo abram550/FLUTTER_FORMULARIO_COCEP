@@ -194,9 +194,14 @@ class AppColors {
   );
 }
 
+
+
 // Tu configuración del Router existente (sin cambios)
+// Estado de autenticación global
+final authState = ValueNotifier<bool>(false);
+
 final GoRouter router = GoRouter(
-  initialLocation: '/login',
+  refreshListenable: authState,
   errorBuilder: (context, state) => const SplashScreen(),
   routes: [
     GoRoute(
@@ -244,8 +249,10 @@ final GoRouter router = GoRouter(
     GoRoute(
       path: '/ministerio_lider',
       builder: (context, state) {
-        final params = state.extra as Map<String, dynamic>;
-        return MinisterioLiderScreen(ministerio: params['ministerio']);
+        final params = (state.extra ?? {}) as Map<String, dynamic>;
+        return MinisterioLiderScreen(
+          ministerio: params['ministerio'] ?? '',
+        );
       },
     ),
     GoRoute(
@@ -260,7 +267,31 @@ final GoRouter router = GoRouter(
       },
     ),
   ],
+  redirect: (context, state) {
+    final loggedIn = authState.value;
+    final loggingIn = state.matchedLocation == '/login';
+
+    // Si no está logueado y no está en login, redirigir guardando la URL
+    if (!loggedIn && !loggingIn) {
+      final from = Uri.encodeComponent(state.matchedLocation);
+      return '/login?from=$from';
+    }
+
+    // Si ya está logueado y va al login, redirigir según URL de retorno
+    if (loggedIn && loggingIn) {
+      final from = state.uri.queryParameters['from'];
+      if (from != null && from.isNotEmpty) {
+        return Uri.decodeComponent(from);
+      }
+      return '/social_profile';
+    }
+
+    return null;
+  },
 );
+
+
+
 
 // Tu función existente (sin cambios)
 Future<void> initializeFirebaseMessaging() async {
