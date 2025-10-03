@@ -1,5 +1,8 @@
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:flutter/gestures.dart';
 
 class MinisterioLiderScreen extends StatefulWidget {
   final String ministerio; // 'Ministerio de Damas' o 'Ministerio de Caballeros'
@@ -12,6 +15,10 @@ class MinisterioLiderScreen extends StatefulWidget {
 
 class _MinisterioLiderScreenState extends State<MinisterioLiderScreen>
     with SingleTickerProviderStateMixin {
+  // Variables para el manejo de sesión
+  Timer? _inactivityTimer;
+  static const Duration _inactivityDuration = Duration(minutes: 15);
+
   late TabController _tabController;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
@@ -27,12 +34,196 @@ class _MinisterioLiderScreenState extends State<MinisterioLiderScreen>
     super.initState();
     // Dos pestañas: Tribus y Personas asignadas
     _tabController = TabController(length: 2, vsync: this);
+    _resetInactivityTimer();
+
+    // Detectar interacciones del usuario
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        GestureBinding.instance.pointerRouter.addGlobalRoute((event) {
+          if (mounted) {
+            _resetInactivityTimer();
+          }
+        });
+      }
+    });
   }
 
   @override
   void dispose() {
+    _inactivityTimer?.cancel();
     _tabController.dispose();
     super.dispose();
+  }
+
+  // Métodos para manejo de sesión
+  void _resetInactivityTimer() {
+    if (!mounted) return;
+
+    _inactivityTimer?.cancel();
+    _inactivityTimer = Timer(_inactivityDuration, () {
+      if (mounted) {
+        _cerrarSesionPorInactividad();
+      }
+    });
+  }
+
+  Future<void> _cerrarSesionPorInactividad() async {
+    if (!mounted) return;
+
+    _inactivityTimer?.cancel();
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Icon(Icons.error_outline, color: Colors.white, size: 20),
+            ),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Sesión expirada por inactividad',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: Colors.red[600],
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: EdgeInsets.all(16),
+        duration: Duration(seconds: 3),
+      ),
+    );
+
+    await Future.delayed(Duration(milliseconds: 500));
+
+    if (mounted) {
+      context.go('/login');
+    }
+  }
+
+  Future<void> _confirmarCerrarSesion() async {
+    _resetInactivityTimer();
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: secondaryColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                Icons.logout_rounded,
+                color: secondaryColor,
+                size: 24,
+              ),
+            ),
+            SizedBox(width: 12),
+            Text(
+              'Cerrar Sesión',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: primaryColor,
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          '¿Estás seguro que deseas cerrar sesión?',
+          style: TextStyle(
+            fontSize: 14,
+            color: Colors.grey[700],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            style: TextButton.styleFrom(
+              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+            ),
+            child: Text(
+              'Cancelar',
+              style: TextStyle(
+                color: Colors.grey[600],
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red[600],
+              foregroundColor: Colors.white,
+              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+              elevation: 2,
+            ),
+            child: Text(
+              'Cerrar Sesión',
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      _inactivityTimer?.cancel();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Container(
+                padding: EdgeInsets.all(2),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.check, color: Colors.white, size: 20),
+              ),
+              SizedBox(width: 12),
+              Text(
+                'Cerrando sesión...',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: primaryColor,
+          behavior: SnackBarBehavior.floating,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          margin: EdgeInsets.all(16),
+        ),
+      );
+
+      await Future.delayed(Duration(milliseconds: 300));
+      if (mounted) {
+        context.go('/login');
+      }
+    }
   }
 
   /// Pestaña 1: Mostrar tribus del ministerio sin botón de eliminar
@@ -155,7 +346,6 @@ class _MinisterioLiderScreenState extends State<MinisterioLiderScreen>
     );
   }
 
-  /// Pestaña 2: Mostrar personas asignadas para el ministerio actual
   /// Pestaña 2: Mostrar personas asignadas para el ministerio actual con grupos y búsqueda
   Widget _buildPersonasAsignadasTab() {
     // Controller para el campo de búsqueda
@@ -197,6 +387,7 @@ class _MinisterioLiderScreenState extends State<MinisterioLiderScreen>
                           ? IconButton(
                               icon: Icon(Icons.close, color: secondaryColor),
                               onPressed: () {
+                                _resetInactivityTimer();
                                 searchController.clear();
                                 searchQuery.value = '';
                                 FocusScope.of(context).unfocus();
@@ -210,6 +401,7 @@ class _MinisterioLiderScreenState extends State<MinisterioLiderScreen>
                       EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 ),
                 onChanged: (value) {
+                  _resetInactivityTimer();
                   searchQuery.value = value;
                 },
               ),
@@ -403,7 +595,10 @@ class _MinisterioLiderScreenState extends State<MinisterioLiderScreen>
       valueListenable: expandedNotifier,
       builder: (context, expanded, _) {
         return GestureDetector(
-          onTap: () => expandedNotifier.value = !expanded,
+          onTap: () {
+            _resetInactivityTimer();
+            expandedNotifier.value = !expanded;
+          },
           child: Container(
             margin: const EdgeInsets.only(bottom: 8),
             padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
@@ -568,7 +763,10 @@ class _MinisterioLiderScreenState extends State<MinisterioLiderScreen>
                 child: IconButton(
                   icon: Icon(Icons.visibility_outlined, color: primaryColor),
                   tooltip: 'Ver detalles',
-                  onPressed: () => _mostrarDetallesRegistroActualizado(data),
+                  onPressed: () {
+                    _resetInactivityTimer();
+                    _mostrarDetallesRegistroActualizado(data);
+                  },
                 ),
               ),
               const SizedBox(width: 8),
@@ -582,7 +780,10 @@ class _MinisterioLiderScreenState extends State<MinisterioLiderScreen>
                   child: IconButton(
                     icon: Icon(Icons.group_add, color: secondaryColor),
                     tooltip: 'Asignar tribu',
-                    onPressed: () => _mostrarDialogoAsignarTribu(docId, data),
+                    onPressed: () {
+                      _resetInactivityTimer();
+                      _mostrarDialogoAsignarTribu(docId, data);
+                    },
                   ),
                 )
               else
@@ -594,7 +795,10 @@ class _MinisterioLiderScreenState extends State<MinisterioLiderScreen>
                   child: IconButton(
                     icon: Icon(Icons.swap_horiz, color: accentColor),
                     tooltip: 'Cambiar tribu',
-                    onPressed: () => _mostrarDialogoCambiarTribu(docId, data),
+                    onPressed: () {
+                      _resetInactivityTimer();
+                      _mostrarDialogoCambiarTribu(docId, data);
+                    },
                   ),
                 ),
             ],
@@ -605,6 +809,8 @@ class _MinisterioLiderScreenState extends State<MinisterioLiderScreen>
   }
 
   void _mostrarDetallesRegistroActualizado(Map<String, dynamic> data) {
+    _resetInactivityTimer();
+
     // Función para formatear fechas
     String formatearFecha(dynamic fecha) {
       if (fecha == null) return 'Fecha no disponible';
@@ -977,7 +1183,10 @@ class _MinisterioLiderScreenState extends State<MinisterioLiderScreen>
               Align(
                 alignment: Alignment.centerRight,
                 child: TextButton(
-                  onPressed: () => Navigator.pop(context),
+                  onPressed: () {
+                    _resetInactivityTimer();
+                    Navigator.pop(context);
+                  },
                   child: Text(
                     'Cerrar',
                     style: TextStyle(color: Colors.white),
@@ -1001,6 +1210,8 @@ class _MinisterioLiderScreenState extends State<MinisterioLiderScreen>
 
   void _mostrarDialogoCambiarTribu(
       String registroId, Map<String, dynamic> datosPersona) {
+    _resetInactivityTimer();
+
     showDialog(
       context: context,
       builder: (context) {
@@ -1070,7 +1281,10 @@ class _MinisterioLiderScreenState extends State<MinisterioLiderScreen>
               const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () {
+                _resetInactivityTimer();
+                Navigator.pop(context);
+              },
               child: Text(
                 'Cancelar',
                 style: TextStyle(color: grayColor),
@@ -1086,6 +1300,8 @@ class _MinisterioLiderScreenState extends State<MinisterioLiderScreen>
             ),
             TextButton(
               onPressed: () async {
+                _resetInactivityTimer();
+
                 // Eliminar asignación previa
                 await _cambiarAsignacionRegistro(registroId);
 
@@ -1155,6 +1371,8 @@ class _MinisterioLiderScreenState extends State<MinisterioLiderScreen>
 // Diálogo para asignar una tribu a una persona
   void _mostrarDialogoAsignarTribu(
       String registroId, Map<String, dynamic> datosPersona) {
+    _resetInactivityTimer();
+
     if (registroId.isEmpty || datosPersona.isEmpty) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1311,7 +1529,7 @@ class _MinisterioLiderScreenState extends State<MinisterioLiderScreen>
                               style: TextStyle(fontSize: 13),
                             ),
                           ),
-                          // ✅ MOSTRAR EL MINISTERIO DE LA TRIBU
+                          // MOSTRAR EL MINISTERIO DE LA TRIBU
                           Padding(
                             padding: const EdgeInsets.only(top: 2.0),
                             child: Text(
@@ -1326,12 +1544,14 @@ class _MinisterioLiderScreenState extends State<MinisterioLiderScreen>
                         ],
                       ),
                       onTap: () async {
-                        // ✅ DEBUG antes de asignar
+                        _resetInactivityTimer();
+
+                        // DEBUG antes de asignar
                         await _debugTribuYMinisterio(tribuId);
 
                         Navigator.pop(context);
 
-                        // ✅ PASAR TODOS LOS DATOS DE LA TRIBU
+                        // PASAR TODOS LOS DATOS DE LA TRIBU
                         await _asignarTribu(registroId, tribuId, tribu);
                       },
                       shape: RoundedRectangleBorder(
@@ -1350,7 +1570,10 @@ class _MinisterioLiderScreenState extends State<MinisterioLiderScreen>
               const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () {
+                _resetInactivityTimer();
+                Navigator.pop(context);
+              },
               child: Text('Cancelar', style: TextStyle(color: grayColor)),
               style: TextButton.styleFrom(
                 padding:
@@ -1367,7 +1590,7 @@ class _MinisterioLiderScreenState extends State<MinisterioLiderScreen>
     );
   }
 
-// ✅ FUNCIÓN CORREGIDA: Asigna el ministerio basado en la tribu seleccionada
+// FUNCIÓN CORREGIDA: Asigna el ministerio basado en la tribu seleccionada
   Future<void> _asignarTribu(String registroId, String tribuId,
       Map<String, dynamic> datosTribu) async {
     try {
@@ -1389,7 +1612,7 @@ class _MinisterioLiderScreenState extends State<MinisterioLiderScreen>
         throw Exception('Datos de tribu no válidos');
       }
 
-      // ✅ OBTENER EL MINISTERIO DE LA TRIBU con validación mejorada
+      // OBTENER EL MINISTERIO DE LA TRIBU con validación mejorada
       String ministerioTribu = '';
 
       // Intentar obtener 'categoria' de diferentes formas
@@ -1433,11 +1656,11 @@ class _MinisterioLiderScreenState extends State<MinisterioLiderScreen>
             'No se pudo determinar el ministerio de la tribu seleccionada');
       }
 
-      // ✅ PREPARAR DATOS CON EL MINISTERIO CORRECTO
+      // PREPARAR DATOS CON EL MINISTERIO CORRECTO
       final Map<String, dynamic> updateData = {
         'tribuAsignada': tribuId,
         'nombreTribu': nombreTribu,
-        'ministerioAsignado': ministerioTribu, // ✅ Este es el campo crítico
+        'ministerioAsignado': ministerioTribu, // Este es el campo crítico
         'fechaAsignacion': FieldValue.serverTimestamp(),
         // Limpiar campos relacionados con coordinador y timoteo si existían
         'coordinadorAsignado': null,
@@ -1515,7 +1738,7 @@ class _MinisterioLiderScreenState extends State<MinisterioLiderScreen>
     }
   }
 
-// ✅ VERIFICACIÓN MEJORADA con ministerio esperado
+// VERIFICACIÓN MEJORADA con ministerio esperado
   Future<void> _verificarAsignacion(
       String registroId, String ministerioEsperado) async {
     try {
@@ -1588,7 +1811,7 @@ class _MinisterioLiderScreenState extends State<MinisterioLiderScreen>
     }
   }
 
-// ✅ FUNCIÓN NUEVA: Recuperar ministerio cuando falla la asignación inicial
+// FUNCIÓN NUEVA: Recuperar ministerio cuando falla la asignación inicial
   Future<void> _recuperarMinisterioDeTribu(
       String registroId, String tribuId) async {
     try {
@@ -1631,7 +1854,7 @@ class _MinisterioLiderScreenState extends State<MinisterioLiderScreen>
     }
   }
 
-// ✅ FUNCIÓN ADICIONAL: Verificar consistencia tribu-ministerio
+// FUNCIÓN ADICIONAL: Verificar consistencia tribu-ministerio
   Future<void> _verificarConsistenciaTribu(String tribuId) async {
     try {
       final DocumentSnapshot tribuDoc =
@@ -1682,7 +1905,7 @@ class _MinisterioLiderScreenState extends State<MinisterioLiderScreen>
     }
   }
 
-// ✅ FUNCIÓN DE DEBUG: Verificar estructura de tribu antes de asignar
+// FUNCIÓN DE DEBUG: Verificar estructura de tribu antes de asignar
   Future<void> _debugTribuYMinisterio(String tribuId) async {
     try {
       print('=== DEBUG TRIBU Y MINISTERIO ===');
@@ -1726,6 +1949,8 @@ class _MinisterioLiderScreenState extends State<MinisterioLiderScreen>
 
   // Diálogo con todos los detalles de un registro
   void _mostrarDetallesRegistro(Map<String, dynamic> data) {
+    _resetInactivityTimer();
+
     showDialog(
       context: context,
       builder: (context) {
@@ -1822,7 +2047,10 @@ class _MinisterioLiderScreenState extends State<MinisterioLiderScreen>
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () {
+                _resetInactivityTimer();
+                Navigator.pop(context);
+              },
               child: Text(
                 'Cerrar',
                 style: TextStyle(color: Colors.white),
@@ -1893,6 +2121,7 @@ class _MinisterioLiderScreenState extends State<MinisterioLiderScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: backgroundColor,
       appBar: AppBar(
         title: Text(
           widget.ministerio,
@@ -1901,9 +2130,63 @@ class _MinisterioLiderScreenState extends State<MinisterioLiderScreen>
             fontWeight: FontWeight.bold,
           ),
         ),
-        elevation: 0,
+        elevation: 2,
         backgroundColor: primaryColor,
         centerTitle: true,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(
+            bottom: Radius.circular(20),
+          ),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.notifications_outlined),
+            onPressed: () {
+              _resetInactivityTimer();
+            },
+            tooltip: 'Notificaciones',
+          ),
+          Container(
+            margin: EdgeInsets.only(right: 8),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.3),
+                width: 1,
+              ),
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(12),
+                onTap: _confirmarCerrarSesion,
+                child: Container(
+                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.logout_rounded,
+                        color: Colors.white,
+                        size: 18,
+                      ),
+                      SizedBox(width: 4),
+                      Text(
+                        'Salir',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
         bottom: TabBar(
           controller: _tabController,
           indicatorColor: secondaryColor,
@@ -1923,12 +2206,24 @@ class _MinisterioLiderScreenState extends State<MinisterioLiderScreen>
           ],
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          _buildTribusTab(),
-          _buildPersonasAsignadasTab(),
-        ],
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              primaryColor.withOpacity(0.05),
+              backgroundColor,
+            ],
+          ),
+        ),
+        child: TabBarView(
+          controller: _tabController,
+          children: [
+            _buildTribusTab(),
+            _buildPersonasAsignadasTab(),
+          ],
+        ),
       ),
     );
   }

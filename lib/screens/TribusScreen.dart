@@ -8,8 +8,12 @@ import 'package:intl/intl.dart';
 import 'TimoteosScreen.dart';
 import 'CoordinadorScreen.dart';
 import 'package:flutter/services.dart';
+import 'dart:async';
+import 'package:flutter/gestures.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:go_router/go_router.dart';
 
-class TribusScreen extends StatelessWidget {
+class TribusScreen extends StatefulWidget {
   final String tribuId;
   final String tribuNombre;
 
@@ -19,7 +23,20 @@ class TribusScreen extends StatelessWidget {
     required this.tribuNombre,
   }) : super(key: key);
 
-  // AGREGAR ESTAS VARIABLES AQUÍ:
+  @override
+  State<TribusScreen> createState() => _TribusScreenState();
+}
+
+class _TribusScreenState extends State<TribusScreen>
+    with SingleTickerProviderStateMixin {
+  // Variables para el manejo de sesión
+  Timer? _inactivityTimer;
+  static const Duration _inactivityDuration = Duration(minutes: 15);
+
+  // Controller para las pestañas
+  late TabController _tabController;
+
+  // Variables estáticas existentes
   static final List<Map<String, dynamic>> _tabOptions = [
     {'title': 'Timoteos', 'icon': Icons.people, 'key': 'timoteos'},
     {
@@ -36,6 +53,193 @@ class TribusScreen extends StatelessWidget {
     {'title': 'Eventos', 'icon': Icons.event_note, 'key': 'inscripciones'},
   ];
 
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 5, vsync: this);
+    _resetInactivityTimer();
+
+    // Detectar interacciones del usuario
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        GestureBinding.instance.pointerRouter.addGlobalRoute((event) {
+          if (mounted) {
+            _resetInactivityTimer();
+          }
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _inactivityTimer?.cancel();
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  // Métodos para manejo de sesión
+  void _resetInactivityTimer() {
+    if (!mounted) return;
+
+    _inactivityTimer?.cancel();
+    _inactivityTimer = Timer(_inactivityDuration, () {
+      if (mounted) {
+        _cerrarSesionPorInactividad();
+      }
+    });
+  }
+
+  Future<void> _cerrarSesionPorInactividad() async {
+    if (!mounted) return;
+
+    _inactivityTimer?.cancel();
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(Icons.error_outline, color: Colors.white),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Sesión expirada por inactividad',
+                style: GoogleFonts.poppins(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: Colors.red[600],
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: EdgeInsets.all(16),
+      ),
+    );
+
+    await Future.delayed(Duration(milliseconds: 500));
+
+    if (mounted) {
+      context.go('/login');
+    }
+  }
+
+  Future<void> _confirmarCerrarSesion() async {
+    _resetInactivityTimer();
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.orange.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                Icons.logout_rounded,
+                color: Colors.orange,
+                size: 24,
+              ),
+            ),
+            SizedBox(width: 12),
+            Text(
+              'Cerrar Sesión',
+              style: GoogleFonts.poppins(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          '¿Estás seguro que deseas cerrar sesión?',
+          style: GoogleFonts.poppins(
+            fontSize: 14,
+            color: Colors.grey[700],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            style: TextButton.styleFrom(
+              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+            ),
+            child: Text(
+              'Cancelar',
+              style: GoogleFonts.poppins(
+                color: Colors.grey[600],
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red[600],
+              foregroundColor: Colors.white,
+              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+              elevation: 2,
+            ),
+            child: Text(
+              'Cerrar Sesión',
+              style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      _inactivityTimer?.cancel();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Container(
+                padding: EdgeInsets.all(2),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.check, color: Colors.white, size: 20),
+              ),
+              SizedBox(width: 12),
+              Text(
+                'Cerrando sesión...',
+                style: GoogleFonts.poppins(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: Color(0xFF1B998B),
+          behavior: SnackBarBehavior.floating,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          margin: EdgeInsets.all(16),
+        ),
+      );
+
+      await Future.delayed(Duration(milliseconds: 300));
+      if (mounted) {
+        context.go('/login');
+      }
+    }
+  }
+
 // Función para determinar el ministerio basado en el nombre de la tribu
   String _determinarMinisterio(String tribuNombre) {
     if (tribuNombre.contains('Juvenil')) return 'Ministerio Juvenil';
@@ -47,6 +251,8 @@ class TribusScreen extends StatelessWidget {
 // Función para guardar registro en Firebase
   void _guardarRegistroEnFirebase(BuildContext context,
       Map<String, dynamic> registro, String tribuId) async {
+    _resetInactivityTimer();
+
     // Mostrar pantalla de carga con diseño mejorado
     showDialog(
       context: context,
@@ -97,7 +303,7 @@ class TribusScreen extends StatelessWidget {
 
       if (!tribuSnapshot.exists) {
         if (context.mounted) {
-          Navigator.of(context, rootNavigator: true).pop(); // Cierra el loading
+          Navigator.of(context, rootNavigator: true).pop();
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Row(
@@ -136,7 +342,7 @@ class TribusScreen extends StatelessWidget {
       await FirebaseFirestore.instance.collection('registros').add(registro);
 
       if (context.mounted) {
-        Navigator.of(context, rootNavigator: true).pop(); // Cierra el loading
+        Navigator.of(context, rootNavigator: true).pop();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
@@ -166,11 +372,11 @@ class TribusScreen extends StatelessWidget {
             duration: Duration(seconds: 3),
           ),
         );
-        Navigator.pop(context); // <-- CIERRA EL DIÁLOGO DEL FORMULARIO
+        Navigator.pop(context);
       }
     } catch (e) {
       if (context.mounted) {
-        Navigator.of(context, rootNavigator: true).pop(); // Cierra el loading
+        Navigator.of(context, rootNavigator: true).pop();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
@@ -197,6 +403,8 @@ class TribusScreen extends StatelessWidget {
   }
 
   void _showRegistroDialog(BuildContext context) {
+    _resetInactivityTimer();
+
     final _formKey = GlobalKey<FormState>();
 
     final List<String> _estadosCiviles = [
@@ -231,7 +439,7 @@ class TribusScreen extends StatelessWidget {
     String? observaciones;
     DateTime? fechaAsignacionTribu;
 
-    String estadoProceso = ''; // Nueva variable para estado del proceso
+    String estadoProceso = '';
 
     // StatefulBuilder para manejar estado dinámico
     showDialog(
@@ -745,9 +953,9 @@ class TribusScreen extends StatelessWidget {
                                 'tieneHijos': tieneHijos,
                                 'referenciaInvitacion': referenciaInvitacion,
                                 'observaciones': observaciones,
-                                'tribuAsignada': tribuNombre,
+                                'tribuAsignada': widget.tribuNombre,
                                 'ministerioAsignado':
-                                    _determinarMinisterio(tribuNombre),
+                                    _determinarMinisterio(widget.tribuNombre),
                                 'coordinadorAsignado': null,
                                 'fechaRegistro': FieldValue.serverTimestamp(),
                                 'activo': true,
@@ -755,7 +963,7 @@ class TribusScreen extends StatelessWidget {
                               };
 
                               _guardarRegistroEnFirebase(
-                                  context, registro, tribuId);
+                                  context, registro, widget.tribuId);
                             }
                           },
                           child: Row(
@@ -992,7 +1200,6 @@ class TribusScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Define colors based on the COCEP logo
     final Color primaryTeal = Color(0xFF1B998B);
     final Color secondaryOrange = Color(0xFFFF7E00);
     final Color lightTeal = Color(0xFFE0F7FA);
@@ -1003,36 +1210,145 @@ class TribusScreen extends StatelessWidget {
         length: 5,
         child: Scaffold(
           appBar: AppBar(
-            elevation: 0,
+            elevation: 2,
             backgroundColor: primaryTeal,
+            titleSpacing: 12,
             title: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
               children: [
+                // Logo mejorado con mejor visibilidad
                 Hero(
                   tag: 'logo',
-                  child: Image.asset(
-                    'assets/Cocep_.png',
-                    height: 42,
+                  child: Container(
+                    padding: EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.2),
+                          blurRadius: 6,
+                          offset: Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: Container(
+                      height: 38,
+                      width: 38,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white,
+                      ),
+                      child: ClipOval(
+                        child: Image.asset(
+                          'assets/Cocep_.png',
+                          height: 38,
+                          width: 38,
+                          fit: BoxFit.contain,
+                        ),
+                      ),
+                    ),
                   ),
                 ),
                 SizedBox(width: 12),
-                Text(
-                  'Tribu: $tribuNombre',
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                    shadows: [
-                      Shadow(
-                        offset: Offset(1, 1),
-                        blurRadius: 3.0,
-                        color: Colors.black.withOpacity(0.3),
+                // Título con mejor espaciado
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Tribu',
+                        style: GoogleFonts.poppins(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.white.withOpacity(0.9),
+                        ),
+                      ),
+                      Text(
+                        widget.tribuNombre,
+                        style: GoogleFonts.poppins(
+                          fontSize:
+                              MediaQuery.of(context).size.width < 400 ? 16 : 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),
                 ),
               ],
             ),
+            actions: [
+              // Botón de cerrar sesión mejorado
+              Container(
+                margin: EdgeInsets.only(right: 8),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Colors.white.withOpacity(0.25),
+                      Colors.white.withOpacity(0.15),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: Colors.white.withOpacity(0.6),
+                    width: 2,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.15),
+                      blurRadius: 6,
+                      offset: Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: _confirmarCerrarSesion,
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      constraints: BoxConstraints(
+                        minWidth: 80,
+                        minHeight: 40,
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.logout_rounded,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                          SizedBox(width: 6),
+                          Text(
+                            'Salir',
+                            style: GoogleFonts.poppins(
+                              color: Colors.white,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              shadows: [
+                                Shadow(
+                                  offset: Offset(0, 1),
+                                  blurRadius: 2,
+                                  color: Colors.black.withOpacity(0.3),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
             bottom: PreferredSize(
               preferredSize: Size.fromHeight(60),
               child: Container(
@@ -1047,6 +1363,7 @@ class TribusScreen extends StatelessWidget {
                   ],
                 ),
                 child: TabBar(
+                  controller: _tabController,
                   indicator: BoxDecoration(
                     color: secondaryOrange,
                     borderRadius: BorderRadius.only(
@@ -1059,7 +1376,7 @@ class TribusScreen extends StatelessWidget {
                   tabs: [
                     _buildTab(Icons.people, 'Timoteos'),
                     _buildTab(Icons.supervised_user_circle, 'Coordinadores'),
-                    _buildTab(Icons.assignment_ind, 'Personas Asignadas'),
+                    _buildTab(Icons.assignment_ind, 'Personas'),
                     _buildTab(Icons.list_alt, 'Asistencias'),
                     _buildTab(Icons.event_note, 'Eventos'),
                   ],
@@ -1072,17 +1389,15 @@ class TribusScreen extends StatelessWidget {
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [
-                  lightTeal,
-                  Colors.white,
-                ],
+                colors: [lightTeal, Colors.white],
                 stops: [0.0, 0.5],
               ),
             ),
             child: TabBarView(
+              controller: _tabController,
               children: [
-                _buildTabContent(TimoteosTab(tribuId: tribuId)),
-                _buildTabContent(CoordinadoresTab(tribuId: tribuId)),
+                _buildTabContent(TimoteosTab(tribuId: widget.tribuId)),
+                _buildTabContent(CoordinadoresTab(tribuId: widget.tribuId)),
                 _buildTabContent(
                   Column(
                     children: [
@@ -1094,32 +1409,31 @@ class TribusScreen extends StatelessWidget {
                             padding: EdgeInsets.symmetric(
                                 horizontal: 16, vertical: 12),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
+                                borderRadius: BorderRadius.circular(12)),
                           ),
                           icon: Icon(Icons.download, color: Colors.white),
                           label: Text(
                             'Descargar Excel',
-                            style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold),
+                            style: GoogleFonts.poppins(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
-                          onPressed: () =>
-                              _descargarExcel(context, tribuId, tribuNombre),
+                          onPressed: () => _descargarExcel(
+                              context, widget.tribuId, widget.tribuNombre),
                         ),
                       ),
                       Expanded(
                         child: RegistrosAsignadosTab(
-                          tribuId: tribuId,
-                          tribuNombre: tribuNombre,
+                          tribuId: widget.tribuId,
+                          tribuNombre: widget.tribuNombre,
                         ),
                       ),
                     ],
                   ),
                 ),
-                // Aquí modificamos
-                _buildTabContent(AsistenciasTab(tribuId: tribuId)),
-                _buildTabContent(InscripcionesTab(tribuId: tribuId)),
+                _buildTabContent(AsistenciasTab(tribuId: widget.tribuId)),
+                _buildTabContent(InscripcionesTab(tribuId: widget.tribuId)),
               ],
             ),
           ),
@@ -1127,6 +1441,7 @@ class TribusScreen extends StatelessWidget {
             backgroundColor: secondaryOrange,
             child: Icon(Icons.add, color: Colors.white),
             onPressed: () {
+              _resetInactivityTimer();
               _showAddOptions(context, primaryTeal, secondaryOrange);
             },
             elevation: 4,
@@ -1136,15 +1451,39 @@ class TribusScreen extends StatelessWidget {
     );
   }
 
-// Función mejorada para descargar Excel
+  Widget _buildTab(IconData icon, String text) {
+    return Tab(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, size: 20),
+          SizedBox(height: 4),
+          Text(
+            text,
+            style: GoogleFonts.poppins(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+            ),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTabContent(Widget child) {
+    return Container(
+      padding: EdgeInsets.all(8),
+      child: child,
+    );
+  }
+
   void _descargarExcel(
       BuildContext context, String tribuId, String tribuNombre) async {
-    // Colores de la aplicación
     const Color primaryTeal = Color(0xFF1B998B);
     const Color secondaryOrange = Color(0xFFFF7E00);
     final Color lightTeal = primaryTeal.withOpacity(0.1);
 
-    // Mostrar un diálogo de carga
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -1200,17 +1539,12 @@ class TribusScreen extends StatelessWidget {
     );
 
     try {
-      // Instanciar el exportador de Excel
       final excelGenerator = ExcelExporter();
-
-      // Llamar al método de exportación con context y datos necesarios
       await excelGenerator.exportarRegistros(context, tribuId, tribuNombre);
 
-      // Cerrar el diálogo de carga si el contexto sigue siendo válido
       if (context.mounted) {
         Navigator.of(context, rootNavigator: true).pop();
 
-        // Mostrar mensaje de éxito actualizado
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
@@ -1237,11 +1571,9 @@ class TribusScreen extends StatelessWidget {
         );
       }
     } catch (e) {
-      // Cerrar el diálogo de carga si el contexto sigue siendo válido
       if (context.mounted) {
         Navigator.of(context, rootNavigator: true).pop();
 
-        // Mostrar mensaje de error
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
@@ -1270,44 +1602,10 @@ class TribusScreen extends StatelessWidget {
     }
   }
 
-  Widget _buildTab(IconData icon, String text) {
-    return Tab(
-      child: Padding(
-        padding: EdgeInsets.symmetric(vertical: 8),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 24),
-            SizedBox(height: 4),
-            Text(
-              text,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTabContent(Widget content) {
-    return Card(
-      margin: EdgeInsets.all(12),
-      elevation: 4,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(12),
-        child: content,
-      ),
-    );
-  }
-
   void _showAddOptions(
       BuildContext context, Color primaryColor, Color secondaryColor) {
+    _resetInactivityTimer();
+
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -1330,7 +1628,6 @@ class TribusScreen extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Encabezado
             Container(
               padding: EdgeInsets.all(12),
               decoration: BoxDecoration(
@@ -1353,8 +1650,6 @@ class TribusScreen extends StatelessWidget {
               ),
             ),
             SizedBox(height: 20),
-
-            // Registrar Miembro
             _buildOptionButton(
               context,
               'Registrar Miembro',
@@ -1367,8 +1662,6 @@ class TribusScreen extends StatelessWidget {
               },
             ),
             SizedBox(height: 12),
-
-            // Crear Evento (Nueva opción)
             _buildOptionButton(
               context,
               'Crear Evento',
@@ -1380,7 +1673,7 @@ class TribusScreen extends StatelessWidget {
                 showDialog(
                   context: context,
                   builder: (context) => DialogoCrearEvento(
-                    tribuId: tribuId,
+                    tribuId: widget.tribuId,
                     primaryColor: primaryColor,
                     secondaryColor: secondaryColor,
                   ),
@@ -5289,6 +5582,56 @@ class RegistrosAsignadosTab extends StatelessWidget {
                         }).toList()
                       : allDocs;
 
+// 🆕 NUEVA FUNCIONALIDAD: Ordenar registros para que los nuevos aparezcan primero
+                  filteredDocs.sort((a, b) {
+                    final dataA = a.data() as Map<String, dynamic>;
+                    final dataB = b.data() as Map<String, dynamic>;
+
+                    // Función para determinar si un registro es nuevo (≤14 días)
+                    bool esRegistroNuevo(Map<String, dynamic> data) {
+                      DateTime? fechaTribu =
+                          (data['fechaAsignacionTribu'] as Timestamp?)
+                                  ?.toDate() ??
+                              (data['fechaAsignacion'] as Timestamp?)?.toDate();
+                      DateTime? fechaCoord =
+                          (data['fechaAsignacionCoordinador'] as Timestamp?)
+                              ?.toDate();
+                      DateTime? fechaTimoteo =
+                          (data['fechaAsignacionTimoteo'] as Timestamp?)
+                              ?.toDate();
+
+                      // Obtener la fecha más reciente de asignación
+                      DateTime? fechaMasReciente = [
+                        fechaTribu,
+                        fechaCoord,
+                        fechaTimoteo
+                      ].whereType<DateTime>().fold<DateTime?>(
+                          null,
+                          (prev, curr) =>
+                              prev == null || curr.isAfter(prev) ? curr : prev);
+
+                      return fechaMasReciente != null &&
+                          DateTime.now().difference(fechaMasReciente).inDays <=
+                              14;
+                    }
+
+                    bool nuevoA = esRegistroNuevo(dataA);
+                    bool nuevoB = esRegistroNuevo(dataB);
+
+                    // Los nuevos van primero
+                    if (nuevoA && !nuevoB) return -1;
+                    if (!nuevoA && nuevoB) return 1;
+
+                    // Si ambos son nuevos o ambos son antiguos, ordenar alfabéticamente
+                    final nombreA =
+                        '${dataA['nombre'] ?? ''} ${dataA['apellido'] ?? ''}'
+                            .toLowerCase();
+                    final nombreB =
+                        '${dataB['nombre'] ?? ''} ${dataB['apellido'] ?? ''}'
+                            .toLowerCase();
+                    return nombreA.compareTo(nombreB);
+                  });
+
                   // Si hay búsqueda y no se encuentran resultados
                   if (isSearching && filteredDocs.isEmpty) {
                     return Center(
@@ -5974,169 +6317,259 @@ class RegistrosAsignadosTab extends StatelessWidget {
                         // Inicializamos el estado de expansión si no existe
                         expandedStates[registroId] ??= false;
 
-                        return Card(
+                        // FUNCIONALIDAD: Detectar si es un registro nuevo
+                        DateTime? fechaTribu = (data['fechaAsignacionTribu']
+                                    as Timestamp?)
+                                ?.toDate() ??
+                            (data['fechaAsignacion'] as Timestamp?)?.toDate();
+                        DateTime? fechaCoord =
+                            (data['fechaAsignacionCoordinador'] as Timestamp?)
+                                ?.toDate();
+                        DateTime? fechaTimoteo =
+                            (data['fechaAsignacionTimoteo'] as Timestamp?)
+                                ?.toDate();
+
+                        // Obtener la fecha más reciente de asignación
+                        DateTime? fechaMasReciente = [
+                          fechaTribu,
+                          fechaCoord,
+                          fechaTimoteo
+                        ].whereType<DateTime>().fold<DateTime?>(
+                            null,
+                            (prev, curr) => prev == null || curr.isAfter(prev)
+                                ? curr
+                                : prev);
+
+                        bool esNuevo = fechaMasReciente != null &&
+                            DateTime.now()
+                                    .difference(fechaMasReciente)
+                                    .inDays <=
+                                14;
+
+                        int diasDesdeAsignacion = fechaMasReciente != null
+                            ? DateTime.now().difference(fechaMasReciente).inDays
+                            : 0;
+
+                        // Colores dinámicos según antiguedad
+                        Color colorTarjeta =
+                            esNuevo ? Colors.amber.shade50 : Colors.white;
+                        Color colorBorde = esNuevo
+                            ? Colors.amber.withOpacity(0.4)
+                            : primaryTeal.withOpacity(0.1);
+                        Color colorSombra = esNuevo
+                            ? Colors.amber.withOpacity(0.2)
+                            : primaryTeal.withOpacity(0.1);
+
+                        return Container(
                           margin:
                               EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                          elevation: 2,
-                          shadowColor: primaryTeal.withOpacity(0.1),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            side: BorderSide(
-                              color: primaryTeal.withOpacity(0.1),
-                              width: 1,
-                            ),
-                          ),
-                          child: Column(
+                          child: Stack(
                             children: [
-                              // Parte superior de la tarjeta con información básica
-                              GestureDetector(
-                                onTap: () {
-                                  setState(() {
-                                    // Invertimos el estado de expansión al tocar
-                                    expandedStates[registroId] =
-                                        !expandedStates[registroId]!;
-                                  });
-                                },
-                                child: Padding(
-                                  padding: EdgeInsets.all(16),
-                                  child: Row(
-                                    children: [
-                                      // Avatar con iniciales
+                              Card(
+                                margin: EdgeInsets.zero,
+                                elevation: esNuevo ? 4 : 2,
+                                shadowColor: colorSombra,
+                                color: colorTarjeta,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  side: BorderSide(
+                                    color: colorBorde,
+                                    width: esNuevo ? 2 : 1,
+                                  ),
+                                ),
+                                child: Column(
+                                  children: [
+                                    // Indicador visual para registros nuevos
+                                    if (esNuevo)
                                       Container(
-                                        width: 40,
-                                        height: 40,
+                                        width: double.infinity,
+                                        padding: EdgeInsets.symmetric(
+                                            horizontal: 12, vertical: 6),
                                         decoration: BoxDecoration(
-                                          color: avatarColors[colorIndex]
-                                              .withOpacity(0.2),
-                                          borderRadius:
-                                              BorderRadius.circular(10),
-                                          border: Border.all(
-                                            color: avatarColors[colorIndex]
-                                                .withOpacity(0.5),
-                                            width: 1.5,
+                                          gradient: LinearGradient(
+                                            colors: [
+                                              Colors.amber.shade100,
+                                              Colors.amber.shade200,
+                                            ],
+                                            begin: Alignment.centerLeft,
+                                            end: Alignment.centerRight,
+                                          ),
+                                          borderRadius: BorderRadius.only(
+                                            topLeft: Radius.circular(10),
+                                            topRight: Radius.circular(10),
                                           ),
                                         ),
-                                        child: Center(
-                                          child: Text(
-                                            iniciales,
-                                            style: TextStyle(
-                                              fontSize: 18,
-                                              fontWeight: FontWeight.bold,
-                                              color: avatarColors[colorIndex],
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                      SizedBox(width: 16),
-                                      // Información del registro
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
                                           children: [
+                                            Icon(
+                                              Icons.fiber_new,
+                                              color: Colors.amber.shade700,
+                                              size: 16,
+                                            ),
+                                            SizedBox(width: 4),
                                             Text(
-                                              '$nombre $apellido',
+                                              diasDesdeAsignacion == 0
+                                                  ? 'RECIÉN ASIGNADO'
+                                                  : 'NUEVO - ${diasDesdeAsignacion} día${diasDesdeAsignacion != 1 ? 's' : ''}',
                                               style: TextStyle(
-                                                fontSize: 16,
+                                                fontSize: 11,
                                                 fontWeight: FontWeight.bold,
-                                                color: primaryTeal,
+                                                color: Colors.amber.shade700,
                                               ),
                                             ),
-                                            SizedBox(height: 4),
-                                            Row(
-                                              children: [
-                                                Icon(
-                                                  Icons.phone_outlined,
-                                                  size: 14,
-                                                  color: accentGrey,
+                                            Spacer(),
+                                            Container(
+                                              padding: EdgeInsets.symmetric(
+                                                  horizontal: 6, vertical: 2),
+                                              decoration: BoxDecoration(
+                                                color: Colors.amber.shade700,
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                              ),
+                                              child: Text(
+                                                '${14 - diasDesdeAsignacion} días restantes',
+                                                style: TextStyle(
+                                                  fontSize: 9,
+                                                  fontWeight: FontWeight.w500,
+                                                  color: Colors.white,
                                                 ),
-                                                SizedBox(width: 4),
-                                                Text(
-                                                  telefono,
-                                                  style: TextStyle(
-                                                    color: accentGrey,
-                                                    fontSize: 14,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                            SizedBox(height: 4),
-                                            Row(
-                                              children: [
-                                                Icon(
-                                                  Icons.account_tree_outlined,
-                                                  size: 14,
-                                                  color: accentGrey,
-                                                ),
-                                                SizedBox(width: 4),
-                                                Text(
-                                                  'Ministerio: $ministerioAsignado',
-                                                  style: TextStyle(
-                                                    color: accentGrey,
-                                                    fontSize: 14,
-                                                  ),
-                                                ),
-                                              ],
+                                              ),
                                             ),
                                           ],
                                         ),
                                       ),
-                                      // Botones de acción
-                                      Row(
-                                        children: [
-                                          // Botón de ver detalles
-                                          Material(
-                                            color: Colors.transparent,
-                                            child: InkWell(
-                                              borderRadius:
-                                                  BorderRadius.circular(12),
-                                              onTap: () =>
-                                                  _mostrarDetallesRegistro(
-                                                context,
-                                                data,
-                                                primaryTeal,
-                                                secondaryOrange,
-                                                accentGrey,
-                                                backgroundGrey,
-                                              ),
-                                              child: Container(
-                                                padding: EdgeInsets.all(10),
-                                                decoration: BoxDecoration(
-                                                  color: primaryTeal
-                                                      .withOpacity(0.1),
-                                                  borderRadius:
-                                                      BorderRadius.circular(12),
+
+                                    // Parte superior de la tarjeta con información básica
+                                    GestureDetector(
+                                      onTap: () {
+                                        // NUEVO: Imprimir ID del registro en consola
+                                        print(
+                                            "ID del registro seleccionado:: ${registro.id}, Nombre: $nombre $apellido");
+
+                                        setState(() {
+                                          // Invertimos el estado de expansión al tocar
+                                          expandedStates[registroId] =
+                                              !expandedStates[registroId]!;
+                                        });
+                                      },
+                                      child: Padding(
+                                        padding: EdgeInsets.all(16),
+                                        child: Row(
+                                          children: [
+                                            // Avatar con iniciales
+                                            Container(
+                                              width: 40,
+                                              height: 40,
+                                              decoration: BoxDecoration(
+                                                color: avatarColors[colorIndex]
+                                                    .withOpacity(0.2),
+                                                borderRadius:
+                                                    BorderRadius.circular(10),
+                                                border: Border.all(
+                                                  color:
+                                                      avatarColors[colorIndex]
+                                                          .withOpacity(0.5),
+                                                  width: 1.5,
                                                 ),
-                                                child: Icon(
-                                                  Icons.visibility_outlined,
-                                                  color: primaryTeal,
-                                                  size: 22,
+                                              ),
+                                              child: Center(
+                                                child: Text(
+                                                  iniciales,
+                                                  style: TextStyle(
+                                                    fontSize: 18,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: avatarColors[
+                                                        colorIndex],
+                                                  ),
                                                 ),
                                               ),
                                             ),
-                                          ),
-                                          SizedBox(width: 8),
-                                          // Botón condicional basado en si tiene coordinador asignado
-                                          data.containsKey(
-                                                      'coordinadorAsignado') &&
-                                                  data['coordinadorAsignado'] !=
-                                                      null
-                                              ? Material(
+                                            SizedBox(width: 16),
+                                            // Información del registro
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(
+                                                    '$nombre $apellido',
+                                                    style: TextStyle(
+                                                      fontSize: 16,
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                      color: primaryTeal,
+                                                    ),
+                                                  ),
+                                                  SizedBox(height: 4),
+                                                  Row(
+                                                    children: [
+                                                      Icon(
+                                                        Icons.phone_outlined,
+                                                        size: 14,
+                                                        color: accentGrey,
+                                                      ),
+                                                      SizedBox(width: 4),
+                                                      Text(
+                                                        telefono,
+                                                        style: TextStyle(
+                                                          color: accentGrey,
+                                                          fontSize: 14,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                  SizedBox(height: 4),
+                                                  Row(
+                                                    children: [
+                                                      Icon(
+                                                        Icons
+                                                            .account_tree_outlined,
+                                                        size: 14,
+                                                        color: accentGrey,
+                                                      ),
+                                                      SizedBox(width: 4),
+                                                      Text(
+                                                        'Ministerio: $ministerioAsignado',
+                                                        style: TextStyle(
+                                                          color: accentGrey,
+                                                          fontSize: 14,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                            // Botones de acción
+                                            Row(
+                                              children: [
+                                                // Botón de ver detalles
+                                                Material(
                                                   color: Colors.transparent,
                                                   child: InkWell(
                                                     borderRadius:
                                                         BorderRadius.circular(
                                                             12),
-                                                    onTap: () =>
-                                                        _quitarAsignacion(
-                                                            context,
-                                                            registroId,
-                                                            primaryTeal),
+                                                    onTap: () {
+                                                      // NUEVO: Imprimir ID cuando se ven detalles
+                                                      print(
+                                                          "ID del registro Ver detalles del registro: ${registro.id}, Nombre: $nombre $apellido");
+
+                                                      _mostrarDetallesRegistro(
+                                                        context,
+                                                        data,
+                                                        primaryTeal,
+                                                        secondaryOrange,
+                                                        accentGrey,
+                                                        backgroundGrey,
+                                                      );
+                                                    },
                                                     child: Container(
                                                       padding:
                                                           EdgeInsets.all(10),
                                                       decoration: BoxDecoration(
-                                                        color: Colors.red
+                                                        color: primaryTeal
                                                             .withOpacity(0.1),
                                                         borderRadius:
                                                             BorderRadius
@@ -6144,31 +6577,325 @@ class RegistrosAsignadosTab extends StatelessWidget {
                                                       ),
                                                       child: Icon(
                                                         Icons
-                                                            .person_remove_outlined,
-                                                        color: Colors.red,
+                                                            .visibility_outlined,
+                                                        color: primaryTeal,
                                                         size: 22,
                                                       ),
                                                     ),
                                                   ),
-                                                )
-                                              : !data.containsKey(
-                                                          'coordinadorAsignado') ||
-                                                      data['coordinadorAsignado'] ==
-                                                          null
-                                                  ? Material(
+                                                ),
+                                                SizedBox(width: 8),
+                                                // Botón condicional basado en si tiene coordinador asignado
+                                                data.containsKey(
+                                                            'coordinadorAsignado') &&
+                                                        data['coordinadorAsignado'] !=
+                                                            null
+                                                    ? Material(
+                                                        color:
+                                                            Colors.transparent,
+                                                        child: InkWell(
+                                                          borderRadius:
+                                                              BorderRadius
+                                                                  .circular(12),
+                                                          onTap: () {
+                                                            // NUEVO: Imprimir ID cuando se quita asignación
+                                                            print(
+                                                                "Quitar asignación del registro: ${registro.id}");
+                                                            _quitarAsignacion(
+                                                                context,
+                                                                registroId,
+                                                                primaryTeal);
+                                                          },
+                                                          child: Container(
+                                                            padding:
+                                                                EdgeInsets.all(
+                                                                    10),
+                                                            decoration:
+                                                                BoxDecoration(
+                                                              color: Colors.red
+                                                                  .withOpacity(
+                                                                      0.1),
+                                                              borderRadius:
+                                                                  BorderRadius
+                                                                      .circular(
+                                                                          12),
+                                                            ),
+                                                            child: Icon(
+                                                              Icons
+                                                                  .person_remove_outlined,
+                                                              color: Colors.red,
+                                                              size: 22,
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      )
+                                                    : !data.containsKey(
+                                                                'coordinadorAsignado') ||
+                                                            data['coordinadorAsignado'] ==
+                                                                null
+                                                        ? Material(
+                                                            color: Colors
+                                                                .transparent,
+                                                            child: InkWell(
+                                                              borderRadius:
+                                                                  BorderRadius
+                                                                      .circular(
+                                                                          12),
+                                                              onTap: () {
+                                                                // NUEVO: Imprimir ID cuando se asigna coordinador
+                                                                print(
+                                                                    "Asignar coordinador al registro: ${registro.id}");
+                                                                _asignarACoordinador(
+                                                                    context,
+                                                                    registro);
+                                                              },
+                                                              child: Container(
+                                                                padding:
+                                                                    EdgeInsets
+                                                                        .all(
+                                                                            10),
+                                                                decoration:
+                                                                    BoxDecoration(
+                                                                  color: secondaryOrange
+                                                                      .withOpacity(
+                                                                          0.1),
+                                                                  borderRadius:
+                                                                      BorderRadius
+                                                                          .circular(
+                                                                              12),
+                                                                ),
+                                                                child: Icon(
+                                                                  Icons
+                                                                      .person_add_alt_1_outlined,
+                                                                  color:
+                                                                      secondaryOrange,
+                                                                  size: 22,
+                                                                ),
+                                                              ),
+                                                            ),
+                                                          )
+                                                        : SizedBox(),
+                                              ],
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+
+                                    // Información adicional para registros nuevos
+                                    if (esNuevo && fechaMasReciente != null)
+                                      Container(
+                                        margin: EdgeInsets.symmetric(
+                                            horizontal: 16),
+                                        padding: EdgeInsets.all(8),
+                                        decoration: BoxDecoration(
+                                          color: Colors.amber.shade50,
+                                          borderRadius:
+                                              BorderRadius.circular(8),
+                                          border: Border.all(
+                                            color: Colors.amber.shade200,
+                                            width: 1,
+                                          ),
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            Icon(
+                                              Icons.schedule_outlined,
+                                              size: 14,
+                                              color: Colors.amber.shade700,
+                                            ),
+                                            SizedBox(width: 6),
+                                            Text(
+                                              'Asignado el: ${fechaMasReciente.day}/${fechaMasReciente.month}/${fechaMasReciente.year}',
+                                              style: TextStyle(
+                                                fontSize: 11,
+                                                color: Colors.amber.shade700,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                            Spacer(),
+                                            Container(
+                                              padding: EdgeInsets.symmetric(
+                                                  horizontal: 6, vertical: 2),
+                                              decoration: BoxDecoration(
+                                                color: diasDesdeAsignacion <= 3
+                                                    ? Colors.red.shade100
+                                                    : Colors.blue.shade100,
+                                                borderRadius:
+                                                    BorderRadius.circular(4),
+                                              ),
+                                              child: Text(
+                                                diasDesdeAsignacion <= 3
+                                                    ? 'PRIORIDAD ALTA'
+                                                    : 'Seguimiento',
+                                                style: TextStyle(
+                                                  fontSize: 9,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: diasDesdeAsignacion <=
+                                                          3
+                                                      ? Colors.red.shade700
+                                                      : Colors.blue.shade700,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+
+                                    // Botón para expandir en la parte inferior de la tarjeta
+                                    Align(
+                                      alignment: Alignment.centerRight,
+                                      child: Padding(
+                                        padding: EdgeInsets.only(
+                                            right: 16, bottom: 8),
+                                        child: InkWell(
+                                          onTap: () {
+                                            setState(() {
+                                              // Invertimos el estado de expansión con el botón
+                                              expandedStates[registroId] =
+                                                  !expandedStates[registroId]!;
+                                            });
+                                          },
+                                          child: Container(
+                                            padding: EdgeInsets.symmetric(
+                                                horizontal: 12, vertical: 4),
+                                            decoration: BoxDecoration(
+                                              color:
+                                                  primaryTeal.withOpacity(0.1),
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                            ),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Text(
+                                                  expandedStates[registroId]!
+                                                      ? 'Menos'
+                                                      : 'Más',
+                                                  style: TextStyle(
+                                                    color: primaryTeal,
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                                SizedBox(width: 4),
+                                                Icon(
+                                                  expandedStates[registroId]!
+                                                      ? Icons.keyboard_arrow_up
+                                                      : Icons
+                                                          .keyboard_arrow_down,
+                                                  size: 16,
+                                                  color: primaryTeal,
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+
+                                    // Sección expandible
+                                    if (expandedStates[registroId]!)
+                                      Container(
+                                        padding: EdgeInsets.all(16),
+                                        decoration: BoxDecoration(
+                                          color:
+                                              backgroundGrey.withOpacity(0.5),
+                                          borderRadius: BorderRadius.only(
+                                            bottomLeft: Radius.circular(16),
+                                            bottomRight: Radius.circular(16),
+                                          ),
+                                        ),
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              'Detalles Adicionales',
+                                              style: TextStyle(
+                                                fontSize: 18,
+                                                fontWeight: FontWeight.bold,
+                                                color: primaryTeal,
+                                              ),
+                                            ),
+                                            SizedBox(height: 16),
+                                            Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.spaceEvenly,
+                                              children: [
+                                                Column(
+                                                  children: [
+                                                    Material(
                                                       color: Colors.transparent,
                                                       child: InkWell(
                                                         borderRadius:
                                                             BorderRadius
                                                                 .circular(12),
-                                                        onTap: () =>
-                                                            _asignarACoordinador(
-                                                                context,
-                                                                registro),
+                                                        onTap: () {
+                                                          // Lógica para editar registro
+                                                          _editarRegistro(
+                                                              context,
+                                                              registro);
+                                                        },
                                                         child: Container(
                                                           padding:
                                                               EdgeInsets.all(
-                                                                  10),
+                                                                  12),
+                                                          decoration:
+                                                              BoxDecoration(
+                                                            color: primaryTeal
+                                                                .withOpacity(
+                                                                    0.1),
+                                                            borderRadius:
+                                                                BorderRadius
+                                                                    .circular(
+                                                                        12),
+                                                          ),
+                                                          child: Column(
+                                                            children: [
+                                                              Icon(
+                                                                Icons
+                                                                    .edit_outlined,
+                                                                color:
+                                                                    primaryTeal,
+                                                                size: 28,
+                                                              ),
+                                                              SizedBox(
+                                                                  height: 4),
+                                                              Text(
+                                                                'Editar',
+                                                                style:
+                                                                    TextStyle(
+                                                                  color:
+                                                                      primaryTeal,
+                                                                  fontSize: 12,
+                                                                ),
+                                                              ),
+                                                            ],
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                                Column(
+                                                  children: [
+                                                    Material(
+                                                      color: Colors.transparent,
+                                                      child: InkWell(
+                                                        borderRadius:
+                                                            BorderRadius
+                                                                .circular(12),
+                                                        onTap: () {
+                                                          // Lógica para cambiar ministerio o tribu
+                                                          _cambiarMinisterioTribu(
+                                                              context,
+                                                              registro);
+                                                        },
+                                                        child: Container(
+                                                          padding:
+                                                              EdgeInsets.all(
+                                                                  12),
                                                           decoration:
                                                               BoxDecoration(
                                                             color:
@@ -6180,191 +6907,72 @@ class RegistrosAsignadosTab extends StatelessWidget {
                                                                     .circular(
                                                                         12),
                                                           ),
-                                                          child: Icon(
-                                                            Icons
-                                                                .person_add_alt_1_outlined,
-                                                            color:
-                                                                secondaryOrange,
-                                                            size: 22,
+                                                          child: Column(
+                                                            children: [
+                                                              Icon(
+                                                                Icons
+                                                                    .swap_horiz_outlined,
+                                                                color:
+                                                                    secondaryOrange,
+                                                                size: 28,
+                                                              ),
+                                                              SizedBox(
+                                                                  height: 4),
+                                                              Text(
+                                                                'Cambiar',
+                                                                style:
+                                                                    TextStyle(
+                                                                  color:
+                                                                      secondaryOrange,
+                                                                  fontSize: 12,
+                                                                ),
+                                                              ),
+                                                            ],
                                                           ),
                                                         ),
                                                       ),
-                                                    )
-                                                  : SizedBox(),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                              // Botón para expandir en la parte inferior de la tarjeta
-                              Align(
-                                alignment: Alignment.centerRight,
-                                child: Padding(
-                                  padding:
-                                      EdgeInsets.only(right: 16, bottom: 8),
-                                  child: InkWell(
-                                    onTap: () {
-                                      setState(() {
-                                        // Invertimos el estado de expansión con el botón
-                                        expandedStates[registroId] =
-                                            !expandedStates[registroId]!;
-                                      });
-                                    },
-                                    child: Container(
-                                      padding: EdgeInsets.symmetric(
-                                          horizontal: 12, vertical: 4),
-                                      decoration: BoxDecoration(
-                                        color: primaryTeal.withOpacity(0.1),
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Text(
-                                            expandedStates[registroId]!
-                                                ? 'Menos'
-                                                : 'Más',
-                                            style: TextStyle(
-                                              color: primaryTeal,
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.bold,
+                                                    ),
+                                                  ],
+                                                ),
+                                              ],
                                             ),
-                                          ),
-                                          SizedBox(width: 4),
-                                          Icon(
-                                            expandedStates[registroId]!
-                                                ? Icons.keyboard_arrow_up
-                                                : Icons.keyboard_arrow_down,
-                                            size: 16,
-                                            color: primaryTeal,
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              // Sección expandible
-                              if (expandedStates[registroId]!)
-                                Container(
-                                  padding: EdgeInsets.all(16),
-                                  decoration: BoxDecoration(
-                                    color: backgroundGrey.withOpacity(0.5),
-                                    borderRadius: BorderRadius.only(
-                                      bottomLeft: Radius.circular(16),
-                                      bottomRight: Radius.circular(16),
-                                    ),
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'Detalles Adicionales',
-                                        style: TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
-                                          color: primaryTeal,
+                                          ],
                                         ),
                                       ),
-                                      SizedBox(height: 16),
-                                      Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.spaceEvenly,
-                                        children: [
-                                          Column(
-                                            children: [
-                                              Material(
-                                                color: Colors.transparent,
-                                                child: InkWell(
-                                                  borderRadius:
-                                                      BorderRadius.circular(12),
-                                                  onTap: () {
-                                                    // Lógica para editar registro
-                                                    _editarRegistro(
-                                                        context, registro);
-                                                  },
-                                                  child: Container(
-                                                    padding: EdgeInsets.all(12),
-                                                    decoration: BoxDecoration(
-                                                      color: primaryTeal
-                                                          .withOpacity(0.1),
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                              12),
-                                                    ),
-                                                    child: Column(
-                                                      children: [
-                                                        Icon(
-                                                          Icons.edit_outlined,
-                                                          color: primaryTeal,
-                                                          size: 28,
-                                                        ),
-                                                        SizedBox(height: 4),
-                                                        Text(
-                                                          'Editar',
-                                                          style: TextStyle(
-                                                            color: primaryTeal,
-                                                            fontSize: 12,
-                                                          ),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                          Column(
-                                            children: [
-                                              Material(
-                                                color: Colors.transparent,
-                                                child: InkWell(
-                                                  borderRadius:
-                                                      BorderRadius.circular(12),
-                                                  onTap: () {
-                                                    // Lógica para cambiar ministerio o tribu
-                                                    _cambiarMinisterioTribu(
-                                                        context, registro);
-                                                  },
-                                                  child: Container(
-                                                    padding: EdgeInsets.all(12),
-                                                    decoration: BoxDecoration(
-                                                      color: secondaryOrange
-                                                          .withOpacity(0.1),
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                              12),
-                                                    ),
-                                                    child: Column(
-                                                      children: [
-                                                        Icon(
-                                                          Icons
-                                                              .swap_horiz_outlined,
-                                                          color:
-                                                              secondaryOrange,
-                                                          size: 28,
-                                                        ),
-                                                        SizedBox(height: 4),
-                                                        Text(
-                                                          'Cambiar',
-                                                          style: TextStyle(
-                                                            color:
-                                                                secondaryOrange,
-                                                            fontSize: 12,
-                                                          ),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
+                                  ],
+                                ),
+                              ),
+
+                              // Badge flotante para registros muy nuevos (0-2 días)
+                              if (esNuevo && diasDesdeAsignacion <= 2)
+                                Positioned(
+                                  top: -5,
+                                  right: -5,
+                                  child: Container(
+                                    padding: EdgeInsets.all(6),
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        colors: [
+                                          Colors.red.shade400,
+                                          Colors.red.shade600
                                         ],
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
                                       ),
-                                    ],
+                                      shape: BoxShape.circle,
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.red.withOpacity(0.3),
+                                          blurRadius: 4,
+                                          offset: Offset(0, 2),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Icon(
+                                      Icons.priority_high,
+                                      color: Colors.white,
+                                      size: 12,
+                                    ),
                                   ),
                                 ),
                             ],

@@ -41,6 +41,7 @@ dependencies:
   table_calendar: ^3.0.9
   flutter_animate: ^4.5.0
   
+  
 dev_dependencies:
   flutter_test:
     sdk: flutter

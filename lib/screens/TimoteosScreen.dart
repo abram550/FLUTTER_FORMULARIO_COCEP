@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'dart:async';
 
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/foundation.dart';
@@ -11,6 +12,8 @@ import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:go_router/go_router.dart';
+import 'package:flutter/gestures.dart';
 
 // Constantes de color basadas en el logo
 const Color kPrimaryColor = Color(0xFF148B8D); // Color turquesa del logo
@@ -20,8 +23,9 @@ const Color kAccentColor =
     Color(0xFFFFB74D); // Color amarillo/dorado de la llama
 const Color kBackgroundColor = Color(0xFFF8F9FA);
 const Color kCardColor = Colors.white;
+const Color kTextDarkColor = Color(0xFF2D3748); // Para textos en fondos claros
 
-class TimoteoScreen extends StatelessWidget {
+class TimoteoScreen extends StatefulWidget {
   final String timoteoId;
   final String timoteoNombre;
 
@@ -30,6 +34,215 @@ class TimoteoScreen extends StatelessWidget {
     required this.timoteoId,
     required this.timoteoNombre,
   }) : super(key: key);
+
+  @override
+  State<TimoteoScreen> createState() => _TimoteoScreenState();
+}
+
+class _TimoteoScreenState extends State<TimoteoScreen>
+    with SingleTickerProviderStateMixin {
+  // Variables para el manejo de sesión
+  Timer? _inactivityTimer;
+  static const Duration _inactivityDuration = Duration(minutes: 15);
+
+  // Controller para las pestañas
+  late TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    _resetInactivityTimer();
+
+    // Detectar interacciones del usuario
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        GestureBinding.instance.pointerRouter.addGlobalRoute((event) {
+          if (mounted) {
+            _resetInactivityTimer();
+          }
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _inactivityTimer?.cancel();
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  // Métodos para manejo de sesión
+  void _resetInactivityTimer() {
+    if (!mounted) return;
+
+    _inactivityTimer?.cancel();
+    _inactivityTimer = Timer(_inactivityDuration, () {
+      if (mounted) {
+        _cerrarSesionPorInactividad();
+      }
+    });
+  }
+
+  Future<void> _cerrarSesionPorInactividad() async {
+    if (!mounted) return;
+
+    _inactivityTimer?.cancel();
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Icon(Icons.error_outline, color: Colors.white, size: 20),
+            ),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Sesión expirada por inactividad',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: Colors.red[600],
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: EdgeInsets.all(16),
+        duration: Duration(seconds: 3),
+      ),
+    );
+
+    await Future.delayed(Duration(milliseconds: 500));
+
+    if (mounted) {
+      context.go('/login');
+    }
+  }
+
+  Future<void> _confirmarCerrarSesion() async {
+    _resetInactivityTimer();
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: kSecondaryColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                Icons.logout_rounded,
+                color: kSecondaryColor,
+                size: 24,
+              ),
+            ),
+            SizedBox(width: 12),
+            Text(
+              'Cerrar Sesión',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: kTextDarkColor,
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          '¿Estás seguro que deseas cerrar sesión?',
+          style: TextStyle(
+            fontSize: 14,
+            color: Colors.grey[700],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            style: TextButton.styleFrom(
+              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+            ),
+            child: Text(
+              'Cancelar',
+              style: TextStyle(
+                color: Colors.grey[600],
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red[600],
+              foregroundColor: Colors.white,
+              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+              elevation: 2,
+            ),
+            child: Text(
+              'Cerrar Sesión',
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      _inactivityTimer?.cancel();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Container(
+                padding: EdgeInsets.all(2),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.check, color: Colors.white, size: 20),
+              ),
+              SizedBox(width: 12),
+              Text(
+                'Cerrando sesión...',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: kPrimaryColor,
+          behavior: SnackBarBehavior.floating,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          margin: EdgeInsets.all(16),
+        ),
+      );
+
+      await Future.delayed(Duration(milliseconds: 300));
+      if (mounted) {
+        context.go('/login');
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -81,7 +294,7 @@ class TimoteoScreen extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      timoteoNombre,
+                      widget.timoteoNombre,
                       style: const TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
@@ -97,11 +310,54 @@ class TimoteoScreen extends StatelessWidget {
           actions: [
             IconButton(
               icon: const Icon(Icons.notifications_outlined),
-              onPressed: () {},
+              onPressed: () {
+                _resetInactivityTimer();
+              },
               tooltip: 'Notificaciones',
+            ),
+            Container(
+              margin: EdgeInsets.only(right: 8),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.3),
+                  width: 1,
+                ),
+              ),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: _confirmarCerrarSesion,
+                  child: Container(
+                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.logout_rounded,
+                          color: Colors.white,
+                          size: 18,
+                        ),
+                        SizedBox(width: 4),
+                        Text(
+                          'Salir',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
             ),
           ],
           bottom: TabBar(
+            controller: _tabController,
             indicatorColor: kSecondaryColor,
             indicatorWeight: 4,
             indicatorSize: TabBarIndicatorSize.label,
@@ -150,9 +406,10 @@ class TimoteoScreen extends StatelessWidget {
             ),
           ),
           child: TabBarView(
+            controller: _tabController,
             children: [
-              PerfilTab(timoteoId: timoteoId),
-              JovenesAsignadosTab(timoteoId: timoteoId),
+              PerfilTab(timoteoId: widget.timoteoId),
+              JovenesAsignadosTab(timoteoId: widget.timoteoId),
             ],
           ),
         ),

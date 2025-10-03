@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -9,6 +10,8 @@ import 'package:formulario_app/services/excel_service.dart';
 import 'package:intl/intl.dart';
 import 'TribusScreen.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:go_router/go_router.dart';
+import 'package:flutter/gestures.dart';
 
 class AdminPanel extends StatefulWidget {
   const AdminPanel({super.key});
@@ -65,6 +68,10 @@ class _AdminPanelState extends State<AdminPanel>
 
   List<Map<String, String>> _consolidadores = [];
 
+// Variables para el manejo de sesión - AGREGAR ESTAS LÍNEAS
+  Timer? _inactivityTimer;
+  static const Duration _inactivityDuration = Duration(minutes: 15);
+
   @override
   void initState() {
     super.initState();
@@ -74,6 +81,20 @@ class _AdminPanelState extends State<AdminPanel>
     _anioSeleccionado = now.year;
     _mesSeleccionado = _getMesNombre(now.month);
     _cargando = true;
+
+    // AGREGAR ESTAS LÍNEAS PARA EL MANEJO DE SESIÓN
+    _resetInactivityTimer();
+
+    // Detectar interacciones del usuario
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        GestureBinding.instance.pointerRouter.addGlobalRoute((event) {
+          if (mounted) {
+            _resetInactivityTimer();
+          }
+        });
+      }
+    });
   }
 
   String _getMesNombre(int mesNumero) {
@@ -110,7 +131,179 @@ class _AdminPanelState extends State<AdminPanel>
     _nuevoConsolidadorController.dispose();
     _searchController.dispose();
     _animationController.dispose();
+    _inactivityTimer?.cancel();
     super.dispose();
+  }
+
+// Métodos para manejo de sesión - AGREGAR TODO ESTE BLOQUE
+  void _resetInactivityTimer() {
+    if (!mounted) return;
+
+    _inactivityTimer?.cancel();
+    _inactivityTimer = Timer(_inactivityDuration, () {
+      if (mounted) {
+        _cerrarSesionPorInactividad();
+      }
+    });
+  }
+
+  Future<void> _cerrarSesionPorInactividad() async {
+    if (!mounted) return;
+
+    _inactivityTimer?.cancel();
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Icon(Icons.error_outline, color: Colors.white, size: 20),
+            ),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Sesión expirada por inactividad',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: Colors.red[600],
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: EdgeInsets.all(16),
+        duration: Duration(seconds: 3),
+      ),
+    );
+
+    await Future.delayed(Duration(milliseconds: 500));
+
+    if (mounted) {
+      context.go('/login');
+    }
+  }
+
+  Future<void> _confirmarCerrarSesion() async {
+    _resetInactivityTimer();
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: secondaryOrange.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                Icons.logout_rounded,
+                color: secondaryOrange,
+                size: 24,
+              ),
+            ),
+            SizedBox(width: 12),
+            Text(
+              'Cerrar Sesión',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: Colors.black87,
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          '¿Estás seguro que deseas cerrar sesión?',
+          style: TextStyle(
+            fontSize: 14,
+            color: Colors.grey[700],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            style: TextButton.styleFrom(
+              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+            ),
+            child: Text(
+              'Cancelar',
+              style: TextStyle(
+                color: Colors.grey[600],
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red[600],
+              foregroundColor: Colors.white,
+              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+              elevation: 2,
+            ),
+            child: Text(
+              'Cerrar Sesión',
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      _inactivityTimer?.cancel();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Container(
+                padding: EdgeInsets.all(2),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.check, color: Colors.white, size: 20),
+              ),
+              SizedBox(width: 12),
+              Text(
+                'Cerrando sesión...',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: primaryTeal,
+          behavior: SnackBarBehavior.floating,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          margin: EdgeInsets.all(16),
+        ),
+      );
+
+      await Future.delayed(Duration(milliseconds: 300));
+      if (mounted) {
+        context.go('/login');
+      }
+    }
   }
 
   Future<void> _loadData() async {
@@ -249,6 +442,7 @@ class _AdminPanelState extends State<AdminPanel>
               icon: Icon(_isSearching ? Icons.close : Icons.search,
                   color: Colors.white),
               onPressed: () {
+                _resetInactivityTimer();
                 setState(() {
                   if (_isSearching) {
                     _isSearching = false;
@@ -259,6 +453,50 @@ class _AdminPanelState extends State<AdminPanel>
                   }
                 });
               },
+            ),
+            // Botón de cerrar sesión mejorado
+            Padding(
+              padding: const EdgeInsets.only(right: 8.0),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: Colors.white.withOpacity(0.3),
+                    width: 1,
+                  ),
+                ),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(8),
+                    onTap: _confirmarCerrarSesion,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 6),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.logout_rounded,
+                            color: Colors.white,
+                            size: 16,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Salir',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             ),
           ],
           bottom: TabBar(

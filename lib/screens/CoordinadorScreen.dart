@@ -8,6 +8,10 @@ import 'TimoteosScreen.dart';
 import '../utils/email_service.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'dart:async';
+import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter/gestures.dart';
 
 // Color scheme based on the COCEP logo
 const kPrimaryColor = Color(0xFF1B8C8C); // Turquesa
@@ -18,7 +22,7 @@ const kTextLightColor = Color(0xFFF5F7FA); // For text on dark backgrounds
 const kTextDarkColor = Color(0xFF2D3748); // For text on light backgrounds
 const kCardColor = Colors.white; // Color for cards
 
-class CoordinadorScreen extends StatelessWidget {
+class CoordinadorScreen extends StatefulWidget {
   final String coordinadorId;
   final String coordinadorNombre;
 
@@ -28,10 +32,219 @@ class CoordinadorScreen extends StatelessWidget {
     required this.coordinadorNombre,
   }) : super(key: key);
 
+  @override
+  State<CoordinadorScreen> createState() => _CoordinadorScreenState();
+}
+
+class _CoordinadorScreenState extends State<CoordinadorScreen>
+    with SingleTickerProviderStateMixin {
+  // Variables para el manejo de sesión
+  Timer? _inactivityTimer;
+  static const Duration _inactivityDuration = Duration(minutes: 15);
+
+  // Controller para las pestañas
+  late TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 4, vsync: this);
+    _resetInactivityTimer();
+
+    // Detectar interacciones del usuario
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        GestureBinding.instance.pointerRouter.addGlobalRoute((event) {
+          if (mounted) {
+            _resetInactivityTimer();
+          }
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _inactivityTimer?.cancel();
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  // Métodos para manejo de sesión
+  void _resetInactivityTimer() {
+    if (!mounted) return;
+
+    _inactivityTimer?.cancel();
+    _inactivityTimer = Timer(_inactivityDuration, () {
+      if (mounted) {
+        _cerrarSesionPorInactividad();
+      }
+    });
+  }
+
+  Future<void> _cerrarSesionPorInactividad() async {
+    if (!mounted) return;
+
+    _inactivityTimer?.cancel();
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Icon(Icons.error_outline, color: Colors.white, size: 20),
+            ),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Sesión expirada por inactividad',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: Colors.red[600],
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: EdgeInsets.all(16),
+        duration: Duration(seconds: 3),
+      ),
+    );
+
+    await Future.delayed(Duration(milliseconds: 500));
+
+    if (mounted) {
+      context.go('/login');
+    }
+  }
+
+  Future<void> _confirmarCerrarSesion() async {
+    _resetInactivityTimer();
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: kSecondaryColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                Icons.logout_rounded,
+                color: kSecondaryColor,
+                size: 24,
+              ),
+            ),
+            SizedBox(width: 12),
+            Text(
+              'Cerrar Sesión',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: kTextDarkColor,
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          '¿Estás seguro que deseas cerrar sesión?',
+          style: TextStyle(
+            fontSize: 14,
+            color: Colors.grey[700],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            style: TextButton.styleFrom(
+              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+            ),
+            child: Text(
+              'Cancelar',
+              style: TextStyle(
+                color: Colors.grey[600],
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red[600],
+              foregroundColor: Colors.white,
+              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+              elevation: 2,
+            ),
+            child: Text(
+              'Cerrar Sesión',
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      _inactivityTimer?.cancel();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Container(
+                padding: EdgeInsets.all(2),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.check, color: Colors.white, size: 20),
+              ),
+              SizedBox(width: 12),
+              Text(
+                'Cerrando sesión...',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: kPrimaryColor,
+          behavior: SnackBarBehavior.floating,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          margin: EdgeInsets.all(16),
+        ),
+      );
+
+      await Future.delayed(Duration(milliseconds: 300));
+      if (mounted) {
+        context.go('/login');
+      }
+    }
+  }
+
   Future<Map<String, dynamic>> obtenerDatosTribu() async {
     var coordinadorSnapshot = await FirebaseFirestore.instance
         .collection('coordinadores')
-        .doc(coordinadorId)
+        .doc(widget.coordinadorId)
         .get();
 
     if (!coordinadorSnapshot.exists)
@@ -115,9 +328,63 @@ class CoordinadorScreen extends StatelessWidget {
             appBar: AppBar(
               elevation: 0,
               backgroundColor: kPrimaryColor,
+              titleSpacing: 12,
               title: Row(
                 children: [
+                  // Logo mejorado con mejor visibilidad
                   Hero(
+                    tag: 'coordinador_logo',
+                    child: Container(
+                      padding: EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.2),
+                            blurRadius: 6,
+                            offset: Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: Container(
+                        height: 36,
+                        width: 36,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.white,
+                          border: Border.all(
+                            color: kPrimaryColor.withOpacity(0.1),
+                            width: 1,
+                          ),
+                        ),
+                        child: ClipOval(
+                          child: Image.asset(
+                            'assets/Cocep_.png',
+                            height: 36,
+                            width: 36,
+                            fit: BoxFit.contain,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(
+                                decoration: BoxDecoration(
+                                  color: kAccentColor.withOpacity(0.2),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  Icons.local_fire_department,
+                                  color: kPrimaryColor,
+                                  size: 20,
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: 12),
+                  // Avatar del coordinador
+                  /*Hero(
                     tag: 'coordinador_avatar',
                     child: Container(
                       padding: EdgeInsets.all(2),
@@ -132,53 +399,113 @@ class CoordinadorScreen extends StatelessWidget {
                           ),
                         ],
                       ),
-                      child: CircleAvatar(
+                      /*child: CircleAvatar(
+                        radius: 16,
                         backgroundColor: kAccentColor.withOpacity(0.2),
-                        child: Icon(Icons.person, color: kPrimaryColor),
-                      ),
+                        child: Icon(
+                          Icons.person,
+                          color: kPrimaryColor,
+                          size: 18,
+                        ),
+                      ),*/
                     ),
-                  ),
+                  ),*/
                   SizedBox(width: 12),
+                  // Información del coordinador
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
                           'Coordinador',
                           style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.white70,
+                            fontSize: 12,
+                            color: Colors.white.withOpacity(0.8),
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
                         Text(
-                          coordinadorNombre,
+                          widget.coordinadorNombre,
                           style: TextStyle(
-                            fontSize: 18,
+                            fontSize: MediaQuery.of(context).size.width < 400
+                                ? 16
+                                : 18,
                             fontWeight: FontWeight.bold,
                             letterSpacing: 0.3,
+                            color: Colors.white,
                           ),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ],
                     ),
                   ),
-                  IconButton(
-                    icon: Icon(Icons.refresh, color: Colors.white),
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Actualizando datos...'),
-                          backgroundColor: kSecondaryColor,
-                          behavior: SnackBarBehavior.floating,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
                 ],
               ),
+              actions: [
+                Container(
+                  margin: EdgeInsets.only(right: 8),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        Colors.white.withOpacity(0.25),
+                        Colors.white.withOpacity(0.15),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: Colors.white.withOpacity(0.4),
+                      width: 1.5,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.15),
+                        blurRadius: 6,
+                        offset: Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(12),
+                      onTap: _confirmarCerrarSesion,
+                      child: Container(
+                        padding:
+                            EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.logout_rounded,
+                              color: Colors.white,
+                              size: 18,
+                            ),
+                            SizedBox(width: 4),
+                            Text(
+                              'Salir',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                shadows: [
+                                  Shadow(
+                                    offset: Offset(0, 1),
+                                    blurRadius: 2,
+                                    color: Colors.black.withOpacity(0.3),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
               bottom: PreferredSize(
                 preferredSize: Size.fromHeight(kToolbarHeight + 15),
                 child: Container(
@@ -193,6 +520,7 @@ class CoordinadorScreen extends StatelessWidget {
                     ],
                   ),
                   child: TabBar(
+                    controller: _tabController,
                     indicatorWeight: 3,
                     indicator: BoxDecoration(
                       border: Border(
@@ -244,21 +572,23 @@ class CoordinadorScreen extends StatelessWidget {
               ),
             ),
             body: TabBarView(
+              controller: _tabController,
               children: [
                 CustomTabContent(
-                  child: TimoteosTab(coordinadorId: coordinadorId),
+                  child: TimoteosTab(coordinadorId: widget.coordinadorId),
                   icon: Icons.people,
                   title: 'Timoteos',
                   description: 'Gestiona los timoteos a tu cargo',
                 ),
                 CustomTabContent(
-                  child: PersonasAsignadasTab(coordinadorId: coordinadorId),
+                  child:
+                      PersonasAsignadasTab(coordinadorId: widget.coordinadorId),
                   icon: Icons.assignment_ind,
                   title: 'Personas Asignadas',
                   description: 'Administra las personas asignadas a tu grupo',
                 ),
                 CustomTabContent(
-                  child: AlertasTab(coordinadorId: coordinadorId),
+                  child: AlertasTab(coordinadorId: widget.coordinadorId),
                   icon: Icons.warning_amber_rounded,
                   title: 'Alertas Pendientes',
                   description: 'Revisa las alertas que requieren tu atención',
@@ -267,7 +597,7 @@ class CoordinadorScreen extends StatelessWidget {
                   child: AsistenciasCoordinadorTab(
                     tribuId: tribuId,
                     categoriaTribu: categoriaTribu,
-                    coordinadorId: coordinadorId,
+                    coordinadorId: widget.coordinadorId,
                   ),
                   icon: Icons.calendar_today,
                   title: 'Registro de Asistencia',
@@ -275,15 +605,15 @@ class CoordinadorScreen extends StatelessWidget {
                 ),
               ],
             ),
-            floatingActionButton: Builder(
-              builder: (context) {
-                final tabController = DefaultTabController.of(context);
-                if (tabController?.index == 3) {
-                  // Solo muestra el botón en Asistencia
+            floatingActionButton: AnimatedBuilder(
+              animation: _tabController,
+              builder: (context, child) {
+                if (_tabController.index == 3) {
                   return FloatingActionButton(
                     backgroundColor: kSecondaryColor,
                     child: Icon(Icons.add, color: Colors.white),
                     onPressed: () {
+                      _resetInactivityTimer();
                       showModalBottomSheet(
                         context: context,
                         isScrollControlled: true,
@@ -294,7 +624,7 @@ class CoordinadorScreen extends StatelessWidget {
                         builder: (context) => buildActionSheet(
                           context,
                           () {
-                            // Aquí puedes conectar con la lógica real de registro
+                            _resetInactivityTimer();
                             print('Registrar nuevo joven');
                           },
                         ),
@@ -302,7 +632,7 @@ class CoordinadorScreen extends StatelessWidget {
                     },
                   );
                 }
-                return SizedBox.shrink(); // Oculta el botón en otras pestañas
+                return SizedBox.shrink();
               },
             ),
           ),
@@ -342,6 +672,7 @@ class CoordinadorScreen extends StatelessWidget {
             Icons.check_circle_outline,
             kSecondaryColor,
             () {
+              _resetInactivityTimer();
               Navigator.pop(context);
               onRegistrarNuevoJoven();
             },
@@ -361,31 +692,49 @@ class CoordinadorScreen extends StatelessWidget {
   ) {
     return InkWell(
       onTap: onTap,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            padding: EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
-              shape: BoxShape.circle,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: color.withOpacity(0.3),
+            width: 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.2),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                icon,
+                color: color,
+                size: 24,
+              ),
             ),
-            child: Icon(
-              icon,
+            SizedBox(width: 16),
+            Expanded(
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: kTextDarkColor,
+                ),
+              ),
+            ),
+            Icon(
+              Icons.arrow_forward_ios,
               color: color,
-              size: 28,
+              size: 18,
             ),
-          ),
-          SizedBox(height: 8),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-              color: kTextDarkColor,
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -4047,6 +4396,163 @@ class PersonasAsignadasTab extends StatelessWidget {
                   String searchText = _searchQuery.value.toLowerCase();
 
                   final allDocs = snapshot.data!.docs;
+                  bool esRegistroReciente(DocumentSnapshot doc) {
+                    try {
+                      final data = doc.data() as Map<String, dynamic>?;
+                      if (data == null) return false;
+
+                      DateTime? fechaMasReciente;
+
+                      // ✅ VERIFICAR fechaAsignacionCoordinador
+                      final fechaAsignacionCoordinador =
+                          data['fechaAsignacionCoordinador'];
+                      if (fechaAsignacionCoordinador is Timestamp) {
+                        fechaMasReciente = fechaAsignacionCoordinador.toDate();
+                      }
+
+                      // ✅ VERIFICAR fechaAsignacionTribu
+                      final fechaAsignacionTribu = data['fechaAsignacionTribu'];
+                      if (fechaAsignacionTribu is Timestamp) {
+                        DateTime fechaTribu = fechaAsignacionTribu.toDate();
+                        // Si no hay fecha de coordinador, o si la fecha de tribu es más reciente
+                        if (fechaMasReciente == null ||
+                            fechaTribu.isAfter(fechaMasReciente)) {
+                          fechaMasReciente = fechaTribu;
+                        }
+                      }
+
+                      // Si no hay ninguna de las dos fechas, no es reciente
+                      if (fechaMasReciente == null) return false;
+
+                      final diferenciaDias =
+                          DateTime.now().difference(fechaMasReciente).inDays;
+                      // ✅ Si han pasado 13 días o menos desde la fecha más reciente, es "nuevo"
+                      return diferenciaDias >= 0 && diferenciaDias <= 13;
+                    } catch (e) {
+                      print('Error en esRegistroReciente: $e');
+                      return false;
+                    }
+                  }
+
+// Ordenar allDocs: registros recientes primero
+// Ordenar allDocs: registros recientes primero
+                  allDocs.sort((a, b) {
+                    bool aEsReciente = esRegistroReciente(a);
+                    bool bEsReciente = esRegistroReciente(b);
+
+                    // Si ambos son recientes o ambos no son recientes, mantener orden original por fecha
+                    if (aEsReciente == bEsReciente) {
+                      // Ordenar por fecha más reciente primero
+                      final dataA = a.data() as Map<String, dynamic>?;
+                      final dataB = b.data() as Map<String, dynamic>?;
+
+                      final fechaA =
+                          (dataA?['fechaAsignacionCoordinador'] as Timestamp?)
+                                  ?.toDate() ??
+                              DateTime(2000);
+                      final fechaB =
+                          (dataB?['fechaAsignacionCoordinador'] as Timestamp?)
+                                  ?.toDate() ??
+                              DateTime(2000);
+
+                      return fechaB.compareTo(fechaA); // Más recientes primero
+                    }
+
+                    // ✅ CORRECCIÓN: Los recientes van primero
+                    return (bEsReciente ? 1 : 0) - (aEsReciente ? 1 : 0);
+                  });
+
+                  Widget buildRegistroContainer(DocumentSnapshot doc) {
+                    bool esReciente = esRegistroReciente(doc);
+
+                    return AnimatedContainer(
+                      duration: Duration(milliseconds: 300),
+                      margin: EdgeInsets.only(bottom: 16),
+                      padding: EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: esReciente
+                              ? [
+                                  Colors.orange.withOpacity(
+                                      0.9), // Color distintivo para nuevos
+                                  Colors.orange.withOpacity(0.7)
+                                ]
+                              : [
+                                  // Tu color original aquí
+                                  primaryTeal,
+                                  primaryTeal.withOpacity(0.8)
+                                ],
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: (esReciente ? Colors.orange : primaryTeal)
+                                .withOpacity(0.2),
+                            blurRadius: esReciente
+                                ? 15
+                                : 10, // Sombra más pronunciada para nuevos
+                            offset: Offset(0, esReciente ? 8 : 5),
+                          ),
+                        ],
+                        // Borde distintivo para registros recientes
+                        border: esReciente
+                            ? Border.all(
+                                color: Colors.orange.withOpacity(0.6),
+                                width: 2,
+                              )
+                            : null,
+                      ),
+                      child: Stack(
+                        children: [
+                          // Tu contenido original del registro aquí
+                          // Row(children: [...]), Column(children: [...]), etc.
+
+                          // Badge "NUEVO" en la esquina superior derecha
+                          if (esReciente)
+                            Positioned(
+                              top: -8,
+                              right: -8,
+                              child: Container(
+                                padding: EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: Colors.red.withOpacity(0.9),
+                                  borderRadius: BorderRadius.circular(12),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.red.withOpacity(0.3),
+                                      blurRadius: 8,
+                                      offset: Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.fiber_new,
+                                      color: Colors.white,
+                                      size: 14,
+                                    ),
+                                    SizedBox(width: 4),
+                                    Text(
+                                      'NUEVO',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    );
+                  }
 
                   // Filtrar documentos según búsqueda
                   var filteredDocs = searchText.isEmpty
@@ -4265,6 +4771,91 @@ class PersonasAsignadasTab extends StatelessWidget {
                                           secondaryOrange,
                                           Colors.white,
                                         ),
+                                        SizedBox(height: 8),
+                                        // NUEVO: Badge para registros recientes
+                                        // REEMPLAZA el Builder actual que está después del segundo _buildCounterBadge
+// desde "SizedBox(height: 8)," hasta el cierre del Builder
+                                        SizedBox(height: 8),
+                                        Builder(
+                                          builder: (context) {
+                                            final registrosRecientes = allDocs
+                                                .where((doc) =>
+                                                    esRegistroReciente(doc))
+                                                .length;
+
+                                            return AnimatedContainer(
+                                              duration:
+                                                  Duration(milliseconds: 300),
+                                              padding: EdgeInsets.symmetric(
+                                                  horizontal: 12, vertical: 6),
+                                              decoration: BoxDecoration(
+                                                color: registrosRecientes > 0
+                                                    ? Colors.orange
+                                                        .withOpacity(0.3)
+                                                    : Colors.white
+                                                        .withOpacity(0.2),
+                                                borderRadius:
+                                                    BorderRadius.circular(20),
+                                                border: Border.all(
+                                                  color: registrosRecientes > 0
+                                                      ? Colors.orange
+                                                          .withOpacity(0.5)
+                                                      : Colors.white
+                                                          .withOpacity(0.3),
+                                                  width: 1,
+                                                ),
+                                              ),
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Text(
+                                                    'Nuevos',
+                                                    style: TextStyle(
+                                                      color: Colors.white
+                                                          .withOpacity(0.9),
+                                                      fontWeight:
+                                                          FontWeight.w500,
+                                                      fontSize: 12,
+                                                    ),
+                                                  ),
+                                                  SizedBox(width: 6),
+                                                  Container(
+                                                    padding: EdgeInsets.all(4),
+                                                    decoration: BoxDecoration(
+                                                      color:
+                                                          registrosRecientes > 0
+                                                              ? Colors.orange
+                                                                  .withOpacity(
+                                                                      0.4)
+                                                              : Colors.grey
+                                                                  .withOpacity(
+                                                                      0.3),
+                                                      shape: BoxShape.circle,
+                                                    ),
+                                                    child: registrosRecientes >
+                                                            0
+                                                        ? Icon(
+                                                            Icons.new_releases,
+                                                            color: Colors.white,
+                                                            size: 12,
+                                                          )
+                                                        : Text(
+                                                            '$registrosRecientes',
+                                                            style: TextStyle(
+                                                              color:
+                                                                  Colors.white,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold,
+                                                              fontSize: 11,
+                                                            ),
+                                                          ),
+                                                  ),
+                                                ],
+                                              ),
+                                            );
+                                          },
+                                        ),
                                       ],
                                     ),
                                   ],
@@ -4293,15 +4884,20 @@ class PersonasAsignadasTab extends StatelessWidget {
                                       shrinkWrap: true,
                                       physics: NeverScrollableScrollPhysics(),
                                       itemCount: noAsignados.length,
-                                      itemBuilder: (context, index) =>
-                                          _buildPersonCard(
-                                        context,
-                                        noAsignados[index],
-                                        isAssigned: false,
-                                        primaryTeal: primaryTeal,
-                                        secondaryOrange: secondaryOrange,
-                                        accentGrey: accentGrey,
-                                      ),
+                                      itemBuilder: (context, index) {
+                                        final registro = noAsignados[index];
+                                        final esReciente =
+                                            esRegistroReciente(registro);
+                                        return _buildPersonCard(
+                                          context,
+                                          registro,
+                                          isAssigned: false,
+                                          primaryTeal: primaryTeal,
+                                          secondaryOrange: secondaryOrange,
+                                          accentGrey: accentGrey,
+                                          esReciente: esReciente,
+                                        );
+                                      },
                                     ),
                                   ),
                                 SizedBox(height: 24),
@@ -4325,19 +4921,151 @@ class PersonasAsignadasTab extends StatelessWidget {
                                 if (_isAsignadosExpanded.value)
                                   AnimatedContainer(
                                     duration: Duration(milliseconds: 300),
-                                    child: ListView.builder(
-                                      shrinkWrap: true,
-                                      physics: NeverScrollableScrollPhysics(),
-                                      itemCount: asignados.length,
-                                      itemBuilder: (context, index) =>
-                                          _buildPersonCard(
-                                        context,
-                                        asignados[index],
-                                        isAssigned: true,
-                                        primaryTeal: primaryTeal,
-                                        secondaryOrange: secondaryOrange,
-                                        accentGrey: accentGrey,
-                                      ),
+                                    child: Builder(
+                                      builder: (context) {
+                                        // Ordenar registros asignados: recientes primero
+                                        final asignadosOrdenados =
+                                            List<DocumentSnapshot>.from(
+                                                asignados);
+                                        asignadosOrdenados.sort((a, b) {
+                                          final dataA =
+                                              a.data() as Map<String, dynamic>?;
+                                          final dataB =
+                                              b.data() as Map<String, dynamic>?;
+
+                                          final fechaA =
+                                              (dataA?['fechaAsignacionCoordinador']
+                                                          as Timestamp?)
+                                                      ?.toDate() ??
+                                                  DateTime(2000);
+                                          final fechaB =
+                                              (dataB?['fechaAsignacionCoordinador']
+                                                          as Timestamp?)
+                                                      ?.toDate() ??
+                                                  DateTime(2000);
+
+                                          return fechaB.compareTo(
+                                              fechaA); // Más recientes primero
+                                        });
+
+                                        return ListView.builder(
+                                          shrinkWrap: true,
+                                          physics:
+                                              NeverScrollableScrollPhysics(),
+                                          itemCount: asignadosOrdenados.length,
+                                          itemBuilder: (context, index) {
+                                            final registro =
+                                                asignadosOrdenados[index];
+                                            final data = registro.data()
+                                                as Map<String, dynamic>?;
+
+                                            // Detectar si es un registro reciente (≤14 días)
+                                            DateTime? fechaAsignacion =
+                                                (data?['fechaAsignacionCoordinador']
+                                                        as Timestamp?)
+                                                    ?.toDate();
+                                            bool esReciente =
+                                                fechaAsignacion != null &&
+                                                    DateTime.now()
+                                                            .difference(
+                                                                fechaAsignacion)
+                                                            .inDays <=
+                                                        14;
+
+                                            return AnimatedContainer(
+                                              duration:
+                                                  Duration(milliseconds: 200),
+                                              margin:
+                                                  EdgeInsets.only(bottom: 12),
+                                              decoration: BoxDecoration(
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
+                                                boxShadow: [
+                                                  BoxShadow(
+                                                    color: esReciente
+                                                        ? Colors.orange
+                                                            .withOpacity(0.15)
+                                                        : Colors.black
+                                                            .withOpacity(0.05),
+                                                    blurRadius:
+                                                        esReciente ? 8 : 4,
+                                                    offset: Offset(
+                                                        0, esReciente ? 3 : 2),
+                                                  ),
+                                                ],
+                                              ),
+                                              child: Container(
+                                                decoration: BoxDecoration(
+                                                  borderRadius:
+                                                      BorderRadius.circular(12),
+                                                  color: esReciente
+                                                      ? Colors.amber
+                                                          .shade50 // Fondo amarillo suave para recientes
+                                                      : Colors
+                                                          .white, // Fondo blanco para normales
+                                                  border: Border.all(
+                                                    color: esReciente
+                                                        ? Colors.orange
+                                                            .shade300 // Borde naranja para recientes
+                                                        : primaryTeal.withOpacity(
+                                                            0.2), // Borde original
+                                                    width: esReciente ? 2 : 1,
+                                                  ),
+                                                ),
+                                                child: Stack(
+                                                  children: [
+                                                    // Badge "NUEVO" para registros recientes
+                                                    if (esReciente)
+                                                      Positioned(
+                                                        top: 8,
+                                                        right: 8,
+                                                        child: Container(
+                                                          padding: EdgeInsets
+                                                              .symmetric(
+                                                                  horizontal: 8,
+                                                                  vertical: 4),
+                                                          decoration:
+                                                              BoxDecoration(
+                                                            color: Colors.orange
+                                                                .shade600,
+                                                            borderRadius:
+                                                                BorderRadius
+                                                                    .circular(
+                                                                        12),
+                                                          ),
+                                                          child: Text(
+                                                            'NUEVO',
+                                                            style: TextStyle(
+                                                              color:
+                                                                  Colors.white,
+                                                              fontSize: 10,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold,
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ),
+
+                                                    // Contenido de la tarjeta
+                                                    _buildPersonCard(
+                                                      context,
+                                                      registro,
+                                                      isAssigned: true,
+                                                      primaryTeal: primaryTeal,
+                                                      secondaryOrange:
+                                                          secondaryOrange,
+                                                      accentGrey: accentGrey,
+                                                      esReciente:
+                                                          esReciente, // Pasar parámetro adicional
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            );
+                                          },
+                                        );
+                                      },
                                     ),
                                   ),
                               ],
@@ -4537,185 +5265,494 @@ class PersonasAsignadasTab extends StatelessWidget {
     required Color primaryTeal,
     required Color secondaryOrange,
     required Color accentGrey,
+    bool esReciente = false,
   }) {
-    return Card(
-      elevation: 2,
+    final data = registro.data() as Map<String, dynamic>;
+
+    // Calcular días transcurridos para mostrar información más precisa
+    String obtenerTextoTiempo() {
+      DateTime? fechaMasReciente;
+      String tipoAsignacion = '';
+
+      // Verificar fechaAsignacionCoordinador
+      final fechaCoordinador =
+          (data['fechaAsignacionCoordinador'] as Timestamp?)?.toDate();
+      if (fechaCoordinador != null) {
+        fechaMasReciente = fechaCoordinador;
+        tipoAsignacion = 'coordinador';
+      }
+
+      // Verificar fechaAsignacionTribu
+      final fechaTribu = (data['fechaAsignacionTribu'] as Timestamp?)?.toDate();
+      if (fechaTribu != null) {
+        if (fechaMasReciente == null || fechaTribu.isAfter(fechaMasReciente)) {
+          fechaMasReciente = fechaTribu;
+          tipoAsignacion = 'tribu';
+        }
+      }
+
+      if (fechaMasReciente == null) return '';
+
+      final diasTranscurridos =
+          DateTime.now().difference(fechaMasReciente).inDays;
+      final diasRestantes = 14 - diasTranscurridos;
+
+      String accion = tipoAsignacion == 'coordinador'
+          ? 'Asignado a coordinador'
+          : 'Asignado a tribu';
+
+      if (diasTranscurridos == 0) {
+        return '$accion hoy';
+      } else if (diasTranscurridos == 1) {
+        return '$accion ayer';
+      } else if (diasRestantes > 0) {
+        return 'Hace $diasTranscurridos días (${diasRestantes}d restantes)';
+      } else {
+        return 'Hace $diasTranscurridos días';
+      }
+    }
+
+    return Container(
       margin: EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-          color: isAssigned ? primaryTeal.withOpacity(0.2) : Colors.transparent,
-          width: 1,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: esReciente
+              ? [
+                  Color(0xFFFF6B35).withOpacity(0.15),
+                  Color(0xFFFF8C42).withOpacity(0.08),
+                ]
+              : [
+                  Colors.white,
+                  Colors.grey.shade50,
+                ],
         ),
+        border: Border.all(
+          color: esReciente
+              ? Color(0xFFFF6B35).withOpacity(0.4)
+              : primaryTeal.withOpacity(0.15),
+          width: esReciente ? 2 : 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: esReciente
+                ? Color(0xFFFF6B35).withOpacity(0.15)
+                : primaryTeal.withOpacity(0.08),
+            blurRadius: esReciente ? 12 : 8,
+            offset: Offset(0, esReciente ? 6 : 3),
+            spreadRadius: esReciente ? 1 : 0,
+          ),
+        ],
       ),
-      child: Padding(
-        padding: EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                CircleAvatar(
-                  backgroundColor: isAssigned
-                      ? primaryTeal.withOpacity(0.1)
-                      : secondaryOrange.withOpacity(0.1),
-                  radius: 24,
-                  child: Text(
-                    '${registro.get('nombre')[0]}${registro.get('apellido')[0]}',
-                    style: TextStyle(
-                      color: isAssigned ? primaryTeal : secondaryOrange,
-                      fontWeight: FontWeight.bold,
-                    ),
+      child: Stack(
+        children: [
+          // Badge "NUEVO" en esquina superior derecha
+          if (esReciente)
+            Positioned(
+              top: 12,
+              right: 12,
+              child: Container(
+                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Color(0xFFFF4757), Color(0xFFFF3838)],
                   ),
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Color(0xFFFF4757).withOpacity(0.3),
+                      blurRadius: 6,
+                      offset: Offset(0, 2),
+                    ),
+                  ],
                 ),
-                SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '${registro.get('nombre')} ${registro.get('apellido')}',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.fiber_new, color: Colors.white, size: 12),
+                    SizedBox(width: 4),
+                    Text(
+                      'NUEVO',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.5,
                       ),
-                      SizedBox(height: 4),
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.phone,
-                            size: 16,
-                            color: accentGrey,
-                          ),
-                          SizedBox(width: 4),
-                          Text(
-                            registro.get('telefono'),
-                            style: TextStyle(
-                              color: accentGrey,
-                            ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+          // Contenido principal
+          Padding(
+            padding: EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header con avatar y información principal
+                Row(
+                  children: [
+                    // Avatar mejorado
+                    Container(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: esReciente
+                              ? [Color(0xFFFF6B35), Color(0xFFFF8C42)]
+                              : isAssigned
+                                  ? [primaryTeal, primaryTeal.withOpacity(0.8)]
+                                  : [
+                                      secondaryOrange,
+                                      secondaryOrange.withOpacity(0.8)
+                                    ],
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: (esReciente
+                                    ? Color(0xFFFF6B35)
+                                    : isAssigned
+                                        ? primaryTeal
+                                        : secondaryOrange)
+                                .withOpacity(0.3),
+                            blurRadius: 8,
+                            offset: Offset(0, 4),
                           ),
                         ],
+                      ),
+                      child: CircleAvatar(
+                        backgroundColor: Colors.transparent,
+                        radius: 28,
+                        child: Text(
+                          '${registro.get('nombre')[0]}${registro.get('apellido')[0]}',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    SizedBox(width: 16),
+
+                    // Información principal
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Nombre con estilo mejorado
+                          Text(
+                            '${registro.get('nombre')} ${registro.get('apellido')}',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: esReciente
+                                  ? Color(0xFFFF6B35)
+                                  : Colors.black87,
+                            ),
+                          ),
+
+                          SizedBox(height: 6),
+
+                          // Teléfono con icono
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color:
+                                  (esReciente ? Color(0xFFFF6B35) : primaryTeal)
+                                      .withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.phone,
+                                  size: 14,
+                                  color: esReciente
+                                      ? Color(0xFFFF6B35)
+                                      : primaryTeal,
+                                ),
+                                SizedBox(width: 6),
+                                Text(
+                                  registro.get('telefono'),
+                                  style: TextStyle(
+                                    color: esReciente
+                                        ? Color(0xFFFF6B35)
+                                        : primaryTeal,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          // Información de tiempo para registros recientes
+                          if (esReciente)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 8),
+                              child: Container(
+                                padding: EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: Colors.green.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: Colors.green.withOpacity(0.3),
+                                    width: 1,
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.schedule,
+                                      size: 12,
+                                      color: Colors.green.shade700,
+                                    ),
+                                    SizedBox(width: 4),
+                                    Text(
+                                      obtenerTextoTiempo(),
+                                      style: TextStyle(
+                                        color: Colors.green.shade700,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+
+                // Información de asignación (si aplica)
+                if (isAssigned) ...[
+                  Container(
+                    margin: EdgeInsets.symmetric(vertical: 16),
+                    height: 1,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          Colors.transparent,
+                          (esReciente ? Color(0xFFFF6B35) : primaryTeal)
+                              .withOpacity(0.3),
+                          Colors.transparent,
+                        ],
+                      ),
+                    ),
+                  ),
+                  Container(
+                    padding: EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: (esReciente ? Color(0xFFFF6B35) : primaryTeal)
+                          .withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: (esReciente ? Color(0xFFFF6B35) : primaryTeal)
+                            .withOpacity(0.2),
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.person_outline,
+                          size: 18,
+                          color: esReciente ? Color(0xFFFF6B35) : primaryTeal,
+                        ),
+                        SizedBox(width: 8),
+                        Text(
+                          'Asignado a: ',
+                          style: TextStyle(
+                            color: Colors.grey.shade700,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        Expanded(
+                          child: Text(
+                            registro.get('nombreTimoteo'),
+                            style: TextStyle(
+                              color:
+                                  esReciente ? Color(0xFFFF6B35) : primaryTeal,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+
+                SizedBox(height: 20),
+
+                // Botones de acción
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      _buildEnhancedActionButton(
+                        icon: Icons.edit_outlined,
+                        label: 'Editar',
+                        color: esReciente ? Color(0xFFFF6B35) : accentGrey,
+                        onPressed: () => _editarRegistro(context, registro),
+                      ),
+
+                      SizedBox(width: 10),
+
+                      _buildEnhancedActionButton(
+                        icon: Icons.visibility_outlined,
+                        label: 'Ver',
+                        color: esReciente ? Color(0xFFFF6B35) : primaryTeal,
+                        onPressed: () => _mostrarDetallesRegistro(
+                          context,
+                          registro.data() as Map<String, dynamic>,
+                        ),
+                      ),
+
+                      SizedBox(width: 10),
+
+                      if (!isAssigned)
+                        _buildEnhancedActionButton(
+                          icon: Icons.person_add,
+                          label: 'Asignar',
+                          color: secondaryOrange,
+                          onPressed: () => _asignarATimoteo(context, registro),
+                        )
+                      else
+                        _buildEnhancedActionButton(
+                          icon: Icons.person_remove,
+                          label: 'Desasignar',
+                          color: Colors.red.shade400,
+                          onPressed: () async {
+                            // Lógica de desasignación
+                            try {
+                              await FirebaseFirestore.instance
+                                  .collection('registros')
+                                  .doc(registro.id)
+                                  .update({
+                                'timoteoAsignado': null,
+                                'nombreTimoteo': null,
+                                'fechaAsignacion': null,
+                              });
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content:
+                                      Text('Registro desasignado exitosamente'),
+                                  backgroundColor: Colors.green,
+                                ),
+                              );
+                            } catch (e) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                      'Error al desasignar el registro: $e'),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            }
+                          },
+                        ),
+
+                      SizedBox(width: 10),
+
+                      // Botón de copiar teléfono mejorado
+                      Container(
+                        decoration: BoxDecoration(
+                          color: (esReciente ? Color(0xFFFF6B35) : primaryTeal)
+                              .withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color:
+                                (esReciente ? Color(0xFFFF6B35) : primaryTeal)
+                                    .withOpacity(0.3),
+                            width: 1,
+                          ),
+                        ),
+                        child: IconButton(
+                          icon: Icon(
+                            Icons.copy,
+                            color: esReciente ? Color(0xFFFF6B35) : primaryTeal,
+                            size: 20,
+                          ),
+                          tooltip: 'Copiar teléfono',
+                          onPressed: () {
+                            Clipboard.setData(
+                              ClipboardData(text: registro.get('telefono')),
+                            );
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content:
+                                    Text('Teléfono copiado al portapapeles'),
+                                duration: Duration(seconds: 1),
+                                backgroundColor: esReciente
+                                    ? Color(0xFFFF6B35)
+                                    : primaryTeal,
+                              ),
+                            );
+                          },
+                        ),
                       ),
                     ],
                   ),
                 ),
               ],
             ),
-            if (isAssigned) ...[
-              Divider(height: 24),
-              Row(
-                children: [
-                  Icon(
-                    Icons.person_outline,
-                    size: 16,
-                    color: accentGrey,
-                  ),
-                  SizedBox(width: 4),
-                  Text(
-                    'Asignado a: ',
-                    style: TextStyle(color: accentGrey),
-                  ),
-                  Text(
-                    registro.get('nombreTimoteo'),
-                    style: TextStyle(
-                      color: primaryTeal,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-            SizedBox(height: 16),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  // Botón de editar
-                  _buildActionButton(
-                    icon: Icons.edit_outlined,
-                    label: 'Editar',
-                    color: accentGrey,
-                    onPressed: () {
-                      _editarRegistro(context, registro);
-                    },
-                  ),
-                  SizedBox(width: 8),
-                  _buildActionButton(
-                    icon: Icons.visibility_outlined,
-                    label: 'Ver',
-                    color: primaryTeal,
-                    onPressed: () {
-                      _mostrarDetallesRegistro(
-                        context,
-                        registro.data() as Map<String, dynamic>,
-                      );
-                    },
-                  ),
-                  SizedBox(width: 8),
-                  if (!isAssigned)
-                    _buildActionButton(
-                      icon: Icons.person_add,
-                      label: 'Asignar',
-                      color: secondaryOrange,
-                      onPressed: () => _asignarATimoteo(context, registro),
-                    )
-                  else
-                    _buildActionButton(
-                      icon: Icons.person_remove,
-                      label: 'Desasignar',
-                      color: Colors.red,
-                      onPressed: () async {
-                        try {
-                          await FirebaseFirestore.instance
-                              .collection('registros')
-                              .doc(registro.id)
-                              .update({
-                            'timoteoAsignado': null,
-                            'nombreTimoteo': null,
-                            'fechaAsignacion': null,
-                          });
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content:
-                                  Text('Registro desasignado exitosamente'),
-                              backgroundColor: Colors.green,
-                            ),
-                          );
-                        } catch (e) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content:
-                                  Text('Error al desasignar el registro: $e'),
-                              backgroundColor: Colors.red,
-                            ),
-                          );
-                        }
-                      },
-                    ),
-                  SizedBox(width: 8),
-                  IconButton(
-                    icon: Icon(Icons.copy, color: primaryTeal),
-                    tooltip: 'Copiar teléfono',
-                    onPressed: () {
-                      Clipboard.setData(
-                        ClipboardData(text: registro.get('telefono')),
-                      );
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Teléfono copiado al portapapeles'),
-                          duration: Duration(seconds: 1),
-                          backgroundColor: primaryTeal,
-                        ),
-                      );
-                    },
-                  ),
-                ],
-              ),
-            ),
-          ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEnhancedActionButton({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onPressed,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(10),
+        boxShadow: [
+          BoxShadow(
+            color: color.withOpacity(0.2),
+            blurRadius: 6,
+            offset: Offset(0, 3),
+          ),
+        ],
+      ),
+      child: ElevatedButton.icon(
+        icon: Icon(icon, size: 16),
+        label: Text(
+          label,
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 13,
+          ),
         ),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: color,
+          foregroundColor: Colors.white,
+          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          elevation: 0,
+        ),
+        onPressed: onPressed,
       ),
     );
   }

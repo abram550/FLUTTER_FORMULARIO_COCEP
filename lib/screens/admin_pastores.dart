@@ -8,6 +8,8 @@ import 'admin_screen.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:formulario_app/screens/StatisticsDialog.dart';
+import 'dart:async';
+import 'package:flutter/gestures.dart';
 
 // Colors based on the COCEP logo
 const Color kPrimaryColor = Color(0xFF1B998B); // Turquoise
@@ -47,15 +49,33 @@ class _AdminPastoresState extends State<AdminPastores>
   bool _existeLiderConsolidacion = false;
   String? categoriaSeleccionada;
 
+  Timer? _inactivityTimer;
+  static const Duration _inactivityDuration =
+      Duration(minutes: 15); // Cambia aquí el tiempo si necesitas
+
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
     _verificarLiderConsolidacion();
+    _resetInactivityTimer();
+
+    // Detectar interacciones del usuario para resetear el timer
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        // Detectar toques y gestos para resetear inactividad
+        GestureBinding.instance.pointerRouter.addGlobalRoute((event) {
+          if (mounted) {
+            _resetInactivityTimer();
+          }
+        });
+      }
+    });
   }
 
   @override
   void dispose() {
+    _inactivityTimer?.cancel();
     _tabController.dispose();
     _nombreTribuController.dispose();
     _nombreLiderController.dispose();
@@ -67,6 +87,126 @@ class _AdminPastoresState extends State<AdminPastores>
     _usuarioLiderConsolidacionController.dispose();
     _contrasenaLiderConsolidacionController.dispose();
     super.dispose();
+  }
+
+  void _resetInactivityTimer() {
+    if (!mounted) return;
+
+    _inactivityTimer?.cancel();
+    _inactivityTimer = Timer(_inactivityDuration, () {
+      if (mounted) {
+        _cerrarSesionPorInactividad();
+      }
+    });
+  }
+
+  Future<void> _cerrarSesionPorInactividad() async {
+    if (!mounted) return;
+
+    // Cancelar cualquier timer activo
+    _inactivityTimer?.cancel();
+
+    // Mostrar mensaje de sesión expirada
+    _mostrarSnackBar('Sesión expirada por inactividad', isSuccess: false);
+
+    // Pequeña pausa para que se vea el mensaje
+    await Future.delayed(Duration(milliseconds: 500));
+
+    // Navegar al login (cambia '/login' por tu ruta correcta si es diferente)
+    if (mounted) {
+      context.go('/login');
+    }
+  }
+
+  Future<void> _confirmarCerrarSesion() async {
+    // Resetear timer mientras se muestra el diálogo
+    _resetInactivityTimer();
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(15),
+        ),
+        title: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.orange.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                Icons.logout,
+                color: Colors.orange,
+                size: 24,
+              ),
+            ),
+            SizedBox(width: 12),
+            Text(
+              'Cerrar Sesión',
+              style: GoogleFonts.poppins(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          '¿Estás seguro que deseas cerrar sesión?',
+          style: GoogleFonts.poppins(
+            fontSize: 14,
+            color: Colors.grey[700],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            style: TextButton.styleFrom(
+              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: Text(
+              'Cancelar',
+              style: GoogleFonts.poppins(
+                color: Colors.grey[600],
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red[600],
+              foregroundColor: Colors.white,
+              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              elevation: 2,
+            ),
+            child: Text(
+              'Cerrar Sesión',
+              style: GoogleFonts.poppins(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      _inactivityTimer?.cancel();
+      _mostrarSnackBar('Cerrando sesión...', isSuccess: true);
+      await Future.delayed(Duration(milliseconds: 300));
+      if (mounted) {
+        context.go('/login'); // Cambia esta ruta si tu login tiene otra ruta
+      }
+    }
   }
 
   Future<void> _verificarLiderConsolidacion() async {
@@ -381,9 +521,11 @@ class _AdminPastoresState extends State<AdminPastores>
     _contrasenaLiderConsolidacionController.clear();
   }
 
-// Función mejorada para mostrar SnackBar - MEJORADA
   void _mostrarSnackBar(String mensaje, {bool isSuccess = true}) {
     if (!mounted) return;
+
+    // Resetear timer cuando hay actividad
+    _resetInactivityTimer();
 
     ScaffoldMessenger.of(context).clearSnackBars();
     ScaffoldMessenger.of(context).showSnackBar(
@@ -406,9 +548,10 @@ class _AdminPastoresState extends State<AdminPastores>
             Expanded(
               child: Text(
                 mensaje,
-                style: TextStyle(
+                style: GoogleFonts.poppins(
                   color: Colors.white,
                   fontWeight: FontWeight.w500,
+                  fontSize: 14,
                 ),
               ),
             ),
@@ -431,65 +574,201 @@ class _AdminPastoresState extends State<AdminPastores>
     return Scaffold(
       backgroundColor: kBackgroundColor,
       appBar: AppBar(
-        elevation: 0,
+        elevation: 2,
         backgroundColor: kPrimaryColor,
+        automaticallyImplyLeading: false,
+        titleSpacing: 12,
+        toolbarHeight: kToolbarHeight, // Altura estándar del AppBar
         title: Row(
           children: [
+            // Logo mejorado con mejor contraste y visibilidad
             Container(
-              padding: EdgeInsets.all(8),
+              padding: EdgeInsets.all(4),
               decoration: BoxDecoration(
                 color: Colors.white,
                 shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.2),
+                    blurRadius: 6,
+                    offset: Offset(0, 3),
+                  ),
+                ],
               ),
-              child: Image.asset(
-                'assets/Cocep_.png',
-                height: 32,
+              child: Container(
+                height: 40,
+                width: 40,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white,
+                ),
+                child: ClipOval(
+                  child: Image.asset(
+                    'assets/Cocep_.png',
+                    height: 40,
+                    width: 40,
+                    fit: BoxFit.contain,
+                  ),
+                ),
               ),
             ),
             const SizedBox(width: 12),
-            Text(
-              'Panel de Administración',
-              style: GoogleFonts.poppins(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 20,
+            // Título con mejor espacio
+            Expanded(
+              child: Text(
+                'Panel de Administración',
+                style: GoogleFonts.poppins(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: MediaQuery.of(context).size.width < 400 ? 15 : 18,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(width: 8),
+            // Botón de cerrar sesión más visible y accesible
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Colors.white.withOpacity(0.25),
+                    Colors.white.withOpacity(0.15),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.6),
+                  width: 2,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.15),
+                    blurRadius: 6,
+                    offset: Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: _confirmarCerrarSesion,
+                  borderRadius: BorderRadius.circular(12),
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.logout_rounded,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Salir',
+                          style: GoogleFonts.poppins(
+                            color: Colors.white,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            shadows: [
+                              Shadow(
+                                offset: Offset(0, 1),
+                                blurRadius: 2,
+                                color: Colors.black.withOpacity(0.3),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ),
             ),
           ],
         ),
         bottom: PreferredSize(
-          preferredSize: Size.fromHeight(60),
+          preferredSize: Size.fromHeight(55), // Reducido de 70 a 55
           child: Container(
-            margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            margin: EdgeInsets.symmetric(
+                horizontal: 16, vertical: 6), // Reducido de 10 a 6
+            height: 45, // Altura fija más pequeña
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(15),
+              borderRadius: BorderRadius.circular(12), // Reducido de 15 a 12
               color: Colors.white.withOpacity(0.15),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.3),
+                width: 1,
+              ),
             ),
             child: TabBar(
               controller: _tabController,
               indicator: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(15),
+                borderRadius: BorderRadius.circular(12), // Reducido de 15 a 12
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 4,
+                    offset: Offset(0, 2),
+                  ),
+                ],
               ),
               labelColor: kPrimaryColor,
               unselectedLabelColor: Colors.white,
               labelStyle: GoogleFonts.poppins(
-                  fontSize: 14, fontWeight: FontWeight.w600),
+                fontSize: MediaQuery.of(context).size.width < 400
+                    ? 11
+                    : 13, // Reducido
+                fontWeight: FontWeight.w600,
+              ),
+              unselectedLabelStyle: GoogleFonts.poppins(
+                fontSize: MediaQuery.of(context).size.width < 400
+                    ? 10
+                    : 12, // Reducido
+                fontWeight: FontWeight.w500,
+              ),
+              isScrollable: MediaQuery.of(context).size.width < 500,
+              labelPadding:
+                  EdgeInsets.symmetric(horizontal: 8), // Padding reducido
               tabs: [
                 Tab(
-                  icon: Icon(Icons.groups, size: 24),
+                  height: 35, // Altura fija para las tabs
+                  icon: Icon(
+                    Icons.groups,
+                    size: MediaQuery.of(context).size.width < 400
+                        ? 18
+                        : 20, // Reducido
+                  ),
                   text: 'Tribus',
                 ),
                 Tab(
-                  icon: Icon(Icons.person_outline, size: 24),
+                  height: 35,
+                  icon: Icon(
+                    Icons.person_outline,
+                    size: MediaQuery.of(context).size.width < 400 ? 18 : 20,
+                  ),
                   text: 'Líder',
                 ),
                 Tab(
-                  icon: Icon(Icons.woman, size: 24),
+                  height: 35,
+                  icon: Icon(
+                    Icons.woman,
+                    size: MediaQuery.of(context).size.width < 400 ? 18 : 20,
+                  ),
                   text: 'Damas',
                 ),
                 Tab(
-                  icon: Icon(Icons.man, size: 24),
+                  height: 35,
+                  icon: Icon(
+                    Icons.man,
+                    size: MediaQuery.of(context).size.width < 400 ? 18 : 20,
+                  ),
                   text: 'Caballeros',
                 ),
               ],
@@ -518,16 +797,31 @@ class _AdminPastoresState extends State<AdminPastores>
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          showDialog(
-            context: context,
-            builder: (context) => StatisticsDialog(),
-          );
-        },
-        backgroundColor: Colors.orange,
-        label: Text('Estadísticas'),
-        icon: Icon(Icons.bar_chart),
+      floatingActionButton: Container(
+        margin: EdgeInsets.only(
+          bottom: MediaQuery.of(context).size.height < 600 ? 16 : 0,
+        ),
+        child: FloatingActionButton.extended(
+          onPressed: () {
+            showDialog(
+              context: context,
+              builder: (context) => StatisticsDialog(),
+            );
+          },
+          backgroundColor: Colors.orange,
+          elevation: 6,
+          label: Text(
+            'Estadísticas',
+            style: GoogleFonts.poppins(
+              fontSize: MediaQuery.of(context).size.width < 400 ? 12 : 14,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          icon: Icon(
+            Icons.bar_chart,
+            size: MediaQuery.of(context).size.width < 400 ? 18 : 24,
+          ),
+        ),
       ),
     );
   }
@@ -3327,8 +3621,8 @@ class _AdminPastoresState extends State<AdminPastores>
                         _buildInfoRow('Usuario:', data['usuario']),
                         _buildInfoRow('Contraseña:', data['contrasena']),
                         const SizedBox(height: 16),
-                        _buildEstadisticasTribu(tribu.id),
-                        const SizedBox(height: 16),
+                        //  _buildEstadisticasTribu(tribu.id),
+                        // const SizedBox(height: 16),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.end,
                           children: [
