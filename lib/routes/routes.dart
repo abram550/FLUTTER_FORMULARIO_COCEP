@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:formulario_app/screens/ministerio_lider_screen.dart';
+import 'package:formulario_app/screens/splash_screen.dart';
 import 'package:go_router/go_router.dart';
 import 'package:formulario_app/screens/login_screen.dart';
 import 'package:formulario_app/screens/social_profile_screen.dart';
@@ -10,11 +11,12 @@ import 'package:formulario_app/screens/admin_pastores.dart';
 import 'package:formulario_app/screens/admin_screen.dart';
 import 'package:formulario_app/screens/TribusScreen.dart';
 
-// Estado de autenticación (puedes adaptarlo a tu servicio real)
+// Estado de autenticación global
 final authState = ValueNotifier<bool>(false);
 
 final GoRouter router = GoRouter(
   refreshListenable: authState,
+  errorBuilder: (context, state) => const SplashScreen(),
   routes: [
     GoRoute(
       path: '/login',
@@ -32,15 +34,6 @@ final GoRouter router = GoRouter(
         return TimoteoScreen(
           timoteoId: timoteoId,
           timoteoNombre: timoteoNombre,
-        );
-      },
-    ),
-    GoRoute(
-      path: '/ministerio_lider',
-      builder: (context, state) {
-        final params = (state.extra ?? {}) as Map<String, dynamic>;
-        return MinisterioLiderScreen(
-          ministerio: params['ministerio'] ?? '',
         );
       },
     ),
@@ -68,6 +61,15 @@ final GoRouter router = GoRouter(
       builder: (context, state) => const AdminPanel(),
     ),
     GoRoute(
+      path: '/ministerio_lider',
+      builder: (context, state) {
+        final params = (state.extra ?? {}) as Map<String, dynamic>;
+        return MinisterioLiderScreen(
+          ministerio: params['ministerio'] ?? '',
+        );
+      },
+    ),
+    GoRoute(
       path: '/tribus/:tribuId/:tribuNombre',
       builder: (context, state) {
         final tribuId = state.pathParameters['tribuId']!;
@@ -83,21 +85,21 @@ final GoRouter router = GoRouter(
     final loggedIn = authState.value;
     final loggingIn = state.matchedLocation == '/login';
 
-    // Si no está logueado y no está en login, redirigir al login con la URL original
+    // Si no está logueado y no está en login, redirigir guardando la URL
     if (!loggedIn && !loggingIn) {
       final from = Uri.encodeComponent(state.matchedLocation);
       return '/login?from=$from';
     }
 
-    // Si ya está logueado y trata de ir al login, redirigir al perfil social
+    // Si ya está logueado y va al login, redirigir según URL de retorno
     if (loggedIn && loggingIn) {
       final from = state.uri.queryParameters['from'];
-      if (from != null) {
+      if (from != null && from.isNotEmpty) {
         return Uri.decodeComponent(from);
       }
       return '/social_profile';
     }
 
-    return null; // No redirigir
+    return null;
   },
 );
