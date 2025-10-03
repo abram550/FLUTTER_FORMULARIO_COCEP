@@ -10,7 +10,7 @@ import 'package:formulario_app/utils/error_handler.dart';
 import 'package:formulario_app/firebase_options.dart';
 import 'package:formulario_app/services/sync_service.dart';
 import 'package:formulario_app/services/database_service.dart';
-import 'package:formulario_app/services/auth_service.dart';  // 🆕 AGREGAR ESTA LÍNEA
+import 'package:formulario_app/services/auth_service.dart'; // 🆕 AGREGAR ESTA LÍNEA
 import 'package:formulario_app/screens/admin_pastores.dart';
 import 'package:formulario_app/screens/login_screen.dart';
 import 'package:formulario_app/screens/social_profile_screen.dart';
@@ -194,49 +194,13 @@ class AppColors {
   );
 }
 
-
 // =============================================================================
 // 🔄 CONFIGURACIÓN DE RUTAS CON AUTENTICACIÓN PERSISTENTE
 // =============================================================================
 
 final GoRouter router = GoRouter(
-  // ❌ REMOVIDO: initialLocation - ahora respeta la URL del navegador
+  initialLocation: '/login', // 🎯 Ruta principal: siempre inicia en login
   errorBuilder: (context, state) => const SplashScreen(),
-  
-  // 🔐 Redirección condicional basada en autenticación
-  redirect: (BuildContext context, GoRouterState state) {
-    final authService = AuthService();
-    final isLoggedIn = authService.isAuthenticated();
-    final isLoggingIn = state.matchedLocation == '/login';
-
-    // Si no está autenticado y no está en login, redirigir a login
-    if (!isLoggedIn && !isLoggingIn) {
-      return '/login';
-    }
-
-    // Si está autenticado y está en login, redirigir a su pantalla correspondiente
-    if (isLoggedIn && isLoggingIn) {
-      final userRole = authService.getCurrentUserRole();
-      switch (userRole) {
-        case 'adminPastores':
-          return '/admin_pastores';
-        case 'liderConsolidacion':
-          return '/admin';
-        case 'coordinador':
-          return '/coordinador/${authService.getUserId()}/${authService.getUserName()}';
-        case 'tribu':
-          return '/tribus/${authService.getUserId()}/${authService.getUserName()}';
-        case 'timoteo':
-          return '/timoteos/${authService.getUserId()}/${authService.getUserName()}';
-        case 'liderMinisterio':
-          return '/ministerio_lider';
-        default:
-          return null; // Mantener en la ubicación actual
-      }
-    }
-
-    return null; // No redirigir, mantener la ubicación actual
-  },
 
   routes: [
     GoRoute(

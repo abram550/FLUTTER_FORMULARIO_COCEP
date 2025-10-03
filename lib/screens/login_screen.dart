@@ -66,58 +66,55 @@ class _LoginPageState extends State<LoginPage>
       if (!mounted) return;
 
       if (result != null) {
-  // 🆕 Guardar información de sesión para persistencia
-  await _guardarSesion(result);
-  
-  if (!mounted) return;
+        if (!mounted) return;
 
-  switch (result['role']) {
-    case 'adminPastores':
-      if (mounted) {
-        context.go('/admin_pastores');
-      }
-      break;
-    case 'liderConsolidacion':
-      if (mounted) {
-        context.go('/admin');
-      }
-      break;
-    case 'coordinador':
-      if (mounted) {
-        final coordinadorId = result['coordinadorId'] ?? '';
-        final coordinadorNombre = result['coordinadorNombre'] ?? '';
-        context.go('/coordinador/$coordinadorId/$coordinadorNombre');
-      }
-      break;
-    case 'tribu':
-      if (mounted) {
-        final tribuId = result['tribuId'] ?? '';
-        final nombreTribu = result['nombreTribu'] ?? '';
-        context.go('/tribus/$tribuId/$nombreTribu');
-      }
-      break;
-    case 'timoteo':
-      if (mounted) {
-        final timoteoId = result['timoteoId'] ?? '';
-        final timoteoNombre = result['timoteoNombre'] ?? '';
-        context.go('/timoteos/$timoteoId/$timoteoNombre');
-      }
-      break;
-    case 'liderMinisterio':
-      if (mounted) {
-        final ministerio = result['ministerio'] ?? '';
-        context.go('/ministerio_lider', extra: {'ministerio': ministerio});
-      }
-      break;
-
-    default:
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Rol no reconocido')),
-        );
-      }
-  }
-} else {
+        switch (result['role']) {
+          case 'adminPastores':
+            if (mounted) {
+              context.go('/admin_pastores');
+            }
+            break;
+          case 'liderConsolidacion':
+            if (mounted) {
+              context.go('/admin');
+            }
+            break;
+          case 'coordinador':
+            if (mounted) {
+              final coordinadorId = result['coordinadorId'] ?? '';
+              final coordinadorNombre = result['coordinadorNombre'] ?? '';
+              context.go('/coordinador/$coordinadorId/$coordinadorNombre');
+            }
+            break;
+          case 'tribu':
+            if (mounted) {
+              final tribuId = result['tribuId'] ?? '';
+              final nombreTribu = result['nombreTribu'] ?? '';
+              context.go('/tribus/$tribuId/$nombreTribu');
+            }
+            break;
+          case 'timoteo':
+            if (mounted) {
+              final timoteoId = result['timoteoId'] ?? '';
+              final timoteoNombre = result['timoteoNombre'] ?? '';
+              context.go('/timoteos/$timoteoId/$timoteoNombre');
+            }
+            break;
+          case 'liderMinisterio':
+            if (mounted) {
+              final ministerio = result['ministerio'] ?? '';
+              context
+                  .go('/ministerio_lider', extra: {'ministerio': ministerio});
+            }
+            break;
+          default:
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Rol no reconocido')),
+              );
+            }
+        }
+      } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -329,22 +326,6 @@ class _LoginPageState extends State<LoginPage>
       ),
     );
   }
-
-  /// Guarda la sesión del usuario para persistencia entre recargas
-Future<void> _guardarSesion(Map<String, dynamic> userData) async {
-  try {
-    // Implementa guardado en SharedPreferences o tu método preferido
-    // final prefs = await SharedPreferences.getInstance();
-    // await prefs.setString('userId', userData['userId'] ?? '');
-    // await prefs.setString('userRole', userData['role'] ?? '');
-    // await prefs.setString('userName', userData['userName'] ?? '');
-    
-    // Por ahora solo imprime para debug
-    print('✅ Sesión guardada: ${userData['role']}');
-  } catch (e) {
-    print('❌ Error al guardar sesión: $e');
-  }
-}
 
   Widget _buildTextField({
     required TextEditingController controller,

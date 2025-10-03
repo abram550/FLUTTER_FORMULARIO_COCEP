@@ -41,7 +41,7 @@ class AuthService {
         // Verificar la contraseña sin hash para todos los usuarios
         if (userData['contrasena'] == password) {
           Map<String, dynamic>? result;
-          
+
           switch (userData['rol']) {
             case 'tribu':
               // Asegurarse de que todos los campos necesarios existan
@@ -58,7 +58,7 @@ class AuthService {
                 return null;
               }
               break;
-              
+
             case 'liderConsolidacion':
               result = {
                 'role': 'liderConsolidacion',
@@ -66,7 +66,7 @@ class AuthService {
                 'userName': userData['nombre'] ?? username,
               };
               break;
-              
+
             case 'coordinador':
               if (userData['coordinadorId'] != null) {
                 result = {
@@ -80,7 +80,7 @@ class AuthService {
                 return null;
               }
               break;
-              
+
             case 'liderMinisterio':
               result = {
                 'role': 'liderMinisterio',
@@ -89,12 +89,12 @@ class AuthService {
                 'userName': userData['nombre'] ?? username,
               };
               break;
-              
+
             default:
               print('Rol no reconocido: ${userData['rol']}');
               return null;
           }
-          
+
           if (result != null) {
             await _guardarSesion(result); // 🆕 Guardar sesión
           }
@@ -120,7 +120,8 @@ class AuthService {
           'coordinadorNombre':
               '${coordinadorData['nombre']} ${coordinadorData['apellido']}',
           'userId': coordinadorData.id,
-          'userName': '${coordinadorData['nombre']} ${coordinadorData['apellido']}',
+          'userName':
+              '${coordinadorData['nombre']} ${coordinadorData['apellido']}',
         };
         await _guardarSesion(result); // 🆕 Guardar sesión
         return result;
@@ -138,7 +139,8 @@ class AuthService {
         final result = {
           'role': 'timoteo',
           'timoteoId': timoteoData.id,
-          'timoteoNombre': '${timoteoData['nombre']} ${timoteoData['apellido']}',
+          'timoteoNombre':
+              '${timoteoData['nombre']} ${timoteoData['apellido']}',
           'userId': timoteoData.id,
           'userName': '${timoteoData['nombre']} ${timoteoData['apellido']}',
         };
@@ -185,24 +187,28 @@ class AuthService {
       await prefs.setString('userId', userData['userId']?.toString() ?? '');
       await prefs.setString('userRole', userData['role']?.toString() ?? '');
       await prefs.setString('userName', userData['userName']?.toString() ?? '');
-      
+
       // Guardar datos específicos según el rol
       if (userData['coordinadorId'] != null) {
-        await prefs.setString('coordinadorId', userData['coordinadorId'].toString());
-        await prefs.setString('coordinadorNombre', userData['coordinadorNombre']?.toString() ?? '');
+        await prefs.setString(
+            'coordinadorId', userData['coordinadorId'].toString());
+        await prefs.setString('coordinadorNombre',
+            userData['coordinadorNombre']?.toString() ?? '');
       }
       if (userData['timoteoId'] != null) {
         await prefs.setString('timoteoId', userData['timoteoId'].toString());
-        await prefs.setString('timoteoNombre', userData['timoteoNombre']?.toString() ?? '');
+        await prefs.setString(
+            'timoteoNombre', userData['timoteoNombre']?.toString() ?? '');
       }
       if (userData['tribuId'] != null) {
         await prefs.setString('tribuId', userData['tribuId'].toString());
-        await prefs.setString('nombreTribu', userData['nombreTribu']?.toString() ?? '');
+        await prefs.setString(
+            'nombreTribu', userData['nombreTribu']?.toString() ?? '');
       }
       if (userData['ministerio'] != null) {
         await prefs.setString('ministerio', userData['ministerio'].toString());
       }
-      
+
       print('✅ Sesión guardada correctamente: ${userData['role']}');
     } catch (e) {
       print('❌ Error al guardar sesión: $e');
@@ -211,11 +217,11 @@ class AuthService {
   }
 
   /// Verifica si el usuario está autenticado
-  bool isAuthenticated() {
+  Future<bool> isAuthenticated() async {
     try {
-      // Para permitir acceso libre a todas las rutas sin autenticación estricta
-      // Cambia a false si quieres forzar autenticación
-      return true;
+      final prefs = await SharedPreferences.getInstance();
+      final userId = prefs.getString('userId');
+      return userId != null && userId.isNotEmpty;
     } catch (e) {
       return false;
     }
