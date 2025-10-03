@@ -17,6 +17,7 @@ final authState = ValueNotifier<bool>(false);
 final GoRouter router = GoRouter(
   refreshListenable: authState,
   errorBuilder: (context, state) => const SplashScreen(),
+  // ✅ SIN initialLocation - esto permite que los deep links funcionen
   routes: [
     GoRoute(
       path: '/login',

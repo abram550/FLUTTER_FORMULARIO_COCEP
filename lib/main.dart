@@ -18,11 +18,11 @@ import 'package:formulario_app/screens/form_screen.dart';
 import 'package:formulario_app/screens/CoordinadorScreen.dart';
 import 'package:formulario_app/screens/admin_screen.dart';
 import 'package:formulario_app/screens/TribusScreen.dart';
-import 'package:go_router/go_router.dart';
+import 'package:formulario_app/routes/routes.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+// 🔽 IMPORTACIÓN NUEVA - Agrega este import
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:formulario_app/routes/routes.dart';  // ✅ AGREGAR ESTA LÍNEA
 
 // =============================================================================
 // 🆕 NUEVA CLASE: Servicio de Limpieza Automática de Eventos

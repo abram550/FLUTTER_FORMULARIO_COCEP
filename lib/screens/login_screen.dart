@@ -4,7 +4,7 @@ import 'package:formulario_app/screens/admin_screen.dart';
 import 'package:formulario_app/services/auth_service.dart';
 import 'package:formulario_app/utils/error_handler.dart';
 import 'package:go_router/go_router.dart';
-import 'package:formulario_app/routes/routes.dart';
+import 'package:formulario_app/routes/routes.dart' show authState;
 import 'TribusScreen.dart';
 import 'CoordinadorScreen.dart';
 
