@@ -4,6 +4,7 @@ import 'package:formulario_app/screens/admin_screen.dart';
 import 'package:formulario_app/services/auth_service.dart';
 import 'package:formulario_app/utils/error_handler.dart';
 import 'package:go_router/go_router.dart';
+import 'package:formulario_app/routes/routes.dart';
 import 'TribusScreen.dart';
 import 'CoordinadorScreen.dart';
 
@@ -26,10 +27,8 @@ class _LoginPageState extends State<LoginPage>
   late Animation<double> _fadeAnimation;
 
   // Definimos los colores personalizados de COCEP
-  final Color cocepTeal =
-      const Color(0xFF1D8B96); // Color turquesa/verde azulado
-  final Color cocepOrange =
-      const Color(0xFFFF5722); // Color naranja/rojo para el degradado
+  final Color cocepTeal = const Color(0xFF1D8B96);
+  final Color cocepOrange = const Color(0xFFFF5722);
 
   @override
   void initState() {
@@ -66,6 +65,23 @@ class _LoginPageState extends State<LoginPage>
       if (!mounted) return;
 
       if (result != null) {
+        // Actualizar el estado de autenticación
+        authState.value = true;
+
+        // Obtener la URL de retorno si existe
+        final state = GoRouterState.of(context);
+        final fromUrl = state.uri.queryParameters['from'];
+        
+        // Si hay una URL de retorno válida, ir ahí
+        if (fromUrl != null && fromUrl.isNotEmpty && fromUrl != '/login') {
+          final decodedUrl = Uri.decodeComponent(fromUrl);
+          if (mounted) {
+            context.go(decodedUrl);
+          }
+          return;
+        }
+
+        // Si no hay URL de retorno, navegar según el rol
         switch (result['role']) {
           case 'adminPastores':
             if (mounted) {
@@ -101,11 +117,9 @@ class _LoginPageState extends State<LoginPage>
           case 'liderMinisterio':
             if (mounted) {
               final ministerio = result['ministerio'] ?? '';
-              context
-                  .go('/ministerio_lider', extra: {'ministerio': ministerio});
+              context.go('/ministerio_lider', extra: {'ministerio': ministerio});
             }
             break;
-
           default:
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
@@ -145,7 +159,7 @@ class _LoginPageState extends State<LoginPage>
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios, color: Colors.white),
+          icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
@@ -172,7 +186,6 @@ class _LoginPageState extends State<LoginPage>
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     const SizedBox(height: 30),
-                    // Avatar y título con los colores de COCEP
                     Hero(
                       tag: 'login_avatar',
                       child: Container(
@@ -230,7 +243,6 @@ class _LoginPageState extends State<LoginPage>
                       ),
                     ),
                     const SizedBox(height: 50),
-                    // Formulario
                     Form(
                       key: _formKey,
                       child: Column(
@@ -265,7 +277,6 @@ class _LoginPageState extends State<LoginPage>
                                 : null,
                           ),
                           const SizedBox(height: 40),
-                          // Botón de login con gradiente de COCEP
                           Container(
                             width: double.infinity,
                             height: 55,
