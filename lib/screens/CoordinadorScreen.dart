@@ -5717,6 +5717,8 @@ class PersonasAsignadasTab extends StatelessWidget {
     );
   }
 
+
+
   Widget _buildEnhancedActionButton({
     required IconData icon,
     required String label,
@@ -5894,9 +5896,6 @@ class PersonasAsignadasTab extends StatelessWidget {
         getSafeValue<String>('estadoCivil') ?? 'Soltero(a)';
     String sexoSeleccionado = getSafeValue<String>('sexo') ?? 'Hombre';
 
-    // NUEVO: Estado activo del registro
-    bool estadoActivo = getSafeValue<bool>('activo') ?? true;
-
     // NUEVO: Fecha de nacimiento
     DateTime? fechaNacimiento;
     final fechaNacimientoValue = getSafeValue('fechaNacimiento');
@@ -6020,7 +6019,7 @@ class PersonasAsignadasTab extends StatelessWidget {
       bool confirmar = false;
       await showDialog(
         context: context,
-        barrierDismissible: false, // Evitar cierre accidental
+        barrierDismissible: true, // Evitar cierre accidental
         builder: (BuildContext dialogContext) => AlertDialog(
           title: Row(
             children: [
@@ -6076,7 +6075,7 @@ class PersonasAsignadasTab extends StatelessWidget {
 
     showDialog(
       context: context,
-      barrierDismissible: false, // No se cierra al tocar fuera
+      barrierDismissible: true, // No se cierra al tocar fuera
       builder: (BuildContext dialogContext) {
         return StatefulBuilder(builder: (stateContext, setState) {
           return WillPopScope(
@@ -6156,110 +6155,6 @@ class PersonasAsignadasTab extends StatelessWidget {
                           ],
                         ),
                         const SizedBox(height: 24),
-
-                        // NUEVO: Switch para estado activo/inactivo
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: estadoActivo
-                                ? Colors.green.withOpacity(0.1)
-                                : Colors.red.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: estadoActivo
-                                  ? Colors.green.withOpacity(0.3)
-                                  : Colors.red.withOpacity(0.3),
-                              width: 1,
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Row(
-                                children: [
-                                  Icon(
-                                    estadoActivo
-                                        ? Icons.check_circle
-                                        : Icons.cancel,
-                                    color: estadoActivo
-                                        ? Colors.green
-                                        : Colors.red,
-                                    size: 24,
-                                  ),
-                                  SizedBox(width: 12),
-                                  Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'Estado del Registro',
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          color: Colors.grey[600],
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                      Text(
-                                        estadoActivo ? "Activo" : "No Activo",
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w600,
-                                          color: estadoActivo
-                                              ? Colors.green[700]
-                                              : Colors.red[700],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                              Switch(
-                                value: estadoActivo,
-                                activeColor: secondaryOrange,
-                                inactiveThumbColor: Colors.grey[400],
-                                inactiveTrackColor: Colors.grey[300],
-                                onChanged: (value) {
-                                  setState(() {
-                                    estadoActivo = value;
-                                    hayModificaciones = true;
-                                  });
-                                },
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-
-                        // Mostrar advertencia si el registro está inactivo
-                        if (!estadoActivo)
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            margin: const EdgeInsets.only(bottom: 16),
-                            decoration: BoxDecoration(
-                              color: Colors.orange.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(
-                                color: Colors.orange.withOpacity(0.3),
-                                width: 1,
-                              ),
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(Icons.info_outline,
-                                    color: Colors.orange, size: 20),
-                                SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    'Al desactivar este registro, se eliminarán automáticamente las asignaciones de coordinador y timoteo.',
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      color: Colors.orange[800],
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
 
                         // Datos del formulario
                         // Campos normales
@@ -6624,16 +6519,6 @@ class PersonasAsignadasTab extends StatelessWidget {
                                         Timestamp.fromDate(fechaNacimiento!);
                                   }
 
-                                  // NUEVO: Agregar estado activo y lógica de desasignación
-                                  updateData['activo'] = estadoActivo;
-                                  if (!estadoActivo) {
-                                    // Si se desactiva, eliminar asignaciones
-                                    updateData['coordinadorAsignado'] = null;
-                                    updateData['coordinadorNombre'] = null;
-                                    updateData['timoteoAsignado'] = null;
-                                    updateData['nombreTimoteo'] = null;
-                                  }
-
                                   // Agregar otros campos de texto con manejo seguro
                                   controllers.forEach((key, controller) {
                                     if (controller != null) {
@@ -6731,6 +6616,7 @@ class PersonasAsignadasTab extends StatelessWidget {
                                   if (dialogContext.mounted) {
                                     Navigator.pop(dialogContext);
                                   }
+
                                   if (context.mounted) {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
@@ -6777,6 +6663,8 @@ class PersonasAsignadasTab extends StatelessWidget {
       },
     );
   }
+
+
 
 // Widget para campos de texto con animación y mejor diseño
   Widget _buildAnimatedTextField({
@@ -7056,7 +6944,7 @@ class PersonasAsignadasTab extends StatelessWidget {
 
     showDialog(
       context: context,
-      barrierDismissible: false,
+      barrierDismissible: true,
       builder: (BuildContext dialogContext) {
         return StatefulBuilder(
           builder: (stateContext, setState) {

@@ -444,22 +444,28 @@ class _TribusScreenState extends State<TribusScreen>
     // StatefulBuilder para manejar estado dinámico
     showDialog(
       context: context,
-      barrierDismissible: false,
+      barrierDismissible: true,
       builder: (context) => StatefulBuilder(builder: (context, setState) {
+        final screenWidth = MediaQuery.of(context).size.width;
+        final screenHeight = MediaQuery.of(context).size.height;
+        final isSmallScreen = screenWidth < 600;
+        final isMediumScreen = screenWidth >= 600 && screenWidth < 900;
+
         return Dialog(
           backgroundColor: Colors.transparent,
           insetPadding: EdgeInsets.symmetric(
-            horizontal: MediaQuery.of(context).size.width < 600 ? 16 : 40,
-            vertical: 20,
+            horizontal: isSmallScreen ? 16 : (isMediumScreen ? 32 : 40),
+            vertical: isSmallScreen ? 16 : 20,
           ),
           child: Container(
             constraints: BoxConstraints(
-              maxWidth: 600,
-              maxHeight: MediaQuery.of(context).size.height * 0.9,
+              maxWidth:
+                  isSmallScreen ? screenWidth : (isMediumScreen ? 650 : 700),
+              maxHeight: screenHeight * (isSmallScreen ? 0.95 : 0.9),
             ),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(24),
+              borderRadius: BorderRadius.circular(isSmallScreen ? 16 : 24),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withOpacity(0.1),
@@ -472,7 +478,7 @@ class _TribusScreenState extends State<TribusScreen>
               children: [
                 // Header con gradiente
                 Container(
-                  padding: EdgeInsets.all(24),
+                  padding: EdgeInsets.all(isSmallScreen ? 16 : 24),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [Color(0xFF1B998B), Color(0xFF038C7F)],
@@ -480,14 +486,14 @@ class _TribusScreenState extends State<TribusScreen>
                       end: Alignment.bottomRight,
                     ),
                     borderRadius: BorderRadius.only(
-                      topLeft: Radius.circular(24),
-                      topRight: Radius.circular(24),
+                      topLeft: Radius.circular(isSmallScreen ? 16 : 24),
+                      topRight: Radius.circular(isSmallScreen ? 16 : 24),
                     ),
                   ),
                   child: Row(
                     children: [
                       Container(
-                        padding: EdgeInsets.all(8),
+                        padding: EdgeInsets.all(isSmallScreen ? 6 : 8),
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.2),
                           borderRadius: BorderRadius.circular(12),
@@ -495,10 +501,10 @@ class _TribusScreenState extends State<TribusScreen>
                         child: Icon(
                           Icons.person_add_rounded,
                           color: Colors.white,
-                          size: 24,
+                          size: isSmallScreen ? 20 : 24,
                         ),
                       ),
-                      SizedBox(width: 16),
+                      SizedBox(width: isSmallScreen ? 12 : 16),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -506,29 +512,32 @@ class _TribusScreenState extends State<TribusScreen>
                             Text(
                               'Registrar Nuevo Miembro',
                               style: TextStyle(
-                                fontSize: 20,
+                                fontSize: isSmallScreen ? 16 : 20,
                                 fontWeight: FontWeight.bold,
                                 color: Colors.white,
                               ),
                             ),
-                            Text(
-                              'Completa la información del nuevo integrante',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.white.withOpacity(0.9),
+                            if (!isSmallScreen)
+                              Text(
+                                'Completa la información del nuevo integrante',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.white.withOpacity(0.9),
+                                ),
                               ),
-                            ),
                           ],
                         ),
                       ),
                       IconButton(
                         onPressed: () => Navigator.pop(context),
-                        icon: Icon(Icons.close_rounded, color: Colors.white),
+                        icon: Icon(Icons.close_rounded,
+                            color: Colors.white, size: isSmallScreen ? 20 : 24),
                         style: IconButton.styleFrom(
                           backgroundColor: Colors.white.withOpacity(0.2),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
+                          padding: EdgeInsets.all(isSmallScreen ? 8 : 12),
                         ),
                       ),
                     ],
@@ -538,7 +547,7 @@ class _TribusScreenState extends State<TribusScreen>
                 // Formulario con scroll
                 Expanded(
                   child: SingleChildScrollView(
-                    padding: EdgeInsets.all(24),
+                    padding: EdgeInsets.all(isSmallScreen ? 16 : 24),
                     child: Form(
                       key: _formKey,
                       child: Column(
@@ -546,73 +555,119 @@ class _TribusScreenState extends State<TribusScreen>
                         children: [
                           // Sección: Información Personal
                           _buildSectionHeader('Información Personal',
-                              Icons.person_outline_rounded),
-                          SizedBox(height: 16),
+                              Icons.person_outline_rounded, isSmallScreen),
+                          SizedBox(height: isSmallScreen ? 12 : 16),
 
-                          Row(
-                            children: [
-                              Expanded(
-                                child: _buildTextField(
-                                  'Nombre',
-                                  Icons.badge_outlined,
-                                  (value) => nombre = value,
+                          isSmallScreen
+                              ? Column(
+                                  children: [
+                                    _buildTextField(
+                                      'Nombre',
+                                      Icons.badge_outlined,
+                                      (value) => nombre = value,
+                                      isSmallScreen: isSmallScreen,
+                                    ),
+                                    _buildTextField(
+                                      'Apellido',
+                                      Icons.person_outline_rounded,
+                                      (value) => apellido = value,
+                                      isSmallScreen: isSmallScreen,
+                                    ),
+                                  ],
+                                )
+                              : Row(
+                                  children: [
+                                    Expanded(
+                                      child: _buildTextField(
+                                        'Nombre',
+                                        Icons.badge_outlined,
+                                        (value) => nombre = value,
+                                        isSmallScreen: isSmallScreen,
+                                      ),
+                                    ),
+                                    SizedBox(width: 16),
+                                    Expanded(
+                                      child: _buildTextField(
+                                        'Apellido',
+                                        Icons.person_outline_rounded,
+                                        (value) => apellido = value,
+                                        isSmallScreen: isSmallScreen,
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                              ),
-                              SizedBox(width: 16),
-                              Expanded(
-                                child: _buildTextField(
-                                  'Apellido',
-                                  Icons.person_outline_rounded,
-                                  (value) => apellido = value,
-                                ),
-                              ),
-                            ],
-                          ),
 
-                          Row(
-                            children: [
-                              Expanded(
-                                flex: 2,
-                                child: _buildTextField(
-                                  'Teléfono',
-                                  Icons.phone_outlined,
-                                  (value) => telefono = value,
+                          isSmallScreen
+                              ? Column(
+                                  children: [
+                                    _buildTextField(
+                                      'Teléfono',
+                                      Icons.phone_outlined,
+                                      (value) => telefono = value,
+                                      isSmallScreen: isSmallScreen,
+                                    ),
+                                    _buildTextField(
+                                      'Edad',
+                                      Icons.cake_outlined,
+                                      (value) =>
+                                          edad = int.tryParse(value) ?? 0,
+                                      isSmallScreen: isSmallScreen,
+                                    ),
+                                  ],
+                                )
+                              : Row(
+                                  children: [
+                                    Expanded(
+                                      flex: 2,
+                                      child: _buildTextField(
+                                        'Teléfono',
+                                        Icons.phone_outlined,
+                                        (value) => telefono = value,
+                                        isSmallScreen: isSmallScreen,
+                                      ),
+                                    ),
+                                    SizedBox(width: 16),
+                                    Expanded(
+                                      child: _buildTextField(
+                                        'Edad',
+                                        Icons.cake_outlined,
+                                        (value) =>
+                                            edad = int.tryParse(value) ?? 0,
+                                        isSmallScreen: isSmallScreen,
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                              ),
-                              SizedBox(width: 16),
-                              Expanded(
-                                child: _buildTextField(
-                                  'Edad',
-                                  Icons.cake_outlined,
-                                  (value) => edad = int.tryParse(value) ?? 0,
-                                ),
-                              ),
-                            ],
-                          ),
 
-                          _buildDropdown('Sexo', ['Masculino', 'Femenino'],
-                              (value) => sexo = value, Icons.wc_outlined),
+                          _buildDropdown(
+                              'Sexo',
+                              ['Masculino', 'Femenino'],
+                              (value) => sexo = value,
+                              Icons.wc_outlined,
+                              isSmallScreen),
 
-                          SizedBox(height: 24),
+                          SizedBox(height: isSmallScreen ? 16 : 24),
 
                           // Sección: Ubicación
-                          _buildSectionHeader(
-                              'Ubicación', Icons.location_on_outlined),
-                          SizedBox(height: 16),
+                          _buildSectionHeader('Ubicación',
+                              Icons.location_on_outlined, isSmallScreen),
+                          SizedBox(height: isSmallScreen ? 12 : 16),
 
                           _buildTextField('Dirección', Icons.home_outlined,
-                              (value) => direccion = value),
+                              (value) => direccion = value,
+                              isSmallScreen: isSmallScreen),
                           _buildTextField(
                               'Barrio',
                               Icons.location_city_outlined,
-                              (value) => barrio = value),
+                              (value) => barrio = value,
+                              isSmallScreen: isSmallScreen),
 
-                          SizedBox(height: 24),
+                          SizedBox(height: isSmallScreen ? 16 : 24),
 
                           // Sección: Estado Civil
-                          _buildSectionHeader(
-                              'Estado Civil', Icons.favorite_outline_rounded),
-                          SizedBox(height: 16),
+                          _buildSectionHeader('Estado Civil',
+                              Icons.favorite_outline_rounded, isSmallScreen),
+                          SizedBox(height: isSmallScreen ? 12 : 16),
 
                           _buildDropdown('Estado Civil', _estadosCiviles,
                               (value) {
@@ -625,7 +680,7 @@ class _TribusScreenState extends State<TribusScreen>
                                 nombrePareja = 'No aplica';
                               }
                             });
-                          }, Icons.favorite_border_rounded),
+                          }, Icons.favorite_border_rounded, isSmallScreen),
 
                           // Campo dinámico para nombre de pareja con animación
                           AnimatedContainer(
@@ -645,23 +700,25 @@ class _TribusScreenState extends State<TribusScreen>
                                   ? _buildTextField(
                                       'Nombre de la Pareja',
                                       Icons.favorite_rounded,
-                                      (value) => nombrePareja = value)
+                                      (value) => nombrePareja = value,
+                                      isSmallScreen: isSmallScreen)
                                   : SizedBox(),
                             ),
                           ),
 
-                          SizedBox(height: 24),
+                          SizedBox(height: isSmallScreen ? 16 : 24),
 
                           // Sección: Ocupaciones
-                          _buildSectionHeader(
-                              'Ocupaciones', Icons.work_outline_rounded),
-                          SizedBox(height: 16),
+                          _buildSectionHeader('Ocupaciones',
+                              Icons.work_outline_rounded, isSmallScreen),
+                          SizedBox(height: isSmallScreen ? 12 : 16),
 
                           Container(
-                            padding: EdgeInsets.all(16),
+                            padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
                             decoration: BoxDecoration(
                               color: Color(0xFF1B998B).withOpacity(0.05),
-                              borderRadius: BorderRadius.circular(16),
+                              borderRadius: BorderRadius.circular(
+                                  isSmallScreen ? 12 : 16),
                               border: Border.all(
                                 color: Color(0xFF1B998B).withOpacity(0.2),
                                 width: 1,
@@ -675,13 +732,13 @@ class _TribusScreenState extends State<TribusScreen>
                                   style: TextStyle(
                                     fontWeight: FontWeight.w500,
                                     color: Color(0xFF1B998B),
-                                    fontSize: 14,
+                                    fontSize: isSmallScreen ? 13 : 14,
                                   ),
                                 ),
-                                SizedBox(height: 12),
+                                SizedBox(height: isSmallScreen ? 8 : 12),
                                 Wrap(
-                                  spacing: 8,
-                                  runSpacing: 8,
+                                  spacing: isSmallScreen ? 6 : 8,
+                                  runSpacing: isSmallScreen ? 6 : 8,
                                   children: _ocupaciones.map((ocupacion) {
                                     final isSelected = ocupacionesSeleccionadas
                                         .contains(ocupacion);
@@ -697,6 +754,7 @@ class _TribusScreenState extends State<TribusScreen>
                                             fontWeight: isSelected
                                                 ? FontWeight.w600
                                                 : FontWeight.w500,
+                                            fontSize: isSmallScreen ? 12 : 14,
                                           ),
                                         ),
                                         selected: isSelected,
@@ -723,6 +781,10 @@ class _TribusScreenState extends State<TribusScreen>
                                         elevation: isSelected ? 2 : 0,
                                         shadowColor:
                                             Color(0xFF1B998B).withOpacity(0.3),
+                                        padding: EdgeInsets.symmetric(
+                                          horizontal: isSmallScreen ? 8 : 12,
+                                          vertical: isSmallScreen ? 4 : 8,
+                                        ),
                                       ),
                                     );
                                   }).toList(),
@@ -743,54 +805,61 @@ class _TribusScreenState extends State<TribusScreen>
                                   : 0.0,
                               child: ocupacionesSeleccionadas.isNotEmpty
                                   ? Padding(
-                                      padding: EdgeInsets.only(top: 16),
+                                      padding: EdgeInsets.only(
+                                          top: isSmallScreen ? 12 : 16),
                                       child: _buildTextField(
                                         'Descripción de Ocupaciones',
                                         Icons.description_outlined,
                                         (value) =>
                                             descripcionOcupaciones = value,
                                         isRequired: false,
+                                        isSmallScreen: isSmallScreen,
                                       ),
                                     )
                                   : SizedBox(),
                             ),
                           ),
 
-                          SizedBox(height: 24),
+                          SizedBox(height: isSmallScreen ? 16 : 24),
 
                           // Sección: Información Adicional
                           _buildSectionHeader('Información Adicional',
-                              Icons.info_outline_rounded),
-                          SizedBox(height: 16),
+                              Icons.info_outline_rounded, isSmallScreen),
+                          SizedBox(height: isSmallScreen ? 12 : 16),
 
                           _buildDropdown(
                               'Tiene Hijos',
                               ['No', 'Sí'],
                               (value) => tieneHijos = (value == 'Sí'),
-                              Icons.child_care_outlined),
+                              Icons.child_care_outlined,
+                              isSmallScreen),
 
                           _buildTextField(
                               'Referencia de Invitación',
                               Icons.link_outlined,
-                              (value) => referenciaInvitacion = value),
+                              (value) => referenciaInvitacion = value,
+                              isSmallScreen: isSmallScreen),
 
                           _buildTextField('Observaciones', Icons.note_outlined,
                               (value) => observaciones = value,
-                              isRequired: false),
+                              isRequired: false, isSmallScreen: isSmallScreen),
 
                           _buildTextField(
                             'Estado en la Iglesia',
                             Icons.track_changes_outlined,
                             (value) => estadoProceso = value,
                             isRequired: false,
+                            isSmallScreen: isSmallScreen,
                           ),
 
                           // Campo para seleccionar fecha con diseño mejorado
                           Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            padding: EdgeInsets.symmetric(
+                                vertical: isSmallScreen ? 6 : 8),
                             child: Container(
                               decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(16),
+                                borderRadius: BorderRadius.circular(
+                                    isSmallScreen ? 12 : 16),
                                 border: Border.all(
                                   color: fechaAsignacionTribu != null
                                       ? Color(0xFF1B998B)
@@ -800,16 +869,21 @@ class _TribusScreenState extends State<TribusScreen>
                               ),
                               child: TextFormField(
                                 readOnly: true,
+                                style: TextStyle(
+                                    fontSize: isSmallScreen ? 14 : 16),
                                 decoration: InputDecoration(
                                   labelText: 'Fecha de Asignación de la Tribu',
                                   labelStyle: TextStyle(
                                     color: fechaAsignacionTribu != null
                                         ? Color(0xFF1B998B)
                                         : Colors.grey.shade600,
+                                    fontSize: isSmallScreen ? 13 : 14,
                                   ),
                                   prefixIcon: Container(
-                                    margin: EdgeInsets.all(12),
-                                    padding: EdgeInsets.all(8),
+                                    margin:
+                                        EdgeInsets.all(isSmallScreen ? 8 : 12),
+                                    padding:
+                                        EdgeInsets.all(isSmallScreen ? 6 : 8),
                                     decoration: BoxDecoration(
                                       color: fechaAsignacionTribu != null
                                           ? Color(0xFF1B998B).withOpacity(0.1)
@@ -821,16 +895,18 @@ class _TribusScreenState extends State<TribusScreen>
                                       color: fechaAsignacionTribu != null
                                           ? Color(0xFF1B998B)
                                           : Colors.grey.shade600,
-                                      size: 20,
+                                      size: isSmallScreen ? 18 : 20,
                                     ),
                                   ),
                                   suffixIcon: fechaAsignacionTribu != null
                                       ? Icon(Icons.check_circle,
-                                          color: Color(0xFF1B998B))
+                                          color: Color(0xFF1B998B),
+                                          size: isSmallScreen ? 20 : 24)
                                       : null,
                                   border: InputBorder.none,
                                   contentPadding: EdgeInsets.symmetric(
-                                      horizontal: 16, vertical: 16),
+                                      horizontal: isSmallScreen ? 12 : 16,
+                                      vertical: isSmallScreen ? 12 : 16),
                                 ),
                                 validator: (value) =>
                                     fechaAsignacionTribu == null
@@ -887,103 +963,206 @@ class _TribusScreenState extends State<TribusScreen>
 
                 // Botones de acción con diseño mejorado
                 Container(
-                  padding: EdgeInsets.all(24),
+                  padding: EdgeInsets.all(isSmallScreen ? 16 : 24),
                   decoration: BoxDecoration(
                     color: Colors.grey.shade50,
                     borderRadius: BorderRadius.only(
-                      bottomLeft: Radius.circular(24),
-                      bottomRight: Radius.circular(24),
+                      bottomLeft: Radius.circular(isSmallScreen ? 16 : 24),
+                      bottomRight: Radius.circular(isSmallScreen ? 16 : 24),
                     ),
                   ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: TextButton(
-                          onPressed: () => Navigator.pop(context),
-                          style: TextButton.styleFrom(
-                            padding: EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              side: BorderSide(color: Colors.grey.shade300),
-                            ),
-                          ),
-                          child: Text(
-                            'Cancelar',
-                            style: TextStyle(
-                              color: Colors.grey.shade700,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 16,
-                            ),
-                          ),
-                        ),
-                      ),
-                      SizedBox(width: 16),
-                      Expanded(
-                        flex: 2,
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Color(0xFFFF7E00),
-                            foregroundColor: Colors.white,
-                            padding: EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            elevation: 2,
-                            shadowColor: Color(0xFFFF7E00).withOpacity(0.3),
-                          ),
-                          onPressed: () {
-                            if (_formKey.currentState!.validate()) {
-                              final registro = {
-                                'fechaAsignacionTribu': fechaAsignacionTribu !=
-                                        null
-                                    ? Timestamp.fromDate(fechaAsignacionTribu!)
-                                    : null,
-                                'nombre': nombre,
-                                'apellido': apellido,
-                                'telefono': telefono,
-                                'sexo': sexo,
-                                'edad': edad,
-                                'direccion': direccion,
-                                'barrio': barrio,
-                                'estadoCivil': estadoCivil,
-                                'nombrePareja': nombrePareja,
-                                'ocupaciones': ocupacionesSeleccionadas,
-                                'descripcionOcupaciones':
-                                    descripcionOcupaciones,
-                                'tieneHijos': tieneHijos,
-                                'referenciaInvitacion': referenciaInvitacion,
-                                'observaciones': observaciones,
-                                'tribuAsignada': widget.tribuNombre,
-                                'ministerioAsignado':
-                                    _determinarMinisterio(widget.tribuNombre),
-                                'coordinadorAsignado': null,
-                                'fechaRegistro': FieldValue.serverTimestamp(),
-                                'activo': true,
-                                'estadoProceso': estadoProceso,
-                              };
+                  child: isSmallScreen
+                      ? Column(
+                          children: [
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Color(0xFFFF7E00),
+                                  foregroundColor: Colors.white,
+                                  padding: EdgeInsets.symmetric(vertical: 14),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  elevation: 2,
+                                  shadowColor:
+                                      Color(0xFFFF7E00).withOpacity(0.3),
+                                ),
+                                onPressed: () {
+                                  if (_formKey.currentState!.validate()) {
+                                    final registro = {
+                                      'fechaAsignacionTribu':
+                                          fechaAsignacionTribu != null
+                                              ? Timestamp.fromDate(
+                                                  fechaAsignacionTribu!)
+                                              : null,
+                                      'nombre': nombre,
+                                      'apellido': apellido,
+                                      'telefono': telefono,
+                                      'sexo': sexo,
+                                      'edad': edad,
+                                      'direccion': direccion,
+                                      'barrio': barrio,
+                                      'estadoCivil': estadoCivil,
+                                      'nombrePareja': nombrePareja,
+                                      'ocupaciones': ocupacionesSeleccionadas,
+                                      'descripcionOcupaciones':
+                                          descripcionOcupaciones,
+                                      'tieneHijos': tieneHijos,
+                                      'referenciaInvitacion':
+                                          referenciaInvitacion,
+                                      'observaciones': observaciones,
+                                      'tribuAsignada': widget.tribuNombre,
+                                      'ministerioAsignado':
+                                          _determinarMinisterio(
+                                              widget.tribuNombre),
+                                      'coordinadorAsignado': null,
+                                      'fechaRegistro':
+                                          FieldValue.serverTimestamp(),
+                                      'activo': true,
+                                      'estadoProceso': estadoProceso,
+                                    };
 
-                              _guardarRegistroEnFirebase(
-                                  context, registro, widget.tribuId);
-                            }
-                          },
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.save_outlined, size: 20),
-                              SizedBox(width: 8),
-                              Text(
-                                'Guardar Registro',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 16,
+                                    _guardarRegistroEnFirebase(
+                                        context, registro, widget.tribuId);
+                                  }
+                                },
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.save_outlined, size: 18),
+                                    SizedBox(width: 8),
+                                    Text(
+                                      'Guardar Registro',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 15,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
-                            ],
-                          ),
+                            ),
+                            SizedBox(height: 12),
+                            SizedBox(
+                              width: double.infinity,
+                              child: TextButton(
+                                onPressed: () => Navigator.pop(context),
+                                style: TextButton.styleFrom(
+                                  padding: EdgeInsets.symmetric(vertical: 14),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    side:
+                                        BorderSide(color: Colors.grey.shade300),
+                                  ),
+                                ),
+                                child: Text(
+                                  'Cancelar',
+                                  style: TextStyle(
+                                    color: Colors.grey.shade700,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 15,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        )
+                      : Row(
+                          children: [
+                            Expanded(
+                              child: TextButton(
+                                onPressed: () => Navigator.pop(context),
+                                style: TextButton.styleFrom(
+                                  padding: EdgeInsets.symmetric(vertical: 16),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    side:
+                                        BorderSide(color: Colors.grey.shade300),
+                                  ),
+                                ),
+                                child: Text(
+                                  'Cancelar',
+                                  style: TextStyle(
+                                    color: Colors.grey.shade700,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            SizedBox(width: 16),
+                            Expanded(
+                              flex: 2,
+                              child: ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Color(0xFFFF7E00),
+                                  foregroundColor: Colors.white,
+                                  padding: EdgeInsets.symmetric(vertical: 16),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  elevation: 2,
+                                  shadowColor:
+                                      Color(0xFFFF7E00).withOpacity(0.3),
+                                ),
+                                onPressed: () {
+                                  if (_formKey.currentState!.validate()) {
+                                    final registro = {
+                                      'fechaAsignacionTribu':
+                                          fechaAsignacionTribu != null
+                                              ? Timestamp.fromDate(
+                                                  fechaAsignacionTribu!)
+                                              : null,
+                                      'nombre': nombre,
+                                      'apellido': apellido,
+                                      'telefono': telefono,
+                                      'sexo': sexo,
+                                      'edad': edad,
+                                      'direccion': direccion,
+                                      'barrio': barrio,
+                                      'estadoCivil': estadoCivil,
+                                      'nombrePareja': nombrePareja,
+                                      'ocupaciones': ocupacionesSeleccionadas,
+                                      'descripcionOcupaciones':
+                                          descripcionOcupaciones,
+                                      'tieneHijos': tieneHijos,
+                                      'referenciaInvitacion':
+                                          referenciaInvitacion,
+                                      'observaciones': observaciones,
+                                      'tribuAsignada': widget.tribuNombre,
+                                      'ministerioAsignado':
+                                          _determinarMinisterio(
+                                              widget.tribuNombre),
+                                      'coordinadorAsignado': null,
+                                      'fechaRegistro':
+                                          FieldValue.serverTimestamp(),
+                                      'activo': true,
+                                      'estadoProceso': estadoProceso,
+                                    };
+
+                                    _guardarRegistroEnFirebase(
+                                        context, registro, widget.tribuId);
+                                  }
+                                },
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.save_outlined, size: 20),
+                                    SizedBox(width: 8),
+                                    Text(
+                                      'Guardar Registro',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
-                    ],
-                  ),
                 ),
               ],
             ),
@@ -994,13 +1173,13 @@ class _TribusScreenState extends State<TribusScreen>
   }
 
 // Widget para headers de sección
-  Widget _buildSectionHeader(String title, IconData icon) {
+  Widget _buildSectionHeader(String title, IconData icon, bool isSmallScreen) {
     return Container(
-      padding: EdgeInsets.symmetric(vertical: 8),
+      padding: EdgeInsets.symmetric(vertical: isSmallScreen ? 6 : 8),
       child: Row(
         children: [
           Container(
-            padding: EdgeInsets.all(6),
+            padding: EdgeInsets.all(isSmallScreen ? 4 : 6),
             decoration: BoxDecoration(
               color: Color(0xFF1B998B).withOpacity(0.1),
               borderRadius: BorderRadius.circular(8),
@@ -1008,22 +1187,24 @@ class _TribusScreenState extends State<TribusScreen>
             child: Icon(
               icon,
               color: Color(0xFF1B998B),
-              size: 18,
+              size: isSmallScreen ? 16 : 18,
             ),
           ),
-          SizedBox(width: 12),
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF1B998B),
+          SizedBox(width: isSmallScreen ? 8 : 12),
+          Flexible(
+            child: Text(
+              title,
+              style: TextStyle(
+                fontSize: isSmallScreen ? 15 : 18,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF1B998B),
+              ),
             ),
           ),
+          SizedBox(width: 8),
           Expanded(
             child: Container(
               height: 1,
-              margin: EdgeInsets.only(left: 16),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
@@ -1042,12 +1223,12 @@ class _TribusScreenState extends State<TribusScreen>
 // Método auxiliar para campos de texto con diseño mejorado
   Widget _buildTextField(
       String label, IconData icon, Function(String) onChanged,
-      {bool isRequired = true}) {
+      {bool isRequired = true, bool isSmallScreen = false}) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: EdgeInsets.symmetric(vertical: isSmallScreen ? 6 : 8),
       child: Container(
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(isSmallScreen ? 12 : 16),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.03),
@@ -1057,36 +1238,49 @@ class _TribusScreenState extends State<TribusScreen>
           ],
         ),
         child: TextFormField(
+          style: TextStyle(fontSize: isSmallScreen ? 14 : 16),
           decoration: InputDecoration(
             labelText: label,
-            labelStyle: TextStyle(color: Colors.grey.shade600),
+            labelStyle: TextStyle(
+              color: Colors.grey.shade600,
+              fontSize: isSmallScreen ? 13 : 14,
+            ),
             prefixIcon: Container(
-              margin: EdgeInsets.all(12),
-              padding: EdgeInsets.all(8),
+              margin: EdgeInsets.all(isSmallScreen ? 8 : 12),
+              padding: EdgeInsets.all(isSmallScreen ? 6 : 8),
               decoration: BoxDecoration(
                 color: Color(0xFF1B998B).withOpacity(0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Icon(icon, color: Color(0xFF1B998B), size: 20),
+              child: Icon(icon,
+                  color: Color(0xFF1B998B), size: isSmallScreen ? 18 : 20),
             ),
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(isSmallScreen ? 12 : 16),
               borderSide: BorderSide(color: Colors.grey.shade300),
             ),
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(isSmallScreen ? 12 : 16),
               borderSide: BorderSide(color: Color(0xFF1B998B), width: 2),
             ),
             errorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(isSmallScreen ? 12 : 16),
+              borderSide: BorderSide(color: Colors.red.shade400, width: 2),
+            ),
+            focusedErrorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(isSmallScreen ? 12 : 16),
               borderSide: BorderSide(color: Colors.red.shade400, width: 2),
             ),
             filled: true,
             fillColor: Colors.white,
-            contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            contentPadding: EdgeInsets.symmetric(
+              horizontal: isSmallScreen ? 12 : 16,
+              vertical: isSmallScreen ? 12 : 16,
+            ),
           ),
           validator: isRequired
-              ? (value) => value!.isEmpty ? 'Campo obligatorio' : null
+              ? (value) =>
+                  (value == null || value.isEmpty) ? 'Campo obligatorio' : null
               : null,
           onChanged: onChanged,
         ),
@@ -1096,12 +1290,12 @@ class _TribusScreenState extends State<TribusScreen>
 
 // Método de construcción de dropdown con diseño mejorado
   Widget _buildDropdown(String label, List<String> options,
-      Function(String) onChanged, IconData icon) {
+      Function(String) onChanged, IconData icon, bool isSmallScreen) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: EdgeInsets.symmetric(vertical: isSmallScreen ? 6 : 8),
       child: Container(
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(isSmallScreen ? 12 : 16),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.03),
@@ -1111,29 +1305,48 @@ class _TribusScreenState extends State<TribusScreen>
           ],
         ),
         child: DropdownButtonFormField<String>(
+          style: TextStyle(
+            fontSize: isSmallScreen ? 14 : 16,
+            color: Colors.grey.shade800,
+          ),
           decoration: InputDecoration(
             labelText: label,
-            labelStyle: TextStyle(color: Colors.grey.shade600),
+            labelStyle: TextStyle(
+              color: Colors.grey.shade600,
+              fontSize: isSmallScreen ? 13 : 14,
+            ),
             prefixIcon: Container(
-              margin: EdgeInsets.all(12),
-              padding: EdgeInsets.all(8),
+              margin: EdgeInsets.all(isSmallScreen ? 8 : 12),
+              padding: EdgeInsets.all(isSmallScreen ? 6 : 8),
               decoration: BoxDecoration(
                 color: Color(0xFF1B998B).withOpacity(0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Icon(icon, color: Color(0xFF1B998B), size: 20),
+              child: Icon(icon,
+                  color: Color(0xFF1B998B), size: isSmallScreen ? 18 : 20),
             ),
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(isSmallScreen ? 12 : 16),
               borderSide: BorderSide(color: Colors.grey.shade300),
             ),
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(isSmallScreen ? 12 : 16),
               borderSide: BorderSide(color: Color(0xFF1B998B), width: 2),
+            ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(isSmallScreen ? 12 : 16),
+              borderSide: BorderSide(color: Colors.red.shade400, width: 2),
+            ),
+            focusedErrorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(isSmallScreen ? 12 : 16),
+              borderSide: BorderSide(color: Colors.red.shade400, width: 2),
             ),
             filled: true,
             fillColor: Colors.white,
-            contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            contentPadding: EdgeInsets.symmetric(
+              horizontal: isSmallScreen ? 12 : 16,
+              vertical: isSmallScreen ? 12 : 16,
+            ),
           ),
           items: options
               .map((option) => DropdownMenuItem(
@@ -1143,15 +1356,23 @@ class _TribusScreenState extends State<TribusScreen>
                       style: TextStyle(
                         color: Colors.grey.shade800,
                         fontWeight: FontWeight.w500,
+                        fontSize: isSmallScreen ? 14 : 16,
                       ),
                     ),
                   ))
               .toList(),
           validator: (value) => value == null ? 'Selecciona una opción' : null,
-          onChanged: (value) => onChanged(value!),
+          onChanged: (value) {
+            if (value != null) {
+              onChanged(value);
+            }
+          },
           dropdownColor: Colors.white,
-          icon:
-              Icon(Icons.keyboard_arrow_down_rounded, color: Color(0xFF1B998B)),
+          icon: Icon(
+            Icons.keyboard_arrow_down_rounded,
+            color: Color(0xFF1B998B),
+            size: isSmallScreen ? 20 : 24,
+          ),
         ),
       ),
     );
@@ -4683,7 +4904,7 @@ class RegistrosAsignadosTab extends StatelessWidget {
       bool confirmar = false;
       await showDialog(
         context: context,
-        barrierDismissible: false, // Evitar cierre accidental
+        barrierDismissible: true, // Evitar cierre accidental
         builder: (BuildContext dialogContext) => AlertDialog(
           title: Row(
             children: [
@@ -4739,7 +4960,7 @@ class RegistrosAsignadosTab extends StatelessWidget {
 
     showDialog(
       context: context,
-      barrierDismissible: false, // No se cierra al tocar fuera
+      barrierDismissible: true, // No se cierra al tocar fuera
       builder: (BuildContext dialogContext) {
         return StatefulBuilder(builder: (stateContext, setState) {
           return WillPopScope(

@@ -49,12 +49,12 @@ class _FormularioPageState extends State<FormularioPage> {
 
   final List<String> _servicios = [
     "Viernes De Poder",
-    "Sábado Juveniles",
-    "Martes Damas",
-    "Jueves Caballeros",
-    "Sábado Prejuveniles",
+    "Servicio Prejuvenil",
+    "Impacto Juvenil",
+    "Servicio Familiar",
+    "Servicio De Damas",
+    "Servicio De Caballeros",
     "Servicio Especial",
-    "Domingo Familiar",
   ];
 
   final List<String> _estadosCiviles = [
