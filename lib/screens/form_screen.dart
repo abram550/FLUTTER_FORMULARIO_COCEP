@@ -32,6 +32,13 @@ class _FormularioPageState extends State<FormularioPage> {
   final _otroPeticionController = TextEditingController();
   final _otroConsolidadorController = TextEditingController();
   final _otroMotivoController = TextEditingController();
+  final Map<String, GlobalKey> _fieldKeys = {
+    'servicio': GlobalKey(),
+    'tipoPersona': GlobalKey(),
+    'sexo': GlobalKey(),
+    'estadoCivil': GlobalKey(),
+    'tieneHijos': GlobalKey(),
+  };
 
   String? _servicioSeleccionado;
   String? _tipoPersona;
@@ -155,147 +162,155 @@ class _FormularioPageState extends State<FormularioPage> {
     );
   }
 
-  Future<void> _enviarFormulario() async {
-    if (_formKey.currentState!.validate()) {
-      if (_servicioSeleccionado == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Por favor, seleccione un servicio',
-                style: GoogleFonts.poppins()),
-            backgroundColor: Colors.red,
-          ),
-        );
-        return;
-      }
 
-      if (_tipoPersona == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Por favor, indique si es Nuevo o Visita',
-                style: GoogleFonts.poppins()),
-            backgroundColor: Colors.red,
-          ),
-        );
-        return;
-      }
+Future<void> _enviarFormulario() async {
+  if (_formKey.currentState!.validate()) {
+    if (_servicioSeleccionado == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Por favor, seleccione un servicio',
+              style: GoogleFonts.poppins()),
+          backgroundColor: Colors.red,
+        ),
+      );
+      await _scrollToFirstError();
+      return;
+    }
 
-      if (_sexo == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Por favor, seleccione su género',
-                style: GoogleFonts.poppins()),
-            backgroundColor: Colors.red,
-          ),
-        );
-        return;
-      }
+    if (_tipoPersona == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Por favor, indique si es Nuevo o Visita',
+              style: GoogleFonts.poppins()),
+          backgroundColor: Colors.red,
+        ),
+      );
+      await _scrollToFirstError();
+      return;
+    }
 
-      if (_estadoCivil == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Por favor, seleccione su estado civil',
-                style: GoogleFonts.poppins()),
-            backgroundColor: Colors.red,
-          ),
-        );
-        return;
-      }
+    if (_sexo == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Por favor, seleccione su género',
+              style: GoogleFonts.poppins()),
+          backgroundColor: Colors.red,
+        ),
+      );
+      await _scrollToFirstError();
+      return;
+    }
 
-      if (_tieneHijos == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Por favor, indique si tiene hijos',
-                style: GoogleFonts.poppins()),
-            backgroundColor: Colors.red,
-          ),
-        );
-        return;
-      }
+    if (_estadoCivil == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Por favor, seleccione su estado civil',
+              style: GoogleFonts.poppins()),
+          backgroundColor: Colors.red,
+        ),
+      );
+      await _scrollToFirstError();
+      return;
+    }
 
-      setState(() => _isLoading = true);
+    if (_tieneHijos == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Por favor, indique si tiene hijos',
+              style: GoogleFonts.poppins()),
+          backgroundColor: Colors.red,
+        ),
+      );
+      await _scrollToFirstError();
+      return;
+    }
 
-      try {
-        final registro = Registro(
-          nombre: _nombreController.text,
-          apellido: _apellidoController.text,
-          telefono: _telefonoController.text,
-          servicio: _servicioSeleccionado ?? '',
-          tipo: _tipoPersona,
-          fecha: DateTime.now(),
-          motivo: _tipoPersona == 'Visita'
-              ? (_motivoVisita == 'Otro'
-                  ? _otroMotivoController.text
-                  : _motivoVisita)
-              : null,
-          peticiones: _peticionesSeleccionadas.map((peticion) {
-            if (peticion == 'Otro') {
-              return _otroPeticionController.text;
-            }
-            return peticion;
-          }).join(', '),
-          consolidador: (_consolidadorSeleccionado == 'Otro'
-              ? _otroConsolidadorController.text
-              : _consolidadorSeleccionado),
-          sexo: _sexo ?? '',
-          edad: _edad ?? 0,
-          direccion: _direccionController.text,
-          barrio: _barrioController.text,
-          estadoCivil: _estadoCivil ?? '',
-          nombrePareja: _nombreParejaController.text,
-          ocupaciones: _ocupacionesSeleccionadas.map((ocupacion) {
-            if (ocupacion == 'Otro') {
-              return _descripcionOcupacionController.text;
-            }
-            return ocupacion;
-          }).toList(),
-          descripcionOcupacion: _descripcionOcupacionController.text,
-          tieneHijos: _tieneHijos ?? false,
-          referenciaInvitacion: _referenciaInvitacionController.text,
-          observaciones: _observacionesController.text,
-        );
+    setState(() => _isLoading = true);
 
-        var connectivityResult = await Connectivity().checkConnectivity();
+    try {
+      final registro = Registro(
+        nombre: _nombreController.text,
+        apellido: _apellidoController.text,
+        telefono: _telefonoController.text,
+        servicio: _servicioSeleccionado ?? '',
+        tipo: _tipoPersona,
+        fecha: DateTime.now(),
+        motivo: _tipoPersona == 'Visita'
+            ? (_motivoVisita == 'Otro'
+                ? _otroMotivoController.text
+                : _motivoVisita)
+            : null,
+        peticiones: _peticionesSeleccionadas.map((peticion) {
+          if (peticion == 'Otro') {
+            return _otroPeticionController.text;
+          }
+          return peticion;
+        }).join(', '),
+        consolidador: (_consolidadorSeleccionado == 'Otro'
+            ? _otroConsolidadorController.text
+            : _consolidadorSeleccionado),
+        sexo: _sexo ?? '',
+        edad: _edad ?? 0,
+        direccion: _direccionController.text,
+        barrio: _barrioController.text,
+        estadoCivil: _estadoCivil ?? '',
+        nombrePareja: _nombreParejaController.text,
+        ocupaciones: _ocupacionesSeleccionadas.map((ocupacion) {
+          if (ocupacion == 'Otro') {
+            return _descripcionOcupacionController.text;
+          }
+          return ocupacion;
+        }).toList(),
+        descripcionOcupacion: _descripcionOcupacionController.text,
+        tieneHijos: _tieneHijos ?? false,
+        referenciaInvitacion: _referenciaInvitacionController.text,
+        observaciones: _observacionesController.text,
+      );
 
-        if (connectivityResult != ConnectivityResult.none) {
-          await _firestoreService.insertRegistro(registro);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'Registro enviado exitosamente a la nube',
-                style: GoogleFonts.poppins(),
-              ),
-              backgroundColor: Colors.green,
-            ),
-          );
-        } else {
-          await _databaseService.insertRegistroPendiente(registro);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'Sin conexión: Registro guardado localmente',
-                style: GoogleFonts.poppins(),
-              ),
-              backgroundColor: Colors.orange,
-            ),
-          );
-        }
+      var connectivityResult = await Connectivity().checkConnectivity();
 
-        _limpiarFormulario();
-      } catch (e) {
+      if (connectivityResult != ConnectivityResult.none) {
+        await _firestoreService.insertRegistro(registro);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Error al procesar el registro: $e',
+              'Registro enviado exitosamente a la nube',
               style: GoogleFonts.poppins(),
             ),
-            backgroundColor: Colors.red,
+            backgroundColor: Colors.green,
           ),
         );
-      } finally {
-        setState(() => _isLoading = false);
+      } else {
+        await _databaseService.insertRegistroPendiente(registro);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Sin conexión: Registro guardado localmente',
+              style: GoogleFonts.poppins(),
+            ),
+            backgroundColor: Colors.orange,
+          ),
+        );
       }
+
+      _limpiarFormulario();
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Error al procesar el registro: $e',
+            style: GoogleFonts.poppins(),
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      setState(() => _isLoading = false);
     }
+  } else {
+    await _scrollToFirstError();
   }
+}
 
   void _limpiarFormulario() {
     _formKey.currentState!.reset();
@@ -325,6 +340,61 @@ class _FormularioPageState extends State<FormularioPage> {
       _consolidadorSeleccionado = null;
     });
   }
+
+Future<void> _scrollToFirstError() async {
+  await Future.delayed(const Duration(milliseconds: 100));
+  
+  if (_servicioSeleccionado == null && _fieldKeys['servicio']?.currentContext != null) {
+    Scrollable.ensureVisible(
+      _fieldKeys['servicio']!.currentContext!,
+      duration: const Duration(milliseconds: 500),
+      curve: Curves.easeInOut,
+      alignment: 0.2,
+    );
+    return;
+  }
+  
+  if (_tipoPersona == null && _fieldKeys['tipoPersona']?.currentContext != null) {
+    Scrollable.ensureVisible(
+      _fieldKeys['tipoPersona']!.currentContext!,
+      duration: const Duration(milliseconds: 500),
+      curve: Curves.easeInOut,
+      alignment: 0.2,
+    );
+    return;
+  }
+  
+  if (_tipoPersona == 'Nuevo' && _sexo == null && _fieldKeys['sexo']?.currentContext != null) {
+    Scrollable.ensureVisible(
+      _fieldKeys['sexo']!.currentContext!,
+      duration: const Duration(milliseconds: 500),
+      curve: Curves.easeInOut,
+      alignment: 0.2,
+    );
+    return;
+  }
+  
+  if (_tipoPersona == 'Nuevo' && _estadoCivil == null && _fieldKeys['estadoCivil']?.currentContext != null) {
+    Scrollable.ensureVisible(
+      _fieldKeys['estadoCivil']!.currentContext!,
+      duration: const Duration(milliseconds: 500),
+      curve: Curves.easeInOut,
+      alignment: 0.2,
+    );
+    return;
+  }
+  
+  if (_tipoPersona == 'Nuevo' && _tieneHijos == null && _fieldKeys['tieneHijos']?.currentContext != null) {
+    Scrollable.ensureVisible(
+      _fieldKeys['tieneHijos']!.currentContext!,
+      duration: const Duration(milliseconds: 500),
+      curve: Curves.easeInOut,
+      alignment: 0.2,
+    );
+    return;
+  }
+}
+
 
   Widget _buildPersonalDataSection() {
     return Card(
@@ -369,73 +439,76 @@ class _FormularioPageState extends State<FormularioPage> {
     );
   }
 
-  Widget _buildServiceSection() {
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildQuestionTitle(
-              'Servicio al que Asististe',
-              'Selecciona el servicio al que has asistido hoy.',
-            ),
-            DropdownButtonFormField<String>(
-              value: _servicioSeleccionado,
-              decoration: _getInputDecoration('Selecciona un servicio'),
-              items: _servicios
-                  .map((servicio) => DropdownMenuItem(
-                        value: servicio,
-                        child: Text(servicio, style: GoogleFonts.poppins()),
-                      ))
-                  .toList(),
-              onChanged: (value) =>
-                  setState(() => _servicioSeleccionado = value),
-              validator: (value) =>
-                  value == null ? 'Por favor, selecciona un servicio' : null,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
-  Widget _buildPersonTypeSection() {
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildQuestionTitle(
-              '¿Nuevo o Visita?',
-              'Nuevo es aquel que nos visita por primera vez. Visita es aquella persona que se congrega en otra iglesia, solo está en la ciudad por un tiempo corto, entre otras. Es decir, que no se le puede hacer un proceso de consolidación.',
-            ),
-            RadioListTile<String>(
-              title: Text('Nuevo', style: GoogleFonts.poppins()),
-              value: 'Nuevo',
-              groupValue: _tipoPersona,
-              onChanged: (value) => setState(() => _tipoPersona = value),
-              activeColor: Colors.teal.shade700,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-            ),
-            RadioListTile<String>(
-              title: Text('Visita', style: GoogleFonts.poppins()),
-              value: 'Visita',
-              groupValue: _tipoPersona,
-              onChanged: (value) => setState(() => _tipoPersona = value),
-              activeColor: Colors.teal.shade700,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-            ),
-          ],
-        ),
+Widget _buildServiceSection() {
+  return Card(
+    key: _fieldKeys['servicio'],
+    elevation: 4,
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+    child: Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildQuestionTitle(
+            'Servicio al que Asististe',
+            'Selecciona el servicio al que has asistido hoy.',
+          ),
+          DropdownButtonFormField<String>(
+            value: _servicioSeleccionado,
+            decoration: _getInputDecoration('Selecciona un servicio'),
+            items: _servicios
+                .map((servicio) => DropdownMenuItem(
+                      value: servicio,
+                      child: Text(servicio, style: GoogleFonts.poppins()),
+                    ))
+                .toList(),
+            onChanged: (value) =>
+                setState(() => _servicioSeleccionado = value),
+            validator: (value) =>
+                value == null ? 'Por favor, selecciona un servicio' : null,
+          ),
+        ],
       ),
-    );
-  }
+    ),
+  );
+}
+
+Widget _buildPersonTypeSection() {
+  return Card(
+    key: _fieldKeys['tipoPersona'],
+    elevation: 4,
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+    child: Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildQuestionTitle(
+            '¿Nuevo o Visita?',
+            'Nuevo es aquel que nos visita por primera vez. Visita es aquella persona que se congrega en otra iglesia, solo está en la ciudad por un tiempo corto, entre otras. Es decir, que no se le puede hacer un proceso de consolidación.',
+          ),
+          RadioListTile<String>(
+            title: Text('Nuevo', style: GoogleFonts.poppins()),
+            value: 'Nuevo',
+            groupValue: _tipoPersona,
+            onChanged: (value) => setState(() => _tipoPersona = value),
+            activeColor: Colors.teal.shade700,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+          ),
+          RadioListTile<String>(
+            title: Text('Visita', style: GoogleFonts.poppins()),
+            value: 'Visita',
+            groupValue: _tipoPersona,
+            onChanged: (value) => setState(() => _tipoPersona = value),
+            activeColor: Colors.teal.shade700,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+          ),
+        ],
+      ),
+    ),
+  );
+}
 
   Widget _buildNewPersonSection() {
     return Column(
@@ -457,40 +530,42 @@ class _FormularioPageState extends State<FormularioPage> {
     );
   }
 
-  Widget _buildGenderSection() {
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildQuestionTitle(
-              'Género',
-              'Por favor, seleccione su género',
-            ),
-            RadioListTile<String>(
-              title: Text('Hombre', style: GoogleFonts.poppins()),
-              value: 'Hombre',
-              groupValue: _sexo,
-              onChanged: (value) => setState(() => _sexo = value),
-              activeColor: Colors.teal.shade700,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-            ),
-            RadioListTile<String>(
-              title: Text('Mujer', style: GoogleFonts.poppins()),
-              value: 'Mujer',
-              groupValue: _sexo,
-              onChanged: (value) => setState(() => _sexo = value),
-              activeColor: Colors.teal.shade700,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-            ),
-          ],
-        ),
+
+Widget _buildGenderSection() {
+  return Card(
+    key: _fieldKeys['sexo'],
+    elevation: 4,
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+    child: Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildQuestionTitle(
+            'Género',
+            'Por favor, seleccione su género',
+          ),
+          RadioListTile<String>(
+            title: Text('Hombre', style: GoogleFonts.poppins()),
+            value: 'Hombre',
+            groupValue: _sexo,
+            onChanged: (value) => setState(() => _sexo = value),
+            activeColor: Colors.teal.shade700,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+          ),
+          RadioListTile<String>(
+            title: Text('Mujer', style: GoogleFonts.poppins()),
+            value: 'Mujer',
+            groupValue: _sexo,
+            onChanged: (value) => setState(() => _sexo = value),
+            activeColor: Colors.teal.shade700,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+          ),
+        ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildAgeSection() {
     return Card(
@@ -552,57 +627,59 @@ class _FormularioPageState extends State<FormularioPage> {
     );
   }
 
-  Widget _buildCivilStatusSection() {
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildQuestionTitle(
-              'Estado Civil',
-              'Indique su estado civil actual',
-            ),
-            DropdownButtonFormField<String>(
-              value: _estadoCivil,
-              decoration: _getInputDecoration('Selecciona su estado civil'),
-              items: _estadosCiviles
-                  .map((estado) => DropdownMenuItem(
-                        value: estado,
-                        child: Text(estado, style: GoogleFonts.poppins()),
-                      ))
-                  .toList(),
-              onChanged: (value) {
-                setState(() {
-                  _estadoCivil = value;
-                  _nombreParejaController.text =
-                      (value == 'Casado(a)' || value == 'Unión Libre')
-                          ? ''
-                          : 'No Aplica';
-                });
-              },
-              validator: (value) =>
-                  value == null ? 'Selecciona su estado civil' : null,
-            ),
-            if (_estadoCivil == 'Casado(a)' || _estadoCivil == 'Unión Libre')
-              Padding(
-                padding: const EdgeInsets.only(top: 16.0),
-                child: TextFormField(
-                  controller: _nombreParejaController,
-                  decoration: _getInputDecoration('Nombre de su pareja'),
-                  textCapitalization: TextCapitalization.sentences,
-                  validator: (value) => value!.isEmpty
-                      ? 'Por favor, ingrese el nombre de su pareja'
-                      : null,
-                ),
+
+Widget _buildCivilStatusSection() {
+  return Card(
+    key: _fieldKeys['estadoCivil'],
+    elevation: 4,
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+    child: Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildQuestionTitle(
+            'Estado Civil',
+            'Indique su estado civil actual',
+          ),
+          DropdownButtonFormField<String>(
+            value: _estadoCivil,
+            decoration: _getInputDecoration('Selecciona su estado civil'),
+            items: _estadosCiviles
+                .map((estado) => DropdownMenuItem(
+                      value: estado,
+                      child: Text(estado, style: GoogleFonts.poppins()),
+                    ))
+                .toList(),
+            onChanged: (value) {
+              setState(() {
+                _estadoCivil = value;
+                _nombreParejaController.text =
+                    (value == 'Casado(a)' || value == 'Unión Libre')
+                        ? ''
+                        : 'No Aplica';
+              });
+            },
+            validator: (value) =>
+                value == null ? 'Selecciona su estado civil' : null,
+          ),
+          if (_estadoCivil == 'Casado(a)' || _estadoCivil == 'Unión Libre')
+            Padding(
+              padding: const EdgeInsets.only(top: 16.0),
+              child: TextFormField(
+                controller: _nombreParejaController,
+                decoration: _getInputDecoration('Nombre de su pareja'),
+                textCapitalization: TextCapitalization.sentences,
+                validator: (value) => value!.isEmpty
+                    ? 'Por favor, ingrese el nombre de su pareja'
+                    : null,
               ),
-          ],
-        ),
+            ),
+        ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildOccupationSection() {
     return Card(
@@ -650,55 +727,56 @@ class _FormularioPageState extends State<FormularioPage> {
     );
   }
 
-  Widget _buildChildrenSection() {
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildQuestionTitle(
-              'Hijos',
-              '¿Tienes hijos?',
-            ),
-            RadioListTile<bool>(
-              title: Text('Sí', style: GoogleFonts.poppins()),
-              value: true,
-              groupValue: _tieneHijos,
-              onChanged: (value) => setState(() {
-                _tieneHijos = value;
-                _tieneHijosError =
-                    null; // Limpiar el error al seleccionar una opción
-              }),
-              activeColor: Colors.teal.shade700,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-            ),
-            RadioListTile<bool>(
-              title: Text('No', style: GoogleFonts.poppins()),
-              value: false,
-              groupValue: _tieneHijos,
-              onChanged: (value) => setState(() {
-                _tieneHijos = value;
-                _tieneHijosError = null;
-              }),
-              activeColor: Colors.teal.shade700,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-            ),
-            if (_tieneHijosError != null)
-              Padding(
-                padding: const EdgeInsets.only(left: 8.0, top: 4.0),
-                child: Text(
-                  _tieneHijosError!,
-                  style: TextStyle(color: Colors.red, fontSize: 12),
-                ),
+
+Widget _buildChildrenSection() {
+  return Card(
+    key: _fieldKeys['tieneHijos'],
+    elevation: 4,
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+    child: Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildQuestionTitle(
+            'Hijos',
+            '¿Tienes hijos?',
+          ),
+          RadioListTile<bool>(
+            title: Text('Sí', style: GoogleFonts.poppins()),
+            value: true,
+            groupValue: _tieneHijos,
+            onChanged: (value) => setState(() {
+              _tieneHijos = value;
+              _tieneHijosError = null;
+            }),
+            activeColor: Colors.teal.shade700,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+          ),
+          RadioListTile<bool>(
+            title: Text('No', style: GoogleFonts.poppins()),
+            value: false,
+            groupValue: _tieneHijos,
+            onChanged: (value) => setState(() {
+              _tieneHijos = value;
+              _tieneHijosError = null;
+            }),
+            activeColor: Colors.teal.shade700,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+          ),
+          if (_tieneHijosError != null)
+            Padding(
+              padding: const EdgeInsets.only(left: 8.0, top: 4.0),
+              child: Text(
+                _tieneHijosError!,
+                style: TextStyle(color: Colors.red, fontSize: 12),
               ),
-          ],
-        ),
+            ),
+        ],
       ),
-    );
-  }
+    ),
+  );
+}
 
 // Función para validar antes de continuar
   bool _validateForm() {
