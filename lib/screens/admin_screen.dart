@@ -12,6 +12,11 @@ import 'TribusScreen.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter/gestures.dart';
+// NUEVOS IMPORTS PARA DESCARGAR GRÁFICAS
+import 'package:screenshot/screenshot.dart';
+import 'package:universal_html/html.dart' as html;
+import 'dart:ui' as ui;
+import 'dart:typed_data';
 
 class AdminPanel extends StatefulWidget {
   const AdminPanel({super.key});
@@ -564,137 +569,317 @@ class _AdminPanelState extends State<AdminPanel>
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setState) {
+            // Obtener el tamaño de la pantalla
+            final size = MediaQuery.of(context).size;
+            final isSmallScreen = size.width < 600;
+            final isMediumScreen = size.width >= 600 && size.width < 900;
+            final isLargeScreen = size.width >= 900;
+
             return Dialog(
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Container(
-                width: MediaQuery.of(context).size.width * 0.9,
+                width: isSmallScreen
+                    ? size.width * 0.95
+                    : isMediumScreen
+                        ? size.width * 0.85
+                        : size.width * 0.75,
                 constraints: BoxConstraints(
-                  maxHeight: MediaQuery.of(context).size.height * 0.9,
+                  maxHeight: size.height * 0.92,
+                  maxWidth: isLargeScreen ? 1200 : double.infinity,
                 ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Cabecera fija
+                    // Cabecera fija con botón de descarga - RESPONSIVA
                     Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(
-                            child: Row(
+                      padding: EdgeInsets.all(isSmallScreen ? 12 : 20),
+                      child: isSmallScreen
+                          ? Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Icon(Icons.bar_chart,
-                                    color: primaryTeal, size: 28),
-                                const SizedBox(width: 10),
-                                Text(
-                                  "Estadísticas",
-                                  style: TextStyle(
-                                    fontSize: 24,
-                                    fontWeight: FontWeight.bold,
-                                    color: primaryTeal,
+                                Row(
+                                  children: [
+                                    Icon(Icons.bar_chart,
+                                        color: primaryTeal,
+                                        size: isSmallScreen ? 24 : 28),
+                                    SizedBox(width: isSmallScreen ? 8 : 10),
+                                    Expanded(
+                                      child: Text(
+                                        "Estadísticas",
+                                        style: TextStyle(
+                                          fontSize: isSmallScreen ? 18 : 24,
+                                          fontWeight: FontWeight.bold,
+                                          color: primaryTeal,
+                                        ),
+                                      ),
+                                    ),
+                                    IconButton(
+                                      icon:
+                                          Icon(Icons.close, color: primaryTeal),
+                                      onPressed: () => Navigator.pop(context),
+                                    ),
+                                  ],
+                                ),
+                                SizedBox(height: 12),
+                                // Botón de descarga en pantallas pequeñas
+                                Container(
+                                  width: double.infinity,
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      colors: [
+                                        secondaryOrange,
+                                        secondaryOrange.withOpacity(0.8)
+                                      ],
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                    ),
+                                    borderRadius: BorderRadius.circular(12),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: secondaryOrange.withOpacity(0.3),
+                                        blurRadius: 8,
+                                        offset: const Offset(0, 4),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Material(
+                                    color: Colors.transparent,
+                                    child: InkWell(
+                                      borderRadius: BorderRadius.circular(12),
+                                      onTap: () => _descargarGrafica(setState),
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 16, vertical: 10),
+                                        child: Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            Icon(Icons.download_rounded,
+                                                color: Colors.white, size: 20),
+                                            const SizedBox(width: 6),
+                                            Text(
+                                              'Descargar',
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
                                   ),
                                 ),
                               ],
+                            )
+                          : Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.bar_chart,
+                                          color: primaryTeal, size: 28),
+                                      const SizedBox(width: 10),
+                                      Text(
+                                        "Estadísticas",
+                                        style: TextStyle(
+                                          fontSize: 24,
+                                          fontWeight: FontWeight.bold,
+                                          color: primaryTeal,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                // Botón de descarga en pantallas medianas/grandes
+                                Container(
+                                  margin: const EdgeInsets.only(right: 8),
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      colors: [
+                                        secondaryOrange,
+                                        secondaryOrange.withOpacity(0.8)
+                                      ],
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                    ),
+                                    borderRadius: BorderRadius.circular(12),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: secondaryOrange.withOpacity(0.3),
+                                        blurRadius: 8,
+                                        offset: const Offset(0, 4),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Material(
+                                    color: Colors.transparent,
+                                    child: InkWell(
+                                      borderRadius: BorderRadius.circular(12),
+                                      onTap: () => _descargarGrafica(setState),
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 16, vertical: 10),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(Icons.download_rounded,
+                                                color: Colors.white, size: 20),
+                                            const SizedBox(width: 6),
+                                            Text(
+                                              'Descargar',
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                IconButton(
+                                  icon: Icon(Icons.close, color: primaryTeal),
+                                  onPressed: () => Navigator.pop(context),
+                                ),
+                              ],
                             ),
-                          ),
-                          IconButton(
-                            icon: Icon(Icons.close, color: primaryTeal),
-                            onPressed: () => Navigator.pop(context),
-                          ),
-                        ],
-                      ),
                     ),
                     const Divider(thickness: 1),
 
-                    // Contenido con scroll
+                    // Contenido con scroll - RESPONSIVO
                     Flexible(
                       child: SingleChildScrollView(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: isSmallScreen ? 12 : 20,
+                          vertical: isSmallScreen ? 8 : 0,
+                        ),
                         child: Padding(
-                          padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                          padding:
+                              EdgeInsets.only(bottom: isSmallScreen ? 12 : 20),
                           child: Column(
                             children: [
-                              const SizedBox(height: 15),
+                              SizedBox(height: isSmallScreen ? 10 : 15),
 
-                              // Selección de tipo de datos
+                              // Selección de tipo de datos - RESPONSIVA
                               Card(
                                 elevation: 3,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(15),
                                 ),
                                 child: Padding(
-                                  padding: const EdgeInsets.all(4.0),
-                                  child: Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceEvenly,
-                                    children: [
-                                      Expanded(
-                                        child: _buildTipoGraficaButton(
-                                          "Consolidación",
-                                          "consolidacion",
-                                          Icons.people_outline,
-                                          setState,
+                                  padding:
+                                      EdgeInsets.all(isSmallScreen ? 8 : 12),
+                                  child: isSmallScreen
+                                      ? Column(
+                                          children: [
+                                            _buildTipoGraficaButton(
+                                              "Consolidación",
+                                              "consolidacion",
+                                              Icons.people_outline,
+                                              setState,
+                                            ),
+                                            const SizedBox(height: 8),
+                                            _buildTipoGraficaButton(
+                                              "Redes Sociales",
+                                              "redes",
+                                              Icons.public,
+                                              setState,
+                                            ),
+                                          ],
+                                        )
+                                      : Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.spaceEvenly,
+                                          children: [
+                                            Expanded(
+                                              child: _buildTipoGraficaButton(
+                                                "Consolidación",
+                                                "consolidacion",
+                                                Icons.people_outline,
+                                                setState,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 10),
+                                            Expanded(
+                                              child: _buildTipoGraficaButton(
+                                                "Redes Sociales",
+                                                "redes",
+                                                Icons.public,
+                                                setState,
+                                              ),
+                                            ),
+                                          ],
                                         ),
-                                      ),
-                                      const SizedBox(width: 10),
-                                      Expanded(
-                                        child: _buildTipoGraficaButton(
-                                          "Redes Sociales",
-                                          "redes",
-                                          Icons.public,
-                                          setState,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
                                 ),
                               ),
 
-                              const SizedBox(height: 15),
+                              SizedBox(height: isSmallScreen ? 12 : 15),
 
-                              // Selección de período
+                              // Selección de período - RESPONSIVA
                               Card(
                                 elevation: 3,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(10),
                                 ),
                                 child: Padding(
-                                  padding: const EdgeInsets.all(2.0),
+                                  padding:
+                                      EdgeInsets.all(isSmallScreen ? 8 : 12),
                                   child: Column(
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
                                     children: [
                                       Padding(
-                                        padding: const EdgeInsets.only(
-                                            left: 8.0, bottom: 5),
+                                        padding: EdgeInsets.only(
+                                          left: 8.0,
+                                          bottom: isSmallScreen ? 8 : 12,
+                                        ),
                                         child: Text(
                                           "Período",
                                           style: TextStyle(
-                                            fontSize: 16,
+                                            fontSize: isSmallScreen ? 14 : 16,
                                             fontWeight: FontWeight.bold,
                                             color: primaryTeal,
                                           ),
                                         ),
                                       ),
-                                      Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.spaceEvenly,
-                                        children: [
-                                          _buildFiltroButton(
-                                              "Semanal", "semanal", setState),
-                                          _buildFiltroButton(
-                                              "Mensual", "mensual", setState),
-                                          _buildFiltroButton(
-                                              "Anual", "anual", setState),
-                                        ],
-                                      ),
+                                      isSmallScreen
+                                          ? Column(
+                                              children: [
+                                                _buildFiltroButton("Semanal",
+                                                    "semanal", setState),
+                                                const SizedBox(height: 8),
+                                                _buildFiltroButton("Mensual",
+                                                    "mensual", setState),
+                                                const SizedBox(height: 8),
+                                                _buildFiltroButton(
+                                                    "Anual", "anual", setState),
+                                              ],
+                                            )
+                                          : Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.spaceEvenly,
+                                              children: [
+                                                _buildFiltroButton("Semanal",
+                                                    "semanal", setState),
+                                                _buildFiltroButton("Mensual",
+                                                    "mensual", setState),
+                                                _buildFiltroButton(
+                                                    "Anual", "anual", setState),
+                                              ],
+                                            ),
                                     ],
                                   ),
                                 ),
                               ),
 
-                              const SizedBox(height: 15),
+                              SizedBox(height: isSmallScreen ? 12 : 15),
 
                               // Filtro por fecha
                               Card(
@@ -703,83 +888,110 @@ class _AdminPanelState extends State<AdminPanel>
                                   borderRadius: BorderRadius.circular(15),
                                 ),
                                 child: Padding(
-                                  padding: const EdgeInsets.all(12.0),
+                                  padding:
+                                      EdgeInsets.all(isSmallScreen ? 10 : 12),
                                   child: _buildFiltroPorFecha(setState),
                                 ),
                               ),
 
-                              const SizedBox(height: 15),
+                              SizedBox(height: isSmallScreen ? 12 : 15),
 
-                              // Selección de tipo de visualización
+                              // Selección de tipo de visualización - RESPONSIVA
                               Card(
                                 elevation: 3,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(15),
                                 ),
                                 child: Padding(
-                                  padding: const EdgeInsets.all(4.0),
+                                  padding:
+                                      EdgeInsets.all(isSmallScreen ? 8 : 12),
                                   child: Column(
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
                                     children: [
                                       Padding(
-                                        padding: const EdgeInsets.only(
-                                            left: 8.0, bottom: 5),
+                                        padding: EdgeInsets.only(
+                                          left: 8.0,
+                                          bottom: isSmallScreen ? 8 : 12,
+                                        ),
                                         child: Text(
                                           "Tipo de gráfica",
                                           style: TextStyle(
-                                            fontSize: 16,
+                                            fontSize: isSmallScreen ? 14 : 16,
                                             fontWeight: FontWeight.bold,
                                             color: primaryTeal,
                                           ),
                                         ),
                                       ),
-                                      Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.spaceEvenly,
-                                        children: [
-                                          _buildVisualizacionButton(
-                                              "Barras",
-                                              "barras",
-                                              Icons.bar_chart,
-                                              setState),
-                                          _buildVisualizacionButton(
-                                              "Línea",
-                                              "lineal",
-                                              Icons.show_chart,
-                                              setState),
-                                          _buildVisualizacionButton(
-                                              "Circular",
-                                              "circular",
-                                              Icons.pie_chart,
-                                              setState),
-                                        ],
-                                      ),
+                                      isSmallScreen
+                                          ? Column(
+                                              children: [
+                                                _buildVisualizacionButton(
+                                                    "Barras",
+                                                    "barras",
+                                                    Icons.bar_chart,
+                                                    setState),
+                                                const SizedBox(height: 8),
+                                                _buildVisualizacionButton(
+                                                    "Línea",
+                                                    "lineal",
+                                                    Icons.show_chart,
+                                                    setState),
+                                                const SizedBox(height: 8),
+                                                _buildVisualizacionButton(
+                                                    "Circular",
+                                                    "circular",
+                                                    Icons.pie_chart,
+                                                    setState),
+                                              ],
+                                            )
+                                          : Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.spaceEvenly,
+                                              children: [
+                                                _buildVisualizacionButton(
+                                                    "Barras",
+                                                    "barras",
+                                                    Icons.bar_chart,
+                                                    setState),
+                                                _buildVisualizacionButton(
+                                                    "Línea",
+                                                    "lineal",
+                                                    Icons.show_chart,
+                                                    setState),
+                                                _buildVisualizacionButton(
+                                                    "Circular",
+                                                    "circular",
+                                                    Icons.pie_chart,
+                                                    setState),
+                                              ],
+                                            ),
                                     ],
                                   ),
                                 ),
                               ),
 
-                              const SizedBox(height: 20),
+                              SizedBox(height: isSmallScreen ? 15 : 20),
 
-                              // Gráfica con LayoutBuilder para ser responsiva
-                              LayoutBuilder(builder: (context, constraints) {
-                                return SizedBox(
-                                  height: constraints.maxWidth > 600
-                                      ? 400 // Altura para pantallas grandes
-                                      : 300, // Altura para pantallas pequeñas
-                                  child: Card(
-                                    elevation: 4,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(15),
-                                    ),
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(15),
-                                      child: _buildGrafica(setState),
-                                    ),
+                              // Gráfica con altura responsiva
+                              SizedBox(
+                                height: isSmallScreen
+                                    ? 280
+                                    : isMediumScreen
+                                        ? 350
+                                        : 400,
+                                child: Card(
+                                  elevation: 4,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(15),
                                   ),
-                                );
-                              }),
+                                  child: Padding(
+                                    padding:
+                                        EdgeInsets.all(isSmallScreen ? 10 : 15),
+                                    child: _buildGrafica(setState),
+                                  ),
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -798,6 +1010,7 @@ class _AdminPanelState extends State<AdminPanel>
   Widget _buildFiltroButton(
       String titulo, String filtro, StateSetter setState) {
     bool isSelected = _filtroSeleccionado == filtro;
+
     return Expanded(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 4.0),
@@ -816,10 +1029,14 @@ class _AdminPanelState extends State<AdminPanel>
             ),
             padding: const EdgeInsets.symmetric(vertical: 12),
           ),
-          child: Text(
-            titulo,
-            style: TextStyle(
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              titulo,
+              style: TextStyle(
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                fontSize: 14,
+              ),
             ),
           ),
         ),
@@ -830,6 +1047,7 @@ class _AdminPanelState extends State<AdminPanel>
   Widget _buildTipoGraficaButton(
       String titulo, String tipo, IconData icono, StateSetter setState) {
     bool isSelected = _tipoGrafica == tipo;
+
     return ElevatedButton.icon(
       onPressed: () {
         setState(() {
@@ -839,12 +1057,17 @@ class _AdminPanelState extends State<AdminPanel>
       icon: Icon(
         icono,
         color: isSelected ? Colors.white : primaryTeal,
+        size: 20,
       ),
-      label: Text(
-        titulo,
-        style: TextStyle(
-          color: isSelected ? Colors.white : primaryTeal,
-          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+      label: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Text(
+          titulo,
+          style: TextStyle(
+            color: isSelected ? Colors.white : primaryTeal,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            fontSize: 14,
+          ),
         ),
       ),
       style: ElevatedButton.styleFrom(
@@ -857,7 +1080,7 @@ class _AdminPanelState extends State<AdminPanel>
             width: 1,
           ),
         ),
-        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
       ),
     );
   }
@@ -865,6 +1088,7 @@ class _AdminPanelState extends State<AdminPanel>
   Widget _buildVisualizacionButton(
       String titulo, String tipo, IconData icono, StateSetter setState) {
     bool isSelected = _tipoVisualizacion == tipo;
+
     return Expanded(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 4.0),
@@ -879,12 +1103,15 @@ class _AdminPanelState extends State<AdminPanel>
             color: isSelected ? Colors.white : Colors.black87,
             size: 18,
           ),
-          label: Text(
-            titulo,
-            style: TextStyle(
-              color: isSelected ? Colors.white : Colors.black87,
-              fontSize: 12,
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+          label: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              titulo,
+              style: TextStyle(
+                color: isSelected ? Colors.white : Colors.black87,
+                fontSize: 12,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              ),
             ),
           ),
           style: ElevatedButton.styleFrom(
@@ -907,16 +1134,16 @@ class _AdminPanelState extends State<AdminPanel>
         if (snapshot.connectionState == ConnectionState.waiting) {
           return Center(
             child: Column(
-              mainAxisSize: MainAxisSize.min, // Reducir tamaño vertical
+              mainAxisSize: MainAxisSize.min,
               children: [
                 CircularProgressIndicator(color: secondaryOrange),
-                const SizedBox(height: 8), // Reducido de 15 a 8
+                const SizedBox(height: 8),
                 Text(
                   "Cargando datos...",
                   style: TextStyle(
                     color: primaryTeal,
                     fontWeight: FontWeight.bold,
-                    fontSize: 14, // Tamaño de fuente reducido
+                    fontSize: 14,
                   ),
                 ),
               ],
@@ -927,17 +1154,16 @@ class _AdminPanelState extends State<AdminPanel>
         if (snapshot.hasError) {
           return Center(
             child: Column(
-              mainAxisSize: MainAxisSize.min, // Reducir tamaño vertical
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.error_outline,
-                    color: Colors.red, size: 32), // Reducido de 40 a 32
-                const SizedBox(height: 6), // Reducido de 10 a 6
-                Text(
-                  "Error al cargar datos: ${snapshot.error}",
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: Colors.red,
-                    fontSize: 13, // Tamaño de fuente reducido
+                Icon(Icons.error_outline, color: Colors.red, size: 32),
+                const SizedBox(height: 6),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Text(
+                    "Error al cargar datos: ${snapshot.error}",
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: Colors.red, fontSize: 13),
                   ),
                 ),
               ],
@@ -948,17 +1174,16 @@ class _AdminPanelState extends State<AdminPanel>
         if (!snapshot.hasData || snapshot.data!.isEmpty) {
           return Center(
             child: Column(
-              mainAxisSize: MainAxisSize.min, // Reducir tamaño vertical
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.info_outline,
-                    color: primaryTeal, size: 32), // Reducido de 40 a 32
-                const SizedBox(height: 6), // Reducido de 10 a 6
+                Icon(Icons.info_outline, color: primaryTeal, size: 32),
+                const SizedBox(height: 6),
                 Text(
                   "No hay datos disponibles",
                   style: TextStyle(
                     color: primaryTeal,
                     fontWeight: FontWeight.bold,
-                    fontSize: 13, // Tamaño de fuente reducido
+                    fontSize: 13,
                   ),
                 ),
               ],
@@ -969,56 +1194,932 @@ class _AdminPanelState extends State<AdminPanel>
         final datos = snapshot.data!;
         final tipoActual = datos[_tipoGrafica] ?? [];
 
-        return Column(
-          children: [
-            // Título más compacto
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                  vertical: 6.0), // Reducido de 10 a 6
-              child: Text(
-                "${_tipoGrafica == 'consolidacion' ? 'Consolidación' : 'Redes Sociales'} - ${_filtroSeleccionado.substring(0, 1).toUpperCase() + _filtroSeleccionado.substring(1)}",
-                style: TextStyle(
-                  fontSize: 16, // Reducido de 20 a 16
-                  fontWeight: FontWeight.bold,
-                  color: primaryTeal,
-                  shadows: [
-                    Shadow(
-                      offset: const Offset(0, 1),
-                      blurRadius: 2,
-                      color: Colors.black
-                          .withOpacity(0.15), // Ligeramente más sutil
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const Divider(thickness: 1), // Reducido de 1.5 a 1
-            const SizedBox(height: 5), // Reducido de 10 a 5
-
-            // Añadir selector de tipo de visualización más compacto
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+        return Screenshot(
+          controller: _screenshotController,
+          child: RepaintBoundary(
+            key: _chartKey,
+            child: Container(
+              color: Colors.white,
+              padding: const EdgeInsets.all(16),
+              child: Column(
                 children: [
-                  _buildVisualizationToggle('barras', Icons.bar_chart),
-                  _buildVisualizationToggle('lineal', Icons.show_chart),
-                  _buildVisualizationToggle('circular', Icons.pie_chart),
+                  // Título de la gráfica
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 6.0),
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        "${_tipoGrafica == 'consolidacion' ? 'Consolidación' : 'Redes Sociales'} - ${_filtroSeleccionado.substring(0, 1).toUpperCase() + _filtroSeleccionado.substring(1)}",
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: primaryTeal,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+                  const Divider(thickness: 1),
+                  const SizedBox(height: 5),
+
+                  // Selector de tipo de visualización
+                  if (!_isCapturing)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          _buildVisualizationToggle('barras', Icons.bar_chart),
+                          _buildVisualizationToggle('lineal', Icons.show_chart),
+                          _buildVisualizationToggle(
+                              'circular', Icons.pie_chart),
+                        ],
+                      ),
+                    ),
+                  if (!_isCapturing) const SizedBox(height: 5),
+
+                  // Gráfica principal
+                  Expanded(
+                    child: _renderizarGrafica(tipoActual),
+                  ),
+
+                  // Leyenda
+                  _buildLeyendaCompacta(tipoActual),
                 ],
               ),
             ),
-            const SizedBox(height: 5),
-
-            // Contenido de la gráfica con mayor espacio
-            Expanded(
-              child: _renderizarGrafica(tipoActual),
-            ),
-
-            // Leyenda más compacta
-            _buildLeyendaCompacta(tipoActual),
-          ],
+          ),
         );
       },
+    );
+  }
+
+  /// ========== MÉTODO MEJORADO PARA DESCARGAR GRÁFICA EN ALTA RESOLUCIÓN ==========
+  /// Este método crea una copia invisible de la gráfica en tamaño fijo (1600x900px)
+  /// y la captura, asegurando que siempre se vea bien sin importar el tamaño de pantalla
+  Future<void> _descargarGrafica(StateSetter setDialogState) async {
+    OverlayEntry? overlayEntry;
+
+    try {
+      // Mostrar indicador de carga
+      setDialogState(() {
+        _isCapturing = true;
+      });
+
+      // Mostrar mensaje de progreso
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Text('Generando gráfica en alta resolución...'),
+            ],
+          ),
+          backgroundColor: primaryTeal,
+          duration: const Duration(seconds: 3),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+
+      // Obtener los datos actuales de la gráfica
+      final datosGrafica = await _obtenerDatosParaGrafica();
+      final tipoActual = datosGrafica[_tipoGrafica] ?? [];
+
+      if (tipoActual.isEmpty) {
+        throw Exception('No hay datos para exportar');
+      }
+
+      // Crear un controlador de screenshot específico para la captura
+      final screenshotController = ScreenshotController();
+      final GlobalKey repaintKey = GlobalKey();
+
+      // Crear una copia invisible de la gráfica en tamaño fijo
+      overlayEntry = OverlayEntry(
+        builder: (context) => Positioned(
+          // Posicionar fuera de la vista pero renderizable
+          left: -10000,
+          top: -10000,
+          child: Opacity(
+            opacity: 0.01, // Casi invisible pero renderizable
+            child: IgnorePointer(
+              child: MediaQuery(
+                data: MediaQueryData(
+                  size: Size(1600, 900), // Tamaño fijo grande
+                  devicePixelRatio: 1.0,
+                  textScaleFactor: 1.0,
+                ),
+                child: Directionality(
+                  textDirection: ui.TextDirection.ltr,
+                  child: Material(
+                    color: Colors.transparent,
+                    child: Screenshot(
+                      controller: screenshotController,
+                      child: RepaintBoundary(
+                        key: repaintKey,
+                        child: Container(
+                          width: 1600,
+                          height: 900,
+                          color: Colors.white,
+                          padding: const EdgeInsets.all(32),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              // Encabezado de la gráfica
+                              _buildExportHeader(tipoActual),
+
+                              const SizedBox(height: 20),
+
+                              // Contenedor de la gráfica con tamaño fijo
+                              Expanded(
+                                child: Container(
+                                  padding: const EdgeInsets.all(20),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(
+                                      color: primaryTeal.withOpacity(0.2),
+                                      width: 2,
+                                    ),
+                                  ),
+                                  child: _buildExportChart(tipoActual),
+                                ),
+                              ),
+
+                              const SizedBox(height: 20),
+
+                              // Leyenda con mejor formato para exportación
+                              _buildExportLegend(tipoActual),
+
+                              const SizedBox(height: 16),
+
+                              // Pie de página con información
+                              _buildExportFooter(),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      // Insertar el overlay en la pantalla
+      Overlay.of(context).insert(overlayEntry);
+
+      // Esperar a que se renderice completamente (2 frames)
+      await Future.delayed(const Duration(milliseconds: 100));
+      await WidgetsBinding.instance.endOfFrame;
+      await Future.delayed(const Duration(milliseconds: 100));
+      await WidgetsBinding.instance.endOfFrame;
+
+      // Capturar la imagen en alta calidad
+      final Uint8List? imageBytes = await screenshotController.capture(
+        pixelRatio: 2.0, // Alta resolución
+      );
+
+      // Remover el overlay
+      overlayEntry.remove();
+      overlayEntry = null;
+
+      if (imageBytes == null) {
+        throw Exception('No se pudo capturar la imagen');
+      }
+
+      // Generar nombre descriptivo del archivo
+      final String tipoGraficaTexto =
+          _tipoGrafica == 'consolidacion' ? 'Consolidacion' : 'Redes_Sociales';
+      final String periodoTexto =
+          _filtroSeleccionado.substring(0, 1).toUpperCase() +
+              _filtroSeleccionado.substring(1);
+      final String visualizacionTexto =
+          _tipoVisualizacion.substring(0, 1).toUpperCase() +
+              _tipoVisualizacion.substring(1);
+      final String anio =
+          _anioSeleccionado != -1 ? _anioSeleccionado.toString() : 'Todos';
+      final String mes = _mesSeleccionado != "Todos los meses"
+          ? _mesSeleccionado.substring(0, 3)
+          : 'Todos';
+      final String fecha =
+          DateFormat('dd-MM-yyyy_HH-mm').format(DateTime.now());
+
+      final String nombreArchivo =
+          'Grafica_${tipoGraficaTexto}_${periodoTexto}_${visualizacionTexto}_${anio}_${mes}_$fecha.png';
+
+      // Crear blob y descargar (solo para web)
+      final blob = html.Blob([imageBytes], 'image/png');
+      final url = html.Url.createObjectUrlFromBlob(blob);
+      final anchor = html.AnchorElement(href: url)
+        ..setAttribute('download', nombreArchivo)
+        ..click();
+
+      // Limpiar URL
+      html.Url.revokeObjectUrl(url);
+
+      // Ocultar indicador de carga
+      setDialogState(() {
+        _isCapturing = false;
+      });
+
+      // Mostrar mensaje de éxito
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  child:
+                      Icon(Icons.check_circle, color: Colors.white, size: 20),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        '✓ Gráfica descargada exitosamente',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
+                      ),
+                      Text(
+                        nombreArchivo,
+                        style: TextStyle(fontSize: 11),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.green[600],
+            duration: const Duration(seconds: 4),
+            behavior: SnackBarBehavior.floating,
+            action: SnackBarAction(
+              label: 'OK',
+              textColor: Colors.white,
+              onPressed: () {},
+            ),
+          ),
+        );
+      }
+    } catch (e, stackTrace) {
+      // Limpiar overlay si existe
+      overlayEntry?.remove();
+
+      // Ocultar indicador de carga
+      setDialogState(() {
+        _isCapturing = false;
+      });
+
+      // Log del error para debugging
+      print('❌ Error al descargar gráfica: $e');
+      print('Stack trace: $stackTrace');
+
+      // Mostrar error al usuario
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.error_outline, color: Colors.white, size: 24),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Error al descargar gráfica',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
+                      ),
+                      Text(
+                        'Por favor, intenta nuevamente',
+                        style: TextStyle(fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.red[600],
+            duration: const Duration(seconds: 5),
+            behavior: SnackBarBehavior.floating,
+            action: SnackBarAction(
+              label: 'Reintentar',
+              textColor: Colors.white,
+              onPressed: () => _descargarGrafica(setDialogState),
+            ),
+          ),
+        );
+      }
+    }
+  }
+
+  /// ========== MÉTODOS AUXILIARES PARA CONSTRUIR LA GRÁFICA DE EXPORTACIÓN ==========
+
+  /// Construye el encabezado para la gráfica exportada
+  Widget _buildExportHeader(List<ChartData> datos) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [primaryTeal, primaryTeal.withOpacity(0.8)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: primaryTeal.withOpacity(0.3),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(
+              _tipoVisualizacion == 'barras'
+                  ? Icons.bar_chart
+                  : _tipoVisualizacion == 'lineal'
+                      ? Icons.show_chart
+                      : Icons.pie_chart,
+              color: Colors.white,
+              size: 32,
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _tipoGrafica == 'consolidacion'
+                      ? 'Estadísticas de Consolidación'
+                      : 'Estadísticas de Redes Sociales',
+                  style: const TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Período: ${_filtroSeleccionado.substring(0, 1).toUpperCase() + _filtroSeleccionado.substring(1)} | '
+                  'Año: ${_anioSeleccionado != -1 ? _anioSeleccionado : "Todos"} | '
+                  'Mes: $_mesSeleccionado',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.white.withOpacity(0.9),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: secondaryOrange,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              '${datos.length} registros',
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Construye la gráfica optimizada para exportación
+  Widget _buildExportChart(List<ChartData> datos) {
+    if (datos.isEmpty) {
+      return Center(
+        child: Text(
+          'No hay datos disponibles',
+          style: TextStyle(
+            fontSize: 24,
+            color: Colors.grey[600],
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      );
+    }
+
+    // Renderizar según el tipo de visualización seleccionado
+    switch (_tipoVisualizacion) {
+      case 'barras':
+        return _buildExportBarChart(datos);
+      case 'lineal':
+        return _buildExportLineChart(datos);
+      case 'circular':
+        return _buildExportPieChart(datos);
+      default:
+        return _buildExportBarChart(datos);
+    }
+  }
+
+  /// Gráfica de barras optimizada para exportación
+  Widget _buildExportBarChart(List<ChartData> datos) {
+    return BarChart(
+      BarChartData(
+        alignment: BarChartAlignment.spaceAround,
+        maxY: _calcularMaxY(datos) * 1.2,
+        barGroups: datos.asMap().entries.map((entry) {
+          int x = entry.key;
+          ChartData data = entry.value;
+          return BarChartGroupData(
+            x: x,
+            barRods: [
+              BarChartRodData(
+                toY: data.value.toDouble(),
+                color: data.color,
+                width: 28, // Barras más anchas para exportación
+                borderRadius: BorderRadius.circular(8),
+                backDrawRodData: BackgroundBarChartRodData(
+                  show: true,
+                  toY: _calcularMaxY(datos) * 1.1,
+                  color: Colors.grey.withOpacity(0.1),
+                ),
+              ),
+            ],
+            showingTooltipIndicators: [0],
+          );
+        }).toList(),
+        titlesData: FlTitlesData(
+          show: true,
+          leftTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 60,
+              interval: _calcularIntervaloY(datos),
+              getTitlesWidget: (value, meta) => Padding(
+                padding: const EdgeInsets.only(right: 8.0),
+                child: Text(
+                  value.toInt().toString(),
+                  style: const TextStyle(
+                    fontSize: 16, // Texto más grande
+                    color: Colors.black87,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          bottomTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 80,
+              getTitlesWidget: (value, meta) {
+                if (value.toInt() >= 0 && value.toInt() < datos.length) {
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 12.0),
+                    child: Transform.rotate(
+                      angle: -pi / 4,
+                      child: Text(
+                        datos[value.toInt()].label,
+                        style: const TextStyle(
+                          fontSize: 14, // Texto más grande
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  );
+                }
+                return const Text('');
+              },
+            ),
+          ),
+          topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+        ),
+        gridData: FlGridData(
+          show: true,
+          drawVerticalLine: false,
+          horizontalInterval: _calcularIntervaloY(datos),
+          getDrawingHorizontalLine: (value) {
+            return FlLine(
+              color: Colors.grey.withOpacity(0.3),
+              strokeWidth: 1,
+              dashArray: [8, 4],
+            );
+          },
+        ),
+        borderData: FlBorderData(
+          show: true,
+          border: Border(
+            bottom: BorderSide(color: Colors.grey.withOpacity(0.5), width: 2),
+            left: BorderSide(color: Colors.grey.withOpacity(0.5), width: 2),
+          ),
+        ),
+        barTouchData: BarTouchData(enabled: false),
+      ),
+    );
+  }
+
+  /// Gráfica lineal optimizada para exportación
+  Widget _buildExportLineChart(List<ChartData> datos) {
+    return LineChart(
+      LineChartData(
+        lineTouchData: LineTouchData(enabled: false),
+        gridData: FlGridData(
+          show: true,
+          drawVerticalLine: false,
+          horizontalInterval: _calcularIntervaloY(datos),
+          getDrawingHorizontalLine: (value) {
+            return FlLine(
+              color: Colors.grey.withOpacity(0.3),
+              strokeWidth: 1,
+              dashArray: [8, 4],
+            );
+          },
+        ),
+        titlesData: FlTitlesData(
+          show: true,
+          bottomTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 50,
+              interval: 1,
+              getTitlesWidget: (value, meta) {
+                if (value < 0 || value >= datos.length) return const Text('');
+                return SideTitleWidget(
+                  axisSide: meta.axisSide,
+                  space: 8,
+                  child: Text(
+                    datos[value.toInt()].label,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                      color: Colors.black87,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                );
+              },
+            ),
+          ),
+          leftTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 60,
+              interval: _calcularIntervaloY(datos),
+              getTitlesWidget: (value, meta) {
+                if (value % 1 == 0) {
+                  return SideTitleWidget(
+                    axisSide: meta.axisSide,
+                    space: 8,
+                    child: Text(
+                      value.toInt().toString(),
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                  );
+                }
+                return const SizedBox.shrink();
+              },
+            ),
+          ),
+          topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+        ),
+        borderData: FlBorderData(
+          show: true,
+          border: Border(
+            bottom: BorderSide(color: Colors.grey.withOpacity(0.5), width: 2),
+            left: BorderSide(color: Colors.grey.withOpacity(0.5), width: 2),
+          ),
+        ),
+        minX: 0,
+        maxX: datos.length - 1.0,
+        minY: 0,
+        maxY: _calcularMaxY(datos) * 1.2,
+        lineBarsData: [
+          LineChartBarData(
+            spots: datos.asMap().entries.map((entry) {
+              return FlSpot(entry.key.toDouble(), entry.value.value.toDouble());
+            }).toList(),
+            isCurved: true,
+            color: primaryTeal,
+            barWidth: 4,
+            isStrokeCapRound: true,
+            dotData: FlDotData(
+              show: true,
+              getDotPainter: (spot, percent, barData, index) {
+                return FlDotCirclePainter(
+                  radius: 6,
+                  color: secondaryOrange,
+                  strokeWidth: 3.0,
+                  strokeColor: Colors.white,
+                );
+              },
+            ),
+            belowBarData: BarAreaData(
+              show: true,
+              gradient: LinearGradient(
+                colors: [
+                  primaryTeal.withOpacity(0.4),
+                  primaryTeal.withOpacity(0.1),
+                  primaryTeal.withOpacity(0.0),
+                ],
+                stops: [0, 0.7, 1.0],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Gráfica circular optimizada para exportación
+  Widget _buildExportPieChart(List<ChartData> datos) {
+    final total = _calcularTotal(datos);
+
+    return PieChart(
+      PieChartData(
+        pieTouchData: PieTouchData(enabled: false),
+        sections: datos.asMap().entries.map((entry) {
+          final index = entry.key;
+          final data = entry.value;
+          final porcentaje = (data.value / total) * 100;
+
+          return PieChartSectionData(
+            color: data.color,
+            value: data.value.toDouble(),
+            title: '${porcentaje.toStringAsFixed(1)}%',
+            radius: 180, // Radio más grande para exportación
+            titleStyle: TextStyle(
+              fontSize: 18, // Texto más grande
+              fontWeight: FontWeight.bold,
+              color: _esColorOscuro(data.color) ? Colors.white : Colors.black87,
+              shadows: [
+                Shadow(
+                  color: Colors.black26,
+                  offset: const Offset(0, 2),
+                  blurRadius: 3,
+                ),
+              ],
+            ),
+            badgeWidget: Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(10),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.2),
+                    spreadRadius: 1,
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    data.label,
+                    style: TextStyle(
+                      color: data.color,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  Text(
+                    data.value.toString(),
+                    style: TextStyle(
+                      color: Colors.grey.shade800,
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            badgePositionPercentageOffset: 1.3,
+          );
+        }).toList(),
+        sectionsSpace: 2,
+        centerSpaceRadius: 60,
+        centerSpaceColor: Colors.white,
+      ),
+    );
+  }
+
+  /// Construye la leyenda optimizada para exportación
+  Widget _buildExportLegend(List<ChartData> datos) {
+    if (datos.isEmpty) return const SizedBox();
+
+    final total =
+        _tipoVisualizacion == "circular" ? _calcularTotal(datos) : 0.0;
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.grey[50],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade300),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.legend_toggle, color: primaryTeal, size: 24),
+              const SizedBox(width: 8),
+              Text(
+                'Leyenda',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: primaryTeal,
+                ),
+              ),
+              if (_tipoVisualizacion == "circular") ...[
+                const Spacer(),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: secondaryOrange.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: secondaryOrange),
+                  ),
+                  child: Text(
+                    "Total: ${total.toInt()} registros",
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: secondaryOrange,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 20,
+            runSpacing: 12,
+            children: datos.map((data) {
+              final porcentaje = _tipoVisualizacion == "circular"
+                  ? ((data.value / total) * 100).toStringAsFixed(1)
+                  : null;
+
+              return Container(
+                constraints: const BoxConstraints(minWidth: 200),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: data.color.withOpacity(0.3)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 20,
+                      height: 20,
+                      decoration: BoxDecoration(
+                        color: data.color,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: data.color.withOpacity(0.4),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Flexible(
+                      child: Text(
+                        data.label,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: data.color.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        porcentaje != null
+                            ? '${data.value} ($porcentaje%)'
+                            : data.value.toString(),
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: data.color,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Construye el pie de página con información adicional
+  Widget _buildExportFooter() {
+    final now = DateTime.now();
+    final fechaFormateada = DateFormat('dd/MM/yyyy HH:mm').format(now);
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey[100],
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.calendar_today, color: Colors.grey[600], size: 18),
+              const SizedBox(width: 8),
+              Text(
+                'Generado: $fechaFormateada',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey[700],
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+          Row(
+            children: [
+              Icon(Icons.church, color: primaryTeal, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                'Panel de Administración',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: primaryTeal,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
@@ -1078,11 +2179,13 @@ class _AdminPanelState extends State<AdminPanel>
               style: TextStyle(color: primaryTeal, fontSize: 13)));
     }
 
+    // Obtener el tamaño de la pantalla para ajustar la gráfica
+    final size = MediaQuery.of(context).size;
+    final isSmallScreen = size.width < 600;
+
     // Contenedor con dimensiones apropiadas y padding reducido
     return Container(
-      padding: const EdgeInsets.all(8), // Reducido de 12 a 8
-      height: MediaQuery.of(context).size.height *
-          0.45, // Aumentado ligeramente para dar más espacio a la gráfica
+      padding: EdgeInsets.all(isSmallScreen ? 4 : 8),
       child: AnimatedSwitcher(
         duration: const Duration(milliseconds: 400),
         transitionBuilder: (Widget child, Animation<double> animation) {
@@ -1147,6 +2250,15 @@ class _AdminPanelState extends State<AdminPanel>
 
 // Variable para seguimiento de sección seleccionada en gráfica circular
   int _pieChartIndex = -1;
+  // Variables para guardar el estado de interactividad
+  int _barTouchedIndex = -1;
+  int _lineSpotTouched = -1;
+
+// ============ NUEVAS VARIABLES PARA CAPTURA DE GRÁFICAS ============
+  final ScreenshotController _screenshotController = ScreenshotController();
+  bool _isCapturing = false;
+  GlobalKey _chartKey = GlobalKey();
+// ===================================================================
 
 // Función auxiliar para acortar etiquetas largas
   String _acortarEtiqueta(String etiqueta, int maxLength) {
@@ -1662,8 +2774,7 @@ class _AdminPanelState extends State<AdminPanel>
   }
 
 // Variables para guardar el estado de interactividad
-  int _barTouchedIndex = -1;
-  int _lineSpotTouched = -1;
+
   Widget _buildLeyenda(List<ChartData> datos) {
     if (datos.isEmpty) return const SizedBox();
 

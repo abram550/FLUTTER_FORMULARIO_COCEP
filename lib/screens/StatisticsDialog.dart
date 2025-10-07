@@ -3,6 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:screenshot/screenshot.dart';
+import 'dart:typed_data';
+import 'dart:html' as html;
+import 'dart:ui' as ui;
 
 class StatisticsDialog extends StatefulWidget {
   const StatisticsDialog({Key? key}) : super(key: key);
@@ -59,6 +63,12 @@ class _StatisticsDialogState extends State<StatisticsDialog>
 
   late TabController _tabController;
 
+  final ScreenshotController _barChartController = ScreenshotController();
+  final ScreenshotController _lineChartController = ScreenshotController();
+  final ScreenshotController _pieChartController = ScreenshotController();
+// Overlay entry para renderizado invisible
+  OverlayEntry? _overlayEntry;
+
   final List<Color> chartColors = [
     const Color(0xFF1D8B8E), // Verde-azulado
     const Color(0xFFF5A623), // Amarillo-naranja
@@ -97,6 +107,13 @@ class _StatisticsDialogState extends State<StatisticsDialog>
   @override
   void dispose() {
     _tabController.dispose();
+    // Limpiar overlay si existe
+    if (_overlayEntry != null) {
+      try {
+        _overlayEntry!.remove();
+      } catch (_) {}
+      _overlayEntry = null;
+    }
     super.dispose();
   }
 
@@ -174,6 +191,386 @@ class _StatisticsDialogState extends State<StatisticsDialog>
     }
   }
 
+// ===== MÉTODO COMPLETO PARA DESCARGAR GRÁFICA =====
+  /// Descarga la gráfica actualmente seleccionada como imagen PNG
+  /// Se renderiza en alta resolución (1600x900) para garantizar legibilidad
+  Future<void> _downloadChart() async {
+    try {
+      // Verificar que el contexto es válido
+      if (!mounted) {
+        return;
+      }
+
+      // Obtener los datos actuales de la gráfica
+      final data = await fetchStatistics();
+
+      if (data.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('No hay datos para descargar'),
+              backgroundColor: flameColor,
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+        return;
+      }
+
+      // Mostrar indicador de carga
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: const [
+                SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  ),
+                ),
+                SizedBox(width: 15),
+                Text('Generando imagen...'),
+              ],
+            ),
+            duration: const Duration(seconds: 5),
+            backgroundColor: primaryColor,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+
+      await Future.delayed(const Duration(milliseconds: 300));
+
+      // Determinar qué controlador usar según el tipo de gráfica
+      ScreenshotController controller;
+      Widget chartContent;
+
+      if (selectedGraph == "barras") {
+        controller = _barChartController;
+        chartContent = _buildBarChart(data, false, false);
+      } else if (selectedGraph == "lineal") {
+        controller = _lineChartController;
+        chartContent = _buildLineChart(data, false, false);
+      } else {
+        controller = _pieChartController;
+        chartContent = _buildPieChart(data, false, false);
+      }
+
+      // Crear widget de gráfica
+      final chartWidget = Screenshot(
+        controller: controller,
+        child: Container(
+          width: 1600,
+          height: 900,
+          color: backgroundColor,
+          padding: const EdgeInsets.all(40),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(15),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 10,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: primaryColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child:
+                          Icon(Icons.bar_chart, color: primaryColor, size: 36),
+                    ),
+                    const SizedBox(width: 20),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            "Estadísticas COCEP",
+                            style: TextStyle(
+                              fontSize: 28,
+                              fontWeight: FontWeight.bold,
+                              color: textColor,
+                            ),
+                          ),
+                          const SizedBox(height: 5),
+                          Text(
+                            _getChartTitle(),
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: textColor.withOpacity(0.7),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          DateFormat('dd/MM/yyyy', 'es_ES')
+                              .format(DateTime.now()),
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: textColor.withOpacity(0.6),
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        Text(
+                          DateFormat('HH:mm', 'es_ES').format(DateTime.now()),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: textColor.withOpacity(0.5),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 30),
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.all(30),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(15),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 10,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  child: chartContent,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(15),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 10,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: _buildChartLegend(data, false),
+              ),
+            ],
+          ),
+        ),
+      );
+
+      if (!mounted) return;
+
+      final overlay = Overlay.of(context);
+      if (overlay == null) {
+        throw Exception('No se pudo acceder al Overlay');
+      }
+
+      _overlayEntry = OverlayEntry(
+        builder: (overlayContext) => Positioned(
+          top: -10000, // Fuera de la pantalla
+          left: 0,
+          child: IgnorePointer(
+            child: Material(
+              color: Colors.transparent,
+              child: MediaQuery(
+                data: const MediaQueryData(
+                  size: Size(1600, 900),
+                  devicePixelRatio: 2.0,
+                  textScaleFactor: 1.0,
+                ),
+                child: Directionality(
+                  textDirection: ui.TextDirection.ltr,
+                  child: DefaultTextStyle(
+                    style: const TextStyle(
+                      fontFamily: 'Roboto',
+                      color: Colors.black,
+                    ),
+                    child: chartWidget,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      overlay.insert(_overlayEntry!);
+
+      // Esperar renderizado
+      await Future.delayed(const Duration(milliseconds: 200));
+      await WidgetsBinding.instance.endOfFrame;
+      await Future.delayed(const Duration(milliseconds: 200));
+
+      Uint8List? imageBytes;
+
+      try {
+        imageBytes = await controller.capture(
+          pixelRatio: 2.0,
+          delay: const Duration(milliseconds: 100),
+        );
+      } catch (captureError) {
+        print('Error al capturar: $captureError');
+        await Future.delayed(const Duration(milliseconds: 200));
+        imageBytes = await controller.capture(
+          pixelRatio: 2.0,
+          delay: const Duration(milliseconds: 100),
+        );
+      }
+
+      if (_overlayEntry != null) {
+        try {
+          _overlayEntry!.remove();
+        } catch (_) {}
+        _overlayEntry = null;
+      }
+
+      if (imageBytes == null || imageBytes.isEmpty) {
+        throw Exception('No se pudo capturar la imagen');
+      }
+
+      final timestamp =
+          DateFormat('yyyy-MM-dd_HH-mm-ss').format(DateTime.now());
+      final chartType = selectedGraph == "barras"
+          ? "Barras"
+          : selectedGraph == "lineal"
+              ? "Lineal"
+              : "Circular";
+
+      String filterInfo = "";
+      if (selectedYear != null) filterInfo += "_${selectedYear}";
+      if (selectedMonth != null) filterInfo += "_${selectedMonth}";
+      if (selectedMinistry != "Todos") {
+        filterInfo += "_${selectedMinistry.replaceAll(' ', '_')}";
+      }
+
+      final fileName = 'Grafica_${chartType}${filterInfo}_$timestamp.png';
+
+      try {
+        final blob = html.Blob([imageBytes], 'image/png');
+        final url = html.Url.createObjectUrlFromBlob(blob);
+        final anchor = html.AnchorElement(href: url)
+          ..setAttribute('download', fileName)
+          ..style.display = 'none';
+
+        html.document.body?.append(anchor);
+        anchor.click();
+
+        await Future.delayed(const Duration(milliseconds: 100));
+        anchor.remove();
+        html.Url.revokeObjectUrl(url);
+      } catch (downloadError) {
+        print('Error en descarga: $downloadError');
+        throw Exception('Error al iniciar la descarga');
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle, color: Colors.white),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        '¡Descarga exitosa!',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      Text(
+                        fileName,
+                        style: const TextStyle(fontSize: 11),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: const Color(0xFF2ECC71),
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    } catch (e, stackTrace) {
+      if (_overlayEntry != null) {
+        try {
+          _overlayEntry!.remove();
+        } catch (_) {}
+        _overlayEntry = null;
+      }
+
+      print('Error al descargar gráfica: $e');
+      print('Stack trace: $stackTrace');
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: const [
+                    Icon(Icons.error_outline, color: Colors.white),
+                    SizedBox(width: 10),
+                    Text(
+                      'Error al descargar gráfica',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 5),
+                const Text(
+                  'Por favor, intenta nuevamente',
+                  style: TextStyle(fontSize: 12),
+                ),
+              ],
+            ),
+            backgroundColor: flameColor,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 4),
+            action: SnackBarAction(
+              label: 'REINTENTAR',
+              textColor: Colors.white,
+              onPressed: _downloadChart,
+            ),
+          ),
+        );
+      }
+    }
+  }
+// ===== FIN DEL MÉTODO CORREGIDO =====
+
 // Método para obtener el número de semana de manera más consistente
   int getWeekOfMonth(DateTime date) {
     // Obtener el primer día del mes
@@ -194,86 +591,267 @@ class _StatisticsDialogState extends State<StatisticsDialog>
     Map<String, int> dataCount = {};
 
     try {
-      QuerySnapshot snapshot =
-          await FirebaseFirestore.instance.collection('registros').get();
+      // Obtener snapshot con timeout para evitar bloqueos
+      QuerySnapshot? snapshot;
 
+      try {
+        snapshot = await FirebaseFirestore.instance
+            .collection('registros')
+            .get()
+            .timeout(
+          const Duration(seconds: 15),
+          onTimeout: () {
+            throw Exception('Tiempo de espera agotado al cargar datos');
+          },
+        );
+      } catch (connectionError) {
+        print('Error de conexión: $connectionError');
+        if (mounted) {
+          setState(() {
+            hasError = true;
+            errorMessage = "Error de conexión con la base de datos";
+          });
+        }
+        return {};
+      }
+
+      // Validar que el snapshot no sea nulo y tenga documentos
+      if (snapshot == null) {
+        print('Snapshot es nulo');
+        return {};
+      }
+
+      if (snapshot.docs.isEmpty) {
+        print('No hay documentos en la colección');
+        return {};
+      }
+
+      // Procesar cada documento con validaciones
       for (var doc in snapshot.docs) {
-        var data = doc.data() as Map<String, dynamic>;
-        DateTime? date;
+        try {
+          // Validar que el documento tenga datos
+          if (!doc.exists) continue;
 
-        if (data['fechaAsignacion'] != null) {
-          date = (data['fechaAsignacion'] as Timestamp).toDate();
-        } else if (data['fechaAsignacionTribu'] != null) {
-          date = (data['fechaAsignacionTribu'] as Timestamp).toDate();
+          var data = doc.data() as Map<String, dynamic>?;
+
+          // Validar que data no sea nulo
+          if (data == null || data.isEmpty) {
+            print('Documento ${doc.id} no tiene datos');
+            continue;
+          }
+
+          DateTime? date;
+
+          // Intentar obtener fecha de asignación con validación
+          try {
+            if (data.containsKey('fechaAsignacion') &&
+                data['fechaAsignacion'] != null) {
+              date = (data['fechaAsignacion'] as Timestamp).toDate();
+            } else if (data.containsKey('fechaAsignacionTribu') &&
+                data['fechaAsignacionTribu'] != null) {
+              date = (data['fechaAsignacionTribu'] as Timestamp).toDate();
+            }
+          } catch (dateError) {
+            print(
+                'Error al procesar fecha del documento ${doc.id}: $dateError');
+            continue;
+          }
+
+          // Si no hay fecha válida, saltar este documento
+          if (date == null) {
+            print('Documento ${doc.id} no tiene fecha válida');
+            continue;
+          }
+
+          // Validar que la fecha sea razonable (no futuras ni muy antiguas)
+          final now = DateTime.now();
+          if (date.isAfter(now) || date.year < 2000) {
+            print('Fecha inválida en documento ${doc.id}: $date');
+            continue;
+          }
+
+          // Aplicar filtro de año con validación
+          if (selectedYear != null && date.year != selectedYear) continue;
+
+          // Aplicar filtro de ministerio con validación de null
+          if (selectedMinistry != "Todos") {
+            final ministerio = data['ministerioAsignado'] as String?;
+            if (ministerio == null || ministerio != selectedMinistry) continue;
+          }
+
+          // Aplicar filtro de tribu con validaciones
+          if (selectedTribe != null) {
+            final nombreTribu = data['nombreTribu'] as String?;
+            final tribuAsignada = data['tribuAsignada'] as String?;
+
+            if (nombreTribu == null || tribuAsignada == null) continue;
+
+            String tribuDisplay = "$nombreTribu ($tribuAsignada)";
+            if (tribuDisplay != selectedTribe) continue;
+          }
+
+          // Crear clave para la agrupación de datos según el tipo de filtro
+          String? key;
+
+          try {
+            if (selectedFilter == "semanal") {
+              // Validar mes en vista semanal
+              if (selectedMonth != null) {
+                if (date.month < 1 || date.month > 12) {
+                  print('Mes inválido: ${date.month}');
+                  continue;
+                }
+                if (months[date.month - 1] != selectedMonth) continue;
+              }
+
+              int weekNum = getWeekOfMonth(date);
+
+              // Validar número de semana
+              if (weekNum < 1 || weekNum > 6) {
+                print('Número de semana inválido: $weekNum');
+                continue;
+              }
+
+              key = "Semana $weekNum";
+            } else if (selectedFilter == "mensual") {
+              // Validar mes
+              if (date.month < 1 || date.month > 12) {
+                print('Mes inválido: ${date.month}');
+                continue;
+              }
+              key = months[date.month - 1];
+            } else {
+              // Vista anual
+              key = date.year.toString();
+            }
+          } catch (keyError) {
+            print('Error al generar clave para documento ${doc.id}: $keyError');
+            continue;
+          }
+
+          // Validar que se generó una clave
+          if (key == null || key.isEmpty) {
+            print('Clave inválida generada para documento ${doc.id}');
+            continue;
+          }
+
+          // Incrementar contador de forma segura
+          dataCount[key] = (dataCount[key] ?? 0) + 1;
+        } catch (docError) {
+          print('Error procesando documento ${doc.id}: $docError');
+          continue; // Continuar con el siguiente documento
         }
+      }
 
-        if (date == null) continue;
+      // Si no hay datos después de aplicar filtros, retornar vacío
+      if (dataCount.isEmpty) {
+        print('No hay datos después de aplicar filtros');
+        return {};
+      }
 
-        // Aplicar filtros
-        if (selectedYear != null && date.year != selectedYear) continue;
+      // Ordenar las claves de forma segura
+      Map<String, int> sortedData = {};
 
-        // Aplicar filtro de ministerio
-        if (selectedMinistry != "Todos" &&
-            data['ministerioAsignado'] != selectedMinistry) continue;
-
-        // Aplicar filtro de tribu
-        if (selectedTribe != null) {
-          String tribuDisplay =
-              "${data['nombreTribu']} (${data['tribuAsignada']})";
-          if (tribuDisplay != selectedTribe) continue;
-        }
-
-        // Crear clave para la agrupación de datos según el tipo de filtro
-        String key;
+      try {
+        var sortedKeys = dataCount.keys.toList();
 
         if (selectedFilter == "semanal") {
-          // Solo se filtran por mes cuando estamos en vista semanal
-          if (selectedMonth != null && months[date.month - 1] != selectedMonth)
-            continue;
+          sortedKeys.sort((a, b) {
+            try {
+              // Extraer número de semana de forma segura
+              final aParts = a.split(" ");
+              final bParts = b.split(" ");
 
-          int weekNum = getWeekOfMonth(date);
-          key = "Semana $weekNum";
+              if (aParts.length < 2 || bParts.length < 2) return 0;
+
+              int aNum = int.tryParse(aParts[1]) ?? 0;
+              int bNum = int.tryParse(bParts[1]) ?? 0;
+
+              return aNum.compareTo(bNum);
+            } catch (e) {
+              print('Error al ordenar semanas: $e');
+              return 0;
+            }
+          });
         } else if (selectedFilter == "mensual") {
-          // En vista mensual, mostramos todos los meses
-          key = months[date.month - 1];
+          sortedKeys.sort((a, b) {
+            try {
+              int aIndex = months.indexOf(a);
+              int bIndex = months.indexOf(b);
+
+              // Si algún mes no se encuentra, ponerlo al final
+              if (aIndex == -1) return 1;
+              if (bIndex == -1) return -1;
+
+              return aIndex.compareTo(bIndex);
+            } catch (e) {
+              print('Error al ordenar meses: $e');
+              return 0;
+            }
+          });
         } else {
-          // Vista anual
-          key = date.year.toString();
+          // Ordenar años
+          sortedKeys.sort((a, b) {
+            try {
+              int aYear = int.tryParse(a) ?? 0;
+              int bYear = int.tryParse(b) ?? 0;
+              return aYear.compareTo(bYear);
+            } catch (e) {
+              print('Error al ordenar años: $e');
+              return 0;
+            }
+          });
         }
 
-        dataCount[key] = (dataCount[key] ?? 0) + 1;
+        // Crear mapa ordenado de forma segura
+        for (var key in sortedKeys) {
+          final value = dataCount[key];
+          if (value != null && value > 0) {
+            sortedData[key] = value;
+          }
+        }
+      } catch (sortError) {
+        print('Error al ordenar datos: $sortError');
+        // Si falla el ordenamiento, retornar los datos sin ordenar
+        sortedData = dataCount;
       }
 
-      // Ordenar las claves
-      var sortedKeys = dataCount.keys.toList();
-
-      if (selectedFilter == "semanal") {
-        sortedKeys.sort((a, b) {
-          int aNum = int.parse(a.split(" ")[1]);
-          int bNum = int.parse(b.split(" ")[1]);
-          return aNum.compareTo(bNum);
-        });
-      } else if (selectedFilter == "mensual") {
-        sortedKeys.sort((a, b) {
-          return months.indexOf(a).compareTo(months.indexOf(b));
-        });
-      } else {
-        sortedKeys.sort();
+      // Validar que hay datos ordenados
+      if (sortedData.isEmpty) {
+        print('No hay datos después de ordenar');
+        return {};
       }
 
-      Map<String, int> sortedData = {};
-      for (var key in sortedKeys) {
-        sortedData[key] = dataCount[key]!;
-      }
-
+      print('Datos procesados exitosamente: ${sortedData.length} entradas');
       return sortedData;
-    } catch (e) {
-      setState(() {
-        hasError = true;
-        errorMessage = "Error al obtener estadísticas: $e";
-      });
+    } catch (e, stackTrace) {
+      print('Error crítico en fetchStatistics: $e');
+      print('Stack trace: $stackTrace');
+
+      if (mounted) {
+        setState(() {
+          hasError = true;
+          errorMessage = "Error al obtener estadísticas: ${e.toString()}";
+        });
+      }
+
       return {};
     }
+  }
+
+// Agregar después del método fetchStatistics()
+  bool _validateData(Map<String, int> data) {
+    if (data.isEmpty) {
+      print('No hay datos disponibles');
+      return false;
+    }
+
+    if (data.values.any((value) => value < 0)) {
+      print('Datos inválidos detectados');
+      return false;
+    }
+
+    return true;
   }
 
   @override
@@ -1555,25 +2133,62 @@ class _StatisticsDialogState extends State<StatisticsDialog>
     );
   }
 
+// ===== REEMPLAZAR MÉTODO _buildCloseButton() COMPLETO =====
+  /// Construye los botones de acción (Descargar y Cerrar)
   Widget _buildCloseButton() {
-    return ElevatedButton(
-      style: ElevatedButton.styleFrom(
-        backgroundColor: primaryColor,
-        foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-      ),
-      onPressed: () => Navigator.pop(context),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: const [
-          Icon(Icons.close),
-          SizedBox(width: 8),
-          Text("Cerrar", style: TextStyle(fontSize: 16)),
-        ],
-      ),
+    return Row(
+      children: [
+        // Botón de descarga
+        Expanded(
+          child: ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: accentColor, // Color amarillo-naranja distintivo
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(30),
+              ),
+              elevation: 3,
+            ),
+            onPressed: _downloadChart, // Llamar al método de descarga
+            icon: const Icon(Icons.download_rounded, size: 22),
+            label: const Text(
+              "Descargar Gráfica",
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 15), // Espacio entre botones
+        // Botón de cerrar
+        Expanded(
+          child: ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: primaryColor,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(30),
+              ),
+              elevation: 3,
+            ),
+            onPressed: () => Navigator.pop(context),
+            icon: const Icon(Icons.close_rounded, size: 22),
+            label: const Text(
+              "Cerrar",
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
+// ===== FIN DEL REEMPLAZO =====
 }
 
 class _Badge extends StatelessWidget {
