@@ -2938,8 +2938,7 @@ class _AdminPanelState extends State<AdminPanel>
 
       return snapshot.docs.where((doc) {
         final data = doc.data() as Map<String, dynamic>?;
-        final fecha = _convertirFecha(data?['fecha'] ?? data?['createdAt']);
-
+        final fecha = _convertirFecha(data); // Pasa el documento completo
         if (_filtroSeleccionado == "anual") {
           if (anioFiltro == -1) {
             // "Todos los años"
@@ -3029,8 +3028,7 @@ class _AdminPanelState extends State<AdminPanel>
 
         for (var doc in docs) {
           final data = doc.data() as Map<String, dynamic>?;
-          final fecha = _convertirFecha(data?['fecha'] ?? data?['createdAt']);
-
+          final fecha = _convertirFecha(data); // Pasa el documento completo
           if (fecha.year == _anioSeleccionado &&
               fecha.month == _getMonthIndex(_mesSeleccionado)) {
             int weekOfMonth = ((fecha.day - 1) ~/ 7) + 1;
@@ -3052,8 +3050,7 @@ class _AdminPanelState extends State<AdminPanel>
 
           for (var doc in docs) {
             final data = doc.data() as Map<String, dynamic>?;
-            final fecha = _convertirFecha(data?['fecha'] ?? data?['createdAt']);
-
+            final fecha = _convertirFecha(data); // Pasa el documento completo
             if (fecha.year == _anioSeleccionado) {
               final mesNombre = ordenMeses[fecha.month - 1];
               resultados["$mesNombre - ${fecha.year}"] =
@@ -3069,7 +3066,7 @@ class _AdminPanelState extends State<AdminPanel>
 
           for (var doc in docs) {
             final data = doc.data() as Map<String, dynamic>?;
-            final fecha = _convertirFecha(data?['fecha'] ?? data?['createdAt']);
+            final fecha = _convertirFecha(data); // Pasa el documento completo
 
             if (fecha.year == _anioSeleccionado) {
               final monthStr = DateFormat('MMMM', 'es_ES').format(fecha);
@@ -3083,7 +3080,7 @@ class _AdminPanelState extends State<AdminPanel>
       case "anual":
         Set<int> anios = docs.map((doc) {
           final data = doc.data() as Map<String, dynamic>?;
-          final fecha = _convertirFecha(data?['fecha'] ?? data?['createdAt']);
+          final fecha = _convertirFecha(data); // Pasa el documento completo
           return fecha.year;
         }).toSet();
 
@@ -3096,8 +3093,8 @@ class _AdminPanelState extends State<AdminPanel>
 
         for (var doc in docs) {
           final data = doc.data() as Map<String, dynamic>?;
-          final fecha = _convertirFecha(data?['fecha'] ?? data?['createdAt']);
-          resultados["${fecha.year}"] = (resultados["${fecha.year}"] ?? 0) + 1;
+          final fecha = _convertirFecha(
+              data); // Pasa el documento completo          resultados["${fecha.year}"] = (resultados["${fecha.year}"] ?? 0) + 1;
         }
 
         aniosOrdenados.forEach((anio) {
@@ -3140,18 +3137,69 @@ class _AdminPanelState extends State<AdminPanel>
   }
 
   DateTime _convertirFecha(dynamic fecha) {
+    // Si es un documento completo (Map), extraer el campo 'fecha'
+    if (fecha is Map<String, dynamic>) {
+      // Prioridad 1: campo 'fecha' (el que usan tus registros)
+      if (fecha.containsKey('fecha') && fecha['fecha'] != null) {
+        final fechaCampo = fecha['fecha'];
+        if (fechaCampo is Timestamp) {
+          return fechaCampo.toDate();
+        } else if (fechaCampo is String) {
+          try {
+            return DateTime.parse(fechaCampo);
+          } catch (e) {
+            print('Error al parsear fecha: $fechaCampo');
+          }
+        }
+      }
+
+      // Prioridad 2: fechaRegistro (por si algunos registros antiguos lo tienen)
+      if (fecha.containsKey('fechaRegistro') &&
+          fecha['fechaRegistro'] != null) {
+        final fechaRegistro = fecha['fechaRegistro'];
+        if (fechaRegistro is Timestamp) {
+          return fechaRegistro.toDate();
+        } else if (fechaRegistro is String) {
+          try {
+            return DateTime.parse(fechaRegistro);
+          } catch (e) {
+            print('Error al parsear fechaRegistro: $fechaRegistro');
+          }
+        }
+      }
+
+      // Prioridad 3: createdAt (último recurso)
+      if (fecha.containsKey('createdAt') && fecha['createdAt'] != null) {
+        final createdAt = fecha['createdAt'];
+        if (createdAt is Timestamp) {
+          return createdAt.toDate();
+        } else if (createdAt is String) {
+          try {
+            return DateTime.parse(createdAt);
+          } catch (e) {
+            print('Error al parsear createdAt: $createdAt');
+          }
+        }
+      }
+    }
+
+    // Si es directamente un Timestamp
     if (fecha is Timestamp) {
       return fecha.toDate();
-    } else if (fecha is String) {
+    }
+
+    // Si es directamente un String
+    if (fecha is String) {
       try {
         return DateTime.parse(fecha);
       } catch (e) {
-        print('Error al parsear fecha: \$fecha');
-        return DateTime.now();
+        print('Error al parsear fecha string: $fecha');
       }
-    } else {
-      return DateTime.now();
     }
+
+    // Valor por defecto si todo falla
+    print('⚠️ No se pudo convertir la fecha, usando fecha actual');
+    return DateTime.now();
   }
 
   Widget _buildFiltroPorFecha(StateSetter setState) {
