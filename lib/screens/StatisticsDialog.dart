@@ -2190,7 +2190,7 @@ class _StatisticsDialogState extends State<StatisticsDialog>
   }
 // ===== FIN DEL REEMPLAZO =====
 }
- 
+
 class _Badge extends StatelessWidget {
   final String title;
   final double size;

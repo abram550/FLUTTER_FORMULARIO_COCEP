@@ -316,7 +316,12 @@ class _AdminPanelState extends State<AdminPanel>
     try {
       // Obtener los años desde los registros
       final registros = await _firestoreService.obtenerTodosLosRegistros();
-      Set<int> aniosDisponibles = registros.map((r) => r.fecha.year).toSet();
+
+      // ✅ Filtrar solo registros con fecha válida
+      Set<int> aniosDisponibles = registros
+          .where((r) => r.fecha != null)
+          .map((r) => r.fecha.year)
+          .toSet();
 
       if (aniosDisponibles.isNotEmpty) {
         setState(() {
@@ -324,6 +329,12 @@ class _AdminPanelState extends State<AdminPanel>
           _anioSeleccionado = _aniosDisponibles.isNotEmpty
               ? _aniosDisponibles.last // Seleccionar el año más reciente
               : DateTime.now().year;
+        });
+      } else {
+        print('⚠️ No se encontraron registros con fecha válida');
+        setState(() {
+          _aniosDisponibles = [DateTime.now().year];
+          _anioSeleccionado = DateTime.now().year;
         });
       }
 
@@ -376,6 +387,13 @@ class _AdminPanelState extends State<AdminPanel>
     Map<int, Map<int, Map<DateTime, List<Registro>>>> agrupados = {};
 
     for (var registro in registros) {
+      // ✅ Validar que el registro tenga una fecha válida
+      if (registro.fecha == null) {
+        print(
+            '⚠️ Registro sin fecha válida (ID: ${registro.id}) - ignorado en agrupación');
+        continue;
+      }
+
       final anio = registro.fecha.year;
       final mes = registro.fecha.month;
       final fechaSinHora = DateTime(anio, mes, registro.fecha.day);
@@ -1257,6 +1275,7 @@ class _AdminPanelState extends State<AdminPanel>
   /// ========== MÉTODO MEJORADO PARA DESCARGAR GRÁFICA EN ALTA RESOLUCIÓN ==========
   /// Este método crea una copia invisible de la gráfica en tamaño fijo (1600x900px)
   /// y la captura, asegurando que siempre se vea bien sin importar el tamaño de pantalla
+
   Future<void> _descargarGrafica(StateSetter setDialogState) async {
     OverlayEntry? overlayEntry;
 
@@ -1289,9 +1308,20 @@ class _AdminPanelState extends State<AdminPanel>
         ),
       );
 
-      // Obtener los datos actuales de la gráfica
+      // ✅ CAMBIO CRÍTICO: Usar los MISMOS datos que ya están filtrados y mostrados en pantalla
+      // en lugar de volver a obtenerlos
+      print('\n🔍 === DEBUG EXPORTACIÓN ===');
+      print('📊 Obteniendo datos actuales de la gráfica visible...');
+
+      // Obtener exactamente los mismos datos que se están mostrando en la gráfica actual
       final datosGrafica = await _obtenerDatosParaGrafica();
       final tipoActual = datosGrafica[_tipoGrafica] ?? [];
+
+      print('📈 Total datos para exportar: ${tipoActual.length}');
+      for (var data in tipoActual) {
+        print('   - ${data.label}: ${data.value} registros');
+      }
+      print('=========================\n');
 
       if (tipoActual.isEmpty) {
         throw Exception('No hay datos para exportar');
@@ -1308,11 +1338,11 @@ class _AdminPanelState extends State<AdminPanel>
           left: -10000,
           top: -10000,
           child: Opacity(
-            opacity: 0.01, // Casi invisible pero renderizable
+            opacity: 0.01,
             child: IgnorePointer(
               child: MediaQuery(
                 data: MediaQueryData(
-                  size: Size(1600, 900), // Tamaño fijo grande
+                  size: Size(1600, 900),
                   devicePixelRatio: 1.0,
                   textScaleFactor: 1.0,
                 ),
@@ -1386,7 +1416,7 @@ class _AdminPanelState extends State<AdminPanel>
 
       // Capturar la imagen en alta calidad
       final Uint8List? imageBytes = await screenshotController.capture(
-        pixelRatio: 2.0, // Alta resolución
+        pixelRatio: 2.0,
       );
 
       // Remover el overlay
@@ -1610,14 +1640,6 @@ class _AdminPanelState extends State<AdminPanel>
             decoration: BoxDecoration(
               color: secondaryOrange,
               borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
-              '${datos.length} registros',
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
             ),
           ),
         ],
@@ -2901,27 +2923,133 @@ class _AdminPanelState extends State<AdminPanel>
       List<Color> redesColors =
           consolidacionColors.map((c) => c.withOpacity(0.7)).toList();
 
-      // Obtener datos de consolidación (ajustado para filtrar por año y mes)
+      print('\n🔍 === INICIO DEBUG OBTENER DATOS PARA GRÁFICA ===');
+      print('📅 Filtro seleccionado: $_filtroSeleccionado');
+      print('📆 Año: $_anioSeleccionado');
+      print('📆 Mes: $_mesSeleccionado');
+
+      // Obtener datos de consolidación
+      print('\n📊 Obteniendo documentos de CONSOLIDACIÓN (registros)...');
       List<QueryDocumentSnapshot> consolidacionDocs =
           await _obtenerDocumentosFiltrados(
               "registros", _anioSeleccionado, _mesSeleccionado);
 
-      // Obtener datos de redes sociales (ajustado para filtrar por año y mes)
+      print(
+          '✅ Total docs consolidación obtenidos: ${consolidacionDocs.length}');
+
+      // DEBUG: Mostrar cada documento de consolidación
+      for (var doc in consolidacionDocs) {
+        final data = doc.data() as Map<String, dynamic>?;
+        final nombre = data?['nombre'] ?? 'Sin nombre';
+        final apellido = data?['apellido'] ?? '';
+
+        // Mostrar TODOS los campos de fecha que tiene el documento
+        print('\n  📄 Documento ID: ${doc.id}');
+        print('     Nombre: $nombre $apellido');
+        print('     Campos de fecha disponibles:');
+
+        if (data?.containsKey('fecha') == true) {
+          final fecha = data!['fecha'];
+          if (fecha is Timestamp) {
+            print(
+                '       ✓ fecha: ${DateFormat('dd/MM/yyyy HH:mm:ss').format(fecha.toDate())}');
+          } else {
+            print('       ✓ fecha: $fecha (tipo: ${fecha.runtimeType})');
+          }
+        } else {
+          print('       ✗ fecha: NO EXISTE');
+        }
+
+        if (data?.containsKey('fechaRegistro') == true) {
+          final fechaReg = data!['fechaRegistro'];
+          if (fechaReg is Timestamp) {
+            print(
+                '       ✓ fechaRegistro: ${DateFormat('dd/MM/yyyy HH:mm:ss').format(fechaReg.toDate())}');
+          } else {
+            print(
+                '       ✓ fechaRegistro: $fechaReg (tipo: ${fechaReg.runtimeType})');
+          }
+        } else {
+          print('       ✗ fechaRegistro: NO EXISTE');
+        }
+
+        if (data?.containsKey('createdAt') == true) {
+          final created = data!['createdAt'];
+          if (created is Timestamp) {
+            print(
+                '       ✓ createdAt: ${DateFormat('dd/MM/yyyy HH:mm:ss').format(created.toDate())}');
+          } else {
+            print(
+                '       ✓ createdAt: $created (tipo: ${created.runtimeType})');
+          }
+        } else {
+          print('       ✗ createdAt: NO EXISTE');
+        }
+
+        if (data?.containsKey('fechaAsignacion') == true) {
+          final fechaAsig = data!['fechaAsignacion'];
+          if (fechaAsig is Timestamp) {
+            print(
+                '       ⚠ fechaAsignacion: ${DateFormat('dd/MM/yyyy HH:mm:ss').format(fechaAsig.toDate())}');
+          }
+        }
+
+        if (data?.containsKey('fechaAsignacionTribu') == true) {
+          final fechaAsigTribu = data!['fechaAsignacionTribu'];
+          if (fechaAsigTribu is Timestamp) {
+            print(
+                '       ⚠ fechaAsignacionTribu: ${DateFormat('dd/MM/yyyy HH:mm:ss').format(fechaAsigTribu.toDate())}');
+          }
+        }
+
+        if (data?.containsKey('ultimaAsistencia') == true) {
+          final ultAsist = data!['ultimaAsistencia'];
+          if (ultAsist is Timestamp) {
+            print(
+                '       ⚠ ultimaAsistencia: ${DateFormat('dd/MM/yyyy HH:mm:ss').format(ultAsist.toDate())}');
+          }
+        }
+
+        // Mostrar qué fecha se está usando finalmente
+        final fechaUsada = _convertirFecha(data);
+        if (fechaUsada != null) {
+          print(
+              '       ➡️ FECHA USADA PARA GRÁFICA: ${DateFormat('dd/MM/yyyy').format(fechaUsada)}');
+        } else {
+          print('       ❌ SIN FECHA VÁLIDA - REGISTRO SERÁ IGNORADO');
+        }
+      }
+
+      // Obtener datos de redes sociales
+      print(
+          '\n📊 Obteniendo documentos de REDES SOCIALES (social_profiles)...');
       List<QueryDocumentSnapshot> redesDocs = await _obtenerDocumentosFiltrados(
           "social_profiles", _anioSeleccionado, _mesSeleccionado);
 
+      print('✅ Total docs redes sociales obtenidos: ${redesDocs.length}');
+
       // Procesar los datos según el filtro seleccionado
+      print('\n🔄 Procesando datos por período...');
       List<ChartData> consolidacion =
           _procesarDatosPorPeriodo(consolidacionDocs, consolidacionColors);
 
+      print(
+          '📈 Datos de consolidación procesados: ${consolidacion.length} puntos');
+      for (var data in consolidacion) {
+        print('   - ${data.label}: ${data.value} registros');
+      }
+
       List<ChartData> redes = _procesarDatosPorPeriodo(redesDocs, redesColors);
+
+      print('📈 Datos de redes procesados: ${redes.length} puntos');
+      print('\n🏁 === FIN DEBUG OBTENER DATOS PARA GRÁFICA ===\n');
 
       return {
         "consolidacion": consolidacion,
         "redes": redes,
       };
     } catch (e) {
-      print("Error al obtener datos para gráfica: $e");
+      print("❌ Error al obtener datos para gráfica: $e");
       return {
         "consolidacion": [],
         "redes": [],
@@ -2929,31 +3057,61 @@ class _AdminPanelState extends State<AdminPanel>
     }
   }
 
-// Método actualizado para obtener documentos filtrados por año y mes
   Future<List<QueryDocumentSnapshot>> _obtenerDocumentosFiltrados(
       String coleccion, int anioFiltro, String mesFiltro) async {
     try {
       final snapshot = await _firestore.collection(coleccion).get();
       final int mesIndex = _getMonthIndex(mesFiltro);
 
-      return snapshot.docs.where((doc) {
+      // DEBUG: Imprimir total de documentos obtenidos
+      print('📊 Total documentos en "$coleccion": ${snapshot.docs.length}');
+
+      List<QueryDocumentSnapshot> resultados = snapshot.docs.where((doc) {
         final data = doc.data() as Map<String, dynamic>?;
-        final fecha = _convertirFecha(data); // Pasa el documento completo
+
+        // Usar el método _convertirFecha que ahora puede retornar null
+        final fecha = _convertirFecha(data);
+
+        // ✅ IGNORAR registros sin campo 'fecha'
+        if (fecha == null) {
+          print('  ❌ Doc ID: ${doc.id} - Sin campo "fecha" válido, ignorado');
+          return false;
+        }
+
+        // DEBUG: Imprimir cada documento procesado
+        print('  - Doc ID: ${doc.id}');
+        print('    Fecha procesada: ${DateFormat('dd/MM/yyyy').format(fecha)}');
+        print('    Año: ${fecha.year}, Mes: ${fecha.month}');
+
         if (_filtroSeleccionado == "anual") {
           if (anioFiltro == -1) {
-            // "Todos los años"
-            return true; // No filtrar por año, mostrar todo
+            print('    ✅ Incluido (Todos los años)');
+            return true;
           } else {
-            return fecha.year == anioFiltro;
+            bool incluir = fecha.year == anioFiltro;
+            print(
+                '    ${incluir ? "✅" : "❌"} ${incluir ? "Incluido" : "Excluido"} (año: $anioFiltro)');
+            return incluir;
           }
         } else if (mesFiltro == "Todos los meses") {
-          return fecha.year == anioFiltro;
+          bool incluir = fecha.year == anioFiltro;
+          print(
+              '    ${incluir ? "✅" : "❌"} ${incluir ? "Incluido" : "Excluido"} (año: $anioFiltro, todos los meses)');
+          return incluir;
         } else {
-          return fecha.year == anioFiltro && fecha.month == mesIndex;
+          bool incluir = fecha.year == anioFiltro && fecha.month == mesIndex;
+          print(
+              '    ${incluir ? "✅" : "❌"} ${incluir ? "Incluido" : "Excluido"} (año: $anioFiltro, mes: $mesFiltro)');
+          return incluir;
         }
       }).toList();
+
+      // DEBUG: Total de documentos filtrados
+      print('🎯 Total documentos filtrados: ${resultados.length}\n');
+
+      return resultados;
     } catch (e) {
-      print("Error al obtener documentos filtrados: $e");
+      print("❌ Error al obtener documentos filtrados: $e");
       return [];
     }
   }
@@ -2996,7 +3154,6 @@ class _AdminPanelState extends State<AdminPanel>
       List<QueryDocumentSnapshot> docs, List<Color> colors) {
     if (docs.isEmpty) return [];
 
-    final now = DateTime.now();
     final DateFormat dateFormat = DateFormat('dd/MM/yyyy', 'es_ES');
     final Map<String, int> resultados = {};
     final List<String> ordenMeses = [
@@ -3019,38 +3176,49 @@ class _AdminPanelState extends State<AdminPanel>
 
     switch (_filtroSeleccionado) {
       case "semanal":
+        // Pre-inicializar SOLO las 4 semanas
         for (int i = 0; i < 4; i++) {
           final fechaReferencia =
               DateTime(_anioSeleccionado, _getMonthIndex(_mesSeleccionado), 1);
-          resultados[
-              "Semana ${i + 1} de ${DateFormat('MMMM', 'es_ES').format(fechaReferencia)} - $_anioSeleccionado"] = 0;
+          final mesNombre = DateFormat('MMMM', 'es_ES').format(fechaReferencia);
+          resultados["Semana ${i + 1} de $mesNombre - $_anioSeleccionado"] = 0;
         }
 
+        // Contar registros reales
         for (var doc in docs) {
           final data = doc.data() as Map<String, dynamic>?;
-          final fecha = _convertirFecha(data); // Pasa el documento completo
+          final fecha = _convertirFecha(data);
+
+          // ✅ IGNORAR registros sin fecha válida
+          if (fecha == null) continue;
+
           if (fecha.year == _anioSeleccionado &&
               fecha.month == _getMonthIndex(_mesSeleccionado)) {
             int weekOfMonth = ((fecha.day - 1) ~/ 7) + 1;
             if (weekOfMonth > 4) weekOfMonth = 4;
-            resultados[
-                    "Semana $weekOfMonth de ${DateFormat('MMMM', 'es_ES').format(fecha)} - ${fecha.year}"] =
-                (resultados["Semana $weekOfMonth de ${DateFormat('MMMM', 'es_ES').format(fecha)} - ${fecha.year}"] ??
-                        0) +
-                    1;
+
+            final mesNombre = DateFormat('MMMM', 'es_ES').format(fecha);
+            final key = "Semana $weekOfMonth de $mesNombre - ${fecha.year}";
+            resultados[key] = (resultados[key] ?? 0) + 1;
           }
         }
         break;
 
       case "mensual":
         if (_mesSeleccionado == "Todos los meses") {
+          // Pre-inicializar todos los meses del año
           for (var mes in ordenMeses) {
             resultados["$mes - $_anioSeleccionado"] = 0;
           }
 
+          // Contar registros reales
           for (var doc in docs) {
             final data = doc.data() as Map<String, dynamic>?;
-            final fecha = _convertirFecha(data); // Pasa el documento completo
+            final fecha = _convertirFecha(data);
+
+            // ✅ IGNORAR registros sin fecha válida
+            if (fecha == null) continue;
+
             if (fecha.year == _anioSeleccionado) {
               final mesNombre = ordenMeses[fecha.month - 1];
               resultados["$mesNombre - ${fecha.year}"] =
@@ -3058,15 +3226,20 @@ class _AdminPanelState extends State<AdminPanel>
             }
           }
         } else {
+          // Pre-inicializar los 12 meses
           for (int i = 1; i <= 12; i++) {
             final monthStr = DateFormat('MMMM', 'es_ES')
                 .format(DateTime(_anioSeleccionado, i));
             resultados["$monthStr - $_anioSeleccionado"] = 0;
           }
 
+          // Contar registros reales
           for (var doc in docs) {
             final data = doc.data() as Map<String, dynamic>?;
-            final fecha = _convertirFecha(data); // Pasa el documento completo
+            final fecha = _convertirFecha(data);
+
+            // ✅ IGNORAR registros sin fecha válida
+            if (fecha == null) continue;
 
             if (fecha.year == _anioSeleccionado) {
               final monthStr = DateFormat('MMMM', 'es_ES').format(fecha);
@@ -3078,25 +3251,40 @@ class _AdminPanelState extends State<AdminPanel>
         break;
 
       case "anual":
-        Set<int> anios = docs.map((doc) {
+        // NO pre-inicializar aquí, solo obtener años de los docs
+        Set<int> anios = {};
+
+        for (var doc in docs) {
           final data = doc.data() as Map<String, dynamic>?;
-          final fecha = _convertirFecha(data); // Pasa el documento completo
-          return fecha.year;
-        }).toSet();
+          final fecha = _convertirFecha(data);
+
+          // ✅ IGNORAR registros sin fecha válida
+          if (fecha == null) continue;
+
+          anios.add(fecha.year);
+        }
 
         if (anios.isEmpty) break;
 
         List<int> aniosOrdenados = anios.toList()..sort();
+
+        // Inicializar SOLO los años que tienen datos
         for (int anio in aniosOrdenados) {
           resultados["$anio"] = 0;
         }
 
+        // Contar registros reales
         for (var doc in docs) {
           final data = doc.data() as Map<String, dynamic>?;
-          final fecha = _convertirFecha(
-              data); // Pasa el documento completo          resultados["${fecha.year}"] = (resultados["${fecha.year}"] ?? 0) + 1;
+          final fecha = _convertirFecha(data);
+
+          // ✅ IGNORAR registros sin fecha válida
+          if (fecha == null) continue;
+
+          resultados["${fecha.year}"] = (resultados["${fecha.year}"] ?? 0) + 1;
         }
 
+        // Crear chartData directamente aquí
         aniosOrdenados.forEach((anio) {
           chartData.add(ChartData(
             anio.toString(),
@@ -3105,11 +3293,13 @@ class _AdminPanelState extends State<AdminPanel>
           ));
           colorIndex++;
         });
-        return chartData; // ← IMPORTANTE: Rompe el flujo aquí para evitar duplicados
+        return chartData;
     }
 
+    // Generar chartData para casos semanal y mensual
     if (_filtroSeleccionado == "mensual" &&
         _mesSeleccionado == "Todos los meses") {
+      // Mantener el orden de los meses
       for (var mes in ordenMeses) {
         final key = "$mes - $_anioSeleccionado";
         if (resultados.containsKey(key)) {
@@ -3121,8 +3311,8 @@ class _AdminPanelState extends State<AdminPanel>
           colorIndex++;
         }
       }
-    } else if (_filtroSeleccionado != "anual") {
-      // Evita agregar duplicados después del case "anual"
+    } else {
+      // Para semanal y mensual individual
       resultados.forEach((key, value) {
         chartData.add(ChartData(
           key,
@@ -3136,10 +3326,10 @@ class _AdminPanelState extends State<AdminPanel>
     return chartData;
   }
 
-  DateTime _convertirFecha(dynamic fecha) {
+  DateTime? _convertirFecha(dynamic fecha) {
     // Si es un documento completo (Map), extraer el campo 'fecha'
     if (fecha is Map<String, dynamic>) {
-      // Prioridad 1: campo 'fecha' (el que usan tus registros)
+      // SOLO usar el campo 'fecha'
       if (fecha.containsKey('fecha') && fecha['fecha'] != null) {
         final fechaCampo = fecha['fecha'];
         if (fechaCampo is Timestamp) {
@@ -3149,38 +3339,14 @@ class _AdminPanelState extends State<AdminPanel>
             return DateTime.parse(fechaCampo);
           } catch (e) {
             print('Error al parsear fecha: $fechaCampo');
+            return null;
           }
         }
       }
 
-      // Prioridad 2: fechaRegistro (por si algunos registros antiguos lo tienen)
-      if (fecha.containsKey('fechaRegistro') &&
-          fecha['fechaRegistro'] != null) {
-        final fechaRegistro = fecha['fechaRegistro'];
-        if (fechaRegistro is Timestamp) {
-          return fechaRegistro.toDate();
-        } else if (fechaRegistro is String) {
-          try {
-            return DateTime.parse(fechaRegistro);
-          } catch (e) {
-            print('Error al parsear fechaRegistro: $fechaRegistro');
-          }
-        }
-      }
-
-      // Prioridad 3: createdAt (último recurso)
-      if (fecha.containsKey('createdAt') && fecha['createdAt'] != null) {
-        final createdAt = fecha['createdAt'];
-        if (createdAt is Timestamp) {
-          return createdAt.toDate();
-        } else if (createdAt is String) {
-          try {
-            return DateTime.parse(createdAt);
-          } catch (e) {
-            print('Error al parsear createdAt: $createdAt');
-          }
-        }
-      }
+      // Si no existe el campo 'fecha', retornar null para ignorar este registro
+      print('⚠️ Registro sin campo "fecha" - será ignorado en las gráficas');
+      return null;
     }
 
     // Si es directamente un Timestamp
@@ -3194,12 +3360,13 @@ class _AdminPanelState extends State<AdminPanel>
         return DateTime.parse(fecha);
       } catch (e) {
         print('Error al parsear fecha string: $fecha');
+        return null;
       }
     }
 
-    // Valor por defecto si todo falla
-    print('⚠️ No se pudo convertir la fecha, usando fecha actual');
-    return DateTime.now();
+    // Si no se pudo obtener fecha, retornar null
+    print('⚠️ No se pudo convertir la fecha - registro será ignorado');
+    return null;
   }
 
   Widget _buildFiltroPorFecha(StateSetter setState) {
