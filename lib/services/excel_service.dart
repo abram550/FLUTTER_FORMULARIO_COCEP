@@ -22,6 +22,7 @@ class ExcelService {
     if (nuevosRegistros.isNotEmpty) {
       _configurarHoja(excel, 'Nuevos', nuevosRegistros, [
         'Fecha',
+        'Servicio',
         'Nombre',
         'Apellido',
         'Edad',
@@ -44,10 +45,10 @@ class ExcelService {
     if (visitasRegistros.isNotEmpty) {
       _configurarHoja(excel, 'Visitas', visitasRegistros, [
         'Fecha',
+        'Servicio',
         'Nombre',
         'Apellido',
         'Teléfono',
-        'Servicio',
         'Motivo',
         'Peticiones',
         'Consolidador'
@@ -62,7 +63,7 @@ class ExcelService {
         'Edad',
         'Género',
         'Teléfono',
-        'Dirección',        // Campo añadido
+        'Dirección', // Campo añadido
         'Ciudad',
         'Petición de Oración', // Campo añadido
         'Red Social'
@@ -126,7 +127,7 @@ class ExcelService {
         perfil.age.toString(),
         perfil.gender,
         perfil.phone,
-        perfil.address ?? '',       // Campo añadido
+        perfil.address ?? '', // Campo añadido
         perfil.city,
         perfil.prayerRequest ?? '', // Campo añadido
         perfil.socialNetwork,
@@ -148,7 +149,7 @@ class ExcelService {
 
     // Ajustar ancho de columnas automáticamente
     for (var i = 0; i < headers.length; i++) {
-      sheet.setColAutoFit(i);  // Usa autofit para ajustar al contenido
+      sheet.setColAutoFit(i); // Usa autofit para ajustar al contenido
     }
   }
 
@@ -192,7 +193,8 @@ class ExcelService {
       List<dynamic> rowData;
       if (sheetName == 'Nuevos') {
         rowData = [
-          _formatDate(registro.fecha),
+          _formatDateLongSpanish(registro.fecha), // Fecha en español
+          registro.servicio ?? '', // Servicio separado
           registro.nombre,
           registro.apellido,
           registro.edad?.toString() ?? '',
@@ -212,11 +214,11 @@ class ExcelService {
         ];
       } else {
         rowData = [
-          _formatDate(registro.fecha),
+          _formatDateLongSpanish(registro.fecha), // Fecha en español
+          registro.servicio ?? '', // Servicio separado
           registro.nombre,
           registro.apellido,
           registro.telefono,
-          registro.servicio ?? '',
           registro.motivo ?? '',
           registro.peticiones ?? '',
           registro.consolidador ?? ''
@@ -226,14 +228,15 @@ class ExcelService {
       for (var j = 0; j < rowData.length; j++) {
         final cell = sheet.cell(
             CellIndex.indexByColumnRow(columnIndex: j, rowIndex: rowIndex));
-        // Para campos largos como direcciones, motivo o peticiones
-        // podemos insertar saltos de línea para mejorar la legibilidad
+
         String valor = rowData[j].toString();
-        if (valor.length > 30 && (j == 6 || j == 5 || j == 6 || j == 13 || j == 15)) { 
-          // Añadimos los nuevos campos a la lista de campos que pueden requerir saltos de línea
-          // (observaciones y observaciones2)
+
+        // Para campos largos como direcciones, motivo, peticiones u observaciones
+        if (valor.length > 30 &&
+            (j == 0 || j == 7 || j == 5 || j == 6 || j == 14 || j == 16)) {
           valor = _insertarSaltosDeLinea(valor, 30);
         }
+
         cell.value = valor;
         cell.cellStyle = isEvenRow ? dataStyleEven : dataStyleOdd;
       }
@@ -241,18 +244,18 @@ class ExcelService {
 
     // Ajustar ancho de columnas automáticamente
     for (var i = 0; i < headers.length; i++) {
-      sheet.setColAutoFit(i);  // Usa autofit para ajustar al contenido
+      sheet.setColAutoFit(i);
     }
   }
 
   // Función para insertar saltos de línea en textos largos
   String _insertarSaltosDeLinea(String texto, int longitudMaxima) {
     if (texto.length <= longitudMaxima) return texto;
-    
+
     final List<String> palabras = texto.split(' ');
     final StringBuilder = StringBuffer();
     int longitudActual = 0;
-    
+
     for (final palabra in palabras) {
       if (longitudActual + palabra.length > longitudMaxima) {
         StringBuilder.write('\n');
@@ -261,12 +264,48 @@ class ExcelService {
         StringBuilder.write(' ');
         longitudActual += 1;
       }
-      
+
       StringBuilder.write(palabra);
       longitudActual += palabra.length;
     }
-    
+
     return StringBuilder.toString();
+  }
+
+// Función para formatear fecha en español con nombre de día y mes
+  String _formatDateLongSpanish(DateTime? fecha) {
+    if (fecha == null) return '';
+
+    final diasSemana = [
+      'lunes',
+      'martes',
+      'miércoles',
+      'jueves',
+      'viernes',
+      'sábado',
+      'domingo'
+    ];
+    final meses = [
+      'enero',
+      'febrero',
+      'marzo',
+      'abril',
+      'mayo',
+      'junio',
+      'julio',
+      'agosto',
+      'septiembre',
+      'octubre',
+      'noviembre',
+      'diciembre'
+    ];
+
+    final diaSemana = diasSemana[fecha.weekday - 1];
+    final dia = fecha.day;
+    final mes = meses[fecha.month - 1];
+    final anio = fecha.year;
+
+    return '$diaSemana, $dia de $mes de $anio';
   }
 
   String _exportarWeb(Excel excel, String fileName) {

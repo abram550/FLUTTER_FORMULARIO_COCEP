@@ -1019,6 +1019,39 @@ class JovenesAsignadosTab extends StatelessWidget {
     return "Reunión General"; // Nombre por defecto si no coincide con ningún caso.
   }
 
+  /// Bloquea asistencia si el registro tiene 3+ faltas y existe una alerta no revisada.
+  Future<bool> _tieneBloqueoPorFaltas(
+      String registroId, int faltasActuales) async {
+    try {
+      if (faltasActuales < 3) return false;
+
+      // Primero verificar por procesada: false
+      final qs = await FirebaseFirestore.instance
+          .collection('alertas')
+          .where('registroId', isEqualTo: registroId)
+          .where('tipo', isEqualTo: 'faltasConsecutivas')
+          .where('procesada', isEqualTo: false)
+          .limit(1)
+          .get();
+
+      if (qs.docs.isNotEmpty) return true;
+
+      // Si no hay procesada:false, verificar por estado
+      final qs2 = await FirebaseFirestore.instance
+          .collection('alertas')
+          .where('registroId', isEqualTo: registroId)
+          .where('tipo', isEqualTo: 'faltasConsecutivas')
+          .where('estado', whereIn: ['pendiente', 'en_revision'])
+          .limit(1)
+          .get();
+
+      return qs2.docs.isNotEmpty;
+    } catch (e) {
+      print('Error verificando bloqueo por faltas: $e');
+      return false; // Por seguridad, no bloquear en caso de error
+    }
+  }
+
   Future<void> _registrarAsistencia(
       BuildContext context, DocumentSnapshot registro) async {
     try {
@@ -1047,7 +1080,81 @@ class JovenesAsignadosTab extends StatelessWidget {
 
       if (fechaSeleccionada == null) return;
 
-      // Verificar duplicados ANTES de mostrar el diálogo
+// === BLOQUEO POR FALTAS NO REVISADAS ===
+// Obtener datos actualizados del registro
+      final registroActualizado = await FirebaseFirestore.instance
+          .collection('registros')
+          .doc(registro.id)
+          .get();
+
+      if (!registroActualizado.exists) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  Icon(Icons.error, color: Colors.white),
+                  SizedBox(width: 8),
+                  Expanded(child: Text('El registro no existe')),
+                ],
+              ),
+              backgroundColor: Color(0xFFFF4B2B),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+            ),
+          );
+        }
+        return;
+      }
+
+      final dataActualizada =
+          registroActualizado.data() as Map<String, dynamic>;
+      final int faltasActuales =
+          (dataActualizada['faltasConsecutivas'] as num?)?.toInt() ?? 0;
+      final bool bloqueo =
+          await _tieneBloqueoPorFaltas(registro.id, faltasActuales);
+
+      if (bloqueo) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Icon(Icons.block, color: Colors.white, size: 20),
+                  ),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Este registro tiene 3+ faltas con alerta sin revisar. No se puede registrar asistencia hasta que la alerta sea revisada.',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              backgroundColor: Color(0xFFFF4B2B),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+              margin: EdgeInsets.all(16),
+              duration: Duration(seconds: 4),
+            ),
+          );
+        }
+        return;
+      }
+// === FIN BLOQUEO ===
+
+// Verificar duplicados ANTES de mostrar el diálogo
       final yaRegistrada = await FirebaseFirestore.instance
           .collection('asistencias')
           .where('jovenId', isEqualTo: registro.id)
@@ -1608,7 +1715,6 @@ class JovenesAsignadosTab extends StatelessWidget {
     }
   }
 
-// REEMPLAZAR EL MÉTODO build EXISTENTE CON ESTE:
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<QuerySnapshot>(
@@ -1816,7 +1922,6 @@ class JovenesAsignadosTab extends StatelessWidget {
             radius: Radius.circular(3),
             child: RefreshIndicator(
               onRefresh: () async {
-                // Forzar actualización del stream
                 await Future.delayed(Duration(milliseconds: 500));
               },
               color: Color(0xFF147B7C),
@@ -1851,6 +1956,10 @@ class JovenesAsignadosTab extends StatelessWidget {
                               getFieldSafely<List>(data, 'asistencias') ?? [];
                           final visible =
                               getFieldSafely<bool>(data, 'visible') ?? true;
+
+                          // === INDICADOR DE BLOQUEO ===
+                          final bool tieneBloqueoPendiente =
+                              faltas >= 3 && !visible;
 
                           return Container(
                             margin: EdgeInsets.only(bottom: 16),
@@ -1962,7 +2071,9 @@ class JovenesAsignadosTab extends StatelessWidget {
                                   ),
                                   subtitle: Container(
                                     margin: EdgeInsets.only(top: 8),
-                                    child: Row(
+                                    child: Wrap(
+                                      spacing: 8,
+                                      runSpacing: 4,
                                       children: [
                                         Container(
                                           padding: EdgeInsets.symmetric(
@@ -2002,8 +2113,7 @@ class JovenesAsignadosTab extends StatelessWidget {
                                             ],
                                           ),
                                         ),
-                                        if (!visible) ...[
-                                          SizedBox(width: 8),
+                                        if (!visible)
                                           Container(
                                             padding: EdgeInsets.symmetric(
                                                 horizontal: 8, vertical: 4),
@@ -2022,7 +2132,36 @@ class JovenesAsignadosTab extends StatelessWidget {
                                               ),
                                             ),
                                           ),
-                                        ],
+                                        // === INDICADOR DE BLOQUEO ===
+                                        if (tieneBloqueoPendiente)
+                                          Container(
+                                            padding: EdgeInsets.symmetric(
+                                                horizontal: 8, vertical: 4),
+                                            decoration: BoxDecoration(
+                                              color: Colors.grey.shade300,
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                            ),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Icon(
+                                                  Icons.block,
+                                                  size: 14,
+                                                  color: Colors.grey.shade700,
+                                                ),
+                                                SizedBox(width: 4),
+                                                Text(
+                                                  'BLOQUEADO',
+                                                  style: TextStyle(
+                                                    color: Colors.grey.shade700,
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 10,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
                                       ],
                                     ),
                                   ),
@@ -2275,20 +2414,48 @@ class JovenesAsignadosTab extends StatelessWidget {
             ),
             SizedBox(width: 8), // Reducido de 12 a 8
             Expanded(
-              child: ElevatedButton.icon(
-                icon: Icon(Icons.calendar_today, color: Colors.white, size: 18),
-                label: Text('Registrar Asistencia',
-                    style: TextStyle(fontSize: 14)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Color(0xFFFF4B2B),
-                  foregroundColor: Colors.white,
-                  padding:
-                      EdgeInsets.symmetric(vertical: 12), // Reducido de 16 a 12
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+              child: FutureBuilder<bool>(
+                future: _tieneBloqueoPorFaltas(
+                  registro.id,
+                  (registro.data()
+                          as Map<String, dynamic>)['faltasConsecutivas'] ??
+                      0,
                 ),
-                onPressed: () => _registrarAsistencia(context, registro),
+                builder: (context, snapshot) {
+                  final bool bloqueado = snapshot.data == true;
+                  final bool cargando =
+                      snapshot.connectionState == ConnectionState.waiting;
+
+                  return ElevatedButton.icon(
+                    icon: Icon(
+                      bloqueado ? Icons.block : Icons.calendar_today,
+                      color: Colors.white,
+                      size: 18,
+                    ),
+                    label: Text(
+                      bloqueado
+                          ? 'Bloqueado'
+                          : (cargando
+                              ? 'Verificando...'
+                              : 'Registrar Asistencia'),
+                      style: TextStyle(fontSize: 14),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor:
+                          bloqueado ? Colors.grey.shade400 : Color(0xFFFF4B2B),
+                      foregroundColor: Colors.white,
+                      padding: EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      disabledBackgroundColor: Colors.grey.shade300,
+                      disabledForegroundColor: Colors.grey.shade500,
+                    ),
+                    onPressed: (bloqueado || cargando)
+                        ? null
+                        : () => _registrarAsistencia(context, registro),
+                  );
+                },
               ),
             ),
           ],

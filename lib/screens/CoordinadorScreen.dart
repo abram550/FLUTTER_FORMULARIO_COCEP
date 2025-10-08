@@ -875,6 +875,41 @@ class _AsistenciasCoordinadorTabState extends State<AsistenciasCoordinadorTab> {
     return "Reunión General";
   }
 
+  /// Bloquea asistencia si el registro tiene 3+ faltas y existe una alerta no revisada.
+  /// Considera 'pendiente' o 'en_revision' (o 'procesada'==false) como NO revisada.
+  Future<bool> _tieneBloqueoPorFaltas(
+      String registroId, int faltasActuales) async {
+    try {
+      if (faltasActuales < 3) return false;
+
+      final qs = await FirebaseFirestore.instance
+          .collection('alertas')
+          .where('registroId', isEqualTo: registroId)
+          .where('tipo', isEqualTo: 'faltasConsecutivas')
+          .where('procesada', isEqualTo: false)
+          .limit(1)
+          .get();
+
+      if (qs.docs.isEmpty) {
+        // Si no hay 'procesada:false', revisar por estado explícito
+        final qs2 = await FirebaseFirestore.instance
+            .collection('alertas')
+            .where('registroId', isEqualTo: registroId)
+            .where('tipo', isEqualTo: 'faltasConsecutivas')
+            .where('estado', whereIn: ['pendiente', 'en_revision'])
+            .limit(1)
+            .get();
+        return qs2.docs.isNotEmpty;
+      }
+
+      return true; // Hay una alerta pendiente/no procesada
+    } catch (e) {
+      // En caso de error, por seguridad no bloquear
+      print('Error verificando bloqueo por faltas: $e');
+      return false;
+    }
+  }
+
   Stream<QuerySnapshot> obtenerAsistenciasPorCoordinador(String coordinadorId) {
     return FirebaseFirestore.instance
         .collection('asistencias')
@@ -973,6 +1008,27 @@ class _AsistenciasCoordinadorTabState extends State<AsistenciasCoordinadorTab> {
         }
         return;
       }
+      // === BLOQUEO POR FALTAS NO REVISADAS ===
+      final int faltasActuales =
+          (data['faltasConsecutivas'] as num?)?.toInt() ?? 0;
+      final bool bloqueo =
+          await _tieneBloqueoPorFaltas(registro.id, faltasActuales);
+      if (bloqueo) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Este registro tiene 3+ faltas y una alerta sin revisar. No se puede tomar asistencia hasta que sea revisada.',
+              ),
+              backgroundColor: Colors.red,
+              behavior: SnackBarBehavior.floating,
+              duration: Duration(seconds: 4),
+            ),
+          );
+        }
+        return;
+      }
+      // === FIN BLOQUEO ===
 
       DateTime selectedDate = DateTime.now();
       bool asistio = true;
@@ -1423,6 +1479,18 @@ class _AsistenciasCoordinadorTabState extends State<AsistenciasCoordinadorTab> {
             actualizarDialogo();
             continue;
           }
+          // === BLOQUEO POR FALTAS NO REVISADAS (MODO MASIVO) ===
+          final int faltasActuales =
+              (data['faltasConsecutivas'] as num?)?.toInt() ?? 0;
+          final bool bloqueo =
+              await _tieneBloqueoPorFaltas(registro.id, faltasActuales);
+          if (bloqueo) {
+            // Lo tratamos como "ya registrado / omitido" para no romper el conteo
+            yaRegistrados++;
+            actualizarDialogo();
+            continue;
+          }
+          // === FIN BLOQUEO ===
 
           // Verificar si ya existe una asistencia para esta fecha
           final yaRegistrada = await FirebaseFirestore.instance
@@ -2486,64 +2554,105 @@ class _AsistenciasCoordinadorTabState extends State<AsistenciasCoordinadorTab> {
                                       ],
                                     ],
                                   ),
-                                  trailing: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      // Botón presente
-                                      Material(
-                                        color: Colors.transparent,
-                                        child: InkWell(
-                                          borderRadius:
-                                              BorderRadius.circular(20),
-                                          onTap: _isProcessingMassive
-                                              ? null
-                                              : () {
-                                                  setState(() {
-                                                    _selectedAttendances[
-                                                        registro.id] = true;
-                                                  });
-                                                },
+                                  trailing: FutureBuilder<bool>(
+                                    future: _tieneBloqueoPorFaltas(
+                                      registro.id,
+                                      (dataMap['faltasConsecutivas'] as num?)
+                                              ?.toInt() ??
+                                          0,
+                                    ),
+                                    builder: (context, snap) {
+                                      final bool bloqueado = snap.data == true;
+
+                                      if (bloqueado) {
+                                        // Mostrar ícono de bloqueo en lugar de botones
+                                        return Tooltip(
+                                          message:
+                                              'Bloqueado: revisar alerta de faltas',
                                           child: Container(
                                             padding: EdgeInsets.all(8),
+                                            decoration: BoxDecoration(
+                                              color: Colors.red.shade50,
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                              border: Border.all(
+                                                color: Colors.red.shade200,
+                                                width: 1,
+                                              ),
+                                            ),
                                             child: Icon(
-                                              Icons.check_circle,
-                                              color: (isSelected &&
-                                                      attendanceValue == true)
-                                                  ? Colors.green
-                                                  : Colors.grey,
-                                              size: 28,
+                                              Icons.lock_outline,
+                                              color: Colors.red.shade400,
+                                              size: 24,
                                             ),
                                           ),
-                                        ),
-                                      ),
-                                      // Botón ausente
-                                      Material(
-                                        color: Colors.transparent,
-                                        child: InkWell(
-                                          borderRadius:
-                                              BorderRadius.circular(20),
-                                          onTap: _isProcessingMassive
-                                              ? null
-                                              : () {
-                                                  setState(() {
-                                                    _selectedAttendances[
-                                                        registro.id] = false;
-                                                  });
-                                                },
-                                          child: Container(
-                                            padding: EdgeInsets.all(8),
-                                            child: Icon(
-                                              Icons.cancel,
-                                              color: (isSelected &&
-                                                      attendanceValue == false)
-                                                  ? Colors.red
-                                                  : Colors.grey,
-                                              size: 28,
+                                        );
+                                      }
+
+                                      // Botones normales si no está bloqueado
+                                      return Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          // Botón presente
+                                          Material(
+                                            color: Colors.transparent,
+                                            child: InkWell(
+                                              borderRadius:
+                                                  BorderRadius.circular(20),
+                                              onTap: _isProcessingMassive
+                                                  ? null
+                                                  : () {
+                                                      setState(() {
+                                                        _selectedAttendances[
+                                                            registro.id] = true;
+                                                      });
+                                                    },
+                                              child: Container(
+                                                padding: EdgeInsets.all(8),
+                                                child: Icon(
+                                                  Icons.check_circle,
+                                                  color: (isSelected &&
+                                                          attendanceValue ==
+                                                              true)
+                                                      ? Colors.green
+                                                      : Colors.grey,
+                                                  size: 28,
+                                                ),
+                                              ),
                                             ),
                                           ),
-                                        ),
-                                      ),
-                                    ],
+                                          // Botón ausente
+                                          Material(
+                                            color: Colors.transparent,
+                                            child: InkWell(
+                                              borderRadius:
+                                                  BorderRadius.circular(20),
+                                              onTap: _isProcessingMassive
+                                                  ? null
+                                                  : () {
+                                                      setState(() {
+                                                        _selectedAttendances[
+                                                                registro.id] =
+                                                            false;
+                                                      });
+                                                    },
+                                              child: Container(
+                                                padding: EdgeInsets.all(8),
+                                                child: Icon(
+                                                  Icons.cancel,
+                                                  color: (isSelected &&
+                                                          attendanceValue ==
+                                                              false)
+                                                      ? Colors.red
+                                                      : Colors.grey,
+                                                  size: 28,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      );
+                                    },
                                   ),
                                 ),
                               ),
@@ -2609,32 +2718,71 @@ class _AsistenciasCoordinadorTabState extends State<AsistenciasCoordinadorTab> {
                                     ),
                                   ],
                                 ),
-                                trailing: PopupMenuButton<String>(
-                                  icon: Icon(Icons.more_vert,
-                                      color: Color(0xFF147B7C)),
-                                  onSelected: (value) {
-                                    try {
-                                      if (value == 'asistencia' && mounted) {
-                                        _registrarAsistencia(registro);
-                                      }
-                                    } catch (e) {
-                                      print('Error en PopupMenuButton: $e');
-                                    }
-                                  },
-                                  itemBuilder: (context) => [
-                                    PopupMenuItem(
-                                      value: 'asistencia',
-                                      child: Row(
-                                        children: [
-                                          Icon(Icons.calendar_today,
-                                              color: Color(0xFF147B7C),
-                                              size: 20),
-                                          SizedBox(width: 8),
-                                          Text('Registrar Asistencia'),
-                                        ],
+                                trailing: FutureBuilder<bool>(
+                                  future: _tieneBloqueoPorFaltas(
+                                    registro.id,
+                                    (dataMap['faltasConsecutivas'] as num?)
+                                            ?.toInt() ??
+                                        0,
+                                  ),
+                                  builder: (context, snap) {
+                                    final bool bloqueado = snap.data == true;
+                                    final Color colorIcono = bloqueado
+                                        ? Colors.grey.shade400
+                                        : Color(0xFF147B7C);
+
+                                    return PopupMenuButton<String>(
+                                      enabled: !bloqueado,
+                                      icon: Icon(
+                                        Icons.more_vert,
+                                        color: colorIcono,
                                       ),
-                                    ),
-                                  ],
+                                      tooltip: bloqueado
+                                          ? 'Bloqueado: 3+ faltas con alerta sin revisar'
+                                          : 'Opciones',
+                                      onSelected: bloqueado
+                                          ? null
+                                          : (value) {
+                                              try {
+                                                if (value == 'asistencia' &&
+                                                    mounted) {
+                                                  _registrarAsistencia(
+                                                      registro);
+                                                }
+                                              } catch (e) {
+                                                print(
+                                                    'Error en PopupMenuButton: $e');
+                                              }
+                                            },
+                                      itemBuilder: (context) => [
+                                        PopupMenuItem(
+                                          value: 'asistencia',
+                                          enabled: !bloqueado,
+                                          child: Opacity(
+                                            opacity: bloqueado ? 0.45 : 1.0,
+                                            child: Row(
+                                              children: [
+                                                Icon(
+                                                  Icons.calendar_today,
+                                                  color: colorIcono,
+                                                  size: 20,
+                                                ),
+                                                SizedBox(width: 8),
+                                                Text(
+                                                  'Registrar Asistencia',
+                                                  style: TextStyle(
+                                                    color: bloqueado
+                                                        ? Colors.grey
+                                                        : Colors.black87,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    );
+                                  },
                                 ),
                                 children: [
                                   Padding(
@@ -2643,32 +2791,60 @@ class _AsistenciasCoordinadorTabState extends State<AsistenciasCoordinadorTab> {
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
                                       children: [
-                                        Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.spaceEvenly,
-                                          children: [
-                                            Expanded(
-                                              child: ElevatedButton.icon(
-                                                icon:
-                                                    Icon(Icons.calendar_today),
-                                                label: Text(
-                                                    'Registrar Asistencia'),
-                                                style: ElevatedButton.styleFrom(
-                                                  backgroundColor:
-                                                      Color(0xFF147B7C),
-                                                  foregroundColor: Colors.white,
-                                                  padding: EdgeInsets.symmetric(
-                                                      vertical: 12),
+                                        FutureBuilder<bool>(
+                                          future: _tieneBloqueoPorFaltas(
+                                            registro.id,
+                                            (dataMap['faltasConsecutivas']
+                                                        as num?)
+                                                    ?.toInt() ??
+                                                0,
+                                          ),
+                                          builder: (context, snap) {
+                                            final bool bloqueado =
+                                                snap.data == true;
+
+                                            return Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.spaceEvenly,
+                                              children: [
+                                                Expanded(
+                                                  child: Opacity(
+                                                    opacity:
+                                                        bloqueado ? 0.45 : 1.0,
+                                                    child: ElevatedButton.icon(
+                                                      icon: Icon(
+                                                          Icons.calendar_today),
+                                                      label: Text(bloqueado
+                                                          ? 'Bloqueado (revisar alerta)'
+                                                          : 'Registrar Asistencia'),
+                                                      style: ElevatedButton
+                                                          .styleFrom(
+                                                        backgroundColor:
+                                                            bloqueado
+                                                                ? Colors.grey
+                                                                    .shade400
+                                                                : Color(
+                                                                    0xFF147B7C),
+                                                        foregroundColor:
+                                                            Colors.white,
+                                                        padding: EdgeInsets
+                                                            .symmetric(
+                                                                vertical: 12),
+                                                      ),
+                                                      onPressed: bloqueado
+                                                          ? null
+                                                          : () {
+                                                              if (mounted) {
+                                                                _registrarAsistencia(
+                                                                    registro);
+                                                              }
+                                                            },
+                                                    ),
+                                                  ),
                                                 ),
-                                                onPressed: () {
-                                                  if (mounted) {
-                                                    _registrarAsistencia(
-                                                        registro);
-                                                  }
-                                                },
-                                              ),
-                                            ),
-                                          ],
+                                              ],
+                                            );
+                                          },
                                         ),
                                         SizedBox(height: 16),
                                         _buildAsistenciasCalendario(registro),
@@ -4269,6 +4445,10 @@ class PersonasAsignadasTab extends StatelessWidget {
 
   Widget _buildDetalle(String label, String value, IconData iconData,
       Color accentGrey, Color primaryTeal) {
+    // Detectar si el campo es "Teléfono" para agregar funcionalidad de copiado
+    final esTelefono = label.toLowerCase().contains('teléfono') ||
+        label.toLowerCase().contains('telefono');
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
@@ -4300,14 +4480,107 @@ class PersonasAsignadasTab extends StatelessWidget {
                   ),
                 ),
                 SizedBox(height: 4),
-                Text(
-                  value,
-                  style: TextStyle(
-                    fontSize: 15,
-                    color: Colors.black87,
-                    height: 1.3,
-                  ),
-                ),
+                // Si es teléfono, mostrar en un Row con el botón de copiar
+                esTelefono
+                    ? Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              value,
+                              style: TextStyle(
+                                fontSize: 15,
+                                color: Colors.black87,
+                                height: 1.3,
+                              ),
+                            ),
+                          ),
+                          SizedBox(width: 8),
+                          // Botón para copiar el teléfono usando Builder para obtener context
+                          Builder(
+                            builder: (BuildContext builderContext) {
+                              return Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  onTap: () async {
+                                    // Copiar al portapapeles
+                                    await Clipboard.setData(
+                                        ClipboardData(text: value));
+
+                                    // Mostrar feedback visual
+                                    ScaffoldMessenger.of(builderContext)
+                                        .showSnackBar(
+                                      SnackBar(
+                                        content: Row(
+                                          children: [
+                                            Icon(
+                                              Icons.check_circle_outline,
+                                              color: Colors.white,
+                                              size: 20,
+                                            ),
+                                            SizedBox(width: 12),
+                                            Expanded(
+                                              child: Text(
+                                                '¡Teléfono copiado!',
+                                                style: TextStyle(
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        backgroundColor: primaryTeal,
+                                        behavior: SnackBarBehavior.floating,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(10),
+                                        ),
+                                        margin: EdgeInsets.all(12),
+                                        duration: Duration(seconds: 2),
+                                      ),
+                                    );
+                                  },
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Container(
+                                    padding: EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        colors: [
+                                          primaryTeal.withOpacity(0.8),
+                                          primaryTeal,
+                                        ],
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                      ),
+                                      borderRadius: BorderRadius.circular(8),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: primaryTeal.withOpacity(0.3),
+                                          blurRadius: 4,
+                                          offset: Offset(0, 2),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Icon(
+                                      Icons.content_copy_rounded,
+                                      size: 16,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ],
+                      )
+                    : Text(
+                        value,
+                        style: TextStyle(
+                          fontSize: 15,
+                          color: Colors.black87,
+                          height: 1.3,
+                        ),
+                      ),
               ],
             ),
           ),
@@ -5717,8 +5990,6 @@ class PersonasAsignadasTab extends StatelessWidget {
     );
   }
 
-
-
   Widget _buildEnhancedActionButton({
     required IconData icon,
     required String label,
@@ -6663,8 +6934,6 @@ class PersonasAsignadasTab extends StatelessWidget {
       },
     );
   }
-
-
 
 // Widget para campos de texto con animación y mejor diseño
   Widget _buildAnimatedTextField({
