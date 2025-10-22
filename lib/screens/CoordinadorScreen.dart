@@ -6689,13 +6689,31 @@ class _PersonasAsignadasContentState extends State<_PersonasAsignadasContent> {
                 .where('coordinadorAsignado', isEqualTo: widget.coordinadorId)
                 .snapshots(),
             builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
+              // ✅ CAMBIO: Eliminamos el loading y mostramos contenido inmediatamente
+              final List<QueryDocumentSnapshot> allDocs =
+                  snapshot.hasData ? snapshot.data!.docs : [];
+
+              // Si hay error, mostrar mensaje pero mantener UI funcional
+              if (snapshot.hasError) {
                 return Center(
-                  child: CircularProgressIndicator(color: widget.primaryTeal),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.error_outline, size: 48, color: Colors.red),
+                      SizedBox(height: 16),
+                      Text('Error al cargar datos'),
+                      TextButton(
+                        onPressed: () => setState(() {}),
+                        child: Text('Reintentar'),
+                      ),
+                    ],
+                  ),
                 );
               }
 
-              if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+              // Si no hay datos y no está cargando, mostrar mensaje vacío
+              if (allDocs.isEmpty &&
+                  snapshot.connectionState != ConnectionState.waiting) {
                 return Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -6738,9 +6756,8 @@ class _PersonasAsignadasContentState extends State<_PersonasAsignadasContent> {
                 );
               }
 
-              // Procesar documentos
+              // ✅ Procesar documentos (aunque esté cargando)
               String searchText = _searchQuery.toLowerCase();
-              final allDocs = snapshot.data!.docs;
 
               // Ordenar documentos
               allDocs.sort((a, b) {
@@ -6770,10 +6787,22 @@ class _PersonasAsignadasContentState extends State<_PersonasAsignadasContent> {
               var filteredDocs = searchText.isEmpty
                   ? allDocs
                   : allDocs.where((doc) {
-                      final nombre = doc['nombre'].toString().toLowerCase();
-                      final apellido = doc['apellido'].toString().toLowerCase();
-                      final nombreCompleto = '$nombre $apellido';
-                      return nombreCompleto.contains(searchText);
+                      try {
+                        final nombre =
+                            (doc.data() as Map<String, dynamic>?)?['nombre']
+                                    ?.toString()
+                                    .toLowerCase() ??
+                                '';
+                        final apellido =
+                            (doc.data() as Map<String, dynamic>?)?['apellido']
+                                    ?.toString()
+                                    .toLowerCase() ??
+                                '';
+                        final nombreCompleto = '$nombre $apellido';
+                        return nombreCompleto.contains(searchText);
+                      } catch (e) {
+                        return false;
+                      }
                     }).toList();
 
               // Separar en asignados y no asignados
@@ -6886,11 +6915,48 @@ class _PersonasAsignadasContentState extends State<_PersonasAsignadasContent> {
                       physics: AlwaysScrollableScrollPhysics(),
                       child: Column(
                         children: [
+                          // ✅ Mostrar indicador de carga sutil solo si está cargando y hay datos
+                          if (snapshot.connectionState ==
+                                  ConnectionState.waiting &&
+                              allDocs.isNotEmpty)
+                            Container(
+                              padding: EdgeInsets.all(8),
+                              margin: EdgeInsets.only(bottom: 12),
+                              decoration: BoxDecoration(
+                                color: widget.primaryTeal.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                          widget.primaryTeal),
+                                    ),
+                                  ),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    'Actualizando...',
+                                    style: TextStyle(
+                                      color: widget.primaryTeal,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+
                           // Contador de personas
-                          _buildContadorPersonas(
-                            totalPersonasAsignadas,
-                            allDocs,
-                          ),
+                          if (allDocs.isNotEmpty)
+                            _buildContadorPersonas(
+                              totalPersonasAsignadas,
+                              allDocs,
+                            ),
 
                           // Personas por asignar
                           if (noAsignados.isNotEmpty) ...[

@@ -5974,9 +5974,7 @@ class RegistrosAsignadosTab extends StatelessWidget {
     String searchTerm = '';
 
     return GestureDetector(
-      // ✅ NUEVO: Detectar taps fuera del teclado sin reconstruir el widget
       onTap: () {
-        // Solo cerrar el teclado, NO hacer setState
         FocusScope.of(context).unfocus();
       },
       behavior: HitTestBehavior.opaque,
@@ -6011,7 +6009,6 @@ class RegistrosAsignadosTab extends StatelessWidget {
                   ),
                   child: TextField(
                     controller: searchController,
-                    // ✅ NUEVO: Configurar comportamiento del teclado
                     textInputAction: TextInputAction.search,
                     enableInteractiveSelection: true,
                     decoration: InputDecoration(
@@ -6029,7 +6026,6 @@ class RegistrosAsignadosTab extends StatelessWidget {
                                   ),
                                   onPressed: () {
                                     searchController.clear();
-                                    // ✅ MODIFICADO: No hacer setState aquí si no es necesario
                                     FocusScope.of(context).unfocus();
                                     setState(() {
                                       isSearching = false;
@@ -6041,15 +6037,12 @@ class RegistrosAsignadosTab extends StatelessWidget {
                       border: InputBorder.none,
                       contentPadding: EdgeInsets.symmetric(vertical: 15),
                     ),
-                    // ✅ MODIFICADO: Mejorar el manejo del cambio de texto
                     onChanged: (value) {
-                      // Solo actualizar el estado local del StatefulBuilder
                       setState(() {
                         searchTerm = value.toLowerCase();
                         isSearching = value.isNotEmpty;
                       });
                     },
-                    // ✅ NUEVO: Manejar el submit del teclado
                     onSubmitted: (value) {
                       FocusScope.of(context).unfocus();
                     },
@@ -6065,12 +6058,11 @@ class RegistrosAsignadosTab extends StatelessWidget {
                       .where('tribuAsignada', isEqualTo: tribuId)
                       .snapshots(),
                   builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return Center(
-                        child: CircularProgressIndicator(
-                          color: primaryTeal,
-                        ),
-                      );
+                    // ✅ ELIMINADO: Loading inicial - Mostrar datos inmediatamente
+                    if (snapshot.connectionState == ConnectionState.waiting &&
+                        !snapshot.hasData) {
+                      // Solo mostrar indicador en la primera carga si no hay datos en caché
+                      return Container(); // Vacío en lugar de CircularProgressIndicator
                     }
 
                     if (!snapshot.hasData ||
@@ -6111,19 +6103,16 @@ class RegistrosAsignadosTab extends StatelessWidget {
                             final nombreCompleto =
                                 '$nombre $apellido'.toLowerCase();
 
-                            // Buscar en nombre, apellido o nombre completo
                             return nombre.contains(searchTerm) ||
                                 apellido.contains(searchTerm) ||
                                 nombreCompleto.contains(searchTerm);
                           }).toList()
                         : allDocs;
 
-// 🆕 NUEVA FUNCIONALIDAD: Ordenar registros para que los nuevos aparezcan primero
                     filteredDocs.sort((a, b) {
                       final dataA = a.data() as Map<String, dynamic>;
                       final dataB = b.data() as Map<String, dynamic>;
 
-                      // Función para determinar si un registro es nuevo (≤14 días)
                       bool esRegistroNuevo(Map<String, dynamic> data) {
                         DateTime? fechaTribu = (data['fechaAsignacionTribu']
                                     as Timestamp?)
@@ -6136,7 +6125,6 @@ class RegistrosAsignadosTab extends StatelessWidget {
                             (data['fechaAsignacionTimoteo'] as Timestamp?)
                                 ?.toDate();
 
-                        // Obtener la fecha más reciente de asignación
                         DateTime? fechaMasReciente = [
                           fechaTribu,
                           fechaCoord,
@@ -6157,11 +6145,9 @@ class RegistrosAsignadosTab extends StatelessWidget {
                       bool nuevoA = esRegistroNuevo(dataA);
                       bool nuevoB = esRegistroNuevo(dataB);
 
-                      // Los nuevos van primero
                       if (nuevoA && !nuevoB) return -1;
                       if (!nuevoA && nuevoB) return 1;
 
-                      // Si ambos son nuevos o ambos son antiguos, ordenar alfabéticamente
                       final nombreA =
                           '${dataA['nombre'] ?? ''} ${dataA['apellido'] ?? ''}'
                               .toLowerCase();
@@ -6171,7 +6157,6 @@ class RegistrosAsignadosTab extends StatelessWidget {
                       return nombreA.compareTo(nombreB);
                     });
 
-                    // Si hay búsqueda y no se encuentran resultados
                     if (isSearching && filteredDocs.isEmpty) {
                       return Center(
                         child: Column(
@@ -6197,14 +6182,12 @@ class RegistrosAsignadosTab extends StatelessWidget {
                       );
                     }
 
-                    // NUEVO: Separar registros activos e inactivos
                     List<DocumentSnapshot> registrosActivos = [];
                     List<DocumentSnapshot> registrosInactivos = [];
                     List<DocumentSnapshot> sinCoordinador = [];
                     Map<String, List<DocumentSnapshot>> porCoordinador = {};
                     List<String> idsCoordinadores = [];
 
-                    // Clasificar primero por estado activo/inactivo
                     for (var doc in filteredDocs) {
                       var data = doc.data() as Map<String, dynamic>;
                       bool activo = data['activo'] ?? true;
@@ -6216,7 +6199,6 @@ class RegistrosAsignadosTab extends StatelessWidget {
                       }
                     }
 
-                    // Organizar los registros ACTIVOS por coordinador
                     for (var doc in registrosActivos) {
                       var data = doc.data() as Map<String, dynamic>;
                       if (data['coordinadorAsignado'] == null) {
@@ -6234,18 +6216,13 @@ class RegistrosAsignadosTab extends StatelessWidget {
                     return FutureBuilder<Map<String, String>>(
                       future: obtenerNombresCoordinadores(idsCoordinadores),
                       builder: (context, futureSnapshot) {
-                        if (!futureSnapshot.hasData) {
-                          return Center(child: CircularProgressIndicator());
-                        }
-
+                        // ✅ OPTIMIZACIÓN: Usar Map vacío si no hay datos aún
                         Map<String, String> nombresCoordinadores =
                             futureSnapshot.data ?? {};
 
-                        // Para la búsqueda, forzamos a que los grupos estén expandidos
                         Map<String, bool> groupExpandedStates = {};
                         Map<String, bool> expandedStates = {};
 
-                        // Si estamos buscando, expandimos todos los grupos automáticamente
                         if (isSearching) {
                           if (sinCoordinador.isNotEmpty) {
                             groupExpandedStates['Sin_Coordinador'] = true;
@@ -6259,7 +6236,6 @@ class RegistrosAsignadosTab extends StatelessWidget {
                             groupExpandedStates['Registros_No_Activos'] = true;
                           }
 
-                          // Expandimos todos los registros encontrados
                           for (var doc in filteredDocs) {
                             expandedStates[doc.id] = true;
                           }
@@ -6269,7 +6245,6 @@ class RegistrosAsignadosTab extends StatelessWidget {
                           padding: EdgeInsets.all(16),
                           child: ListView(
                             children: [
-                              // Grupos de registros activos
                               if (sinCoordinador.isNotEmpty)
                                 _buildGrupo(
                                   context,
@@ -6294,8 +6269,6 @@ class RegistrosAsignadosTab extends StatelessWidget {
                                         expandedStates,
                                         groupExpandedStates,
                                       )),
-
-                              // NUEVO: Grupo de registros no activos
                               if (registrosInactivos.isNotEmpty)
                                 _buildGrupoInactivos(
                                   context,
@@ -6320,7 +6293,7 @@ class RegistrosAsignadosTab extends StatelessWidget {
           ),
         );
       }),
-    ); // ✅ NUEVO: Cerrar el GestureDetector agregado
+    );
   }
 
   // NUEVO: Método específico para construir el grupo de registros inactivos
