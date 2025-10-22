@@ -4765,21 +4765,56 @@ Widget _buildInfoRow(IconData icon, String label, String value) {
   );
 }
 
-class RegistrosAsignadosTab extends StatelessWidget {
+//--Clase de la pestaña de Personas
+class RegistrosAsignadosTab extends StatefulWidget {
   final String tribuId;
   final String tribuNombre;
 
   const RegistrosAsignadosTab({
     Key? key,
     required this.tribuId,
-    required this.tribuNombre, // Asegúrate que esté definido aquí
+    required this.tribuNombre,
   }) : super(key: key);
 
+  @override
+  State<RegistrosAsignadosTab> createState() => _RegistrosAsignadosTabState();
+}
+
+class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
+  // ✅ NUEVO: Controlador persistente para el campo de búsqueda
+  final TextEditingController _searchController = TextEditingController();
+
+  // ✅ NUEVO: Variable de estado para el término de búsqueda
+  String _searchTerm = '';
+
+  // ✅ NUEVO: FocusNode para controlar el foco del campo de texto
+  final FocusNode _searchFocusNode = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    // ✅ NUEVO: Listener para actualizar el término de búsqueda en tiempo real
+    _searchController.addListener(() {
+      setState(() {
+        _searchTerm = _searchController.text.toLowerCase();
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    // ✅ NUEVO: Limpieza de recursos
+    _searchController.dispose();
+    _searchFocusNode.dispose();
+    super.dispose();
+  }
+
+  // ✅ MANTENER: Funciones originales sin cambios
   Future<void> _asignarACoordinador(
       BuildContext context, DocumentSnapshot registro) async {
     final coordinadoresSnapshot = await FirebaseFirestore.instance
         .collection('coordinadores')
-        .where('tribuId', isEqualTo: tribuId)
+        .where('tribuId', isEqualTo: widget.tribuId)
         .get();
 
     if (coordinadoresSnapshot.docs.isEmpty) {
@@ -5966,333 +6001,347 @@ class RegistrosAsignadosTab extends StatelessWidget {
     final accentGrey = Color(0xFF78909C);
     final backgroundGrey = Color(0xFFF5F5F5);
 
-    // Controlador para el campo de búsqueda
-    final TextEditingController searchController = TextEditingController();
-    // Estado de búsqueda
-    bool isSearching = false;
-    // Término de búsqueda
-    String searchTerm = '';
-
     return GestureDetector(
       onTap: () {
-        FocusScope.of(context).unfocus();
+        // ✅ MODIFICADO: Quitar el foco pero NO limpiar el texto
+        _searchFocusNode.unfocus();
       },
       behavior: HitTestBehavior.opaque,
-      child: StatefulBuilder(builder: (context, setState) {
-        return Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                primaryTeal.withOpacity(0.05),
-                backgroundGrey,
-              ],
-            ),
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              primaryTeal.withOpacity(0.05),
+              backgroundGrey,
+            ],
           ),
-          child: Column(
-            children: [
-              // Barra de búsqueda
-              Padding(
-                padding: EdgeInsets.all(16),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: primaryTeal.withOpacity(0.1),
-                        blurRadius: 5,
-                        offset: Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: TextField(
-                    controller: searchController,
-                    textInputAction: TextInputAction.search,
-                    enableInteractiveSelection: true,
-                    decoration: InputDecoration(
-                      hintText: 'Buscar por nombre o apellido...',
-                      prefixIcon: Icon(
-                        Icons.search,
-                        color: primaryTeal,
-                      ),
-                      suffixIcon:
-                          searchController.text.isNotEmpty || isSearching
-                              ? IconButton(
-                                  icon: Icon(
-                                    Icons.close,
-                                    color: accentGrey,
-                                  ),
-                                  onPressed: () {
-                                    searchController.clear();
-                                    FocusScope.of(context).unfocus();
-                                    setState(() {
-                                      isSearching = false;
-                                      searchTerm = '';
-                                    });
-                                  },
-                                )
-                              : null,
-                      border: InputBorder.none,
-                      contentPadding: EdgeInsets.symmetric(vertical: 15),
+        ),
+        child: Column(
+          children: [
+            // ✅ MODIFICADO: Barra de búsqueda mejorada
+            Padding(
+              padding: EdgeInsets.all(16),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: primaryTeal.withOpacity(0.1),
+                      blurRadius: 5,
+                      offset: Offset(0, 2),
                     ),
-                    onChanged: (value) {
-                      setState(() {
-                        searchTerm = value.toLowerCase();
-                        isSearching = value.isNotEmpty;
-                      });
-                    },
-                    onSubmitted: (value) {
-                      FocusScope.of(context).unfocus();
-                    },
-                  ),
+                  ],
                 ),
-              ),
-
-              // Contenido principal con StreamBuilder
-              Expanded(
-                child: StreamBuilder<QuerySnapshot>(
-                  stream: FirebaseFirestore.instance
-                      .collection('registros')
-                      .where('tribuAsignada', isEqualTo: tribuId)
-                      .snapshots(),
-                  builder: (context, snapshot) {
-                    // ✅ ELIMINADO: Loading inicial - Mostrar datos inmediatamente
-                    if (snapshot.connectionState == ConnectionState.waiting &&
-                        !snapshot.hasData) {
-                      // Solo mostrar indicador en la primera carga si no hay datos en caché
-                      return Container(); // Vacío en lugar de CircularProgressIndicator
-                    }
-
-                    if (!snapshot.hasData ||
-                        snapshot.data?.docs.isEmpty == true) {
-                      return Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.group_off_outlined,
-                              size: 64,
+                child: TextField(
+                  controller: _searchController,
+                  focusNode: _searchFocusNode,
+                  textInputAction: TextInputAction.search,
+                  enableInteractiveSelection: true,
+                  // ✅ NUEVO: Configuración para mantener el texto visible
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.black87,
+                  ),
+                  decoration: InputDecoration(
+                    hintText: 'Buscar por nombre o apellido...',
+                    hintStyle: TextStyle(color: Colors.grey[400]),
+                    prefixIcon: Icon(
+                      Icons.search,
+                      color: primaryTeal,
+                    ),
+                    // ✅ MODIFICADO: Botón de limpiar siempre visible cuando hay texto
+                    suffixIcon: _searchController.text.isNotEmpty
+                        ? IconButton(
+                            icon: Icon(
+                              Icons.close,
                               color: accentGrey,
                             ),
-                            SizedBox(height: 16),
-                            Text(
-                              'No hay jóvenes asignados a esta tribu',
-                              style: TextStyle(
-                                fontSize: 18,
-                                color: accentGrey,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    }
-
-                    final allDocs = snapshot.data?.docs ?? [];
-
-                    // Filtrar documentos según el término de búsqueda
-                    final filteredDocs = isSearching
-                        ? allDocs.where((doc) {
-                            final data = doc.data() as Map<String, dynamic>;
-                            final nombre =
-                                (data['nombre'] as String? ?? '').toLowerCase();
-                            final apellido = (data['apellido'] as String? ?? '')
-                                .toLowerCase();
-                            final nombreCompleto =
-                                '$nombre $apellido'.toLowerCase();
-
-                            return nombre.contains(searchTerm) ||
-                                apellido.contains(searchTerm) ||
-                                nombreCompleto.contains(searchTerm);
-                          }).toList()
-                        : allDocs;
-
-                    filteredDocs.sort((a, b) {
-                      final dataA = a.data() as Map<String, dynamic>;
-                      final dataB = b.data() as Map<String, dynamic>;
-
-                      bool esRegistroNuevo(Map<String, dynamic> data) {
-                        DateTime? fechaTribu = (data['fechaAsignacionTribu']
-                                    as Timestamp?)
-                                ?.toDate() ??
-                            (data['fechaAsignacion'] as Timestamp?)?.toDate();
-                        DateTime? fechaCoord =
-                            (data['fechaAsignacionCoordinador'] as Timestamp?)
-                                ?.toDate();
-                        DateTime? fechaTimoteo =
-                            (data['fechaAsignacionTimoteo'] as Timestamp?)
-                                ?.toDate();
-
-                        DateTime? fechaMasReciente = [
-                          fechaTribu,
-                          fechaCoord,
-                          fechaTimoteo
-                        ].whereType<DateTime>().fold<DateTime?>(
-                            null,
-                            (prev, curr) => prev == null || curr.isAfter(prev)
-                                ? curr
-                                : prev);
-
-                        return fechaMasReciente != null &&
-                            DateTime.now()
-                                    .difference(fechaMasReciente)
-                                    .inDays <=
-                                14;
-                      }
-
-                      bool nuevoA = esRegistroNuevo(dataA);
-                      bool nuevoB = esRegistroNuevo(dataB);
-
-                      if (nuevoA && !nuevoB) return -1;
-                      if (!nuevoA && nuevoB) return 1;
-
-                      final nombreA =
-                          '${dataA['nombre'] ?? ''} ${dataA['apellido'] ?? ''}'
-                              .toLowerCase();
-                      final nombreB =
-                          '${dataB['nombre'] ?? ''} ${dataB['apellido'] ?? ''}'
-                              .toLowerCase();
-                      return nombreA.compareTo(nombreB);
-                    });
-
-                    if (isSearching && filteredDocs.isEmpty) {
-                      return Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.search_off,
-                              size: 64,
-                              color: accentGrey,
-                            ),
-                            SizedBox(height: 16),
-                            Text(
-                              'No se encontraron resultados para "$searchTerm"',
-                              style: TextStyle(
-                                fontSize: 18,
-                                color: accentGrey,
-                                fontWeight: FontWeight.w500,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
-                        ),
-                      );
-                    }
-
-                    List<DocumentSnapshot> registrosActivos = [];
-                    List<DocumentSnapshot> registrosInactivos = [];
-                    List<DocumentSnapshot> sinCoordinador = [];
-                    Map<String, List<DocumentSnapshot>> porCoordinador = {};
-                    List<String> idsCoordinadores = [];
-
-                    for (var doc in filteredDocs) {
-                      var data = doc.data() as Map<String, dynamic>;
-                      bool activo = data['activo'] ?? true;
-
-                      if (activo) {
-                        registrosActivos.add(doc);
-                      } else {
-                        registrosInactivos.add(doc);
-                      }
-                    }
-
-                    for (var doc in registrosActivos) {
-                      var data = doc.data() as Map<String, dynamic>;
-                      if (data['coordinadorAsignado'] == null) {
-                        sinCoordinador.add(doc);
-                      } else {
-                        String coordinadorId = data['coordinadorAsignado'];
-                        if (!porCoordinador.containsKey(coordinadorId)) {
-                          porCoordinador[coordinadorId] = [];
-                          idsCoordinadores.add(coordinadorId);
-                        }
-                        porCoordinador[coordinadorId]!.add(doc);
-                      }
-                    }
-
-                    return FutureBuilder<Map<String, String>>(
-                      future: obtenerNombresCoordinadores(idsCoordinadores),
-                      builder: (context, futureSnapshot) {
-                        // ✅ OPTIMIZACIÓN: Usar Map vacío si no hay datos aún
-                        Map<String, String> nombresCoordinadores =
-                            futureSnapshot.data ?? {};
-
-                        Map<String, bool> groupExpandedStates = {};
-                        Map<String, bool> expandedStates = {};
-
-                        if (isSearching) {
-                          if (sinCoordinador.isNotEmpty) {
-                            groupExpandedStates['Sin_Coordinador'] = true;
-                          }
-
-                          porCoordinador.keys.forEach((key) {
-                            groupExpandedStates['Coordinador_${key}'] = true;
-                          });
-
-                          if (registrosInactivos.isNotEmpty) {
-                            groupExpandedStates['Registros_No_Activos'] = true;
-                          }
-
-                          for (var doc in filteredDocs) {
-                            expandedStates[doc.id] = true;
-                          }
-                        }
-
-                        return Padding(
-                          padding: EdgeInsets.all(16),
-                          child: ListView(
-                            children: [
-                              if (sinCoordinador.isNotEmpty)
-                                _buildGrupo(
-                                  context,
-                                  'Sin Coordinador',
-                                  sinCoordinador,
-                                  primaryTeal,
-                                  secondaryOrange,
-                                  accentGrey,
-                                  backgroundGrey,
-                                  expandedStates,
-                                  groupExpandedStates,
-                                ),
-                              ...porCoordinador.entries
-                                  .map((entry) => _buildGrupo(
-                                        context,
-                                        'Coordinador: ${nombresCoordinadores[entry.key] ?? "Desconocido"}',
-                                        entry.value,
-                                        primaryTeal,
-                                        secondaryOrange,
-                                        accentGrey,
-                                        backgroundGrey,
-                                        expandedStates,
-                                        groupExpandedStates,
-                                      )),
-                              if (registrosInactivos.isNotEmpty)
-                                _buildGrupoInactivos(
-                                  context,
-                                  'Registros No Activos',
-                                  registrosInactivos,
-                                  primaryTeal,
-                                  secondaryOrange,
-                                  accentGrey,
-                                  backgroundGrey,
-                                  expandedStates,
-                                  groupExpandedStates,
-                                ),
-                            ],
-                          ),
-                        );
-                      },
-                    );
+                            onPressed: () {
+                              setState(() {
+                                _searchController.clear();
+                                _searchTerm = '';
+                              });
+                              // ✅ NUEVO: Mantener el foco después de limpiar
+                              _searchFocusNode.requestFocus();
+                            },
+                          )
+                        : null,
+                    border: InputBorder.none,
+                    contentPadding: EdgeInsets.symmetric(vertical: 15),
+                  ),
+                  // ✅ MODIFICADO: Solo actualizar el estado, no quitar el foco
+                  onSubmitted: (value) {
+                    _searchFocusNode.unfocus();
                   },
                 ),
               ),
-            ],
-          ),
-        );
-      }),
+            ),
+
+            // ✅ MANTENER: Contenido principal sin cambios
+            Expanded(
+              child: StreamBuilder<QuerySnapshot>(
+                stream: FirebaseFirestore.instance
+                    .collection('registros')
+                    .where('tribuAsignada', isEqualTo: widget.tribuId)
+                    .snapshots(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting &&
+                      !snapshot.hasData) {
+                    return Container();
+                  }
+
+                  if (!snapshot.hasData ||
+                      snapshot.data?.docs.isEmpty == true) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.group_off_outlined,
+                            size: 64,
+                            color: accentGrey,
+                          ),
+                          SizedBox(height: 16),
+                          Text(
+                            'No hay jóvenes asignados a esta tribu',
+                            style: TextStyle(
+                              fontSize: 18,
+                              color: accentGrey,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+
+                  final allDocs = snapshot.data?.docs ?? [];
+
+                  // ✅ MODIFICADO: Usar _searchTerm en lugar de variable local
+                  final filteredDocs = _searchTerm.isNotEmpty
+                      ? allDocs.where((doc) {
+                          final data = doc.data() as Map<String, dynamic>;
+                          final nombre =
+                              (data['nombre'] as String? ?? '').toLowerCase();
+                          final apellido =
+                              (data['apellido'] as String? ?? '').toLowerCase();
+                          final nombreCompleto =
+                              '$nombre $apellido'.toLowerCase();
+
+                          return nombre.contains(_searchTerm) ||
+                              apellido.contains(_searchTerm) ||
+                              nombreCompleto.contains(_searchTerm);
+                        }).toList()
+                      : allDocs;
+
+                  filteredDocs.sort((a, b) {
+                    final dataA = a.data() as Map<String, dynamic>;
+                    final dataB = b.data() as Map<String, dynamic>;
+
+                    bool esRegistroNuevo(Map<String, dynamic> data) {
+                      DateTime? fechaTribu =
+                          (data['fechaAsignacionTribu'] as Timestamp?)
+                                  ?.toDate() ??
+                              (data['fechaAsignacion'] as Timestamp?)?.toDate();
+                      DateTime? fechaCoord =
+                          (data['fechaAsignacionCoordinador'] as Timestamp?)
+                              ?.toDate();
+                      DateTime? fechaTimoteo =
+                          (data['fechaAsignacionTimoteo'] as Timestamp?)
+                              ?.toDate();
+
+                      DateTime? fechaMasReciente = [
+                        fechaTribu,
+                        fechaCoord,
+                        fechaTimoteo
+                      ].whereType<DateTime>().fold<DateTime?>(
+                          null,
+                          (prev, curr) =>
+                              prev == null || curr.isAfter(prev) ? curr : prev);
+
+                      return fechaMasReciente != null &&
+                          DateTime.now().difference(fechaMasReciente).inDays <=
+                              14;
+                    }
+
+                    bool nuevoA = esRegistroNuevo(dataA);
+                    bool nuevoB = esRegistroNuevo(dataB);
+
+                    if (nuevoA && !nuevoB) return -1;
+                    if (!nuevoA && nuevoB) return 1;
+
+                    final nombreA =
+                        '${dataA['nombre'] ?? ''} ${dataA['apellido'] ?? ''}'
+                            .toLowerCase();
+                    final nombreB =
+                        '${dataB['nombre'] ?? ''} ${dataB['apellido'] ?? ''}'
+                            .toLowerCase();
+                    return nombreA.compareTo(nombreB);
+                  });
+
+                  // ✅ MODIFICADO: Mostrar mensaje cuando no hay resultados de búsqueda
+                  if (_searchTerm.isNotEmpty && filteredDocs.isEmpty) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.search_off,
+                            size: 64,
+                            color: accentGrey,
+                          ),
+                          SizedBox(height: 16),
+                          Text(
+                            'No se encontraron resultados para "$_searchTerm"',
+                            style: TextStyle(
+                              fontSize: 18,
+                              color: accentGrey,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          SizedBox(height: 16),
+                          ElevatedButton.icon(
+                            onPressed: () {
+                              setState(() {
+                                _searchController.clear();
+                                _searchTerm = '';
+                              });
+                            },
+                            icon: Icon(Icons.clear_all),
+                            label: Text('Limpiar búsqueda'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: primaryTeal,
+                              foregroundColor: Colors.white,
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: 20, vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+
+                  // ✅ MANTENER: Resto de la lógica de agrupación y visualización
+                  List<DocumentSnapshot> registrosActivos = [];
+                  List<DocumentSnapshot> registrosInactivos = [];
+                  List<DocumentSnapshot> sinCoordinador = [];
+                  Map<String, List<DocumentSnapshot>> porCoordinador = {};
+                  List<String> idsCoordinadores = [];
+
+                  for (var doc in filteredDocs) {
+                    var data = doc.data() as Map<String, dynamic>;
+                    bool activo = data['activo'] ?? true;
+
+                    if (activo) {
+                      registrosActivos.add(doc);
+                    } else {
+                      registrosInactivos.add(doc);
+                    }
+                  }
+
+                  for (var doc in registrosActivos) {
+                    var data = doc.data() as Map<String, dynamic>;
+                    if (data['coordinadorAsignado'] == null) {
+                      sinCoordinador.add(doc);
+                    } else {
+                      String coordinadorId = data['coordinadorAsignado'];
+                      if (!porCoordinador.containsKey(coordinadorId)) {
+                        porCoordinador[coordinadorId] = [];
+                        idsCoordinadores.add(coordinadorId);
+                      }
+                      porCoordinador[coordinadorId]!.add(doc);
+                    }
+                  }
+
+                  return FutureBuilder<Map<String, String>>(
+                    future: obtenerNombresCoordinadores(idsCoordinadores),
+                    builder: (context, futureSnapshot) {
+                      Map<String, String> nombresCoordinadores =
+                          futureSnapshot.data ?? {};
+
+                      Map<String, bool> groupExpandedStates = {};
+                      Map<String, bool> expandedStates = {};
+
+                      // ✅ MODIFICADO: Expandir grupos automáticamente cuando hay búsqueda activa
+                      if (_searchTerm.isNotEmpty) {
+                        if (sinCoordinador.isNotEmpty) {
+                          groupExpandedStates['Sin_Coordinador'] = true;
+                        }
+
+                        porCoordinador.keys.forEach((key) {
+                          groupExpandedStates['Coordinador_${key}'] = true;
+                        });
+
+                        if (registrosInactivos.isNotEmpty) {
+                          groupExpandedStates['Registros_No_Activos'] = true;
+                        }
+
+                        for (var doc in filteredDocs) {
+                          expandedStates[doc.id] = true;
+                        }
+                      }
+
+                      return Padding(
+                        padding: EdgeInsets.all(16),
+                        child: ListView(
+                          // ✅ NUEVO: Mantener la posición del scroll
+                          keyboardDismissBehavior:
+                              ScrollViewKeyboardDismissBehavior.onDrag,
+                          children: [
+                            if (sinCoordinador.isNotEmpty)
+                              _buildGrupo(
+                                context,
+                                'Sin Coordinador',
+                                sinCoordinador,
+                                primaryTeal,
+                                secondaryOrange,
+                                accentGrey,
+                                backgroundGrey,
+                                expandedStates,
+                                groupExpandedStates,
+                              ),
+                            ...porCoordinador.entries
+                                .map((entry) => _buildGrupo(
+                                      context,
+                                      'Coordinador: ${nombresCoordinadores[entry.key] ?? "Desconocido"}',
+                                      entry.value,
+                                      primaryTeal,
+                                      secondaryOrange,
+                                      accentGrey,
+                                      backgroundGrey,
+                                      expandedStates,
+                                      groupExpandedStates,
+                                    )),
+                            if (registrosInactivos.isNotEmpty)
+                              _buildGrupoInactivos(
+                                context,
+                                'Registros No Activos',
+                                registrosInactivos,
+                                primaryTeal,
+                                secondaryOrange,
+                                accentGrey,
+                                backgroundGrey,
+                                expandedStates,
+                                groupExpandedStates,
+                              ),
+                          ],
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
