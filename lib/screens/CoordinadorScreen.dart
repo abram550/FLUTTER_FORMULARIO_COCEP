@@ -4597,1457 +4597,16 @@ class PersonasAsignadasTab extends StatelessWidget {
     final accentGrey = Color(0xFF78909C);
     final backgroundGrey = Color(0xFFF5F5F5);
 
-    // Controlador para el buscador
-    final TextEditingController _searchController = TextEditingController();
-    final ValueNotifier<String> _searchQuery = ValueNotifier<String>('');
-    final ValueNotifier<bool> _isAsignadosExpanded = ValueNotifier<bool>(false);
-    final ValueNotifier<bool> _isNoAsignadosExpanded =
-        ValueNotifier<bool>(false);
-
-    return Container(
-      color: backgroundGrey,
-      child: Stack(
-        children: [
-          // Contenido original
-          StreamBuilder(
-            stream: FirebaseFirestore.instance
-                .collection('registros')
-                .where('coordinadorAsignado', isEqualTo: coordinadorId)
-                .snapshots(),
-            builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return Center(
-                  child: CircularProgressIndicator(color: primaryTeal),
-                );
-              }
-
-              if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                return Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.person_off, size: 64, color: accentGrey),
-                      SizedBox(height: 16),
-                      Text(
-                        'No hay personas registradas',
-                        style: TextStyle(
-                          fontSize: 18,
-                          color: accentGrey,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      SizedBox(height: 24),
-                      ElevatedButton.icon(
-                        onPressed: () => _registrarNuevoMiembro(context),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: primaryTeal,
-                          foregroundColor: Colors.white,
-                          padding: EdgeInsets.symmetric(
-                              horizontal: 24, vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          elevation: 3,
-                        ),
-                        icon: Icon(Icons.person_add, size: 20),
-                        label: Text(
-                          'Registrar Primer Miembro',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              }
-
-              return StatefulBuilder(
-                builder: (context, setState) {
-                  // Filtrar registros según la búsqueda
-                  String searchText = _searchQuery.value.toLowerCase();
-
-                  final allDocs = snapshot.data!.docs;
-                  bool esRegistroReciente(DocumentSnapshot doc) {
-                    try {
-                      final data = doc.data() as Map<String, dynamic>?;
-                      if (data == null) return false;
-
-                      DateTime? fechaMasReciente;
-
-                      // ✅ VERIFICAR fechaAsignacionCoordinador
-                      final fechaAsignacionCoordinador =
-                          data['fechaAsignacionCoordinador'];
-                      if (fechaAsignacionCoordinador is Timestamp) {
-                        fechaMasReciente = fechaAsignacionCoordinador.toDate();
-                      }
-
-                      // ✅ VERIFICAR fechaAsignacionTribu
-                      final fechaAsignacionTribu = data['fechaAsignacionTribu'];
-                      if (fechaAsignacionTribu is Timestamp) {
-                        DateTime fechaTribu = fechaAsignacionTribu.toDate();
-                        // Si no hay fecha de coordinador, o si la fecha de tribu es más reciente
-                        if (fechaMasReciente == null ||
-                            fechaTribu.isAfter(fechaMasReciente)) {
-                          fechaMasReciente = fechaTribu;
-                        }
-                      }
-
-                      // Si no hay ninguna de las dos fechas, no es reciente
-                      if (fechaMasReciente == null) return false;
-
-                      final diferenciaDias =
-                          DateTime.now().difference(fechaMasReciente).inDays;
-                      // ✅ Si han pasado 13 días o menos desde la fecha más reciente, es "nuevo"
-                      return diferenciaDias >= 0 && diferenciaDias <= 13;
-                    } catch (e) {
-                      print('Error en esRegistroReciente: $e');
-                      return false;
-                    }
-                  }
-
-// Ordenar allDocs: registros recientes primero
-// Ordenar allDocs: registros recientes primero
-                  allDocs.sort((a, b) {
-                    bool aEsReciente = esRegistroReciente(a);
-                    bool bEsReciente = esRegistroReciente(b);
-
-                    // Si ambos son recientes o ambos no son recientes, mantener orden original por fecha
-                    if (aEsReciente == bEsReciente) {
-                      // Ordenar por fecha más reciente primero
-                      final dataA = a.data() as Map<String, dynamic>?;
-                      final dataB = b.data() as Map<String, dynamic>?;
-
-                      final fechaA =
-                          (dataA?['fechaAsignacionCoordinador'] as Timestamp?)
-                                  ?.toDate() ??
-                              DateTime(2000);
-                      final fechaB =
-                          (dataB?['fechaAsignacionCoordinador'] as Timestamp?)
-                                  ?.toDate() ??
-                              DateTime(2000);
-
-                      return fechaB.compareTo(fechaA); // Más recientes primero
-                    }
-
-                    // ✅ CORRECCIÓN: Los recientes van primero
-                    return (bEsReciente ? 1 : 0) - (aEsReciente ? 1 : 0);
-                  });
-
-                  Widget buildRegistroContainer(DocumentSnapshot doc) {
-                    bool esReciente = esRegistroReciente(doc);
-
-                    return AnimatedContainer(
-                      duration: Duration(milliseconds: 300),
-                      margin: EdgeInsets.only(bottom: 16),
-                      padding: EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: esReciente
-                              ? [
-                                  Colors.orange.withOpacity(
-                                      0.9), // Color distintivo para nuevos
-                                  Colors.orange.withOpacity(0.7)
-                                ]
-                              : [
-                                  // Tu color original aquí
-                                  primaryTeal,
-                                  primaryTeal.withOpacity(0.8)
-                                ],
-                        ),
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(
-                            color: (esReciente ? Colors.orange : primaryTeal)
-                                .withOpacity(0.2),
-                            blurRadius: esReciente
-                                ? 15
-                                : 10, // Sombra más pronunciada para nuevos
-                            offset: Offset(0, esReciente ? 8 : 5),
-                          ),
-                        ],
-                        // Borde distintivo para registros recientes
-                        border: esReciente
-                            ? Border.all(
-                                color: Colors.orange.withOpacity(0.6),
-                                width: 2,
-                              )
-                            : null,
-                      ),
-                      child: Stack(
-                        children: [
-                          // Tu contenido original del registro aquí
-                          // Row(children: [...]), Column(children: [...]), etc.
-
-                          // Badge "NUEVO" en la esquina superior derecha
-                          if (esReciente)
-                            Positioned(
-                              top: -8,
-                              right: -8,
-                              child: Container(
-                                padding: EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: Colors.red.withOpacity(0.9),
-                                  borderRadius: BorderRadius.circular(12),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.red.withOpacity(0.3),
-                                      blurRadius: 8,
-                                      offset: Offset(0, 2),
-                                    ),
-                                  ],
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      Icons.fiber_new,
-                                      color: Colors.white,
-                                      size: 14,
-                                    ),
-                                    SizedBox(width: 4),
-                                    Text(
-                                      'NUEVO',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                    );
-                  }
-
-                  // Filtrar documentos según búsqueda
-                  var filteredDocs = searchText.isEmpty
-                      ? allDocs
-                      : allDocs.where((doc) {
-                          final nombre = doc['nombre'].toString().toLowerCase();
-                          final apellido =
-                              doc['apellido'].toString().toLowerCase();
-                          final nombreCompleto = '$nombre $apellido';
-
-                          return nombreCompleto.contains(searchText);
-                        }).toList();
-
-                  // Separar en asignados y no asignados
-                  final asignados = filteredDocs.where((doc) {
-                    try {
-                      return doc.get('timoteoAsignado') != null;
-                    } catch (e) {
-                      return false;
-                    }
-                  }).toList();
-
-                  final noAsignados = filteredDocs.where((doc) {
-                    try {
-                      return doc.get('timoteoAsignado') == null;
-                    } catch (e) {
-                      return true;
-                    }
-                  }).toList();
-
-                  // Contador de personas asignadas al coordinador
-                  final totalPersonasAsignadas = allDocs.length;
-                  final totalFiltrados = filteredDocs.length;
-
-                  return Column(
-                    children: [
-                      // Buscador
-                      Container(
-                        margin: EdgeInsets.fromLTRB(16, 16, 16, 8),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.05),
-                              blurRadius: 10,
-                              offset: Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: TextField(
-                          controller: _searchController,
-                          onChanged: (value) {
-                            setState(() {
-                              _searchQuery.value = value;
-
-                              // Expandir grupos automáticamente cuando hay búsqueda
-                              if (value.isNotEmpty) {
-                                _isAsignadosExpanded.value = true;
-                                _isNoAsignadosExpanded.value = true;
-                              }
-                            });
-                          },
-                          decoration: InputDecoration(
-                            hintText: 'Buscar por nombre o apellido...',
-                            prefixIcon: Icon(Icons.search, color: primaryTeal),
-                            suffixIcon: _searchQuery.value.isNotEmpty
-                                ? IconButton(
-                                    icon: Icon(Icons.clear, color: accentGrey),
-                                    onPressed: () {
-                                      setState(() {
-                                        _searchController.clear();
-                                        _searchQuery.value = '';
-                                      });
-                                    },
-                                  )
-                                : null,
-                            border: InputBorder.none,
-                            contentPadding: EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 14,
-                            ),
-                          ),
-                        ),
-                      ),
-
-                      // Badge de resultados de búsqueda
-                      if (_searchQuery.value.isNotEmpty)
-                        Container(
-                          margin:
-                              EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                          padding:
-                              EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: primaryTeal.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.filter_alt_outlined,
-                                size: 16,
-                                color: primaryTeal,
-                              ),
-                              SizedBox(width: 6),
-                              Text(
-                                'Mostrando $totalFiltrados de $totalPersonasAsignadas registros',
-                                style: TextStyle(
-                                  color: primaryTeal,
-                                  fontWeight: FontWeight.w500,
-                                  fontSize: 13,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-
-                      Expanded(
-                        child: SingleChildScrollView(
-                          padding: EdgeInsets.all(16),
-                          child: Column(
-                            children: [
-                              // Contador de personas asignadas
-                              Container(
-                                margin: EdgeInsets.only(bottom: 16),
-                                padding: EdgeInsets.all(16),
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                    colors: [
-                                      primaryTeal,
-                                      primaryTeal.withOpacity(0.8)
-                                    ],
-                                  ),
-                                  borderRadius: BorderRadius.circular(12),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: primaryTeal.withOpacity(0.2),
-                                      blurRadius: 10,
-                                      offset: Offset(0, 5),
-                                    ),
-                                  ],
-                                ),
-                                child: Row(
-                                  children: [
-                                    Container(
-                                      padding: EdgeInsets.all(12),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white.withOpacity(0.2),
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: Icon(
-                                        Icons.people_alt_outlined,
-                                        color: Colors.white,
-                                        size: 28,
-                                      ),
-                                    ),
-                                    SizedBox(width: 16),
-                                    Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          'Total de Personas',
-                                          style: TextStyle(
-                                            color:
-                                                Colors.white.withOpacity(0.9),
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                        SizedBox(height: 4),
-                                        Text(
-                                          '$totalPersonasAsignadas',
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 24,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    Spacer(),
-                                    Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.end,
-                                      children: [
-                                        _buildCounterBadge(
-                                          'Asignados',
-                                          allDocs.where((doc) {
-                                            try {
-                                              return doc
-                                                      .get('timoteoAsignado') !=
-                                                  null;
-                                            } catch (e) {
-                                              return false;
-                                            }
-                                          }).length,
-                                          primaryTeal,
-                                          Colors.white,
-                                        ),
-                                        SizedBox(height: 8),
-                                        _buildCounterBadge(
-                                          'Por asignar',
-                                          allDocs.where((doc) {
-                                            try {
-                                              return doc
-                                                      .get('timoteoAsignado') ==
-                                                  null;
-                                            } catch (e) {
-                                              return true;
-                                            }
-                                          }).length,
-                                          secondaryOrange,
-                                          Colors.white,
-                                        ),
-                                        SizedBox(height: 8),
-                                        // NUEVO: Badge para registros recientes
-                                        // REEMPLAZA el Builder actual que está después del segundo _buildCounterBadge
-// desde "SizedBox(height: 8)," hasta el cierre del Builder
-                                        SizedBox(height: 8),
-                                        Builder(
-                                          builder: (context) {
-                                            final registrosRecientes = allDocs
-                                                .where((doc) =>
-                                                    esRegistroReciente(doc))
-                                                .length;
-
-                                            return AnimatedContainer(
-                                              duration:
-                                                  Duration(milliseconds: 300),
-                                              padding: EdgeInsets.symmetric(
-                                                  horizontal: 12, vertical: 6),
-                                              decoration: BoxDecoration(
-                                                color: registrosRecientes > 0
-                                                    ? Colors.orange
-                                                        .withOpacity(0.3)
-                                                    : Colors.white
-                                                        .withOpacity(0.2),
-                                                borderRadius:
-                                                    BorderRadius.circular(20),
-                                                border: Border.all(
-                                                  color: registrosRecientes > 0
-                                                      ? Colors.orange
-                                                          .withOpacity(0.5)
-                                                      : Colors.white
-                                                          .withOpacity(0.3),
-                                                  width: 1,
-                                                ),
-                                              ),
-                                              child: Row(
-                                                mainAxisSize: MainAxisSize.min,
-                                                children: [
-                                                  Text(
-                                                    'Nuevos',
-                                                    style: TextStyle(
-                                                      color: Colors.white
-                                                          .withOpacity(0.9),
-                                                      fontWeight:
-                                                          FontWeight.w500,
-                                                      fontSize: 12,
-                                                    ),
-                                                  ),
-                                                  SizedBox(width: 6),
-                                                  Container(
-                                                    padding: EdgeInsets.all(4),
-                                                    decoration: BoxDecoration(
-                                                      color:
-                                                          registrosRecientes > 0
-                                                              ? Colors.orange
-                                                                  .withOpacity(
-                                                                      0.4)
-                                                              : Colors.grey
-                                                                  .withOpacity(
-                                                                      0.3),
-                                                      shape: BoxShape.circle,
-                                                    ),
-                                                    child: registrosRecientes >
-                                                            0
-                                                        ? Icon(
-                                                            Icons.new_releases,
-                                                            color: Colors.white,
-                                                            size: 12,
-                                                          )
-                                                        : Text(
-                                                            '$registrosRecientes',
-                                                            style: TextStyle(
-                                                              color:
-                                                                  Colors.white,
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .bold,
-                                                              fontSize: 11,
-                                                            ),
-                                                          ),
-                                                  ),
-                                                ],
-                                              ),
-                                            );
-                                          },
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
-
-                              if (noAsignados.isNotEmpty) ...[
-                                GestureDetector(
-                                  onTap: () {
-                                    setState(() {
-                                      _isNoAsignadosExpanded.value =
-                                          !_isNoAsignadosExpanded.value;
-                                    });
-                                  },
-                                  child: _buildExpandableHeader(
-                                    'Personas por asignar (${noAsignados.length})',
-                                    Icons.person_add_alt,
-                                    secondaryOrange,
-                                    _isNoAsignadosExpanded.value,
-                                  ),
-                                ),
-                                if (_isNoAsignadosExpanded.value)
-                                  AnimatedContainer(
-                                    duration: Duration(milliseconds: 300),
-                                    child: ListView.builder(
-                                      shrinkWrap: true,
-                                      physics: NeverScrollableScrollPhysics(),
-                                      itemCount: noAsignados.length,
-                                      itemBuilder: (context, index) {
-                                        final registro = noAsignados[index];
-                                        final esReciente =
-                                            esRegistroReciente(registro);
-                                        return _buildPersonCard(
-                                          context,
-                                          registro,
-                                          isAssigned: false,
-                                          primaryTeal: primaryTeal,
-                                          secondaryOrange: secondaryOrange,
-                                          accentGrey: accentGrey,
-                                          esReciente: esReciente,
-                                        );
-                                      },
-                                    ),
-                                  ),
-                                SizedBox(height: 24),
-                              ],
-
-                              if (asignados.isNotEmpty) ...[
-                                GestureDetector(
-                                  onTap: () {
-                                    setState(() {
-                                      _isAsignadosExpanded.value =
-                                          !_isAsignadosExpanded.value;
-                                    });
-                                  },
-                                  child: _buildExpandableHeader(
-                                    'Personas asignadas (${asignados.length})',
-                                    Icons.people,
-                                    primaryTeal,
-                                    _isAsignadosExpanded.value,
-                                  ),
-                                ),
-                                if (_isAsignadosExpanded.value)
-                                  AnimatedContainer(
-                                    duration: Duration(milliseconds: 300),
-                                    child: Builder(
-                                      builder: (context) {
-                                        // Ordenar registros asignados: recientes primero
-                                        final asignadosOrdenados =
-                                            List<DocumentSnapshot>.from(
-                                                asignados);
-                                        asignadosOrdenados.sort((a, b) {
-                                          final dataA =
-                                              a.data() as Map<String, dynamic>?;
-                                          final dataB =
-                                              b.data() as Map<String, dynamic>?;
-
-                                          final fechaA =
-                                              (dataA?['fechaAsignacionCoordinador']
-                                                          as Timestamp?)
-                                                      ?.toDate() ??
-                                                  DateTime(2000);
-                                          final fechaB =
-                                              (dataB?['fechaAsignacionCoordinador']
-                                                          as Timestamp?)
-                                                      ?.toDate() ??
-                                                  DateTime(2000);
-
-                                          return fechaB.compareTo(
-                                              fechaA); // Más recientes primero
-                                        });
-
-                                        return ListView.builder(
-                                          shrinkWrap: true,
-                                          physics:
-                                              NeverScrollableScrollPhysics(),
-                                          itemCount: asignadosOrdenados.length,
-                                          itemBuilder: (context, index) {
-                                            final registro =
-                                                asignadosOrdenados[index];
-                                            final data = registro.data()
-                                                as Map<String, dynamic>?;
-
-                                            // Detectar si es un registro reciente (≤14 días)
-                                            DateTime? fechaAsignacion =
-                                                (data?['fechaAsignacionCoordinador']
-                                                        as Timestamp?)
-                                                    ?.toDate();
-                                            bool esReciente =
-                                                fechaAsignacion != null &&
-                                                    DateTime.now()
-                                                            .difference(
-                                                                fechaAsignacion)
-                                                            .inDays <=
-                                                        14;
-
-                                            return AnimatedContainer(
-                                              duration:
-                                                  Duration(milliseconds: 200),
-                                              margin:
-                                                  EdgeInsets.only(bottom: 12),
-                                              decoration: BoxDecoration(
-                                                borderRadius:
-                                                    BorderRadius.circular(12),
-                                                boxShadow: [
-                                                  BoxShadow(
-                                                    color: esReciente
-                                                        ? Colors.orange
-                                                            .withOpacity(0.15)
-                                                        : Colors.black
-                                                            .withOpacity(0.05),
-                                                    blurRadius:
-                                                        esReciente ? 8 : 4,
-                                                    offset: Offset(
-                                                        0, esReciente ? 3 : 2),
-                                                  ),
-                                                ],
-                                              ),
-                                              child: Container(
-                                                decoration: BoxDecoration(
-                                                  borderRadius:
-                                                      BorderRadius.circular(12),
-                                                  color: esReciente
-                                                      ? Colors.amber
-                                                          .shade50 // Fondo amarillo suave para recientes
-                                                      : Colors
-                                                          .white, // Fondo blanco para normales
-                                                  border: Border.all(
-                                                    color: esReciente
-                                                        ? Colors.orange
-                                                            .shade300 // Borde naranja para recientes
-                                                        : primaryTeal.withOpacity(
-                                                            0.2), // Borde original
-                                                    width: esReciente ? 2 : 1,
-                                                  ),
-                                                ),
-                                                child: Stack(
-                                                  children: [
-                                                    // Badge "NUEVO" para registros recientes
-                                                    if (esReciente)
-                                                      Positioned(
-                                                        top: 8,
-                                                        right: 8,
-                                                        child: Container(
-                                                          padding: EdgeInsets
-                                                              .symmetric(
-                                                                  horizontal: 8,
-                                                                  vertical: 4),
-                                                          decoration:
-                                                              BoxDecoration(
-                                                            color: Colors.orange
-                                                                .shade600,
-                                                            borderRadius:
-                                                                BorderRadius
-                                                                    .circular(
-                                                                        12),
-                                                          ),
-                                                          child: Text(
-                                                            'NUEVO',
-                                                            style: TextStyle(
-                                                              color:
-                                                                  Colors.white,
-                                                              fontSize: 10,
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .bold,
-                                                            ),
-                                                          ),
-                                                        ),
-                                                      ),
-
-                                                    // Contenido de la tarjeta
-                                                    _buildPersonCard(
-                                                      context,
-                                                      registro,
-                                                      isAssigned: true,
-                                                      primaryTeal: primaryTeal,
-                                                      secondaryOrange:
-                                                          secondaryOrange,
-                                                      accentGrey: accentGrey,
-                                                      esReciente:
-                                                          esReciente, // Pasar parámetro adicional
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                            );
-                                          },
-                                        );
-                                      },
-                                    ),
-                                  ),
-                              ],
-
-                              // Espacio adicional al final para evitar que el botón flotante tape contenido
-                              SizedBox(height: 80),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  );
-                },
-              );
-            },
-          ),
-
-          // Botón flotante para registrar nuevo miembro
-          Positioned(
-            bottom: 20,
-            right: 20,
-            child: FloatingActionButton.extended(
-              onPressed: () => _registrarNuevoMiembro(context),
-              backgroundColor: secondaryOrange,
-              foregroundColor: Colors.white,
-              elevation: 6,
-              icon: Icon(Icons.person_add, size: 24),
-              label: Text(
-                'Registrar',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildExpandableHeader(
-    String title,
-    IconData icon,
-    Color color,
-    bool isExpanded,
-  ) {
-    return Container(
-      margin: EdgeInsets.only(bottom: isExpanded ? 16 : 8),
-      padding: EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: color, size: 24),
-          SizedBox(width: 12),
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: color,
-            ),
-          ),
-          Spacer(),
-          Container(
-            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(
-              title.contains('por asignar') ? 'Pendientes' : 'Activos',
-              style: TextStyle(
-                color: color,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-          SizedBox(width: 8),
-          Icon(
-            isExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
-            color: color,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCounterBadge(
-      String label, int count, Color color, Color textColor) {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.2),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.3),
-          width: 1,
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            label,
-            style: TextStyle(
-              color: textColor.withOpacity(0.9),
-              fontWeight: FontWeight.w500,
-              fontSize: 12,
-            ),
-          ),
-          SizedBox(width: 6),
-          Container(
-            padding: EdgeInsets.all(4),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.3),
-              shape: BoxShape.circle,
-            ),
-            child: Text(
-              '$count',
-              style: TextStyle(
-                color: textColor,
-                fontWeight: FontWeight.bold,
-                fontSize: 11,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSectionHeader(String title, IconData icon, Color color) {
-    return Container(
-      margin: EdgeInsets.only(bottom: 16),
-      padding: EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: color, size: 24),
-          SizedBox(width: 12),
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: color,
-            ),
-          ),
-          Spacer(),
-          Container(
-            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(
-              title == 'Personas por asignar' ? 'Pendientes' : 'Activos',
-              style: TextStyle(
-                color: color,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPersonCard(
-    BuildContext context,
-    DocumentSnapshot registro, {
-    required bool isAssigned,
-    required Color primaryTeal,
-    required Color secondaryOrange,
-    required Color accentGrey,
-    bool esReciente = false,
-  }) {
-    final data = registro.data() as Map<String, dynamic>;
-
-    // Calcular días transcurridos para mostrar información más precisa
-    String obtenerTextoTiempo() {
-      DateTime? fechaMasReciente;
-      String tipoAsignacion = '';
-
-      // Verificar fechaAsignacionCoordinador
-      final fechaCoordinador =
-          (data['fechaAsignacionCoordinador'] as Timestamp?)?.toDate();
-      if (fechaCoordinador != null) {
-        fechaMasReciente = fechaCoordinador;
-        tipoAsignacion = 'coordinador';
-      }
-
-      // Verificar fechaAsignacionTribu
-      final fechaTribu = (data['fechaAsignacionTribu'] as Timestamp?)?.toDate();
-      if (fechaTribu != null) {
-        if (fechaMasReciente == null || fechaTribu.isAfter(fechaMasReciente)) {
-          fechaMasReciente = fechaTribu;
-          tipoAsignacion = 'tribu';
-        }
-      }
-
-      if (fechaMasReciente == null) return '';
-
-      final diasTranscurridos =
-          DateTime.now().difference(fechaMasReciente).inDays;
-      final diasRestantes = 14 - diasTranscurridos;
-
-      String accion = tipoAsignacion == 'coordinador'
-          ? 'Asignado a coordinador'
-          : 'Asignado a tribu';
-
-      if (diasTranscurridos == 0) {
-        return '$accion hoy';
-      } else if (diasTranscurridos == 1) {
-        return '$accion ayer';
-      } else if (diasRestantes > 0) {
-        return 'Hace $diasTranscurridos días (${diasRestantes}d restantes)';
-      } else {
-        return 'Hace $diasTranscurridos días';
-      }
-    }
-
-    return Container(
-      margin: EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: esReciente
-              ? [
-                  Color(0xFFFF6B35).withOpacity(0.15),
-                  Color(0xFFFF8C42).withOpacity(0.08),
-                ]
-              : [
-                  Colors.white,
-                  Colors.grey.shade50,
-                ],
-        ),
-        border: Border.all(
-          color: esReciente
-              ? Color(0xFFFF6B35).withOpacity(0.4)
-              : primaryTeal.withOpacity(0.15),
-          width: esReciente ? 2 : 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: esReciente
-                ? Color(0xFFFF6B35).withOpacity(0.15)
-                : primaryTeal.withOpacity(0.08),
-            blurRadius: esReciente ? 12 : 8,
-            offset: Offset(0, esReciente ? 6 : 3),
-            spreadRadius: esReciente ? 1 : 0,
-          ),
-        ],
-      ),
-      child: Stack(
-        children: [
-          // Badge "NUEVO" en esquina superior derecha
-          if (esReciente)
-            Positioned(
-              top: 12,
-              right: 12,
-              child: Container(
-                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Color(0xFFFF4757), Color(0xFFFF3838)],
-                  ),
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Color(0xFFFF4757).withOpacity(0.3),
-                      blurRadius: 6,
-                      offset: Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.fiber_new, color: Colors.white, size: 12),
-                    SizedBox(width: 4),
-                    Text(
-                      'NUEVO',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-          // Contenido principal
-          Padding(
-            padding: EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Header con avatar y información principal
-                Row(
-                  children: [
-                    // Avatar mejorado
-                    Container(
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: esReciente
-                              ? [Color(0xFFFF6B35), Color(0xFFFF8C42)]
-                              : isAssigned
-                                  ? [primaryTeal, primaryTeal.withOpacity(0.8)]
-                                  : [
-                                      secondaryOrange,
-                                      secondaryOrange.withOpacity(0.8)
-                                    ],
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: (esReciente
-                                    ? Color(0xFFFF6B35)
-                                    : isAssigned
-                                        ? primaryTeal
-                                        : secondaryOrange)
-                                .withOpacity(0.3),
-                            blurRadius: 8,
-                            offset: Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: CircleAvatar(
-                        backgroundColor: Colors.transparent,
-                        radius: 28,
-                        child: Text(
-                          '${registro.get('nombre')[0]}${registro.get('apellido')[0]}',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 18,
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    SizedBox(width: 16),
-
-                    // Información principal
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Nombre con estilo mejorado
-                          Text(
-                            '${registro.get('nombre')} ${registro.get('apellido')}',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: esReciente
-                                  ? Color(0xFFFF6B35)
-                                  : Colors.black87,
-                            ),
-                          ),
-
-                          SizedBox(height: 6),
-
-                          // Teléfono con icono
-                          Container(
-                            padding: EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(
-                              color:
-                                  (esReciente ? Color(0xFFFF6B35) : primaryTeal)
-                                      .withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.phone,
-                                  size: 14,
-                                  color: esReciente
-                                      ? Color(0xFFFF6B35)
-                                      : primaryTeal,
-                                ),
-                                SizedBox(width: 6),
-                                Text(
-                                  registro.get('telefono'),
-                                  style: TextStyle(
-                                    color: esReciente
-                                        ? Color(0xFFFF6B35)
-                                        : primaryTeal,
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-
-                          // Información de tiempo para registros recientes
-                          if (esReciente)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 8),
-                              child: Container(
-                                padding: EdgeInsets.symmetric(
-                                    horizontal: 10, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: Colors.green.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(
-                                    color: Colors.green.withOpacity(0.3),
-                                    width: 1,
-                                  ),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      Icons.schedule,
-                                      size: 12,
-                                      color: Colors.green.shade700,
-                                    ),
-                                    SizedBox(width: 4),
-                                    Text(
-                                      obtenerTextoTiempo(),
-                                      style: TextStyle(
-                                        color: Colors.green.shade700,
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-
-                // Información de asignación (si aplica)
-                if (isAssigned) ...[
-                  Container(
-                    margin: EdgeInsets.symmetric(vertical: 16),
-                    height: 1,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          Colors.transparent,
-                          (esReciente ? Color(0xFFFF6B35) : primaryTeal)
-                              .withOpacity(0.3),
-                          Colors.transparent,
-                        ],
-                      ),
-                    ),
-                  ),
-                  Container(
-                    padding: EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: (esReciente ? Color(0xFFFF6B35) : primaryTeal)
-                          .withOpacity(0.08),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                        color: (esReciente ? Color(0xFFFF6B35) : primaryTeal)
-                            .withOpacity(0.2),
-                        width: 1,
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.person_outline,
-                          size: 18,
-                          color: esReciente ? Color(0xFFFF6B35) : primaryTeal,
-                        ),
-                        SizedBox(width: 8),
-                        Text(
-                          'Asignado a: ',
-                          style: TextStyle(
-                            color: Colors.grey.shade700,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        Expanded(
-                          child: Text(
-                            registro.get('nombreTimoteo'),
-                            style: TextStyle(
-                              color:
-                                  esReciente ? Color(0xFFFF6B35) : primaryTeal,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-
-                SizedBox(height: 20),
-
-                // Botones de acción
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [
-                      _buildEnhancedActionButton(
-                        icon: Icons.edit_outlined,
-                        label: 'Editar',
-                        color: esReciente ? Color(0xFFFF6B35) : accentGrey,
-                        onPressed: () => _editarRegistro(context, registro),
-                      ),
-
-                      SizedBox(width: 10),
-
-                      _buildEnhancedActionButton(
-                        icon: Icons.visibility_outlined,
-                        label: 'Ver',
-                        color: esReciente ? Color(0xFFFF6B35) : primaryTeal,
-                        onPressed: () => _mostrarDetallesRegistro(
-                          context,
-                          registro.data() as Map<String, dynamic>,
-                        ),
-                      ),
-
-                      SizedBox(width: 10),
-
-                      if (!isAssigned)
-                        _buildEnhancedActionButton(
-                          icon: Icons.person_add,
-                          label: 'Asignar',
-                          color: secondaryOrange,
-                          onPressed: () => _asignarATimoteo(context, registro),
-                        )
-                      else
-                        _buildEnhancedActionButton(
-                          icon: Icons.person_remove,
-                          label: 'Desasignar',
-                          color: Colors.red.shade400,
-                          onPressed: () async {
-                            // Lógica de desasignación
-                            try {
-                              await FirebaseFirestore.instance
-                                  .collection('registros')
-                                  .doc(registro.id)
-                                  .update({
-                                'timoteoAsignado': null,
-                                'nombreTimoteo': null,
-                                'fechaAsignacion': null,
-                              });
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content:
-                                      Text('Registro desasignado exitosamente'),
-                                  backgroundColor: Colors.green,
-                                ),
-                              );
-                            } catch (e) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                      'Error al desasignar el registro: $e'),
-                                  backgroundColor: Colors.red,
-                                ),
-                              );
-                            }
-                          },
-                        ),
-
-                      SizedBox(width: 10),
-
-                      // Botón de copiar teléfono mejorado
-                      Container(
-                        decoration: BoxDecoration(
-                          color: (esReciente ? Color(0xFFFF6B35) : primaryTeal)
-                              .withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color:
-                                (esReciente ? Color(0xFFFF6B35) : primaryTeal)
-                                    .withOpacity(0.3),
-                            width: 1,
-                          ),
-                        ),
-                        child: IconButton(
-                          icon: Icon(
-                            Icons.copy,
-                            color: esReciente ? Color(0xFFFF6B35) : primaryTeal,
-                            size: 20,
-                          ),
-                          tooltip: 'Copiar teléfono',
-                          onPressed: () {
-                            Clipboard.setData(
-                              ClipboardData(text: registro.get('telefono')),
-                            );
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content:
-                                    Text('Teléfono copiado al portapapeles'),
-                                duration: Duration(seconds: 1),
-                                backgroundColor: esReciente
-                                    ? Color(0xFFFF6B35)
-                                    : primaryTeal,
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEnhancedActionButton({
-    required IconData icon,
-    required String label,
-    required Color color,
-    required VoidCallback onPressed,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(10),
-        boxShadow: [
-          BoxShadow(
-            color: color.withOpacity(0.2),
-            blurRadius: 6,
-            offset: Offset(0, 3),
-          ),
-        ],
-      ),
-      child: ElevatedButton.icon(
-        icon: Icon(icon, size: 16),
-        label: Text(
-          label,
-          style: TextStyle(
-            fontWeight: FontWeight.w600,
-            fontSize: 13,
-          ),
-        ),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: color,
-          foregroundColor: Colors.white,
-          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-          elevation: 0,
-        ),
-        onPressed: onPressed,
-      ),
-    );
-  }
-
-  Widget _buildActionButton({
-    required IconData icon,
-    required String label,
-    required Color color,
-    required VoidCallback onPressed,
-  }) {
-    return ElevatedButton.icon(
-      icon: Icon(icon, size: 18),
-      label: Text(label),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: color,
-        foregroundColor: Colors.white,
-        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
-      ),
-      onPressed: onPressed,
+    return _PersonasAsignadasContent(
+      coordinadorId: coordinadorId,
+      primaryTeal: primaryTeal,
+      secondaryOrange: secondaryOrange,
+      accentGrey: accentGrey,
+      backgroundGrey: backgroundGrey,
+      onEditarRegistro: _editarRegistro,
+      onMostrarDetalles: _mostrarDetallesRegistro,
+      onRegistrarNuevo: _registrarNuevoMiembro,
+      onAsignarTimoteo: _asignarATimoteo,
     );
   }
 
@@ -8038,6 +6597,1132 @@ class PersonasAsignadasTab extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+// Nueva clase Stateful para manejar el estado del buscador correctamente
+class _PersonasAsignadasContent extends StatefulWidget {
+  final String coordinadorId;
+  final Color primaryTeal;
+  final Color secondaryOrange;
+  final Color accentGrey;
+  final Color backgroundGrey;
+  final Function(BuildContext, DocumentSnapshot) onEditarRegistro;
+  final Function(BuildContext, Map<String, dynamic>) onMostrarDetalles;
+  final Function(BuildContext) onRegistrarNuevo;
+  final Function(BuildContext, DocumentSnapshot) onAsignarTimoteo;
+
+  const _PersonasAsignadasContent({
+    Key? key,
+    required this.coordinadorId,
+    required this.primaryTeal,
+    required this.secondaryOrange,
+    required this.accentGrey,
+    required this.backgroundGrey,
+    required this.onEditarRegistro,
+    required this.onMostrarDetalles,
+    required this.onRegistrarNuevo,
+    required this.onAsignarTimoteo,
+  }) : super(key: key);
+
+  @override
+  _PersonasAsignadasContentState createState() =>
+      _PersonasAsignadasContentState();
+}
+
+class _PersonasAsignadasContentState extends State<_PersonasAsignadasContent> {
+  // Controlador para el buscador
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+  bool _isAsignadosExpanded = false;
+  bool _isNoAsignadosExpanded = false;
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  // Función para detectar si es un registro reciente
+  bool esRegistroReciente(DocumentSnapshot doc) {
+    try {
+      final data = doc.data() as Map<String, dynamic>?;
+      if (data == null) return false;
+
+      DateTime? fechaMasReciente;
+
+      final fechaAsignacionCoordinador = data['fechaAsignacionCoordinador'];
+      if (fechaAsignacionCoordinador is Timestamp) {
+        fechaMasReciente = fechaAsignacionCoordinador.toDate();
+      }
+
+      final fechaAsignacionTribu = data['fechaAsignacionTribu'];
+      if (fechaAsignacionTribu is Timestamp) {
+        DateTime fechaTribu = fechaAsignacionTribu.toDate();
+        if (fechaMasReciente == null || fechaTribu.isAfter(fechaMasReciente)) {
+          fechaMasReciente = fechaTribu;
+        }
+      }
+
+      if (fechaMasReciente == null) return false;
+
+      final diferenciaDias = DateTime.now().difference(fechaMasReciente).inDays;
+      return diferenciaDias >= 0 && diferenciaDias <= 13;
+    } catch (e) {
+      print('Error en esRegistroReciente: $e');
+      return false;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: widget.backgroundGrey,
+      child: Stack(
+        children: [
+          // Contenido principal
+          StreamBuilder(
+            stream: FirebaseFirestore.instance
+                .collection('registros')
+                .where('coordinadorAsignado', isEqualTo: widget.coordinadorId)
+                .snapshots(),
+            builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return Center(
+                  child: CircularProgressIndicator(color: widget.primaryTeal),
+                );
+              }
+
+              if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.person_off,
+                          size: 64, color: widget.accentGrey),
+                      SizedBox(height: 16),
+                      Text(
+                        'No hay personas registradas',
+                        style: TextStyle(
+                          fontSize: 18,
+                          color: widget.accentGrey,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      SizedBox(height: 24),
+                      ElevatedButton.icon(
+                        onPressed: () => widget.onRegistrarNuevo(context),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: widget.primaryTeal,
+                          foregroundColor: Colors.white,
+                          padding: EdgeInsets.symmetric(
+                              horizontal: 24, vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: 3,
+                        ),
+                        icon: Icon(Icons.person_add, size: 20),
+                        label: Text(
+                          'Registrar Primer Miembro',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }
+
+              // Procesar documentos
+              String searchText = _searchQuery.toLowerCase();
+              final allDocs = snapshot.data!.docs;
+
+              // Ordenar documentos
+              allDocs.sort((a, b) {
+                bool aEsReciente = esRegistroReciente(a);
+                bool bEsReciente = esRegistroReciente(b);
+
+                if (aEsReciente == bEsReciente) {
+                  final dataA = a.data() as Map<String, dynamic>?;
+                  final dataB = b.data() as Map<String, dynamic>?;
+
+                  final fechaA =
+                      (dataA?['fechaAsignacionCoordinador'] as Timestamp?)
+                              ?.toDate() ??
+                          DateTime(2000);
+                  final fechaB =
+                      (dataB?['fechaAsignacionCoordinador'] as Timestamp?)
+                              ?.toDate() ??
+                          DateTime(2000);
+
+                  return fechaB.compareTo(fechaA);
+                }
+
+                return (bEsReciente ? 1 : 0) - (aEsReciente ? 1 : 0);
+              });
+
+              // Filtrar documentos según búsqueda
+              var filteredDocs = searchText.isEmpty
+                  ? allDocs
+                  : allDocs.where((doc) {
+                      final nombre = doc['nombre'].toString().toLowerCase();
+                      final apellido = doc['apellido'].toString().toLowerCase();
+                      final nombreCompleto = '$nombre $apellido';
+                      return nombreCompleto.contains(searchText);
+                    }).toList();
+
+              // Separar en asignados y no asignados
+              final asignados = filteredDocs.where((doc) {
+                try {
+                  return doc.get('timoteoAsignado') != null;
+                } catch (e) {
+                  return false;
+                }
+              }).toList();
+
+              final noAsignados = filteredDocs.where((doc) {
+                try {
+                  return doc.get('timoteoAsignado') == null;
+                } catch (e) {
+                  return true;
+                }
+              }).toList();
+
+              final totalPersonasAsignadas = allDocs.length;
+              final totalFiltrados = filteredDocs.length;
+
+              return Column(
+                children: [
+                  // Buscador
+                  Container(
+                    margin: EdgeInsets.fromLTRB(16, 16, 16, 8),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 10,
+                          offset: Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: TextField(
+                      controller: _searchController,
+                      onChanged: (value) {
+                        setState(() {
+                          _searchQuery = value;
+                          if (value.isNotEmpty) {
+                            _isAsignadosExpanded = true;
+                            _isNoAsignadosExpanded = true;
+                          }
+                        });
+                      },
+                      decoration: InputDecoration(
+                        hintText: 'Buscar por nombre o apellido...',
+                        prefixIcon:
+                            Icon(Icons.search, color: widget.primaryTeal),
+                        suffixIcon: _searchQuery.isNotEmpty
+                            ? IconButton(
+                                icon:
+                                    Icon(Icons.clear, color: widget.accentGrey),
+                                onPressed: () {
+                                  setState(() {
+                                    _searchController.clear();
+                                    _searchQuery = '';
+                                  });
+                                },
+                              )
+                            : null,
+                        border: InputBorder.none,
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  // Badge de resultados
+                  if (_searchQuery.isNotEmpty)
+                    Container(
+                      margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: widget.primaryTeal.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.filter_alt_outlined,
+                            size: 16,
+                            color: widget.primaryTeal,
+                          ),
+                          SizedBox(width: 6),
+                          Text(
+                            'Mostrando $totalFiltrados de $totalPersonasAsignadas registros',
+                            style: TextStyle(
+                              color: widget.primaryTeal,
+                              fontWeight: FontWeight.w500,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                  // Lista scrolleable
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: EdgeInsets.all(16),
+                      physics: AlwaysScrollableScrollPhysics(),
+                      child: Column(
+                        children: [
+                          // Contador de personas
+                          _buildContadorPersonas(
+                            totalPersonasAsignadas,
+                            allDocs,
+                          ),
+
+                          // Personas por asignar
+                          if (noAsignados.isNotEmpty) ...[
+                            GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  _isNoAsignadosExpanded =
+                                      !_isNoAsignadosExpanded;
+                                });
+                              },
+                              child: _buildExpandableHeader(
+                                'Personas por asignar (${noAsignados.length})',
+                                Icons.person_add_alt,
+                                widget.secondaryOrange,
+                                _isNoAsignadosExpanded,
+                              ),
+                            ),
+                            if (_isNoAsignadosExpanded)
+                              ...noAsignados
+                                  .map((registro) => _buildPersonCard(
+                                        context,
+                                        registro,
+                                        isAssigned: false,
+                                        esReciente:
+                                            esRegistroReciente(registro),
+                                      ))
+                                  .toList(),
+                            SizedBox(height: 24),
+                          ],
+
+                          // Personas asignadas
+                          if (asignados.isNotEmpty) ...[
+                            GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  _isAsignadosExpanded = !_isAsignadosExpanded;
+                                });
+                              },
+                              child: _buildExpandableHeader(
+                                'Personas asignadas (${asignados.length})',
+                                Icons.people,
+                                widget.primaryTeal,
+                                _isAsignadosExpanded,
+                              ),
+                            ),
+                            if (_isAsignadosExpanded)
+                              ...asignados
+                                  .map((registro) => _buildPersonCard(
+                                        context,
+                                        registro,
+                                        isAssigned: true,
+                                        esReciente:
+                                            esRegistroReciente(registro),
+                                      ))
+                                  .toList(),
+                          ],
+
+                          SizedBox(height: 80),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+
+          // Botón flotante
+          Positioned(
+            bottom: 20,
+            right: 20,
+            child: FloatingActionButton.extended(
+              onPressed: () => widget.onRegistrarNuevo(context),
+              backgroundColor: widget.secondaryOrange,
+              foregroundColor: Colors.white,
+              elevation: 6,
+              icon: Icon(Icons.person_add, size: 24),
+              label: Text(
+                'Registrar',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Widgets auxiliares
+  Widget _buildContadorPersonas(int total, List<DocumentSnapshot> docs) {
+    final registrosRecientes =
+        docs.where((doc) => esRegistroReciente(doc)).length;
+
+    return Container(
+      margin: EdgeInsets.only(bottom: 16),
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [widget.primaryTeal, widget.primaryTeal.withOpacity(0.8)],
+        ),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: widget.primaryTeal.withOpacity(0.2),
+            blurRadius: 10,
+            offset: Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.2),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.people_alt_outlined,
+              color: Colors.white,
+              size: 28,
+            ),
+          ),
+          SizedBox(width: 16),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Total de Personas',
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.9),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              SizedBox(height: 4),
+              Text(
+                '$total',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          Spacer(),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              _buildCounterBadge(
+                'Asignados',
+                docs.where((doc) {
+                  try {
+                    return doc.get('timoteoAsignado') != null;
+                  } catch (e) {
+                    return false;
+                  }
+                }).length,
+                widget.primaryTeal,
+                Colors.white,
+              ),
+              SizedBox(height: 8),
+              _buildCounterBadge(
+                'Por asignar',
+                docs.where((doc) {
+                  try {
+                    return doc.get('timoteoAsignado') == null;
+                  } catch (e) {
+                    return true;
+                  }
+                }).length,
+                widget.secondaryOrange,
+                Colors.white,
+              ),
+              SizedBox(height: 8),
+              AnimatedContainer(
+                duration: Duration(milliseconds: 300),
+                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: registrosRecientes > 0
+                      ? Colors.orange.withOpacity(0.3)
+                      : Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: registrosRecientes > 0
+                        ? Colors.orange.withOpacity(0.5)
+                        : Colors.white.withOpacity(0.3),
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Nuevos',
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.9),
+                        fontWeight: FontWeight.w500,
+                        fontSize: 12,
+                      ),
+                    ),
+                    SizedBox(width: 6),
+                    Container(
+                      padding: EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: registrosRecientes > 0
+                            ? Colors.orange.withOpacity(0.4)
+                            : Colors.grey.withOpacity(0.3),
+                        shape: BoxShape.circle,
+                      ),
+                      child: registrosRecientes > 0
+                          ? Icon(
+                              Icons.new_releases,
+                              color: Colors.white,
+                              size: 12,
+                            )
+                          : Text(
+                              '$registrosRecientes',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 11,
+                              ),
+                            ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildExpandableHeader(
+    String title,
+    IconData icon,
+    Color color,
+    bool isExpanded,
+  ) {
+    return Container(
+      margin: EdgeInsets.only(bottom: isExpanded ? 16 : 8),
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: color, size: 24),
+          SizedBox(width: 12),
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+          Spacer(),
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              title.contains('por asignar') ? 'Pendientes' : 'Activos',
+              style: TextStyle(
+                color: color,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          SizedBox(width: 8),
+          Icon(
+            isExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+            color: color,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCounterBadge(
+      String label, int count, Color color, Color textColor) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.3),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              color: textColor.withOpacity(0.9),
+              fontWeight: FontWeight.w500,
+              fontSize: 12,
+            ),
+          ),
+          SizedBox(width: 6),
+          Container(
+            padding: EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.3),
+              shape: BoxShape.circle,
+            ),
+            child: Text(
+              '$count',
+              style: TextStyle(
+                color: textColor,
+                fontWeight: FontWeight.bold,
+                fontSize: 11,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPersonCard(
+    BuildContext context,
+    DocumentSnapshot registro, {
+    required bool isAssigned,
+    required bool esReciente,
+  }) {
+    final data = registro.data() as Map<String, dynamic>;
+
+    String obtenerTextoTiempo() {
+      DateTime? fechaMasReciente;
+      String tipoAsignacion = '';
+
+      final fechaCoordinador =
+          (data['fechaAsignacionCoordinador'] as Timestamp?)?.toDate();
+      if (fechaCoordinador != null) {
+        fechaMasReciente = fechaCoordinador;
+        tipoAsignacion = 'coordinador';
+      }
+
+      final fechaTribu = (data['fechaAsignacionTribu'] as Timestamp?)?.toDate();
+      if (fechaTribu != null) {
+        if (fechaMasReciente == null || fechaTribu.isAfter(fechaMasReciente)) {
+          fechaMasReciente = fechaTribu;
+          tipoAsignacion = 'tribu';
+        }
+      }
+
+      if (fechaMasReciente == null) return '';
+
+      final diasTranscurridos =
+          DateTime.now().difference(fechaMasReciente).inDays;
+      final diasRestantes = 14 - diasTranscurridos;
+
+      String accion = tipoAsignacion == 'coordinador'
+          ? 'Asignado a coordinador'
+          : 'Asignado a tribu';
+
+      if (diasTranscurridos == 0) {
+        return '$accion hoy';
+      } else if (diasTranscurridos == 1) {
+        return '$accion ayer';
+      } else if (diasRestantes > 0) {
+        return 'Hace $diasTranscurridos días (${diasRestantes}d restantes)';
+      } else {
+        return 'Hace $diasTranscurridos días';
+      }
+    }
+
+    return Container(
+      margin: EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: esReciente
+              ? [
+                  Color(0xFFFF6B35).withOpacity(0.15),
+                  Color(0xFFFF8C42).withOpacity(0.08),
+                ]
+              : [
+                  Colors.white,
+                  Colors.grey.shade50,
+                ],
+        ),
+        border: Border.all(
+          color: esReciente
+              ? Color(0xFFFF6B35).withOpacity(0.4)
+              : widget.primaryTeal.withOpacity(0.15),
+          width: esReciente ? 2 : 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: esReciente
+                ? Color(0xFFFF6B35).withOpacity(0.15)
+                : widget.primaryTeal.withOpacity(0.08),
+            blurRadius: esReciente ? 12 : 8,
+            offset: Offset(0, esReciente ? 6 : 3),
+            spreadRadius: esReciente ? 1 : 0,
+          ),
+        ],
+      ),
+      child: Stack(
+        children: [
+          if (esReciente)
+            Positioned(
+              top: 12,
+              right: 12,
+              child: Container(
+                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Color(0xFFFF4757), Color(0xFFFF3838)],
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Color(0xFFFF4757).withOpacity(0.3),
+                      blurRadius: 6,
+                      offset: Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.fiber_new, color: Colors.white, size: 12),
+                    SizedBox(width: 4),
+                    Text(
+                      'NUEVO',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          Padding(
+            padding: EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: esReciente
+                              ? [Color(0xFFFF6B35), Color(0xFFFF8C42)]
+                              : isAssigned
+                                  ? [
+                                      widget.primaryTeal,
+                                      widget.primaryTeal.withOpacity(0.8)
+                                    ]
+                                  : [
+                                      widget.secondaryOrange,
+                                      widget.secondaryOrange.withOpacity(0.8)
+                                    ],
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: (esReciente
+                                    ? Color(0xFFFF6B35)
+                                    : isAssigned
+                                        ? widget.primaryTeal
+                                        : widget.secondaryOrange)
+                                .withOpacity(0.3),
+                            blurRadius: 8,
+                            offset: Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: CircleAvatar(
+                        backgroundColor: Colors.transparent,
+                        radius: 28,
+                        child: Text(
+                          '${registro.get('nombre')[0]}${registro.get('apellido')[0]}',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                          ),
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${registro.get('nombre')} ${registro.get('apellido')}',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: esReciente
+                                  ? Color(0xFFFF6B35)
+                                  : Colors.black87,
+                            ),
+                          ),
+                          SizedBox(height: 6),
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: (esReciente
+                                      ? Color(0xFFFF6B35)
+                                      : widget.primaryTeal)
+                                  .withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.phone,
+                                  size: 14,
+                                  color: esReciente
+                                      ? Color(0xFFFF6B35)
+                                      : widget.primaryTeal,
+                                ),
+                                SizedBox(width: 6),
+                                Text(
+                                  registro.get('telefono'),
+                                  style: TextStyle(
+                                    color: esReciente
+                                        ? Color(0xFFFF6B35)
+                                        : widget.primaryTeal,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (esReciente)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 8),
+                              child: Container(
+                                padding: EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: Colors.green.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: Colors.green.withOpacity(0.3),
+                                    width: 1,
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.schedule,
+                                      size: 12,
+                                      color: Colors.green.shade700,
+                                    ),
+                                    SizedBox(width: 4),
+                                    Text(
+                                      obtenerTextoTiempo(),
+                                      style: TextStyle(
+                                        color: Colors.green.shade700,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                if (isAssigned) ...[
+                  Container(
+                    margin: EdgeInsets.symmetric(vertical: 16),
+                    height: 1,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          Colors.transparent,
+                          (esReciente ? Color(0xFFFF6B35) : widget.primaryTeal)
+                              .withOpacity(0.3),
+                          Colors.transparent,
+                        ],
+                      ),
+                    ),
+                  ),
+                  Container(
+                    padding: EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color:
+                          (esReciente ? Color(0xFFFF6B35) : widget.primaryTeal)
+                              .withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: (esReciente
+                                ? Color(0xFFFF6B35)
+                                : widget.primaryTeal)
+                            .withOpacity(0.2),
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.person_outline,
+                          size: 18,
+                          color: esReciente
+                              ? Color(0xFFFF6B35)
+                              : widget.primaryTeal,
+                        ),
+                        SizedBox(width: 8),
+                        Text(
+                          'Asignado a: ',
+                          style: TextStyle(
+                            color: Colors.grey.shade700,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        Expanded(
+                          child: Text(
+                            registro.get('nombreTimoteo'),
+                            style: TextStyle(
+                              color: esReciente
+                                  ? Color(0xFFFF6B35)
+                                  : widget.primaryTeal,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+                SizedBox(height: 20),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      _buildEnhancedActionButton(
+                        icon: Icons.edit_outlined,
+                        label: 'Editar',
+                        color:
+                            esReciente ? Color(0xFFFF6B35) : widget.accentGrey,
+                        onPressed: () =>
+                            widget.onEditarRegistro(context, registro),
+                      ),
+                      SizedBox(width: 10),
+                      _buildEnhancedActionButton(
+                        icon: Icons.visibility_outlined,
+                        label: 'Ver',
+                        color:
+                            esReciente ? Color(0xFFFF6B35) : widget.primaryTeal,
+                        onPressed: () => widget.onMostrarDetalles(
+                          context,
+                          registro.data() as Map<String, dynamic>,
+                        ),
+                      ),
+                      SizedBox(width: 10),
+                      if (!isAssigned)
+                        _buildEnhancedActionButton(
+                          icon: Icons.person_add,
+                          label: 'Asignar',
+                          color: widget.secondaryOrange,
+                          onPressed: () =>
+                              widget.onAsignarTimoteo(context, registro),
+                        )
+                      else
+                        _buildEnhancedActionButton(
+                          icon: Icons.person_remove,
+                          label: 'Desasignar',
+                          color: Colors.red.shade400,
+                          onPressed: () async {
+                            try {
+                              await FirebaseFirestore.instance
+                                  .collection('registros')
+                                  .doc(registro.id)
+                                  .update({
+                                'timoteoAsignado': null,
+                                'nombreTimoteo': null,
+                                'fechaAsignacion': null,
+                              });
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                        'Registro desasignado exitosamente'),
+                                    backgroundColor: Colors.green,
+                                  ),
+                                );
+                              }
+                            } catch (e) {
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                        'Error al desasignar el registro: $e'),
+                                    backgroundColor: Colors.red,
+                                  ),
+                                );
+                              }
+                            }
+                          },
+                        ),
+                      SizedBox(width: 10),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: (esReciente
+                                  ? Color(0xFFFF6B35)
+                                  : widget.primaryTeal)
+                              .withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: (esReciente
+                                    ? Color(0xFFFF6B35)
+                                    : widget.primaryTeal)
+                                .withOpacity(0.3),
+                            width: 1,
+                          ),
+                        ),
+                        child: IconButton(
+                          icon: Icon(
+                            Icons.copy,
+                            color: esReciente
+                                ? Color(0xFFFF6B35)
+                                : widget.primaryTeal,
+                            size: 20,
+                          ),
+                          tooltip: 'Copiar teléfono',
+                          onPressed: () {
+                            Clipboard.setData(
+                              ClipboardData(text: registro.get('telefono')),
+                            );
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content:
+                                      Text('Teléfono copiado al portapapeles'),
+                                  duration: Duration(seconds: 1),
+                                  backgroundColor: esReciente
+                                      ? Color(0xFFFF6B35)
+                                      : widget.primaryTeal,
+                                ),
+                              );
+                            }
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEnhancedActionButton({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onPressed,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(10),
+        boxShadow: [
+          BoxShadow(
+            color: color.withOpacity(0.2),
+            blurRadius: 6,
+            offset: Offset(0, 3),
+          ),
+        ],
+      ),
+      child: ElevatedButton.icon(
+        icon: Icon(icon, size: 16),
+        label: Text(
+          label,
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 13,
+          ),
+        ),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: color,
+          foregroundColor: Colors.white,
+          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          elevation: 0,
+        ),
+        onPressed: onPressed,
       ),
     );
   }

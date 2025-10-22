@@ -5973,331 +5973,354 @@ class RegistrosAsignadosTab extends StatelessWidget {
     // Término de búsqueda
     String searchTerm = '';
 
-    return StatefulBuilder(builder: (context, setState) {
-      return Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              primaryTeal.withOpacity(0.05),
-              backgroundGrey,
-            ],
-          ),
-        ),
-        child: Column(
-          children: [
-            // Barra de búsqueda
-            Padding(
-              padding: EdgeInsets.all(16),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: primaryTeal.withOpacity(0.1),
-                      blurRadius: 5,
-                      offset: Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: TextField(
-                  controller: searchController,
-                  decoration: InputDecoration(
-                    hintText: 'Buscar por nombre o apellido...',
-                    prefixIcon: Icon(
-                      Icons.search,
-                      color: primaryTeal,
-                    ),
-                    suffixIcon: searchController.text.isNotEmpty || isSearching
-                        ? IconButton(
-                            icon: Icon(
-                              Icons.close,
-                              color: accentGrey,
-                            ),
-                            onPressed: () {
-                              searchController.clear();
-                              setState(() {
-                                isSearching = false;
-                                searchTerm = '';
-                              });
-                            },
-                          )
-                        : null,
-                    border: InputBorder.none,
-                    contentPadding: EdgeInsets.symmetric(vertical: 15),
-                  ),
-                  onChanged: (value) {
-                    setState(() {
-                      searchTerm = value.toLowerCase();
-                      isSearching = value.isNotEmpty;
-                    });
-                  },
-                ),
-              ),
+    return GestureDetector(
+      // ✅ NUEVO: Detectar taps fuera del teclado sin reconstruir el widget
+      onTap: () {
+        // Solo cerrar el teclado, NO hacer setState
+        FocusScope.of(context).unfocus();
+      },
+      behavior: HitTestBehavior.opaque,
+      child: StatefulBuilder(builder: (context, setState) {
+        return Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                primaryTeal.withOpacity(0.05),
+                backgroundGrey,
+              ],
             ),
-
-            // Contenido principal con StreamBuilder
-            Expanded(
-              child: StreamBuilder<QuerySnapshot>(
-                stream: FirebaseFirestore.instance
-                    .collection('registros')
-                    .where('tribuAsignada', isEqualTo: tribuId)
-                    .snapshots(),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return Center(
-                      child: CircularProgressIndicator(
+          ),
+          child: Column(
+            children: [
+              // Barra de búsqueda
+              Padding(
+                padding: EdgeInsets.all(16),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: primaryTeal.withOpacity(0.1),
+                        blurRadius: 5,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: TextField(
+                    controller: searchController,
+                    // ✅ NUEVO: Configurar comportamiento del teclado
+                    textInputAction: TextInputAction.search,
+                    enableInteractiveSelection: true,
+                    decoration: InputDecoration(
+                      hintText: 'Buscar por nombre o apellido...',
+                      prefixIcon: Icon(
+                        Icons.search,
                         color: primaryTeal,
                       ),
-                    );
-                  }
+                      suffixIcon:
+                          searchController.text.isNotEmpty || isSearching
+                              ? IconButton(
+                                  icon: Icon(
+                                    Icons.close,
+                                    color: accentGrey,
+                                  ),
+                                  onPressed: () {
+                                    searchController.clear();
+                                    // ✅ MODIFICADO: No hacer setState aquí si no es necesario
+                                    FocusScope.of(context).unfocus();
+                                    setState(() {
+                                      isSearching = false;
+                                      searchTerm = '';
+                                    });
+                                  },
+                                )
+                              : null,
+                      border: InputBorder.none,
+                      contentPadding: EdgeInsets.symmetric(vertical: 15),
+                    ),
+                    // ✅ MODIFICADO: Mejorar el manejo del cambio de texto
+                    onChanged: (value) {
+                      // Solo actualizar el estado local del StatefulBuilder
+                      setState(() {
+                        searchTerm = value.toLowerCase();
+                        isSearching = value.isNotEmpty;
+                      });
+                    },
+                    // ✅ NUEVO: Manejar el submit del teclado
+                    onSubmitted: (value) {
+                      FocusScope.of(context).unfocus();
+                    },
+                  ),
+                ),
+              ),
 
-                  if (!snapshot.hasData ||
-                      snapshot.data?.docs.isEmpty == true) {
-                    return Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.group_off_outlined,
-                            size: 64,
-                            color: accentGrey,
-                          ),
-                          SizedBox(height: 16),
-                          Text(
-                            'No hay jóvenes asignados a esta tribu',
-                            style: TextStyle(
-                              fontSize: 18,
-                              color: accentGrey,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  }
-
-                  final allDocs = snapshot.data?.docs ?? [];
-
-                  // Filtrar documentos según el término de búsqueda
-                  final filteredDocs = isSearching
-                      ? allDocs.where((doc) {
-                          final data = doc.data() as Map<String, dynamic>;
-                          final nombre =
-                              (data['nombre'] as String? ?? '').toLowerCase();
-                          final apellido =
-                              (data['apellido'] as String? ?? '').toLowerCase();
-                          final nombreCompleto =
-                              '$nombre $apellido'.toLowerCase();
-
-                          // Buscar en nombre, apellido o nombre completo
-                          return nombre.contains(searchTerm) ||
-                              apellido.contains(searchTerm) ||
-                              nombreCompleto.contains(searchTerm);
-                        }).toList()
-                      : allDocs;
-
-// 🆕 NUEVA FUNCIONALIDAD: Ordenar registros para que los nuevos aparezcan primero
-                  filteredDocs.sort((a, b) {
-                    final dataA = a.data() as Map<String, dynamic>;
-                    final dataB = b.data() as Map<String, dynamic>;
-
-                    // Función para determinar si un registro es nuevo (≤14 días)
-                    bool esRegistroNuevo(Map<String, dynamic> data) {
-                      DateTime? fechaTribu =
-                          (data['fechaAsignacionTribu'] as Timestamp?)
-                                  ?.toDate() ??
-                              (data['fechaAsignacion'] as Timestamp?)?.toDate();
-                      DateTime? fechaCoord =
-                          (data['fechaAsignacionCoordinador'] as Timestamp?)
-                              ?.toDate();
-                      DateTime? fechaTimoteo =
-                          (data['fechaAsignacionTimoteo'] as Timestamp?)
-                              ?.toDate();
-
-                      // Obtener la fecha más reciente de asignación
-                      DateTime? fechaMasReciente = [
-                        fechaTribu,
-                        fechaCoord,
-                        fechaTimoteo
-                      ].whereType<DateTime>().fold<DateTime?>(
-                          null,
-                          (prev, curr) =>
-                              prev == null || curr.isAfter(prev) ? curr : prev);
-
-                      return fechaMasReciente != null &&
-                          DateTime.now().difference(fechaMasReciente).inDays <=
-                              14;
+              // Contenido principal con StreamBuilder
+              Expanded(
+                child: StreamBuilder<QuerySnapshot>(
+                  stream: FirebaseFirestore.instance
+                      .collection('registros')
+                      .where('tribuAsignada', isEqualTo: tribuId)
+                      .snapshots(),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return Center(
+                        child: CircularProgressIndicator(
+                          color: primaryTeal,
+                        ),
+                      );
                     }
 
-                    bool nuevoA = esRegistroNuevo(dataA);
-                    bool nuevoB = esRegistroNuevo(dataB);
-
-                    // Los nuevos van primero
-                    if (nuevoA && !nuevoB) return -1;
-                    if (!nuevoA && nuevoB) return 1;
-
-                    // Si ambos son nuevos o ambos son antiguos, ordenar alfabéticamente
-                    final nombreA =
-                        '${dataA['nombre'] ?? ''} ${dataA['apellido'] ?? ''}'
-                            .toLowerCase();
-                    final nombreB =
-                        '${dataB['nombre'] ?? ''} ${dataB['apellido'] ?? ''}'
-                            .toLowerCase();
-                    return nombreA.compareTo(nombreB);
-                  });
-
-                  // Si hay búsqueda y no se encuentran resultados
-                  if (isSearching && filteredDocs.isEmpty) {
-                    return Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.search_off,
-                            size: 64,
-                            color: accentGrey,
-                          ),
-                          SizedBox(height: 16),
-                          Text(
-                            'No se encontraron resultados para "$searchTerm"',
-                            style: TextStyle(
-                              fontSize: 18,
-                              color: accentGrey,
-                              fontWeight: FontWeight.w500,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
-                      ),
-                    );
-                  }
-
-                  // NUEVO: Separar registros activos e inactivos
-                  List<DocumentSnapshot> registrosActivos = [];
-                  List<DocumentSnapshot> registrosInactivos = [];
-                  List<DocumentSnapshot> sinCoordinador = [];
-                  Map<String, List<DocumentSnapshot>> porCoordinador = {};
-                  List<String> idsCoordinadores = [];
-
-                  // Clasificar primero por estado activo/inactivo
-                  for (var doc in filteredDocs) {
-                    var data = doc.data() as Map<String, dynamic>;
-                    bool activo = data['activo'] ?? true;
-
-                    if (activo) {
-                      registrosActivos.add(doc);
-                    } else {
-                      registrosInactivos.add(doc);
-                    }
-                  }
-
-                  // Organizar los registros ACTIVOS por coordinador
-                  for (var doc in registrosActivos) {
-                    var data = doc.data() as Map<String, dynamic>;
-                    if (data['coordinadorAsignado'] == null) {
-                      sinCoordinador.add(doc);
-                    } else {
-                      String coordinadorId = data['coordinadorAsignado'];
-                      if (!porCoordinador.containsKey(coordinadorId)) {
-                        porCoordinador[coordinadorId] = [];
-                        idsCoordinadores.add(coordinadorId);
-                      }
-                      porCoordinador[coordinadorId]!.add(doc);
-                    }
-                  }
-
-                  return FutureBuilder<Map<String, String>>(
-                    future: obtenerNombresCoordinadores(idsCoordinadores),
-                    builder: (context, futureSnapshot) {
-                      if (!futureSnapshot.hasData) {
-                        return Center(child: CircularProgressIndicator());
-                      }
-
-                      Map<String, String> nombresCoordinadores =
-                          futureSnapshot.data ?? {};
-
-                      // Para la búsqueda, forzamos a que los grupos estén expandidos
-                      Map<String, bool> groupExpandedStates = {};
-                      Map<String, bool> expandedStates = {};
-
-                      // Si estamos buscando, expandimos todos los grupos automáticamente
-                      if (isSearching) {
-                        if (sinCoordinador.isNotEmpty) {
-                          groupExpandedStates['Sin_Coordinador'] = true;
-                        }
-
-                        porCoordinador.keys.forEach((key) {
-                          groupExpandedStates['Coordinador_${key}'] = true;
-                        });
-
-                        if (registrosInactivos.isNotEmpty) {
-                          groupExpandedStates['Registros_No_Activos'] = true;
-                        }
-
-                        // Expandimos todos los registros encontrados
-                        for (var doc in filteredDocs) {
-                          expandedStates[doc.id] = true;
-                        }
-                      }
-
-                      return Padding(
-                        padding: EdgeInsets.all(16),
-                        child: ListView(
+                    if (!snapshot.hasData ||
+                        snapshot.data?.docs.isEmpty == true) {
+                      return Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            // Grupos de registros activos
-                            if (sinCoordinador.isNotEmpty)
-                              _buildGrupo(
-                                context,
-                                'Sin Coordinador',
-                                sinCoordinador,
-                                primaryTeal,
-                                secondaryOrange,
-                                accentGrey,
-                                backgroundGrey,
-                                expandedStates,
-                                groupExpandedStates,
+                            Icon(
+                              Icons.group_off_outlined,
+                              size: 64,
+                              color: accentGrey,
+                            ),
+                            SizedBox(height: 16),
+                            Text(
+                              'No hay jóvenes asignados a esta tribu',
+                              style: TextStyle(
+                                fontSize: 18,
+                                color: accentGrey,
+                                fontWeight: FontWeight.w500,
                               ),
-                            ...porCoordinador.entries
-                                .map((entry) => _buildGrupo(
-                                      context,
-                                      'Coordinador: ${nombresCoordinadores[entry.key] ?? "Desconocido"}',
-                                      entry.value,
-                                      primaryTeal,
-                                      secondaryOrange,
-                                      accentGrey,
-                                      backgroundGrey,
-                                      expandedStates,
-                                      groupExpandedStates,
-                                    )),
-
-                            // NUEVO: Grupo de registros no activos
-                            if (registrosInactivos.isNotEmpty)
-                              _buildGrupoInactivos(
-                                context,
-                                'Registros No Activos',
-                                registrosInactivos,
-                                primaryTeal,
-                                secondaryOrange,
-                                accentGrey,
-                                backgroundGrey,
-                                expandedStates,
-                                groupExpandedStates,
-                              ),
+                            ),
                           ],
                         ),
                       );
-                    },
-                  );
-                },
+                    }
+
+                    final allDocs = snapshot.data?.docs ?? [];
+
+                    // Filtrar documentos según el término de búsqueda
+                    final filteredDocs = isSearching
+                        ? allDocs.where((doc) {
+                            final data = doc.data() as Map<String, dynamic>;
+                            final nombre =
+                                (data['nombre'] as String? ?? '').toLowerCase();
+                            final apellido = (data['apellido'] as String? ?? '')
+                                .toLowerCase();
+                            final nombreCompleto =
+                                '$nombre $apellido'.toLowerCase();
+
+                            // Buscar en nombre, apellido o nombre completo
+                            return nombre.contains(searchTerm) ||
+                                apellido.contains(searchTerm) ||
+                                nombreCompleto.contains(searchTerm);
+                          }).toList()
+                        : allDocs;
+
+// 🆕 NUEVA FUNCIONALIDAD: Ordenar registros para que los nuevos aparezcan primero
+                    filteredDocs.sort((a, b) {
+                      final dataA = a.data() as Map<String, dynamic>;
+                      final dataB = b.data() as Map<String, dynamic>;
+
+                      // Función para determinar si un registro es nuevo (≤14 días)
+                      bool esRegistroNuevo(Map<String, dynamic> data) {
+                        DateTime? fechaTribu = (data['fechaAsignacionTribu']
+                                    as Timestamp?)
+                                ?.toDate() ??
+                            (data['fechaAsignacion'] as Timestamp?)?.toDate();
+                        DateTime? fechaCoord =
+                            (data['fechaAsignacionCoordinador'] as Timestamp?)
+                                ?.toDate();
+                        DateTime? fechaTimoteo =
+                            (data['fechaAsignacionTimoteo'] as Timestamp?)
+                                ?.toDate();
+
+                        // Obtener la fecha más reciente de asignación
+                        DateTime? fechaMasReciente = [
+                          fechaTribu,
+                          fechaCoord,
+                          fechaTimoteo
+                        ].whereType<DateTime>().fold<DateTime?>(
+                            null,
+                            (prev, curr) => prev == null || curr.isAfter(prev)
+                                ? curr
+                                : prev);
+
+                        return fechaMasReciente != null &&
+                            DateTime.now()
+                                    .difference(fechaMasReciente)
+                                    .inDays <=
+                                14;
+                      }
+
+                      bool nuevoA = esRegistroNuevo(dataA);
+                      bool nuevoB = esRegistroNuevo(dataB);
+
+                      // Los nuevos van primero
+                      if (nuevoA && !nuevoB) return -1;
+                      if (!nuevoA && nuevoB) return 1;
+
+                      // Si ambos son nuevos o ambos son antiguos, ordenar alfabéticamente
+                      final nombreA =
+                          '${dataA['nombre'] ?? ''} ${dataA['apellido'] ?? ''}'
+                              .toLowerCase();
+                      final nombreB =
+                          '${dataB['nombre'] ?? ''} ${dataB['apellido'] ?? ''}'
+                              .toLowerCase();
+                      return nombreA.compareTo(nombreB);
+                    });
+
+                    // Si hay búsqueda y no se encuentran resultados
+                    if (isSearching && filteredDocs.isEmpty) {
+                      return Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.search_off,
+                              size: 64,
+                              color: accentGrey,
+                            ),
+                            SizedBox(height: 16),
+                            Text(
+                              'No se encontraron resultados para "$searchTerm"',
+                              style: TextStyle(
+                                fontSize: 18,
+                                color: accentGrey,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+
+                    // NUEVO: Separar registros activos e inactivos
+                    List<DocumentSnapshot> registrosActivos = [];
+                    List<DocumentSnapshot> registrosInactivos = [];
+                    List<DocumentSnapshot> sinCoordinador = [];
+                    Map<String, List<DocumentSnapshot>> porCoordinador = {};
+                    List<String> idsCoordinadores = [];
+
+                    // Clasificar primero por estado activo/inactivo
+                    for (var doc in filteredDocs) {
+                      var data = doc.data() as Map<String, dynamic>;
+                      bool activo = data['activo'] ?? true;
+
+                      if (activo) {
+                        registrosActivos.add(doc);
+                      } else {
+                        registrosInactivos.add(doc);
+                      }
+                    }
+
+                    // Organizar los registros ACTIVOS por coordinador
+                    for (var doc in registrosActivos) {
+                      var data = doc.data() as Map<String, dynamic>;
+                      if (data['coordinadorAsignado'] == null) {
+                        sinCoordinador.add(doc);
+                      } else {
+                        String coordinadorId = data['coordinadorAsignado'];
+                        if (!porCoordinador.containsKey(coordinadorId)) {
+                          porCoordinador[coordinadorId] = [];
+                          idsCoordinadores.add(coordinadorId);
+                        }
+                        porCoordinador[coordinadorId]!.add(doc);
+                      }
+                    }
+
+                    return FutureBuilder<Map<String, String>>(
+                      future: obtenerNombresCoordinadores(idsCoordinadores),
+                      builder: (context, futureSnapshot) {
+                        if (!futureSnapshot.hasData) {
+                          return Center(child: CircularProgressIndicator());
+                        }
+
+                        Map<String, String> nombresCoordinadores =
+                            futureSnapshot.data ?? {};
+
+                        // Para la búsqueda, forzamos a que los grupos estén expandidos
+                        Map<String, bool> groupExpandedStates = {};
+                        Map<String, bool> expandedStates = {};
+
+                        // Si estamos buscando, expandimos todos los grupos automáticamente
+                        if (isSearching) {
+                          if (sinCoordinador.isNotEmpty) {
+                            groupExpandedStates['Sin_Coordinador'] = true;
+                          }
+
+                          porCoordinador.keys.forEach((key) {
+                            groupExpandedStates['Coordinador_${key}'] = true;
+                          });
+
+                          if (registrosInactivos.isNotEmpty) {
+                            groupExpandedStates['Registros_No_Activos'] = true;
+                          }
+
+                          // Expandimos todos los registros encontrados
+                          for (var doc in filteredDocs) {
+                            expandedStates[doc.id] = true;
+                          }
+                        }
+
+                        return Padding(
+                          padding: EdgeInsets.all(16),
+                          child: ListView(
+                            children: [
+                              // Grupos de registros activos
+                              if (sinCoordinador.isNotEmpty)
+                                _buildGrupo(
+                                  context,
+                                  'Sin Coordinador',
+                                  sinCoordinador,
+                                  primaryTeal,
+                                  secondaryOrange,
+                                  accentGrey,
+                                  backgroundGrey,
+                                  expandedStates,
+                                  groupExpandedStates,
+                                ),
+                              ...porCoordinador.entries
+                                  .map((entry) => _buildGrupo(
+                                        context,
+                                        'Coordinador: ${nombresCoordinadores[entry.key] ?? "Desconocido"}',
+                                        entry.value,
+                                        primaryTeal,
+                                        secondaryOrange,
+                                        accentGrey,
+                                        backgroundGrey,
+                                        expandedStates,
+                                        groupExpandedStates,
+                                      )),
+
+                              // NUEVO: Grupo de registros no activos
+                              if (registrosInactivos.isNotEmpty)
+                                _buildGrupoInactivos(
+                                  context,
+                                  'Registros No Activos',
+                                  registrosInactivos,
+                                  primaryTeal,
+                                  secondaryOrange,
+                                  accentGrey,
+                                  backgroundGrey,
+                                  expandedStates,
+                                  groupExpandedStates,
+                                ),
+                            ],
+                          ),
+                        );
+                      },
+                    );
+                  },
+                ),
               ),
-            ),
-          ],
-        ),
-      );
-    });
+            ],
+          ),
+        );
+      }),
+    ); // ✅ NUEVO: Cerrar el GestureDetector agregado
   }
 
   // NUEVO: Método específico para construir el grupo de registros inactivos

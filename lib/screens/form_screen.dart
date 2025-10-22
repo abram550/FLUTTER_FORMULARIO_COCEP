@@ -434,7 +434,7 @@ class _FormularioPageState extends State<FormularioPage> {
             TextFormField(
               controller: _telefonoController,
               decoration: _getInputDecoration('Teléfono'),
-              keyboardType: TextInputType.phone,
+              keyboardType: TextInputType.text,
               validator: (value) => value!.isEmpty
                   ? 'Por favor, ingresa su numero telefónico'
                   : null,
