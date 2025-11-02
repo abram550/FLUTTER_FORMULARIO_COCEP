@@ -5774,6 +5774,23 @@ class PersonasAsignadasTab extends StatelessWidget {
       context: context,
       barrierDismissible: true,
       builder: (BuildContext dialogContext) {
+        // Crear controladores fuera del StatefulBuilder para persistencia
+        final Map<String, TextEditingController> _controllers = {
+          'nombre': TextEditingController(text: nombre),
+          'apellido': TextEditingController(text: apellido),
+          'telefono': TextEditingController(text: telefono),
+          'direccion': TextEditingController(text: direccion),
+          'barrio': TextEditingController(text: barrio),
+          'nombrePareja': TextEditingController(text: nombrePareja ?? ''),
+          'descripcionOcupaciones':
+              TextEditingController(text: descripcionOcupaciones),
+          'referenciaInvitacion':
+              TextEditingController(text: referenciaInvitacion),
+          'observaciones': TextEditingController(text: observaciones ?? ''),
+          'estadoProceso': TextEditingController(text: estadoProceso),
+          'edad': TextEditingController(text: edad > 0 ? edad.toString() : ''),
+        };
+
         return StatefulBuilder(
           builder: (stateContext, setState) {
             return Dialog(
@@ -5875,22 +5892,36 @@ class PersonasAsignadasTab extends StatelessWidget {
                                 _buildSectionTitle('Información Personal',
                                     Icons.person_outline, primaryTeal),
 
-                                _buildTextField('Nombre', Icons.person,
-                                    (value) => nombre = value),
-                                _buildTextField(
-                                    'Apellido',
-                                    Icons.person_outline,
-                                    (value) => apellido = value),
-                                _buildTextField('Teléfono', Icons.phone,
-                                    (value) => telefono = value),
+                                _buildTextFieldWithController(
+                                  'Nombre',
+                                  Icons.person,
+                                  _controllers['nombre']!,
+                                  (value) => nombre = value,
+                                ),
+                                _buildTextFieldWithController(
+                                  'Apellido',
+                                  Icons.person_outline,
+                                  _controllers['apellido']!,
+                                  (value) => apellido = value,
+                                ),
+                                _buildTextFieldWithController(
+                                  'Teléfono',
+                                  Icons.phone,
+                                  _controllers['telefono']!,
+                                  (value) => telefono = value,
+                                ),
                                 _buildDropdown(
                                     'Sexo',
                                     ['Masculino', 'Femenino'],
                                     sexo,
                                     (value) => setState(() => sexo = value)),
-                                _buildTextField('Edad', Icons.cake,
-                                    (value) => edad = int.tryParse(value) ?? 0,
-                                    keyboardType: TextInputType.number),
+                                _buildTextFieldWithController(
+                                  'Edad',
+                                  Icons.cake,
+                                  _controllers['edad']!,
+                                  (value) => edad = int.tryParse(value) ?? 0,
+                                  keyboardType: TextInputType.number,
+                                ),
 
                                 SizedBox(height: 16),
 
@@ -5898,10 +5929,18 @@ class PersonasAsignadasTab extends StatelessWidget {
                                 _buildSectionTitle('Ubicación',
                                     Icons.location_on_outlined, primaryTeal),
 
-                                _buildTextField('Dirección', Icons.location_on,
-                                    (value) => direccion = value),
-                                _buildTextField('Barrio', Icons.home,
-                                    (value) => barrio = value),
+                                _buildTextFieldWithController(
+                                  'Dirección',
+                                  Icons.location_on,
+                                  _controllers['direccion']!,
+                                  (value) => direccion = value,
+                                ),
+                                _buildTextFieldWithController(
+                                  'Barrio',
+                                  Icons.home,
+                                  _controllers['barrio']!,
+                                  (value) => barrio = value,
+                                ),
 
                                 SizedBox(height: 16),
 
@@ -5926,10 +5965,12 @@ class PersonasAsignadasTab extends StatelessWidget {
                                 // Campo dinámico para nombre de pareja
                                 if (estadoCivil == 'Casado(a)' ||
                                     estadoCivil == 'Unión Libre')
-                                  _buildTextField(
-                                      'Nombre de la Pareja',
-                                      Icons.favorite,
-                                      (value) => nombrePareja = value),
+                                  _buildTextFieldWithController(
+                                    'Nombre de la Pareja',
+                                    Icons.favorite,
+                                    _controllers['nombrePareja']!,
+                                    (value) => nombrePareja = value,
+                                  ),
 
                                 _buildDropdown(
                                     'Tiene Hijos',
@@ -6002,9 +6043,11 @@ class PersonasAsignadasTab extends StatelessWidget {
                                     if (ocupacionesSeleccionadas.isNotEmpty)
                                       Padding(
                                         padding: const EdgeInsets.only(top: 12),
-                                        child: _buildTextField(
+                                        child: _buildTextFieldWithController(
                                           'Descripción de Ocupaciones',
                                           Icons.work_outline,
+                                          _controllers[
+                                              'descripcionOcupaciones']!,
                                           (value) =>
                                               descripcionOcupaciones = value,
                                           isRequired: false,
@@ -6019,17 +6062,24 @@ class PersonasAsignadasTab extends StatelessWidget {
                                 _buildSectionTitle('Información Ministerial',
                                     Icons.groups_outlined, primaryTeal),
 
-                                _buildTextField(
-                                    'Referencia de Invitación',
-                                    Icons.link,
-                                    (value) => referenciaInvitacion = value),
-                                _buildTextField('Observaciones', Icons.note,
-                                    (value) => observaciones = value,
-                                    isRequired: false),
+                                _buildTextFieldWithController(
+                                  'Referencia de Invitación',
+                                  Icons.link,
+                                  _controllers['referenciaInvitacion']!,
+                                  (value) => referenciaInvitacion = value,
+                                ),
+                                _buildTextFieldWithController(
+                                  'Observaciones',
+                                  Icons.note,
+                                  _controllers['observaciones']!,
+                                  (value) => observaciones = value,
+                                  isRequired: false,
+                                ),
 
-                                _buildTextField(
+                                _buildTextFieldWithController(
                                   'Estado en la Iglesia',
                                   Icons.track_changes_outlined,
+                                  _controllers['estadoProceso']!,
                                   (value) => estadoProceso = value,
                                   isRequired: false,
                                 ),
@@ -6214,6 +6264,28 @@ class PersonasAsignadasTab extends StatelessWidget {
                               ),
                               onPressed: () async {
                                 if (_formKey.currentState!.validate()) {
+                                  // Obtener valores de los controladores
+                                  nombre = _controllers['nombre']!.text;
+                                  apellido = _controllers['apellido']!.text;
+                                  telefono = _controllers['telefono']!.text;
+                                  direccion = _controllers['direccion']!.text;
+                                  barrio = _controllers['barrio']!.text;
+                                  nombrePareja =
+                                      _controllers['nombrePareja']!.text;
+                                  descripcionOcupaciones =
+                                      _controllers['descripcionOcupaciones']!
+                                          .text;
+                                  referenciaInvitacion =
+                                      _controllers['referenciaInvitacion']!
+                                          .text;
+                                  observaciones =
+                                      _controllers['observaciones']!.text;
+                                  estadoProceso =
+                                      _controllers['estadoProceso']!.text;
+                                  edad = int.tryParse(
+                                          _controllers['edad']!.text) ??
+                                      0;
+
                                   final registro = {
                                     'fechaAsignacionTribu':
                                         fechaAsignacionTribu != null
@@ -6268,6 +6340,54 @@ class PersonasAsignadasTab extends StatelessWidget {
           },
         );
       },
+    );
+  }
+
+  Widget _buildTextFieldWithController(
+    String label,
+    IconData icon,
+    TextEditingController controller,
+    Function(String) onChanged, {
+    bool isRequired = true,
+    TextInputType keyboardType = TextInputType.text,
+  }) {
+    final primaryTeal = Color(0xFF038C7F);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16.0),
+      child: TextFormField(
+        controller: controller,
+        onChanged: onChanged,
+        keyboardType: keyboardType,
+        validator: isRequired
+            ? (value) =>
+                value == null || value.isEmpty ? 'Campo obligatorio' : null
+            : null,
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: TextStyle(
+            color: primaryTeal.withOpacity(0.8),
+            fontWeight: FontWeight.w500,
+          ),
+          prefixIcon: Icon(icon, color: primaryTeal),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: primaryTeal.withOpacity(0.3)),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: primaryTeal.withOpacity(0.5)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: primaryTeal, width: 2),
+          ),
+          filled: true,
+          fillColor: Colors.white,
+          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        ),
+        style: TextStyle(fontSize: 16),
+      ),
     );
   }
 
