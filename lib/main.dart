@@ -270,18 +270,29 @@ final GoRouter router = GoRouter(
 Future<void> initializeFirebaseMessaging() async {
   try {
     final messaging = FirebaseMessaging.instance;
-    final settings = await messaging.requestPermission(
-      alert: true,
-      badge: true,
-      sound: true,
-    );
 
-    if (settings.authorizationStatus == AuthorizationStatus.authorized) {
+    // ✅ Solo configurar listeners
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      print('📩 Mensaje recibido: ${message.notification?.title}');
+    });
+
+    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+      print('📲 Notificación clickeada: ${message.notification?.title}');
+    });
+
+    // ✅ Intentar obtener token SIN pedir permisos
+    try {
       final token = await messaging.getToken();
-      print('Firebase Messaging Token: $token');
+      if (token != null) {
+        print('🔑 Token: $token');
+      }
+    } catch (e) {
+      print('ℹ️ Token no disponible (sin permisos)');
     }
+
+    print('✅ Firebase Messaging inicializado');
   } catch (e) {
-    print('Error initializing Firebase messaging: $e');
+    print('❌ Error: $e');
     ErrorHandler.logError(e, StackTrace.current);
   }
 }
@@ -289,7 +300,6 @@ Future<void> initializeFirebaseMessaging() async {
 // =============================================================================
 // 🔄 FUNCIÓN MAIN MODIFICADA - Aquí se activa la limpieza automática
 // =============================================================================
-
 void main() async {
   await runZonedGuarded(() async {
     final dbService = DatabaseService();
@@ -303,15 +313,16 @@ void main() async {
         options: DefaultFirebaseOptions.currentPlatform,
       );
 
+      // ✅ CAMBIO: Inicializar messaging SIN pedir permisos
       if (!kIsWeb) {
         await initializeFirebaseMessaging();
+        print('📱 Firebase Messaging configurado (sin solicitar permisos aún)');
       }
 
       final syncService = SyncService();
       await syncService.initialize();
 
-      // 🆕 NUEVO: Iniciar servicio de limpieza automática de eventos
-      // Esto se ejecutará cada 24 horas y también al iniciar la app
+      // 🆕 Iniciar servicio de limpieza automática de eventos
       ServicioLimpiezaEventos.iniciarLimpiezaAutomatica();
 
       runApp(
