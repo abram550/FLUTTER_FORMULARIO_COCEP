@@ -6,9 +6,6 @@ import 'package:formulario_app/utils/error_handler.dart';
 import 'package:go_router/go_router.dart';
 import 'TribusScreen.dart';
 import 'CoordinadorScreen.dart';
-import 'package:flutter/foundation.dart'; // Para kIsWeb
-import 'package:firebase_messaging/firebase_messaging.dart'; // Para notificaciones
-import 'package:cloud_firestore/cloud_firestore.dart'; // Para Firestore
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -86,12 +83,6 @@ class _LoginPageState extends State<LoginPage>
             if (mounted) {
               final coordinadorId = result['coordinadorId'] ?? '';
               final coordinadorNombre = result['coordinadorNombre'] ?? '';
-
-              // ✅ NUEVO: Solicitar permisos de notificaciones y guardar token
-              if (kIsWeb) {
-                _configurarNotificacionesCoordinador(coordinadorId);
-              }
-
               context.go('/coordinador/$coordinadorId/$coordinadorNombre');
             }
             break;
@@ -336,48 +327,6 @@ class _LoginPageState extends State<LoginPage>
         ),
       ),
     );
-  }
-
-// ✅ AGREGAR este método COMPLETO después del método _login()
-  Future<void> _configurarNotificacionesCoordinador(
-      String coordinadorId) async {
-    try {
-      // Solicitar permisos de notificaciones
-      NotificationSettings settings =
-          await FirebaseMessaging.instance.requestPermission(
-        alert: true,
-        announcement: false,
-        badge: true,
-        carPlay: false,
-        criticalAlert: false,
-        provisional: false,
-        sound: true,
-      );
-
-      // Si el usuario acepta los permisos
-      if (settings.authorizationStatus == AuthorizationStatus.authorized) {
-        // Obtener el token único de este dispositivo/navegador
-        String? token = await FirebaseMessaging.instance.getToken();
-
-        if (token != null) {
-          // Guardar el token en Firestore asociado a este coordinador específico
-          await FirebaseFirestore.instance
-              .collection('coordinadores')
-              .doc(coordinadorId)
-              .update({
-            'fcmToken': token,
-            'notificacionesHabilitadas': true,
-            'plataforma': 'web',
-            'ultimaActualizacionToken': FieldValue.serverTimestamp(),
-          });
-
-          print('✅ Token FCM guardado para coordinador: $coordinadorId');
-        }
-      }
-    } catch (e) {
-      // Si hay error, no bloquear el login, solo registrar el error
-      print('⚠️ Error configurando notificaciones: $e');
-    }
   }
 
   Widget _buildTextField({

@@ -266,31 +266,15 @@ final GoRouter router = GoRouter(
   ],
 );
 
-// Tu función existente (sin cambios)
+// =============================================================================
+// 🚫 FUNCIÓN SIN PERMISOS DE NOTIFICACIÓN - COMPLETAMENTE DESACTIVADA
+// =============================================================================
+
 Future<void> initializeFirebaseMessaging() async {
   try {
-    final messaging = FirebaseMessaging.instance;
-
-    // ✅ Solo configurar listeners
-    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      print('📩 Mensaje recibido: ${message.notification?.title}');
-    });
-
-    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-      print('📲 Notificación clickeada: ${message.notification?.title}');
-    });
-
-    // ✅ Intentar obtener token SIN pedir permisos
-    try {
-      final token = await messaging.getToken();
-      if (token != null) {
-        print('🔑 Token: $token');
-      }
-    } catch (e) {
-      print('ℹ️ Token no disponible (sin permisos)');
-    }
-
-    print('✅ Firebase Messaging inicializado');
+    print('ℹ️ Firebase Messaging: Notificaciones desactivadas');
+    // ✅ No hacer nada - función vacía
+    // Las notificaciones están completamente desactivadas
   } catch (e) {
     print('❌ Error: $e');
     ErrorHandler.logError(e, StackTrace.current);
@@ -314,10 +298,11 @@ void main() async {
       );
 
       // ✅ CAMBIO: Inicializar messaging SIN pedir permisos
-      if (!kIsWeb) {
-        await initializeFirebaseMessaging();
-        print('📱 Firebase Messaging configurado (sin solicitar permisos aún)');
-      }
+      //if (!kIsWeb) {
+       // await initializeFirebaseMessaging();
+       
+       // print('📱 Firebase Messaging configurado (sin solicitar permisos aún)');
+     // }
 
       final syncService = SyncService();
       await syncService.initialize();

@@ -985,6 +985,8 @@ class _AsistenciasCoordinadorTabState extends State<AsistenciasCoordinadorTab> {
     return "Otro Ministerio";
   }
 
+
+
   Future<void> _registrarAsistencia(DocumentSnapshot registro) async {
     try {
       final data = registro.data() as Map<String, dynamic>?;
@@ -1008,7 +1010,6 @@ class _AsistenciasCoordinadorTabState extends State<AsistenciasCoordinadorTab> {
         }
         return;
       }
-
       // === BLOQUEO POR FALTAS NO REVISADAS ===
       final int faltasActuales =
           (data['faltasConsecutivas'] as num?)?.toInt() ?? 0;
@@ -1213,7 +1214,6 @@ class _AsistenciasCoordinadorTabState extends State<AsistenciasCoordinadorTab> {
                                       0;
                               final int nuevasFaltas =
                                   asistio ? 0 : faltasAnteriores + 1;
-
                               // Obtener el timoteoId del joven si está asignado
                               String nombreTimoteo = 'No disponible';
                               String? timoteoId = data['timoteoAsignado'];
@@ -1244,42 +1244,19 @@ class _AsistenciasCoordinadorTabState extends State<AsistenciasCoordinadorTab> {
                                 final alertasExistente = await FirebaseFirestore
                                     .instance
                                     .collection('alertas')
-                                    .where('registroId', isEqualTo: registro.id)
-                                    .where('tipo',
-                                        isEqualTo: 'faltasConsecutivas')
+                                    .where('jovenId', isEqualTo: registro.id)
+                                    .where('tipo', isEqualTo: 'Faltas')
                                     .where('procesada', isEqualTo: false)
                                     .limit(1)
                                     .get();
 
                                 if (alertasExistente.docs.isEmpty) {
-                                  // ✅ NUEVO: Obtener el token del coordinador específico
-                                  String? coordinadorToken;
-                                  try {
-                                    final coordinadorDoc =
-                                        await FirebaseFirestore.instance
-                                            .collection('coordinadores')
-                                            .doc(widget.coordinadorId)
-                                            .get();
-
-                                    if (coordinadorDoc.exists) {
-                                      final coordData = coordinadorDoc.data()
-                                          as Map<String, dynamic>?;
-                                      coordinadorToken = coordData?['fcmToken'];
-                                    }
-                                  } catch (e) {
-                                    print(
-                                        'Error obteniendo token del coordinador: $e');
-                                  }
-
-                                  // Crear la alerta con el token del coordinador
                                   await FirebaseFirestore.instance
                                       .collection('alertas')
                                       .add({
                                     'tipo': 'faltasConsecutivas',
                                     'registroId': registro.id,
                                     'coordinadorId': widget.coordinadorId,
-                                    'coordinadorToken':
-                                        coordinadorToken, // ✅ NUEVO: Token específico
                                     'timoteoId': timoteoId ?? 'No asignado',
                                     'nombreJoven': '$nombre $apellido',
                                     'nombreTimoteo': nombreTimoteo,
@@ -1288,16 +1265,7 @@ class _AsistenciasCoordinadorTabState extends State<AsistenciasCoordinadorTab> {
                                     'estado': 'pendiente',
                                     'procesada': false,
                                     'visible': false,
-                                    'notificacionEnviada':
-                                        false, // ✅ NUEVO: Para controlar envío
                                   });
-
-                                  // ✅ NUEVO: Aquí llamarías a tu Cloud Function o servicio de backend
-                                  // para enviar la notificación SOLO a este coordinador específico
-                                  print(
-                                      '🔔 Alerta creada para coordinador: ${widget.coordinadorId}');
-                                  print(
-                                      '🔔 Token del coordinador: $coordinadorToken');
                                 }
                               }
 
@@ -1513,7 +1481,6 @@ class _AsistenciasCoordinadorTabState extends State<AsistenciasCoordinadorTab> {
             actualizarDialogo();
             continue;
           }
-
           // === BLOQUEO POR FALTAS NO REVISADAS (MODO MASIVO) ===
           final int faltasActuales =
               (data['faltasConsecutivas'] as num?)?.toInt() ?? 0;
@@ -1630,28 +1597,10 @@ class _AsistenciasCoordinadorTabState extends State<AsistenciasCoordinadorTab> {
                 .get();
 
             if (alertasExistente.docs.isEmpty) {
-              // ✅ NUEVO: Obtener el token del coordinador específico
-              String? coordinadorToken;
-              try {
-                final coordinadorDoc = await FirebaseFirestore.instance
-                    .collection('coordinadores')
-                    .doc(widget.coordinadorId)
-                    .get();
-
-                if (coordinadorDoc.exists) {
-                  final coordData =
-                      coordinadorDoc.data() as Map<String, dynamic>?;
-                  coordinadorToken = coordData?['fcmToken'];
-                }
-              } catch (e) {
-                print('Error obteniendo token del coordinador: $e');
-              }
-
               await FirebaseFirestore.instance.collection('alertas').add({
                 'tipo': 'faltasConsecutivas',
                 'registroId': registro.id,
                 'coordinadorId': widget.coordinadorId,
-                'coordinadorToken': coordinadorToken, // ✅ NUEVO
                 'timoteoId': timoteoId ?? 'No asignado',
                 'nombreJoven': '$nombre $apellido',
                 'nombreTimoteo': nombreTimoteo,
@@ -1660,11 +1609,7 @@ class _AsistenciasCoordinadorTabState extends State<AsistenciasCoordinadorTab> {
                 'estado': 'pendiente',
                 'procesada': false,
                 'visible': false,
-                'notificacionEnviada': false, // ✅ NUEVO
               });
-
-              print(
-                  '🔔 Alerta masiva creada para coordinador: ${widget.coordinadorId}');
             }
           }
 
@@ -1745,6 +1690,8 @@ class _AsistenciasCoordinadorTabState extends State<AsistenciasCoordinadorTab> {
       }
     }
   }
+
+
 
   Widget _buildAsistenciasCalendario(DocumentSnapshot registro) {
     final data = registro.data() as Map<String, dynamic>?;
