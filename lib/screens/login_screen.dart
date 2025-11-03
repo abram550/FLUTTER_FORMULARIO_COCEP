@@ -243,6 +243,7 @@ class _LoginPageState extends State<LoginPage>
                             validator: (value) => value?.isEmpty ?? true
                                 ? 'Por favor ingresa el usuario'
                                 : null,
+                            onFieldSubmitted: (_) => _login(),
                           ),
                           const SizedBox(height: 20),
                           _buildTextField(
@@ -264,6 +265,7 @@ class _LoginPageState extends State<LoginPage>
                             validator: (value) => value?.isEmpty ?? true
                                 ? 'Por favor ingresa la contraseña'
                                 : null,
+                            onFieldSubmitted: (_) => _login(),
                           ),
                           const SizedBox(height: 40),
                           // Botón de login con gradiente de COCEP
@@ -334,6 +336,7 @@ class _LoginPageState extends State<LoginPage>
     String? Function(String?)? validator,
     bool obscureText = false,
     Widget? suffixIcon,
+    void Function(String)? onFieldSubmitted,
   }) {
     return Container(
       decoration: BoxDecoration(
@@ -367,6 +370,7 @@ class _LoginPageState extends State<LoginPage>
               const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         ),
         validator: validator,
+        onFieldSubmitted: onFieldSubmitted,
       ),
     );
   }
