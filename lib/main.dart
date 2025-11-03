@@ -271,14 +271,7 @@ final GoRouter router = GoRouter(
 // =============================================================================
 
 Future<void> initializeFirebaseMessaging() async {
-  try {
-    print('ℹ️ Firebase Messaging: Notificaciones desactivadas');
-    // ✅ No hacer nada - función vacía
-    // Las notificaciones están completamente desactivadas
-  } catch (e) {
-    print('❌ Error: $e');
-    ErrorHandler.logError(e, StackTrace.current);
-  }
+  // Notificaciones desactivadas
 }
 
 // =============================================================================
@@ -292,22 +285,18 @@ void main() async {
     ErrorHandler.initialize();
 
     try {
-      // Inicializar Firebase
       await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform,
       );
 
-      // ✅ CAMBIO: Inicializar messaging SIN pedir permisos
-      //if (!kIsWeb) {
-       // await initializeFirebaseMessaging();
-       
-       // print('📱 Firebase Messaging configurado (sin solicitar permisos aún)');
-     // }
+      // ❌ COMENTAR O ELIMINAR ESTAS LÍNEAS:
+      // if (!kIsWeb) {
+      //   await initializeFirebaseMessaging();
+      // }
 
       final syncService = SyncService();
       await syncService.initialize();
 
-      // 🆕 Iniciar servicio de limpieza automática de eventos
       ServicioLimpiezaEventos.iniciarLimpiezaAutomatica();
 
       runApp(
