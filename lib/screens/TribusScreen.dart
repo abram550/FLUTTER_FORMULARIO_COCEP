@@ -2105,6 +2105,7 @@ class MiembroCard extends StatelessWidget {
   }
 }
 
+//--------------------------PESTAÑA DE ASISTENCIA
 class AsistenciasTab extends StatefulWidget {
   final String tribuId;
 
@@ -2114,43 +2115,128 @@ class AsistenciasTab extends StatefulWidget {
   State<AsistenciasTab> createState() => _AsistenciasTabState();
 }
 
-class _AsistenciasTabState extends State<AsistenciasTab> {
+class _AsistenciasTabState extends State<AsistenciasTab>
+    with SingleTickerProviderStateMixin {
+  // ⬅️ NUEVO: Mixin para TabController
+
   // ========================================
-  // NUEVA VARIABLE DE ESTADO
-  // Controla qué servicios están expandidos/colapsados
-  // Key formato: "MesAño|Semana|NombreServicio"
+  // NUEVAS VARIABLES PARA EL SISTEMA DE PESTAÑAS
+  // ========================================
+  late TabController _tabController;
+
+  // ========================================
+  // VARIABLES DE ESTADO ORIGINALES
   // ========================================
   final Map<String, bool> _servicioExpand = {};
-
-// ========================================
-// CACHÉ DE DATOS
-// Evita reconstrucciones innecesarias del StreamBuilder
-// ========================================
   Map<String, Map<String, Map<String, List<Map<String, dynamic>>>>>?
       _cachedData;
   bool _isFirstLoad = true;
 
   // ========================================
-  // Función para obtener asistencias del Firestore
-  // NO SE MODIFICA - Se mantiene igual
+  // INICIALIZACIÓN DEL TabController
   // ========================================
-  Stream<QuerySnapshot> obtenerAsistenciasPorTribu(String tribuId) {
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+  }
+
+  // ========================================
+  // LIMPIEZA DEL TabController
+  // ========================================
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  // ========================================
+  // FUNCIÓN MODIFICADA: Ahora recibe parámetro para filtrar
+  // true = asistencias, false = fallas
+  // ========================================
+  Stream<QuerySnapshot> obtenerAsistenciasPorTribu(
+      String tribuId, bool mostrarAsistencias) {
     return FirebaseFirestore.instance
         .collection('asistencias')
         .where('tribuId', isEqualTo: tribuId)
-        .where('asistio', isEqualTo: true)
+        .where('asistio',
+            isEqualTo: mostrarAsistencias) // ⬅️ MODIFICADO: Filtro dinámico
         .snapshots();
   }
 
   @override
   Widget build(BuildContext context) {
+    return Column(
+      children: [
+        // ========================================
+        // NUEVO: BARRA DE PESTAÑAS
+        // ========================================
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 4,
+                offset: Offset(0, 2),
+              ),
+            ],
+          ),
+          child: TabBar(
+            controller: _tabController,
+            labelColor: const Color(0xFF1D8A8A),
+            unselectedLabelColor: Colors.grey[600],
+            indicatorColor: const Color(0xFF1D8A8A),
+            indicatorWeight: 3,
+            labelStyle: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 15,
+            ),
+            unselectedLabelStyle: TextStyle(
+              fontWeight: FontWeight.w500,
+              fontSize: 15,
+            ),
+            tabs: [
+              Tab(
+                icon: Icon(Icons.check_circle_outline),
+                text: 'Asistencias',
+              ),
+              Tab(
+                icon: Icon(Icons.cancel_outlined),
+                text: 'Inasistencias',
+              ),
+            ],
+          ),
+        ),
+
+        // ========================================
+        // NUEVO: CONTENIDO DE LAS PESTAÑAS
+        // ========================================
+        Expanded(
+          child: TabBarView(
+            controller: _tabController,
+            children: [
+              // Pestaña 1: Asistencias (asistio = true)
+              _buildContenidoAsistencias(true),
+
+              // Pestaña 2: Fallas (asistio = false)
+              _buildContenidoAsistencias(false),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ========================================
+  // NUEVA FUNCIÓN: Construye el contenido para cada pestaña
+  // Parámetro: mostrarAsistencias (true/false)
+  // ========================================
+  Widget _buildContenidoAsistencias(bool mostrarAsistencias) {
     return StreamBuilder<QuerySnapshot>(
-      stream: obtenerAsistenciasPorTribu(widget.tribuId),
+      stream: obtenerAsistenciasPorTribu(widget.tribuId, mostrarAsistencias),
       builder: (context, snapshot) {
-        // ========================================
-        // MANEJO DE ESTADO DE CARGA INICIAL
-        // Solo muestra loading en la primera carga
-        // ========================================
+        // Manejo de carga inicial
         if (snapshot.connectionState == ConnectionState.waiting &&
             _isFirstLoad) {
           return Center(
@@ -2162,17 +2248,23 @@ class _AsistenciasTabState extends State<AsistenciasTab> {
                   width: 60,
                   child: CircularProgressIndicator(
                     valueColor: AlwaysStoppedAnimation<Color>(
-                      const Color(0xFF1D8A8A),
+                      mostrarAsistencias
+                          ? const Color(0xFF1D8A8A)
+                          : const Color(0xFFE74C3C), // ⬅️ Rojo para fallas
                     ),
                     strokeWidth: 4,
                   ),
                 ),
                 SizedBox(height: 16),
                 Text(
-                  'Cargando asistencias...',
+                  mostrarAsistencias
+                      ? 'Cargando asistencias...'
+                      : 'Cargando inasistencias...',
                   style: TextStyle(
                     fontSize: 16,
-                    color: const Color(0xFF1D8A8A),
+                    color: mostrarAsistencias
+                        ? const Color(0xFF1D8A8A)
+                        : const Color(0xFFE74C3C),
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -2181,9 +2273,7 @@ class _AsistenciasTabState extends State<AsistenciasTab> {
           );
         }
 
-        // ========================================
-        // MANEJO DE DATOS VACÍOS (solo primera vez)
-        // ========================================
+        // Manejo de datos vacíos
         if ((!snapshot.hasData || snapshot.data!.docs.isEmpty) &&
             _isFirstLoad) {
           _isFirstLoad = false;
@@ -2208,27 +2298,38 @@ class _AsistenciasTabState extends State<AsistenciasTab> {
                   Container(
                     padding: EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF1D8A8A).withOpacity(0.1),
+                      color: (mostrarAsistencias
+                              ? const Color(0xFF1D8A8A)
+                              : const Color(0xFFE74C3C))
+                          .withOpacity(0.1),
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
-                      Icons.event_busy,
+                      mostrarAsistencias ? Icons.event_busy : Icons.person_off,
                       size: 64,
-                      color: const Color(0xFF1D8A8A),
+                      color: mostrarAsistencias
+                          ? const Color(0xFF1D8A8A)
+                          : const Color(0xFFE74C3C),
                     ),
                   ),
                   SizedBox(height: 16),
                   Text(
-                    'No hay asistencias registradas',
+                    mostrarAsistencias
+                        ? 'No hay asistencias registradas'
+                        : 'No hay inasistencias registradas',
                     style: TextStyle(
                       fontSize: 18,
-                      color: const Color(0xFF1D8A8A),
+                      color: mostrarAsistencias
+                          ? const Color(0xFF1D8A8A)
+                          : const Color(0xFFE74C3C),
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   SizedBox(height: 8),
                   Text(
-                    'Los datos de asistencia aparecerán aquí',
+                    mostrarAsistencias
+                        ? 'Los datos de asistencia aparecerán aquí'
+                        : 'Los datos de inasistencias aparecerán aquí',
                     style: TextStyle(
                       fontSize: 14,
                       color: Colors.grey[600],
@@ -2240,14 +2341,10 @@ class _AsistenciasTabState extends State<AsistenciasTab> {
           );
         }
 
-        // ========================================
-        // PROCESAMIENTO DE DATOS CON CACHÉ
-        // Solo procesa si hay datos nuevos
-        // ========================================
+        // Procesamiento de datos
         if (snapshot.hasData && snapshot.data!.docs.isNotEmpty) {
           _isFirstLoad = false;
 
-          // Convertir los datos de Firestore en una lista de mapas
           final asistencias = snapshot.data!.docs.map((doc) {
             final data = doc.data() as Map<String, dynamic>;
             final nombre = data['nombre'] ?? "Sin nombre";
@@ -2266,14 +2363,9 @@ class _AsistenciasTabState extends State<AsistenciasTab> {
             };
           }).toList();
 
-          // Actualizar caché con nuevos datos
           _cachedData = _agruparAsistenciasPorFecha(asistencias);
         }
 
-        // ========================================
-        // RENDERIZAR UI CON DATOS CACHEADOS
-        // Siempre usa el caché para evitar rebuilds
-        // ========================================
         final asistenciasAgrupadas = _cachedData ?? {};
 
         if (asistenciasAgrupadas.isEmpty) {
@@ -2298,27 +2390,38 @@ class _AsistenciasTabState extends State<AsistenciasTab> {
                   Container(
                     padding: EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF1D8A8A).withOpacity(0.1),
+                      color: (mostrarAsistencias
+                              ? const Color(0xFF1D8A8A)
+                              : const Color(0xFFE74C3C))
+                          .withOpacity(0.1),
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
-                      Icons.event_busy,
+                      mostrarAsistencias ? Icons.event_busy : Icons.person_off,
                       size: 64,
-                      color: const Color(0xFF1D8A8A),
+                      color: mostrarAsistencias
+                          ? const Color(0xFF1D8A8A)
+                          : const Color(0xFFE74C3C),
                     ),
                   ),
                   SizedBox(height: 16),
                   Text(
-                    'No hay asistencias registradas',
+                    mostrarAsistencias
+                        ? 'No hay asistencias registradas'
+                        : 'No hay inasistencias registradas',
                     style: TextStyle(
                       fontSize: 18,
-                      color: const Color(0xFF1D8A8A),
+                      color: mostrarAsistencias
+                          ? const Color(0xFF1D8A8A)
+                          : const Color(0xFFE74C3C),
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   SizedBox(height: 8),
                   Text(
-                    'Los datos de asistencia aparecerán aquí',
+                    mostrarAsistencias
+                        ? 'Los datos de asistencia aparecerán aquí'
+                        : 'Los datos de inasistencias aparecerán aquí',
                     style: TextStyle(
                       fontSize: 14,
                       color: Colors.grey[600],
@@ -2335,10 +2438,16 @@ class _AsistenciasTabState extends State<AsistenciasTab> {
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [
-                Colors.white,
-                const Color(0xFF1D8A8A).withOpacity(0.05),
-              ],
+              colors: mostrarAsistencias
+                  ? [
+                      Colors.white,
+                      const Color(0xFF1D8A8A).withOpacity(0.05),
+                    ]
+                  : [
+                      Colors.white,
+                      const Color(0xFFE74C3C)
+                          .withOpacity(0.05), // ⬅️ Rojo para fallas
+                    ],
             ),
           ),
           child: ListView.builder(
@@ -2362,10 +2471,16 @@ class _AsistenciasTabState extends State<AsistenciasTab> {
                         gradient: LinearGradient(
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
-                          colors: [
-                            const Color(0xFF1D8A8A),
-                            const Color(0xFF156D6D),
-                          ],
+                          colors: mostrarAsistencias
+                              ? [
+                                  const Color(0xFF1D8A8A),
+                                  const Color(0xFF156D6D),
+                                ]
+                              : [
+                                  const Color(
+                                      0xFFE74C3C), // ⬅️ Rojo para fallas
+                                  const Color(0xFFC0392B),
+                                ],
                         ),
                       ),
                       child: Theme(
@@ -2398,7 +2513,9 @@ class _AsistenciasTabState extends State<AsistenciasTab> {
                             ),
                           ),
                           subtitle: Text(
-                            'Registro de asistencias',
+                            mostrarAsistencias
+                                ? 'Registro de asistencias'
+                                : 'Registro de inasistencias',
                             style: TextStyle(
                               fontSize: 12,
                               color: Colors.white.withOpacity(0.8),
@@ -2414,8 +2531,8 @@ class _AsistenciasTabState extends State<AsistenciasTab> {
                                   .compareTo(_monthToNumber(b)));
 
                             final ordered = sortedMonths.map((month) {
-                              return _buildMonthSection(
-                                  context, month, months[month]!, year);
+                              return _buildMonthSection(context, month,
+                                  months[month]!, year, mostrarAsistencias);
                             }).toList();
 
                             return ordered.reversed.toList();
@@ -2433,8 +2550,15 @@ class _AsistenciasTabState extends State<AsistenciasTab> {
     );
   }
 
-  Widget _buildMonthSection(BuildContext context, String month,
-      Map<String, List<Map<String, dynamic>>> weeks, String year) {
+  // ========================================
+  // FUNCIÓN MODIFICADA: Ahora recibe parámetro mostrarAsistencias
+  // ========================================
+  Widget _buildMonthSection(
+      BuildContext context,
+      String month,
+      Map<String, List<Map<String, dynamic>>> weeks,
+      String year,
+      bool mostrarAsistencias) {
     final monthName = _getSpanishMonth(month);
     final IconData monthIcon = _getMonthIcon(month);
 
@@ -2444,7 +2568,10 @@ class _AsistenciasTabState extends State<AsistenciasTab> {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: BorderSide(
-          color: const Color(0xFF1D8A8A).withOpacity(0.2),
+          color: (mostrarAsistencias
+                  ? const Color(0xFF1D8A8A)
+                  : const Color(0xFFE74C3C))
+              .withOpacity(0.2),
           width: 1,
         ),
       ),
@@ -2454,24 +2581,35 @@ class _AsistenciasTabState extends State<AsistenciasTab> {
           gradient: LinearGradient(
             begin: Alignment.topRight,
             end: Alignment.bottomLeft,
-            colors: [
-              Colors.white,
-              const Color(0xFF1D8A8A).withOpacity(0.08),
-            ],
+            colors: mostrarAsistencias
+                ? [
+                    Colors.white,
+                    const Color(0xFF1D8A8A).withOpacity(0.08),
+                  ]
+                : [
+                    Colors.white,
+                    const Color(0xFFE74C3C)
+                        .withOpacity(0.08), // ⬅️ Rojo para fallas
+                  ],
           ),
         ),
         child: ExpansionTile(
-          maintainState: true, // ⬅️ AGREGADO: Mantiene estado de hijos
+          maintainState: true,
           leading: Container(
             padding: EdgeInsets.all(8),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [
-                  const Color(0xFF1D8A8A),
-                  const Color(0xFF1D8A8A).withOpacity(0.7),
-                ],
+                colors: mostrarAsistencias
+                    ? [
+                        const Color(0xFF1D8A8A),
+                        const Color(0xFF1D8A8A).withOpacity(0.7),
+                      ]
+                    : [
+                        const Color(0xFFE74C3C),
+                        const Color(0xFFE74C3C).withOpacity(0.7),
+                      ],
               ),
               borderRadius: BorderRadius.circular(12),
             ),
@@ -2486,7 +2624,9 @@ class _AsistenciasTabState extends State<AsistenciasTab> {
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
-              color: const Color(0xFF1D8A8A),
+              color: mostrarAsistencias
+                  ? const Color(0xFF1D8A8A)
+                  : const Color(0xFFE74C3C),
             ),
           ),
           subtitle: Text(
@@ -2496,23 +2636,31 @@ class _AsistenciasTabState extends State<AsistenciasTab> {
               color: Colors.grey[600],
             ),
           ),
-          iconColor: const Color(0xFF1D8A8A),
-          collapsedIconColor: const Color(0xFF1D8A8A),
+          iconColor: mostrarAsistencias
+              ? const Color(0xFF1D8A8A)
+              : const Color(0xFFE74C3C),
+          collapsedIconColor: mostrarAsistencias
+              ? const Color(0xFF1D8A8A)
+              : const Color(0xFFE74C3C),
           children: weeks.keys.map((week) {
-            return _buildWeekSection(
-                context, week, weeks[week]!, '$monthName $year');
+            return _buildWeekSection(context, week, weeks[week]!,
+                '$monthName $year', mostrarAsistencias);
           }).toList(),
         ),
       ),
     );
   }
 
-  Widget _buildWeekSection(BuildContext context, String week,
-      List<Map<String, dynamic>> asistencias, String monthYear) {
-    // Agrupar por servicio
+  // ========================================
+  // FUNCIÓN MODIFICADA: Ahora recibe parámetro mostrarAsistencias
+  // ========================================
+  Widget _buildWeekSection(
+      BuildContext context,
+      String week,
+      List<Map<String, dynamic>> asistencias,
+      String monthYear,
+      bool mostrarAsistencias) {
     Map<String, List<Map<String, dynamic>>> porServicio = {};
-
-    // Obtener nombres únicos de personas que asistieron a cada servicio
     Map<String, Set<String>> personasPorServicio = {};
     Set<String> todasLasPersonas = {};
 
@@ -2534,7 +2682,9 @@ class _AsistenciasTabState extends State<AsistenciasTab> {
       for (var servicio in porServicio.keys)
         servicio: personasPorServicio[servicio]!.length
     };
-    resumen['Total del Fin de Semana'] = todasLasPersonas.length;
+    resumen[mostrarAsistencias
+        ? 'Total del Fin de Semana'
+        : 'Total de Fallas'] = todasLasPersonas.length;
 
     return Card(
       margin: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -2560,7 +2710,7 @@ class _AsistenciasTabState extends State<AsistenciasTab> {
           ),
         ),
         child: ExpansionTile(
-          maintainState: true, // ⬅️ AGREGADO: Mantiene estado de hijos
+          maintainState: true,
           leading: Container(
             padding: EdgeInsets.all(8),
             decoration: BoxDecoration(
@@ -2610,34 +2760,29 @@ class _AsistenciasTabState extends State<AsistenciasTab> {
                 ministerio,
                 listaAsistencias,
                 groupKey: groupKey,
+                mostrarAsistencias: mostrarAsistencias, // ⬅️ NUEVO PARÁMETRO
               );
             }).toList(),
-            _buildTotalSection(resumen),
+            _buildTotalSection(resumen, mostrarAsistencias),
           ],
         ),
       ),
     );
   }
 
-// ========================================
-  // FUNCIÓN: Construir sección de servicio COLAPSABLE
-  // MEJORAS:
-  // - Ahora es expandible/colapsable con animación
-  // - Diseño responsivo con LayoutBuilder
-  // - Mantiene todos los estilos originales
-  // - Parámetro obligatorio: groupKey (clave única)
+  // ========================================
+  // FUNCIÓN MODIFICADA: Ahora recibe parámetro mostrarAsistencias
+  // Cambia los colores y el ícono final según el tipo
   // ========================================
   Widget _buildServicioSection(
     String servicio,
     String ministerio,
     List<Map<String, dynamic>> asistencias, {
-    required String groupKey, // ⬅️ NUEVO PARÁMETRO OBLIGATORIO
+    required String groupKey,
+    required bool mostrarAsistencias, // ⬅️ NUEVO PARÁMETRO
   }) {
-    // Obtener colores e íconos del ministerio (lógica original preservada)
     final color = _getColorByMinisterio(ministerio);
     final icon = _getIconByMinisterio(ministerio);
-
-    // Estado de expansión: ¿Está abierto este servicio?
     final isOpen = _servicioExpand[groupKey] ?? false;
 
     return Container(
@@ -2656,19 +2801,9 @@ class _AsistenciasTabState extends State<AsistenciasTab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ========================================
-          // CABECERA CLICKEABLE (Header)
-          // Mantiene el diseño original con gradiente
-          // Ahora responde a clicks para expandir/colapsar
-          // ========================================
           InkWell(
-            // Efecto de onda al hacer click
             borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
             onTap: () {
-              // ========================================
-              // CAMBIO DE ESTADO OPTIMIZADO
-              // No reconstruye todo el árbol, solo el servicio
-              // ========================================
               setState(() {
                 _servicioExpand[groupKey] = !isOpen;
               });
@@ -2676,7 +2811,6 @@ class _AsistenciasTabState extends State<AsistenciasTab> {
             child: Container(
               padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
-                // Gradiente original preservado
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
@@ -2689,15 +2823,10 @@ class _AsistenciasTabState extends State<AsistenciasTab> {
               ),
               child: LayoutBuilder(
                 builder: (context, constraints) {
-                  // ========================================
-                  // DISEÑO RESPONSIVO
-                  // Ajusta el layout según el ancho disponible
-                  // ========================================
                   final isNarrow = constraints.maxWidth < 400;
 
                   return Row(
                     children: [
-                      // Ícono del ministerio (contenedor con fondo translúcido)
                       Container(
                         padding: EdgeInsets.all(isNarrow ? 6 : 8),
                         decoration: BoxDecoration(
@@ -2710,15 +2839,11 @@ class _AsistenciasTabState extends State<AsistenciasTab> {
                           size: isNarrow ? 18 : 20,
                         ),
                       ),
-
                       SizedBox(width: isNarrow ? 8 : 12),
-
-                      // Textos: Nombre del servicio y ministerio
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // Nombre del servicio
                             Text(
                               servicio,
                               style: TextStyle(
@@ -2729,7 +2854,6 @@ class _AsistenciasTabState extends State<AsistenciasTab> {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
-                            // Nombre del ministerio
                             Text(
                               ministerio,
                               style: TextStyle(
@@ -2740,8 +2864,6 @@ class _AsistenciasTabState extends State<AsistenciasTab> {
                           ],
                         ),
                       ),
-
-                      // Chip con contador de asistencias
                       Container(
                         padding: EdgeInsets.symmetric(
                           horizontal: isNarrow ? 8 : 10,
@@ -2760,12 +2882,9 @@ class _AsistenciasTabState extends State<AsistenciasTab> {
                           ),
                         ),
                       ),
-
                       SizedBox(width: 8),
-
-                      // Ícono de expansión con animación de rotación
                       AnimatedRotation(
-                        turns: isOpen ? 0.5 : 0.0, // 180° cuando está abierto
+                        turns: isOpen ? 0.5 : 0.0,
                         duration: Duration(milliseconds: 200),
                         child: Icon(
                           Icons.expand_more,
@@ -2779,25 +2898,17 @@ class _AsistenciasTabState extends State<AsistenciasTab> {
               ),
             ),
           ),
-
-          // ========================================
-          // CUERPO COLAPSABLE (Body)
-          // Solo se muestra cuando isOpen = true
-          // Animación suave de expansión/colapso
-          // ========================================
           AnimatedCrossFade(
             firstChild: SizedBox.shrink(),
             secondChild: asistencias.isNotEmpty
-                ? _buildListaAsistencias(asistencias, color)
-                : _buildMensajeVacio(),
+                ? _buildListaAsistencias(asistencias, color, mostrarAsistencias)
+                : _buildMensajeVacio(mostrarAsistencias),
             crossFadeState:
                 isOpen ? CrossFadeState.showSecond : CrossFadeState.showFirst,
-            duration:
-                Duration(milliseconds: 200), // ⬅️ Reducido para mayor velocidad
-            sizeCurve:
-                Curves.easeInOutCubic, // ⬅️ AGREGADO: Curva suave sin rebotes
-            firstCurve: Curves.easeOut, // ⬅️ AGREGADO: Curva de salida
-            secondCurve: Curves.easeIn, // ⬅️ AGREGADO: Curva de entrada
+            duration: Duration(milliseconds: 200),
+            sizeCurve: Curves.easeInOutCubic,
+            firstCurve: Curves.easeOut,
+            secondCurve: Curves.easeIn,
           ),
         ],
       ),
@@ -2805,20 +2916,20 @@ class _AsistenciasTabState extends State<AsistenciasTab> {
   }
 
   // ========================================
-  // FUNCIÓN AUXILIAR: Construir lista de asistencias
-  // Extrae la lógica del listado para mejor organización
-  // Diseño responsivo integrado
+  // FUNCIÓN MODIFICADA: Ahora recibe parámetro mostrarAsistencias
+  // Cambia el ícono final (check verde para asistencias, X roja para fallas)
   // ========================================
   Widget _buildListaAsistencias(
     List<Map<String, dynamic>> asistencias,
     Color color,
+    bool mostrarAsistencias, // ⬅️ NUEVO PARÁMETRO
   ) {
     return ListView.builder(
       shrinkWrap: true,
       physics: NeverScrollableScrollPhysics(),
-      addAutomaticKeepAlives: true, // ⬅️ AGREGADO: Mantiene estado de items
-      addRepaintBoundaries: true, // ⬅️ AGREGADO: Optimiza repintado
-      cacheExtent: 0, // ⬅️ AGREGADO: No pre-renderiza items fuera de vista
+      addAutomaticKeepAlives: true,
+      addRepaintBoundaries: true,
+      cacheExtent: 0,
       itemCount: asistencias.length,
       padding: EdgeInsets.symmetric(vertical: 8),
       itemBuilder: (context, index) {
@@ -2832,7 +2943,6 @@ class _AsistenciasTabState extends State<AsistenciasTab> {
 
         return LayoutBuilder(
           builder: (context, constraints) {
-            // Diseño responsivo para cada item
             final isNarrow = constraints.maxWidth < 400;
 
             return Container(
@@ -2845,13 +2955,11 @@ class _AsistenciasTabState extends State<AsistenciasTab> {
                 borderRadius: BorderRadius.circular(10),
               ),
               child: ListTile(
-                dense: isNarrow, // Más compacto en pantallas pequeñas
+                dense: isNarrow,
                 contentPadding: EdgeInsets.symmetric(
                   horizontal: isNarrow ? 8 : 16,
                   vertical: isNarrow ? 4 : 8,
                 ),
-
-                // Avatar circular con inicial del nombre
                 leading: Container(
                   width: isNarrow ? 35 : 40,
                   height: isNarrow ? 35 : 40,
@@ -2877,8 +2985,6 @@ class _AsistenciasTabState extends State<AsistenciasTab> {
                     ),
                   ),
                 ),
-
-                // Nombre completo
                 title: Text(
                   nombreMostrado,
                   style: TextStyle(
@@ -2887,8 +2993,6 @@ class _AsistenciasTabState extends State<AsistenciasTab> {
                     color: Colors.black87,
                   ),
                 ),
-
-                // Fecha formateada
                 subtitle: Row(
                   children: [
                     Icon(
@@ -2910,17 +3014,19 @@ class _AsistenciasTabState extends State<AsistenciasTab> {
                     ),
                   ],
                 ),
-
-                // Ícono de confirmación (check verde)
+                // ⬅️ MODIFICADO: Ícono diferente según el tipo
                 trailing: Container(
                   padding: EdgeInsets.all(isNarrow ? 3 : 4),
                   decoration: BoxDecoration(
-                    color: Colors.green.withOpacity(0.1),
+                    color: (mostrarAsistencias ? Colors.green : Colors.red)
+                        .withOpacity(0.1),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
-                    Icons.check_circle_rounded,
-                    color: Colors.green,
+                    mostrarAsistencias
+                        ? Icons.check_circle_rounded
+                        : Icons.cancel_rounded, // ⬅️ X roja para fallas
+                    color: mostrarAsistencias ? Colors.green : Colors.red,
                     size: isNarrow ? 18 : 20,
                   ),
                 ),
@@ -2933,10 +3039,9 @@ class _AsistenciasTabState extends State<AsistenciasTab> {
   }
 
   // ========================================
-  // FUNCIÓN AUXILIAR: Mensaje cuando no hay asistencias
-  // Diseño consistente con el resto de la UI
+  // FUNCIÓN MODIFICADA: Ahora recibe parámetro mostrarAsistencias
   // ========================================
-  Widget _buildMensajeVacio() {
+  Widget _buildMensajeVacio(bool mostrarAsistencias) {
     return Container(
       padding: EdgeInsets.all(20),
       child: Row(
@@ -2949,7 +3054,9 @@ class _AsistenciasTabState extends State<AsistenciasTab> {
           ),
           SizedBox(width: 10),
           Text(
-            'No hay asistencias registradas',
+            mostrarAsistencias
+                ? 'No hay asistencias registradas'
+                : 'No hay inasistencias registradas',
             style: TextStyle(
               color: Colors.grey[500],
               fontStyle: FontStyle.italic,
@@ -2961,8 +3068,13 @@ class _AsistenciasTabState extends State<AsistenciasTab> {
     );
   }
 
-  Widget _buildTotalSection(Map<String, int> resumen) {
-    final totalUnico = resumen['Total del Fin de Semana'] ?? 0;
+  // ========================================
+  // FUNCIÓN MODIFICADA: Ahora recibe parámetro mostrarAsistencias
+  // ========================================
+  Widget _buildTotalSection(Map<String, int> resumen, bool mostrarAsistencias) {
+    final totalKey =
+        mostrarAsistencias ? 'Total del Fin de Semana' : 'Total de Fallas';
+    final totalUnico = resumen[totalKey] ?? 0;
 
     return Container(
       margin: EdgeInsets.all(16),
@@ -2971,20 +3083,32 @@ class _AsistenciasTabState extends State<AsistenciasTab> {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            Colors.white,
-            const Color(0xFF1D8A8A).withOpacity(0.1),
-          ],
+          colors: mostrarAsistencias
+              ? [
+                  Colors.white,
+                  const Color(0xFF1D8A8A).withOpacity(0.1),
+                ]
+              : [
+                  Colors.white,
+                  const Color(0xFFE74C3C)
+                      .withOpacity(0.1), // ⬅️ Rojo para fallas
+                ],
         ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF1D8A8A).withOpacity(0.1),
+            color: (mostrarAsistencias
+                    ? const Color(0xFF1D8A8A)
+                    : const Color(0xFFE74C3C))
+                .withOpacity(0.1),
             blurRadius: 8,
             offset: Offset(0, 4),
           ),
         ],
         border: Border.all(
-          color: const Color(0xFF1D8A8A).withOpacity(0.3),
+          color: (mostrarAsistencias
+                  ? const Color(0xFF1D8A8A)
+                  : const Color(0xFFE74C3C))
+              .withOpacity(0.3),
           width: 1,
         ),
       ),
@@ -2997,10 +3121,15 @@ class _AsistenciasTabState extends State<AsistenciasTab> {
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [
-                  const Color(0xFF1D8A8A),
-                  const Color(0xFF156D6D),
-                ],
+                colors: mostrarAsistencias
+                    ? [
+                        const Color(0xFF1D8A8A),
+                        const Color(0xFF156D6D),
+                      ]
+                    : [
+                        const Color(0xFFE74C3C),
+                        const Color(0xFFC0392B),
+                      ],
               ),
               borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
             ),
@@ -3020,7 +3149,9 @@ class _AsistenciasTabState extends State<AsistenciasTab> {
                 ),
                 SizedBox(width: 12),
                 Text(
-                  'Resumen de Asistencia',
+                  mostrarAsistencias
+                      ? 'Resumen de Asistencia'
+                      : 'Resumen de Inasistencias',
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
@@ -3034,18 +3165,20 @@ class _AsistenciasTabState extends State<AsistenciasTab> {
             padding: EdgeInsets.all(16),
             child: Column(
               children: [
-                ...resumen.entries
-                    .where((e) => e.key != 'Total del Fin de Semana')
-                    .map(
-                      (entry) => _buildTotalRow(entry.key, entry.value),
+                ...resumen.entries.where((e) => e.key != totalKey).map(
+                      (entry) => _buildTotalRow(
+                          entry.key, entry.value, mostrarAsistencias),
                     ),
                 SizedBox(height: 8),
                 Divider(
                   height: 24,
                   thickness: 1,
-                  color: const Color(0xFF1D8A8A).withOpacity(0.2),
+                  color: (mostrarAsistencias
+                          ? const Color(0xFF1D8A8A)
+                          : const Color(0xFFE74C3C))
+                      .withOpacity(0.2),
                 ),
-                _buildTotalRow('Total del Fin de Semana', totalUnico,
+                _buildTotalRow(totalKey, totalUnico, mostrarAsistencias,
                     isTotal: true),
               ],
             ),
@@ -3055,18 +3188,22 @@ class _AsistenciasTabState extends State<AsistenciasTab> {
     );
   }
 
-  Widget _buildTotalRow(String label, int count, {bool isTotal = false}) {
+  // ========================================
+  // FUNCIÓN MODIFICADA: Ahora recibe parámetro mostrarAsistencias
+  // ========================================
+  Widget _buildTotalRow(String label, int count, bool mostrarAsistencias,
+      {bool isTotal = false}) {
+    final color =
+        mostrarAsistencias ? const Color(0xFF1D8A8A) : const Color(0xFFE74C3C);
+
     return Container(
       margin: EdgeInsets.symmetric(vertical: 4),
       padding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
       decoration: BoxDecoration(
-        color: isTotal
-            ? const Color(0xFF1D8A8A).withOpacity(0.1)
-            : Colors.transparent,
+        color: isTotal ? color.withOpacity(0.1) : Colors.transparent,
         borderRadius: BorderRadius.circular(8),
         border: isTotal
-            ? Border.all(
-                color: const Color(0xFF1D8A8A).withOpacity(0.3), width: 1)
+            ? Border.all(color: color.withOpacity(0.3), width: 1)
             : null,
       ),
       child: Row(
@@ -3077,7 +3214,7 @@ class _AsistenciasTabState extends State<AsistenciasTab> {
               label,
               style: TextStyle(
                 fontWeight: isTotal ? FontWeight.bold : FontWeight.w500,
-                color: isTotal ? const Color(0xFF1D8A8A) : Colors.grey[700],
+                color: isTotal ? color : Colors.grey[700],
                 fontSize: isTotal ? 15 : 14,
               ),
             ),
@@ -3089,10 +3226,15 @@ class _AsistenciasTabState extends State<AsistenciasTab> {
                   ? LinearGradient(
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
-                      colors: [
-                        const Color(0xFF1D8A8A),
-                        const Color(0xFF156D6D),
-                      ],
+                      colors: mostrarAsistencias
+                          ? [
+                              const Color(0xFF1D8A8A),
+                              const Color(0xFF156D6D),
+                            ]
+                          : [
+                              const Color(0xFFE74C3C),
+                              const Color(0xFFC0392B),
+                            ],
                     )
                   : null,
               color: isTotal ? null : Colors.grey.withOpacity(0.1),
@@ -3100,7 +3242,7 @@ class _AsistenciasTabState extends State<AsistenciasTab> {
               boxShadow: isTotal
                   ? [
                       BoxShadow(
-                        color: const Color(0xFF1D8A8A).withOpacity(0.2),
+                        color: color.withOpacity(0.2),
                         blurRadius: 4,
                         offset: Offset(0, 2),
                       )
@@ -3121,6 +3263,9 @@ class _AsistenciasTabState extends State<AsistenciasTab> {
     );
   }
 
+  // ========================================
+  // FUNCIONES AUXILIARES (SIN CAMBIOS)
+  // ========================================
   Map<String, Map<String, Map<String, List<Map<String, dynamic>>>>>
       _agruparAsistenciasPorFecha(List<Map<String, dynamic>> asistencias) {
     final Map<String, Map<String, Map<String, List<Map<String, dynamic>>>>>
@@ -3131,7 +3276,6 @@ class _AsistenciasTabState extends State<AsistenciasTab> {
       final year = DateFormat('yyyy').format(fecha);
       final month = DateFormat('MMMM').format(fecha);
 
-      // Modificado: Obtener el número de la semana considerando que comienza el lunes
       final DateTime lunes = _obtenerLunesDeLaSemana(fecha);
       final String semanaKey =
           '${lunes.day}-${_obtenerDomingoDeLaSemana(lunes).day}';
@@ -3145,18 +3289,15 @@ class _AsistenciasTabState extends State<AsistenciasTab> {
     return agrupadas;
   }
 
-  // Nuevo método para obtener el lunes de la semana actual
   DateTime _obtenerLunesDeLaSemana(DateTime fecha) {
     int diferencia = fecha.weekday - DateTime.monday;
     return fecha.subtract(Duration(days: diferencia));
   }
 
-  // Nuevo método para obtener el domingo de la semana
   DateTime _obtenerDomingoDeLaSemana(DateTime lunes) {
-    return lunes.add(Duration(days: 6)); // 6 días después del lunes es domingo
+    return lunes.add(Duration(days: 6));
   }
 
-  /// Determina el ministerio basado en el nombre del servicio
   String _determinarMinisterio(String nombreServicio) {
     if (nombreServicio.toLowerCase().contains("damas"))
       return "Ministerio de Damas";
@@ -3174,47 +3315,44 @@ class _AsistenciasTabState extends State<AsistenciasTab> {
     return "Otro Ministerio";
   }
 
-  /// Retorna el color según el ministerio con los colores del logo
   Color _getColorByMinisterio(String ministerio) {
     switch (ministerio) {
       case "Ministerio de Damas":
-        return Color(0xFFFF6B8B); // Rosa más vibrante
+        return Color(0xFFFF6B8B);
       case "Ministerio de Caballeros":
-        return Color(0xFF3498DB); // Azul más vibrante
+        return Color(0xFF3498DB);
       case "Ministerio Juvenil":
-        return Color(0xFFF5A623); // Naranja del logo
+        return Color(0xFFF5A623);
       case "Ministerio Familiar":
-        return Color(0xFF9B59B6); // Púrpura más vibrante
+        return Color(0xFF9B59B6);
       case "Viernes de Poder":
-        return Color(0xFF1D8A8A); // Teal del logo
+        return Color(0xFF1D8A8A);
       case "Servicio Dominical":
-        return Color(0xFF2ECC71); // Verde más vibrante
+        return Color(0xFF2ECC71);
       default:
-        return Color(0xFF7F8C8D); // Gris acento más vibrante
+        return Color(0xFF7F8C8D);
     }
   }
 
-  /// Retorna íconos mejorados según el ministerio
   IconData _getIconByMinisterio(String ministerio) {
     switch (ministerio) {
       case "Ministerio de Damas":
-        return Icons.volunteer_activism; // Corazón con manos
+        return Icons.volunteer_activism;
       case "Ministerio de Caballeros":
-        return Icons.fitness_center; // Pesas/Fuerza
+        return Icons.fitness_center;
       case "Ministerio Juvenil":
         return Icons.emoji_people;
       case "Ministerio Familiar":
-        return Icons.family_restroom; // Familia
+        return Icons.family_restroom;
       case "Viernes de Poder":
-        return Icons.local_fire_department; // 🔥 Llama de fuego
+        return Icons.local_fire_department;
       case "Servicio Dominical":
-        return Icons.church; // Iglesia
+        return Icons.church;
       default:
-        return Icons.groups_2; // Grupos de personas
+        return Icons.groups_2;
     }
   }
 
-  /// Retorna íconos únicos según el mes
   IconData _getMonthIcon(String month) {
     switch (month) {
       case 'January':
@@ -3264,14 +3402,9 @@ class _AsistenciasTabState extends State<AsistenciasTab> {
     return months[month] ?? month;
   }
 
-// ========================================
-  // FUNCIÓN AUXILIAR: Convierte nombre de mes a número
-  // Soporta nombres en español e inglés
-  // ========================================
   int _monthToNumber(String m) {
     final key = m.toLowerCase().trim();
 
-    // Mapeo de meses en español
     const es = {
       'enero': 1,
       'febrero': 2,
@@ -3287,7 +3420,6 @@ class _AsistenciasTabState extends State<AsistenciasTab> {
       'diciembre': 12
     };
 
-    // Mapeo de meses en inglés (por si DateFormat devuelve en inglés)
     const en = {
       'january': 1,
       'february': 2,
@@ -3303,11 +3435,11 @@ class _AsistenciasTabState extends State<AsistenciasTab> {
       'december': 12
     };
 
-    // Retorna el número del mes o 13 si no se encuentra (meses desconocidos al final)
     return es[key] ?? en[key] ?? 13;
   }
 }
 
+//-------------------------------
 class CoordinadoresTab extends StatelessWidget {
   final String tribuId;
 
