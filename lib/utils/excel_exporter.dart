@@ -179,7 +179,12 @@ class ExcelExporter {
   }
 
   Future<void> exportarRegistros(
-      BuildContext context, String tribuId, String tribuNombre) async {
+    BuildContext context,
+    String tribuId,
+    String tribuNombre, {
+    String? anioFiltro,
+    String? mesFiltro,
+  }) async {
     try {
       // Crear un nuevo libro de Excel
       final excel = Excel.createExcel();
@@ -190,12 +195,55 @@ class ExcelExporter {
       }
 
       // Obtener registros filtrados por tribu
-      final registrosSnapshot = await FirebaseFirestore.instance
+      // ✅ MODIFICADO: Obtener registros filtrados por tribu
+      var query = FirebaseFirestore.instance
           .collection('registros')
-          .where('tribuAsignada', isEqualTo: tribuId)
-          .get();
+          .where('tribuAsignada', isEqualTo: tribuId);
 
-      if (registrosSnapshot.docs.isEmpty) {
+// ✅ NUEVO: Aplicar filtro de año si está activo
+      if (anioFiltro != null && anioFiltro != 'Todos') {
+        int anio = int.parse(anioFiltro);
+        DateTime inicioAnio = DateTime(anio, 1, 1);
+        DateTime finAnio = DateTime(anio, 12, 31, 23, 59, 59);
+
+        query = query.where('fechaAsignacionTribu',
+            isGreaterThanOrEqualTo: Timestamp.fromDate(inicioAnio),
+            isLessThanOrEqualTo: Timestamp.fromDate(finAnio));
+      }
+
+      final registrosSnapshot = await query.get();
+
+// ✅ NUEVO: Aplicar filtro de mes en memoria si está activo
+      List<QueryDocumentSnapshot<Map<String, dynamic>>> registrosFiltrados =
+          registrosSnapshot.docs;
+
+      if (mesFiltro != null && mesFiltro != 'Todos') {
+        int mes = int.parse(mesFiltro);
+        registrosFiltrados = registrosFiltrados.where((doc) {
+          final data = doc.data();
+          final fechaTribu = data['fechaAsignacionTribu'] as Timestamp?;
+          final fechaAsignacion = data['fechaAsignacion'] as Timestamp?;
+
+          DateTime? fecha;
+          if (fechaTribu != null) {
+            fecha = fechaTribu.toDate();
+          } else if (fechaAsignacion != null) {
+            fecha = fechaAsignacion.toDate();
+          }
+
+          if (fecha == null) return false;
+
+          // Verificar año y mes si está especificado
+          if (anioFiltro != null && anioFiltro != 'Todos') {
+            return fecha.year == int.parse(anioFiltro) && fecha.month == mes;
+          } else {
+            return fecha.month == mes;
+          }
+        }).toList();
+      }
+
+// ✅ MODIFICADO: Usar registrosFiltrados en lugar de registrosSnapshot.docs
+      if (registrosFiltrados.isEmpty) {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -222,8 +270,8 @@ class ExcelExporter {
       Set<String> coordinadorIds = {};
 
       // Recopilar todos los IDs de coordinadores primero
-      for (var doc in registrosSnapshot.docs) {
-        final data = doc.data();
+      for (var doc in registrosFiltrados) {
+        final data = doc.data() as Map<String, dynamic>;
         final coordinadorId = data['coordinadorAsignado'] ?? 'Sin Coordinador';
         if (coordinadorId != 'Sin Coordinador') {
           coordinadorIds.add(coordinadorId);
@@ -250,7 +298,7 @@ class ExcelExporter {
 
             // Guardar en caché los nombres completos de los coordinadores
             for (var coordDoc in coordinadoresQuery.docs) {
-              final coordData = coordDoc.data();
+              final coordData = coordDoc.data() as Map<String, dynamic>;
               String nombreCompleto = coordDoc.id; // Por defecto, usar el ID
 
               // Comprobar si existen los campos nombre y apellido
@@ -277,7 +325,7 @@ class ExcelExporter {
       List<Map<String, dynamic>> registrosNoActivos = [];
 
       // CORRECCIÓN: Procesar todos los registros y separarlos por estado activo
-      for (var doc in registrosSnapshot.docs) {
+      for (var doc in registrosFiltrados) {
         final data = doc.data();
 
         // Añadir el ID del documento a los datos

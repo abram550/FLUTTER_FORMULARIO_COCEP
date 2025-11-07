@@ -797,32 +797,37 @@ class _AdminPastoresState extends State<AdminPastores>
           ],
         ),
       ),
-      floatingActionButton: Container(
-        margin: EdgeInsets.only(
-          bottom: MediaQuery.of(context).size.height < 600 ? 16 : 0,
-        ),
-        child: FloatingActionButton.extended(
-          onPressed: () {
-            showDialog(
-              context: context,
-              builder: (context) => StatisticsDialog(),
-            );
-          },
-          backgroundColor: Colors.orange,
-          elevation: 6,
-          label: Text(
-            'Estadísticas',
-            style: GoogleFonts.poppins(
-              fontSize: MediaQuery.of(context).size.width < 400 ? 12 : 14,
-              fontWeight: FontWeight.w600,
-            ),
+      floatingActionButton: SafeArea(
+        child: Padding(
+          padding: EdgeInsets.only(
+            bottom: 16,
+            right: 8,
           ),
-          icon: Icon(
-            Icons.bar_chart,
-            size: MediaQuery.of(context).size.width < 400 ? 18 : 24,
+          child: FloatingActionButton.extended(
+            onPressed: () {
+              showDialog(
+                context: context,
+                builder: (context) => StatisticsDialog(),
+              );
+            },
+            backgroundColor: Colors.orange,
+            elevation: 8,
+            label: Text(
+              'Estadísticas',
+              style: GoogleFonts.poppins(
+                fontSize: MediaQuery.of(context).size.width < 400 ? 12 : 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            icon: Icon(
+              Icons.bar_chart,
+              size: MediaQuery.of(context).size.width < 400 ? 18 : 24,
+            ),
           ),
         ),
       ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+      extendBody: false,
     );
   }
 
@@ -4835,30 +4840,332 @@ class _AdminPastoresState extends State<AdminPastores>
   }
 
   Future<void> _mostrarDialogoConfirmarEliminarTribu(String docId) async {
+    final TextEditingController claveController = TextEditingController();
+    bool isDeleting = false;
+    bool obscurePassword = true;
+
     return showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Confirmar eliminación'),
-        content: const Text('¿Está seguro que desea eliminar esta tribu?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar'),
+      barrierDismissible: false,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          backgroundColor: backgroundColor,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
           ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              try {
-                await _firestore.collection('tribus').doc(docId).delete();
-                _mostrarSnackBar('Tribu eliminada exitosamente');
-              } catch (e) {
-                _mostrarSnackBar('Error al eliminar la tribu: $e');
-              }
-            },
-            child: const Text('Eliminar'),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+          title: Container(
+            padding: EdgeInsets.symmetric(vertical: 10),
+            child: Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    Icons.warning_rounded,
+                    color: Colors.red,
+                    size: 24,
+                  ),
+                ),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Eliminar Tribu',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.red[700],
+                        ),
+                      ),
+                      Text(
+                        'Esta acción no se puede deshacer',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey[600],
+                          fontWeight: FontWeight.normal,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
-        ],
+          content: Container(
+            width: double.maxFinite,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withOpacity(0.05),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.red.withOpacity(0.2)),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.info_outline_rounded,
+                          color: Colors.red[700],
+                          size: 20,
+                        ),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            '¿Está seguro que desea eliminar esta tribu? Esta acción eliminará todos los datos relacionados.',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.red[700],
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(height: 20),
+                  Text(
+                    'Ingrese la clave de confirmación:',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey[800],
+                    ),
+                  ),
+                  SizedBox(height: 12),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.red.withOpacity(0.3)),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 4,
+                          offset: Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: TextField(
+                      controller: claveController,
+                      obscureText: obscurePassword,
+                      enabled: !isDeleting,
+                      enableInteractiveSelection: false,
+                      autocorrect: false,
+                      enableSuggestions: false,
+                      keyboardType: TextInputType.visiblePassword,
+                      style: TextStyle(
+                        color: isDeleting ? Colors.grey[400] : Colors.black87,
+                        fontSize: 16,
+                        letterSpacing: obscurePassword ? 3 : 0,
+                      ),
+                      decoration: InputDecoration(
+                        labelText: 'Clave de confirmación',
+                        hintText: 'Ingrese la clave',
+                        hintStyle: TextStyle(
+                          color: Colors.grey[400],
+                          letterSpacing: 0,
+                        ),
+                        prefixIcon: Container(
+                          margin: EdgeInsets.all(8),
+                          padding: EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: isDeleting
+                                ? Colors.grey.withOpacity(0.1)
+                                : Colors.red.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(
+                            Icons.lock_rounded,
+                            color:
+                                isDeleting ? Colors.grey[400] : Colors.red[700],
+                            size: 20,
+                          ),
+                        ),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            obscurePassword
+                                ? Icons.visibility_off_rounded
+                                : Icons.visibility_rounded,
+                            color: isDeleting
+                                ? Colors.grey[400]
+                                : Colors.grey[600],
+                            size: 20,
+                          ),
+                          onPressed: isDeleting
+                              ? null
+                              : () {
+                                  setDialogState(() {
+                                    obscurePassword = !obscurePassword;
+                                  });
+                                },
+                        ),
+                        border: InputBorder.none,
+                        contentPadding:
+                            EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                        labelStyle: TextStyle(
+                          color:
+                              isDeleting ? Colors.grey[400] : Colors.red[700],
+                          fontSize: 14,
+                        ),
+                        floatingLabelStyle: TextStyle(
+                          color: Colors.red[700],
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      onChanged: (value) {
+                        // No mostrar el valor en consola ni logs
+                        setDialogState(() {});
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            Container(
+              width: double.maxFinite,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: isDeleting
+                          ? null
+                          : () {
+                              claveController.clear();
+                              Navigator.pop(context);
+                            },
+                      style: TextButton.styleFrom(
+                        padding: EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      child: Text(
+                        'Cancelar',
+                        style: TextStyle(
+                          color: Colors.grey[600],
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: isDeleting
+                          ? null
+                          : () async {
+                              // Validar que se ingresó una clave
+                              if (claveController.text.isEmpty) {
+                                _mostrarSnackBar(
+                                    'Por favor ingrese la clave de confirmación',
+                                    isSuccess: false);
+                                return;
+                              }
+
+                              // Validar la clave sin mostrarla en logs
+                              const String claveCorrecta = 'TiempoCocep!';
+                              if (claveController.text != claveCorrecta) {
+                                _mostrarSnackBar(
+                                    'Clave incorrecta. Eliminación cancelada.',
+                                    isSuccess: false);
+                                claveController.clear();
+                                return;
+                              }
+
+                              setDialogState(() => isDeleting = true);
+
+                              try {
+                                // Eliminar la tribu
+                                await _firestore
+                                    .collection('tribus')
+                                    .doc(docId)
+                                    .delete();
+
+                                // Eliminar el usuario asociado
+                                final usuarioSnapshot = await _firestore
+                                    .collection('usuarios')
+                                    .where('tribuId', isEqualTo: docId)
+                                    .limit(1)
+                                    .get();
+
+                                if (usuarioSnapshot.docs.isNotEmpty) {
+                                  await usuarioSnapshot.docs.first.reference
+                                      .delete();
+                                }
+
+                                // Limpiar el controlador antes de cerrar
+                                claveController.clear();
+
+                                if (mounted) {
+                                  Navigator.pop(context);
+                                  _mostrarSnackBar(
+                                      'Tribu eliminada exitosamente',
+                                      isSuccess: true);
+                                }
+                              } catch (e) {
+                                claveController.clear();
+                                setDialogState(() => isDeleting = false);
+                                _mostrarSnackBar(
+                                    'Error al eliminar la tribu: ${e.toString()}',
+                                    isSuccess: false);
+                              }
+                            },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red[600],
+                        foregroundColor: Colors.white,
+                        padding: EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        elevation: 2,
+                      ),
+                      child: isDeleting
+                          ? Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                        Colors.white),
+                                  ),
+                                ),
+                                SizedBox(width: 8),
+                                Text('Eliminando...'),
+                              ],
+                            )
+                          : Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.delete_rounded, size: 18),
+                                SizedBox(width: 6),
+                                Text(
+                                  'Eliminar',
+                                  style: TextStyle(fontWeight: FontWeight.w600),
+                                ),
+                              ],
+                            ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

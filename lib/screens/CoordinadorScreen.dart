@@ -852,18 +852,18 @@ class _AsistenciasCoordinadorTabState extends State<AsistenciasCoordinadorTab> {
       "Ministerio de Damas": {
         "martes": "Servicio de Damas",
         "viernes": "Viernes de Poder",
-        "domingo": "Servicio Dominical"
+        "domingo": "Servicio Familiar" // ⬅️ CAMBIADO
       },
       "Ministerio de Caballeros": {
         "jueves": "Servicio de Caballeros",
         "viernes": "Viernes de Poder",
         "sábado": "Servicio de Caballeros",
-        "domingo": "Servicio Dominical"
+        "domingo": "Servicio Familiar" // ⬅️ CAMBIADO
       },
       "Ministerio Juvenil": {
         "viernes": "Viernes de Poder",
         "sábado": "Impacto Juvenil",
-        "domingo": "Servicio Dominical"
+        "domingo": "Servicio Familiar" // ⬅️ CAMBIADO
       }
     };
 
@@ -872,7 +872,7 @@ class _AsistenciasCoordinadorTabState extends State<AsistenciasCoordinadorTab> {
       return servicios[categoriaTribu]![diaSemana]!;
     }
 
-    return "Reunión General";
+    return "Servicio Especial"; // ⬅️ CAMBIADO
   }
 
   /// Bloquea asistencia si el registro tiene 3+ faltas y existe una alerta no revisada.
@@ -981,11 +981,11 @@ class _AsistenciasCoordinadorTabState extends State<AsistenciasCoordinadorTab> {
     if (nombreServicio.toLowerCase().contains("poder"))
       return "Viernes de Poder";
     if (nombreServicio.toLowerCase().contains("dominical"))
-      return "Servicio Dominical";
+      return "Servicio Familiar"; // ⬅️ CAMBIADO
+    if (nombreServicio.toLowerCase().contains("especial")) // ⬅️ NUEVO
+      return "Servicio Especial"; // ⬅️ NUEVO
     return "Otro Ministerio";
   }
-
-
 
   Future<void> _registrarAsistencia(DocumentSnapshot registro) async {
     try {
@@ -1690,8 +1690,6 @@ class _AsistenciasCoordinadorTabState extends State<AsistenciasCoordinadorTab> {
       }
     }
   }
-
-
 
   Widget _buildAsistenciasCalendario(DocumentSnapshot registro) {
     final data = registro.data() as Map<String, dynamic>?;
