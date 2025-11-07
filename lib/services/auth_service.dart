@@ -20,7 +20,7 @@ class AuthService {
       print('Intentando login con usuario: $username');
 
       // Verificar si las credenciales son las del usuario por defecto
-      if (username.toLowerCase() == 'admincocep' && password == 'Cocep2025!') {
+      if (username.toLowerCase() == 'admincocep' && password == 'Avivamiento_Cocep#') {
         final result = {'role': 'adminPastores'};
         await _guardarSesion(result); // 🆕 Guardar sesión
         return result;

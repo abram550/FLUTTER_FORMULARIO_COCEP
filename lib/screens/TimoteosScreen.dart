@@ -857,10 +857,18 @@ class JovenesAsignadosTab extends StatelessWidget {
   }
 
   Color _getColorBasadoEnAlerta(Map<String, dynamic> data) {
-    if (data['visible'] == false) {
-      return Colors.red.shade100; // Registro con alerta pendiente
+    final int faltas = (data['faltasConsecutivas'] as num?)?.toInt() ?? 0;
+    final bool visible = data['visible'] ?? true;
+    final String estadoAlerta = data['estadoAlerta'] ?? '';
+
+    // Solo mostrar en rojo si tiene 3+ faltas Y visible es false Y hay alerta activa
+    if (faltas >= 3 &&
+        !visible &&
+        (estadoAlerta == 'pendiente' || estadoAlerta == 'en_revision')) {
+      return Colors.red.shade100;
     }
-    return Colors.white; // Color por defecto
+
+    return Colors.white;
   }
 
   Future<void> _actualizarEstadoAlerta(
@@ -993,7 +1001,7 @@ class JovenesAsignadosTab extends StatelessWidget {
         case "viernes":
           return "Viernes de Poder";
         case "domingo":
-          return "Servicio Dominical";
+          return "Servicio Familiar"; // ✅ MODIFICADO: Cambio visual
       }
     } else if (categoriaTribu == "Ministerio de Caballeros") {
       switch (diaSemana) {
@@ -1002,9 +1010,9 @@ class JovenesAsignadosTab extends StatelessWidget {
         case "viernes":
           return "Viernes de Poder";
         case "sábado":
-          return "Servicio de Caballero";
+          return "Servicio de Caballeros";
         case "domingo":
-          return "Servicio Dominical";
+          return "Servicio Familiar"; // ✅ MODIFICADO: Cambio visual
       }
     } else if (categoriaTribu == "Ministerio Juvenil") {
       switch (diaSemana) {
@@ -1013,42 +1021,75 @@ class JovenesAsignadosTab extends StatelessWidget {
         case "sábado":
           return "Impacto Juvenil";
         case "domingo":
-          return "Servicio Dominical";
+          return "Servicio Familiar"; // ✅ MODIFICADO: Cambio visual
       }
     }
-    return "Reunión General"; // Nombre por defecto si no coincide con ningún caso.
+    return "Servicio Especial"; // ✅ MODIFICADO: Cambio de "Reunión General" a "Servicio Especial"
   }
 
-  /// Bloquea asistencia si el registro tiene 3+ faltas y existe una alerta no revisada.
+// ========================================
+// MÉTODO AUXILIAR PARA NORMALIZACIÓN DE NOMBRES DE SERVICIOS
+// ========================================
+  String _normalizarNombreServicio(String nombreServicio) {
+    // Convertir "Servicio Dominical" a "Servicio Familiar" solo para visualización
+    if (nombreServicio.toLowerCase().contains('dominical')) {
+      return nombreServicio.replaceAll(
+          RegExp(r'dominical', caseSensitive: false), 'Familiar');
+    }
+
+    // Convertir "Reunión General" a "Servicio Especial" solo para visualización
+    if (nombreServicio.toLowerCase().contains('reunión general') ||
+        nombreServicio.toLowerCase().contains('reunion general')) {
+      return "Servicio Especial";
+    }
+
+    return nombreServicio;
+  }
+
+  String _desnormalizarNombreServicio(String nombreServicio) {
+    // Convertir "Servicio Familiar" de vuelta a "Servicio Dominical" para consultas
+    if (nombreServicio.toLowerCase().contains('familiar')) {
+      return nombreServicio.replaceAll(
+          RegExp(r'familiar', caseSensitive: false), 'Dominical');
+    }
+
+    // Convertir "Servicio Especial" de vuelta a "Reunión General" para consultas
+    if (nombreServicio.toLowerCase().contains('servicio especial')) {
+      return "Reunión General";
+    }
+
+    return nombreServicio;
+  }
+
+  /// Bloquea asistencia si el registro tiene 3+ faltas Y existe una alerta no revisada.
   Future<bool> _tieneBloqueoPorFaltas(
       String registroId, int faltasActuales) async {
     try {
+      // Si tiene menos de 3 faltas, no hay bloqueo
       if (faltasActuales < 3) return false;
 
-      // Primero verificar por procesada: false
+      // Verificar si existe alerta activa no procesada
       final qs = await FirebaseFirestore.instance
           .collection('alertas')
           .where('registroId', isEqualTo: registroId)
           .where('tipo', isEqualTo: 'faltasConsecutivas')
           .where('procesada', isEqualTo: false)
-          .limit(1)
           .get();
 
-      if (qs.docs.isNotEmpty) return true;
+      if (qs.docs.isEmpty) return false;
 
-      // Si no hay procesada:false, verificar por estado
-      final qs2 = await FirebaseFirestore.instance
-          .collection('alertas')
-          .where('registroId', isEqualTo: registroId)
-          .where('tipo', isEqualTo: 'faltasConsecutivas')
-          .where('estado', whereIn: ['pendiente', 'en_revision'])
-          .limit(1)
-          .get();
+      // Verificar estados de las alertas encontradas
+      for (var doc in qs.docs) {
+        final estado = doc.get('estado') ?? '';
+        if (estado == 'pendiente' || estado == 'en_revision') {
+          return true;
+        }
+      }
 
-      return qs2.docs.isNotEmpty;
+      return false;
     } catch (e) {
       print('Error verificando bloqueo por faltas: $e');
-      return false; // Por seguridad, no bloquear en caso de error
+      return false;
     }
   }
 
@@ -1081,7 +1122,7 @@ class JovenesAsignadosTab extends StatelessWidget {
       if (fechaSeleccionada == null) return;
 
 // === BLOQUEO POR FALTAS NO REVISADAS ===
-// Obtener datos actualizados del registro
+      // Obtener datos actualizados del registro
       final registroActualizado = await FirebaseFirestore.instance
           .collection('registros')
           .doc(registro.id)
@@ -1112,45 +1153,49 @@ class JovenesAsignadosTab extends StatelessWidget {
           registroActualizado.data() as Map<String, dynamic>;
       final int faltasActuales =
           (dataActualizada['faltasConsecutivas'] as num?)?.toInt() ?? 0;
-      final bool bloqueo =
-          await _tieneBloqueoPorFaltas(registro.id, faltasActuales);
 
-      if (bloqueo) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Row(
-                children: [
-                  Container(
-                    padding: EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(6),
+      // Verificar bloqueo solo si tiene 3+ faltas
+      if (faltasActuales >= 3) {
+        final bool bloqueo =
+            await _tieneBloqueoPorFaltas(registro.id, faltasActuales);
+
+        if (bloqueo) {
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Row(
+                  children: [
+                    Container(
+                      padding: EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Icon(Icons.block, color: Colors.white, size: 20),
                     ),
-                    child: Icon(Icons.block, color: Colors.white, size: 20),
-                  ),
-                  SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      'Este registro tiene 3+ faltas con alerta sin revisar. No se puede registrar asistencia hasta que la alerta sea revisada.',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w500,
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Este registro tiene 3+ faltas con alerta sin revisar. No se puede registrar asistencia hasta que la alerta sea revisada.',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
+                backgroundColor: Color(0xFFFF4B2B),
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+                margin: EdgeInsets.all(16),
+                duration: Duration(seconds: 4),
               ),
-              backgroundColor: Color(0xFFFF4B2B),
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
-              margin: EdgeInsets.all(16),
-              duration: Duration(seconds: 4),
-            ),
-          );
+            );
+          }
+          return;
         }
-        return;
       }
 // === FIN BLOQUEO ===
 
@@ -1529,7 +1574,6 @@ class JovenesAsignadosTab extends StatelessWidget {
     }
   }
 
-// AGREGAR ESTE MÉTODO DESPUÉS DEL MÉTODO _procesarRegistroAsistencia
   Future<void> _procesarAlertaAsync(
       BuildContext context,
       DocumentSnapshot registro,
@@ -1542,7 +1586,21 @@ class JovenesAsignadosTab extends StatelessWidget {
       final coordinadorId = timoteoDoc.get('coordinadorId');
       if (coordinadorId == null) return;
 
-      // Crear alerta
+      // Verificar si ya existe una alerta activa para este registro
+      final alertasExistentes = await FirebaseFirestore.instance
+          .collection('alertas')
+          .where('registroId', isEqualTo: registro.id)
+          .where('tipo', isEqualTo: 'faltasConsecutivas')
+          .where('procesada', isEqualTo: false)
+          .get();
+
+      // Si ya existe una alerta activa, no crear otra
+      if (alertasExistentes.docs.isNotEmpty) {
+        print('Ya existe una alerta activa para este registro');
+        return;
+      }
+
+      // Crear nueva alerta
       await FirebaseFirestore.instance.collection('alertas').add({
         'tipo': 'faltasConsecutivas',
         'registroId': registro.id,
@@ -1958,8 +2016,15 @@ class JovenesAsignadosTab extends StatelessWidget {
                               getFieldSafely<bool>(data, 'visible') ?? true;
 
                           // === INDICADOR DE BLOQUEO ===
+                          // Verificar bloqueo real: 3+ faltas Y alerta activa
                           final bool tieneBloqueoPendiente =
                               faltas >= 3 && !visible;
+                          final String estadoAlerta =
+                              getFieldSafely<String>(data, 'estadoAlerta') ??
+                                  '';
+                          final bool tieneAlertaActiva =
+                              estadoAlerta == 'pendiente' ||
+                                  estadoAlerta == 'en_revision';
 
                           return Container(
                             margin: EdgeInsets.only(bottom: 16),
@@ -1977,12 +2042,14 @@ class JovenesAsignadosTab extends StatelessWidget {
                                     end: Alignment.bottomRight,
                                     colors: [
                                       Colors.white,
-                                      visible
-                                          ? Colors.white
-                                          : Color(0xFFFF4B2B).withOpacity(0.03),
+                                      (tieneBloqueoPendiente &&
+                                              tieneAlertaActiva)
+                                          ? Color(0xFFFF4B2B).withOpacity(0.03)
+                                          : Colors.white,
                                     ],
                                   ),
-                                  border: !visible
+                                  border: (tieneBloqueoPendiente &&
+                                          tieneAlertaActiva)
                                       ? Border.all(
                                           color: Color(0xFFFF4B2B)
                                               .withOpacity(0.3),
@@ -2038,7 +2105,8 @@ class JovenesAsignadosTab extends StatelessWidget {
                                           ),
                                         ),
                                       ),
-                                      if (!visible)
+                                      if (tieneBloqueoPendiente &&
+                                          tieneAlertaActiva)
                                         Positioned(
                                           top: -2,
                                           right: -2,
@@ -2876,10 +2944,13 @@ class JovenesAsignadosTab extends StatelessWidget {
                                                             (asistencia['fecha']
                                                                     as Timestamp)
                                                                 .toDate();
-                                                        final nombreServicio =
+                                                        final nombreServicioRaw =
                                                             asistencia[
                                                                     'nombreServicio'] ??
                                                                 'Servicio';
+                                                        final nombreServicio =
+                                                            _normalizarNombreServicio(
+                                                                nombreServicioRaw);
 
                                                         return Container(
                                                           decoration:
@@ -3058,7 +3129,9 @@ class JovenesAsignadosTab extends StatelessWidget {
   void _mostrarDetalleAsistencia(
       BuildContext context, Map<String, dynamic> asistencia, bool asistio) {
     final fecha = (asistencia['fecha'] as Timestamp).toDate();
-    final nombreServicio = asistencia['nombreServicio'] ?? 'Servicio';
+    final nombreServicioRaw = asistencia['nombreServicio'] ?? 'Servicio';
+    final nombreServicio =
+        _normalizarNombreServicio(nombreServicioRaw); // ✅ Aplicar normalización
 
     showDialog(
       context: context,

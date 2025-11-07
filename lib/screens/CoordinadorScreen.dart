@@ -1010,39 +1010,42 @@ class _AsistenciasCoordinadorTabState extends State<AsistenciasCoordinadorTab> {
         }
         return;
       }
-      // === BLOQUEO POR FALTAS NO REVISADAS ===
+
+      // === VERIFICACIÓN DE BLOQUEO MEJORADA ===
       final int faltasActuales =
           (data['faltasConsecutivas'] as num?)?.toInt() ?? 0;
-      final bool bloqueo =
-          await _tieneBloqueoPorFaltas(registro.id, faltasActuales);
-      if (bloqueo) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'Este registro tiene 3+ faltas y una alerta sin revisar. No se puede tomar asistencia hasta que sea revisada.',
+
+      // Solo verificar bloqueo si hay 3 o más faltas
+      if (faltasActuales >= 3) {
+        final bool bloqueo =
+            await _tieneBloqueoPorFaltas(registro.id, faltasActuales);
+        if (bloqueo) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Este registro tiene $faltasActuales faltas y una alerta sin revisar. No se puede tomar asistencia hasta que sea revisada.',
+                ),
+                backgroundColor: Colors.red,
+                behavior: SnackBarBehavior.floating,
+                duration: Duration(seconds: 4),
               ),
-              backgroundColor: Colors.red,
-              behavior: SnackBarBehavior.floating,
-              duration: Duration(seconds: 4),
-            ),
-          );
+            );
+          }
+          return;
         }
-        return;
       }
-      // === FIN BLOQUEO ===
+      // === FIN VERIFICACIÓN ===
 
       DateTime selectedDate = DateTime.now();
       bool asistio = true;
       bool isProcessing = false;
 
-      // Obtener la categoría con validación
       final tribuId = data['tribuId']?.toString() ?? widget.tribuId;
       String categoriaTribu = data['categoria']?.toString() ??
           data['ministerioAsignado']?.toString() ??
           widget.categoriaTribu;
 
-      // Verificar desde Firestore de forma segura
       if (tribuId.isNotEmpty && mounted) {
         try {
           final tribuDoc = await FirebaseFirestore.instance
@@ -1057,7 +1060,6 @@ class _AsistenciasCoordinadorTabState extends State<AsistenciasCoordinadorTab> {
           }
         } catch (e) {
           print('Error al obtener tribu: $e');
-          // Continúa con la categoría actual
         }
       }
 
@@ -1081,6 +1083,39 @@ class _AsistenciasCoordinadorTabState extends State<AsistenciasCoordinadorTab> {
                         style: TextStyle(
                             fontWeight: FontWeight.bold, fontSize: 16),
                       ),
+                      if (faltasActuales > 0) ...[
+                        SizedBox(height: 8),
+                        Container(
+                          padding: EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: faltasActuales >= 3
+                                ? Colors.red.withOpacity(0.1)
+                                : Colors.orange.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.warning,
+                                color: faltasActuales >= 3
+                                    ? Colors.red
+                                    : Colors.orange,
+                                size: 16,
+                              ),
+                              SizedBox(width: 8),
+                              Text(
+                                'Faltas actuales: $faltasActuales',
+                                style: TextStyle(
+                                  color: faltasActuales >= 3
+                                      ? Colors.red
+                                      : Colors.orange,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                       SizedBox(height: 16),
                       ElevatedButton.icon(
                         icon: Icon(Icons.calendar_today),
@@ -1155,7 +1190,6 @@ class _AsistenciasCoordinadorTabState extends State<AsistenciasCoordinadorTab> {
                             });
 
                             try {
-                              // Verificar si ya existe una asistencia
                               final startOfDay = DateTime(selectedDate.year,
                                   selectedDate.month, selectedDate.day);
                               final endOfDay =
@@ -1189,7 +1223,6 @@ class _AsistenciasCoordinadorTabState extends State<AsistenciasCoordinadorTab> {
                                   obtenerNombreServicio(
                                       categoriaTribu, selectedDate);
 
-                              // Registrar la asistencia
                               await FirebaseFirestore.instance
                                   .collection('asistencias')
                                   .add({
@@ -1207,31 +1240,9 @@ class _AsistenciasCoordinadorTabState extends State<AsistenciasCoordinadorTab> {
                                     .format(selectedDate),
                               });
 
-                              // Actualizar faltas
-                              final int faltasAnteriores =
-                                  (data['faltasConsecutivas'] as num?)
-                                          ?.toInt() ??
-                                      0;
+                              // === LÓGICA CORREGIDA DE FALTAS ===
                               final int nuevasFaltas =
-                                  asistio ? 0 : faltasAnteriores + 1;
-                              // Obtener el timoteoId del joven si está asignado
-                              String nombreTimoteo = 'No disponible';
-                              String? timoteoId = data['timoteoAsignado'];
-
-                              if (timoteoId != null && timoteoId.isNotEmpty) {
-                                final timoteoDoc = await FirebaseFirestore
-                                    .instance
-                                    .collection('timoteos')
-                                    .doc(timoteoId)
-                                    .get();
-
-                                if (timoteoDoc.exists) {
-                                  final tData = timoteoDoc.data();
-                                  final nombreT = tData?['nombre'] ?? '';
-                                  final apellidoT = tData?['apellido'] ?? '';
-                                  nombreTimoteo = '$nombreT $apellidoT'.trim();
-                                }
-                              }
+                                  asistio ? 0 : faltasActuales + 1;
 
                               await registro.reference.update({
                                 'ultimaAsistencia':
@@ -1239,13 +1250,34 @@ class _AsistenciasCoordinadorTabState extends State<AsistenciasCoordinadorTab> {
                                 'faltasConsecutivas': nuevasFaltas,
                               });
 
-                              // Generar alerta si es necesario
+                              // === GENERAR ALERTA SOLO SI ALCANZA 4 FALTAS ===
                               if (!asistio && nuevasFaltas >= 4) {
+                                String nombreTimoteo = 'No disponible';
+                                String? timoteoId = data['timoteoAsignado'];
+
+                                if (timoteoId != null && timoteoId.isNotEmpty) {
+                                  final timoteoDoc = await FirebaseFirestore
+                                      .instance
+                                      .collection('timoteos')
+                                      .doc(timoteoId)
+                                      .get();
+
+                                  if (timoteoDoc.exists) {
+                                    final tData = timoteoDoc.data();
+                                    final nombreT = tData?['nombre'] ?? '';
+                                    final apellidoT = tData?['apellido'] ?? '';
+                                    nombreTimoteo =
+                                        '$nombreT $apellidoT'.trim();
+                                  }
+                                }
+
+                                // Verificar si ya existe una alerta no procesada
                                 final alertasExistente = await FirebaseFirestore
                                     .instance
                                     .collection('alertas')
-                                    .where('jovenId', isEqualTo: registro.id)
-                                    .where('tipo', isEqualTo: 'Faltas')
+                                    .where('registroId', isEqualTo: registro.id)
+                                    .where('tipo',
+                                        isEqualTo: 'faltasConsecutivas')
                                     .where('procesada', isEqualTo: false)
                                     .limit(1)
                                     .get();
@@ -1484,8 +1516,11 @@ class _AsistenciasCoordinadorTabState extends State<AsistenciasCoordinadorTab> {
           // === BLOQUEO POR FALTAS NO REVISADAS (MODO MASIVO) ===
           final int faltasActuales =
               (data['faltasConsecutivas'] as num?)?.toInt() ?? 0;
-          final bool bloqueo =
-              await _tieneBloqueoPorFaltas(registro.id, faltasActuales);
+          // Solo verificar bloqueo si hay 3 o más faltas
+          bool bloqueo = false;
+          if (faltasActuales >= 3) {
+            bloqueo = await _tieneBloqueoPorFaltas(registro.id, faltasActuales);
+          }
           if (bloqueo) {
             // Lo tratamos como "ya registrado / omitido" para no romper el conteo
             yaRegistrados++;
@@ -1565,7 +1600,7 @@ class _AsistenciasCoordinadorTabState extends State<AsistenciasCoordinadorTab> {
           });
 
           // Generar alerta si es necesario
-          if (!asistio && nuevasFaltas >= 4) {
+          if (!asistio && nuevasFaltas >= 3) {
             String nombreTimoteo = 'No disponible';
             String? timoteoId = data['timoteoAsignado'];
 
@@ -3743,6 +3778,7 @@ class PersonasAsignadasTab extends StatelessWidget {
 
   Future<void> _asignarATimoteo(
       BuildContext context, DocumentSnapshot registro) async {
+    // Obtener lista de timoteos del coordinador
     final timoteosSnapshot = await FirebaseFirestore.instance
         .collection('timoteos')
         .where('coordinadorId', isEqualTo: coordinadorId)
@@ -3750,7 +3786,36 @@ class PersonasAsignadasTab extends StatelessWidget {
 
     if (timoteosSnapshot.docs.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('No hay Timoteos disponibles para asignar')),
+        SnackBar(
+          content: Row(
+            children: [
+              Container(
+                padding: EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Icon(Icons.warning, color: Colors.white, size: 20),
+              ),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'No hay Timoteos disponibles para asignar',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: kSecondaryColor,
+          behavior: SnackBarBehavior.floating,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          margin: EdgeInsets.all(16),
+          duration: Duration(seconds: 3),
+        ),
       );
       return;
     }
@@ -3759,52 +3824,325 @@ class PersonasAsignadasTab extends StatelessWidget {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: Text('Asignar a Timoteo'),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Row(
+            children: [
+              Container(
+                padding: EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: kPrimaryColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  Icons.person_add,
+                  color: kPrimaryColor,
+                  size: 24,
+                ),
+              ),
+              SizedBox(width: 12),
+              Text(
+                'Asignar a Timoteo',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: kTextDarkColor,
+                ),
+              ),
+            ],
+          ),
           content: Container(
             width: double.maxFinite,
-            child: ListView.builder(
-              shrinkWrap: true,
-              itemCount: timoteosSnapshot.docs.length,
-              itemBuilder: (context, index) {
-                final timoteo = timoteosSnapshot.docs[index];
-                return ListTile(
-                  title: Text('${timoteo['nombre']} ${timoteo['apellido']}'),
-                  onTap: () async {
-                    try {
-                      await FirebaseFirestore.instance
-                          .collection('registros')
-                          .doc(registro.id)
-                          .update({
-                        'timoteoAsignado': timoteo.id,
-                        'nombreTimoteo':
-                            '${timoteo['nombre']} ${timoteo['apellido']}',
-                        'fechaAsignacion': FieldValue.serverTimestamp(),
-                      });
+            constraints: BoxConstraints(maxHeight: 400),
+            child: FutureBuilder<List<Map<String, dynamic>>>(
+              future: _obtenerTimoteosConConteo(timoteosSnapshot.docs),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        CircularProgressIndicator(
+                          valueColor:
+                              AlwaysStoppedAnimation<Color>(kPrimaryColor),
+                        ),
+                        SizedBox(height: 16),
+                        Text(
+                          'Cargando timoteos...',
+                          style: TextStyle(color: Colors.grey[600]),
+                        ),
+                      ],
+                    ),
+                  );
+                }
 
-                      Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                              'Registro asignado exitosamente a ${timoteo['nombre']}'),
-                          backgroundColor: Colors.green,
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Text(
+                      'Error al cargar timoteos',
+                      style: TextStyle(color: Colors.red),
+                    ),
+                  );
+                }
+
+                final timoteosConConteo = snapshot.data ?? [];
+
+                return ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: timoteosConConteo.length,
+                  itemBuilder: (context, index) {
+                    final timoteoData = timoteosConConteo[index];
+                    final timoteoDoc = timoteoData['doc'] as DocumentSnapshot;
+                    final cantidadAsignados = timoteoData['cantidad'] as int;
+                    final bool estaLleno = cantidadAsignados >= 10;
+
+                    return Container(
+                      margin: EdgeInsets.only(bottom: 8),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: estaLleno
+                              ? Colors.grey.withOpacity(0.3)
+                              : kPrimaryColor.withOpacity(0.3),
+                          width: 1,
                         ),
-                      );
-                    } catch (e) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Error al asignar el registro: $e'),
-                          backgroundColor: Colors.red,
+                        color: estaLleno
+                            ? Colors.grey.withOpacity(0.05)
+                            : Colors.white,
+                      ),
+                      child: ListTile(
+                        enabled: !estaLleno,
+                        leading: CircleAvatar(
+                          backgroundColor: estaLleno
+                              ? Colors.grey.withOpacity(0.3)
+                              : kPrimaryColor.withOpacity(0.1),
+                          child: Text(
+                            '${timoteoDoc['nombre'][0]}${timoteoDoc['apellido'][0]}',
+                            style: TextStyle(
+                              color: estaLleno ? Colors.grey : kPrimaryColor,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ),
-                      );
-                    }
+                        title: Text(
+                          '${timoteoDoc['nombre']} ${timoteoDoc['apellido']}',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: estaLleno ? Colors.grey : Colors.black87,
+                          ),
+                        ),
+                        subtitle: Row(
+                          children: [
+                            Icon(
+                              Icons.people,
+                              size: 14,
+                              color: estaLleno ? Colors.grey : kPrimaryColor,
+                            ),
+                            SizedBox(width: 4),
+                            Text(
+                              '$cantidadAsignados/10 asignados',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color:
+                                    estaLleno ? Colors.grey : Colors.grey[600],
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            if (estaLleno) ...[
+                              SizedBox(width: 8),
+                              Container(
+                                padding: EdgeInsets.symmetric(
+                                    horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Colors.grey.withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  'COMPLETO',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.grey[700],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                        trailing: estaLleno
+                            ? Icon(Icons.block, color: Colors.grey)
+                            : Icon(Icons.arrow_forward_ios,
+                                color: kPrimaryColor, size: 16),
+                        onTap: estaLleno
+                            ? () {
+                                // Mostrar mensaje de límite alcanzado
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Row(
+                                      children: [
+                                        Container(
+                                          padding: EdgeInsets.all(4),
+                                          decoration: BoxDecoration(
+                                            color:
+                                                Colors.white.withOpacity(0.2),
+                                            borderRadius:
+                                                BorderRadius.circular(6),
+                                          ),
+                                          child: Icon(Icons.block,
+                                              color: Colors.white, size: 20),
+                                        ),
+                                        SizedBox(width: 12),
+                                        Expanded(
+                                          child: Text(
+                                            'Un Timoteo solo puede tener 10 almas asignadas',
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    backgroundColor: kSecondaryColor,
+                                    behavior: SnackBarBehavior.floating,
+                                    shape: RoundedRectangleBorder(
+                                        borderRadius:
+                                            BorderRadius.circular(12)),
+                                    margin: EdgeInsets.all(16),
+                                    duration: Duration(seconds: 3),
+                                  ),
+                                );
+                              }
+                            : () async {
+                                try {
+                                  await FirebaseFirestore.instance
+                                      .collection('registros')
+                                      .doc(registro.id)
+                                      .update({
+                                    'timoteoAsignado': timoteoDoc.id,
+                                    'nombreTimoteo':
+                                        '${timoteoDoc['nombre']} ${timoteoDoc['apellido']}',
+                                    'fechaAsignacion':
+                                        FieldValue.serverTimestamp(),
+                                  });
+
+                                  Navigator.pop(context);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Row(
+                                        children: [
+                                          Container(
+                                            padding: EdgeInsets.all(2),
+                                            decoration: BoxDecoration(
+                                              color:
+                                                  Colors.white.withOpacity(0.2),
+                                              shape: BoxShape.circle,
+                                            ),
+                                            child: Icon(Icons.check,
+                                                color: Colors.white, size: 20),
+                                          ),
+                                          SizedBox(width: 12),
+                                          Expanded(
+                                            child: Text(
+                                              'Registro asignado exitosamente a ${timoteoDoc['nombre']}',
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      backgroundColor: kPrimaryColor,
+                                      behavior: SnackBarBehavior.floating,
+                                      shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(12)),
+                                      margin: EdgeInsets.all(16),
+                                      duration: Duration(seconds: 3),
+                                    ),
+                                  );
+                                } catch (e) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Row(
+                                        children: [
+                                          Icon(Icons.error,
+                                              color: Colors.white, size: 20),
+                                          SizedBox(width: 12),
+                                          Expanded(
+                                            child: Text(
+                                              'Error al asignar el registro: $e',
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      backgroundColor: kSecondaryColor,
+                                      behavior: SnackBarBehavior.floating,
+                                      shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(12)),
+                                      margin: EdgeInsets.all(16),
+                                    ),
+                                  );
+                                }
+                              },
+                      ),
+                    );
                   },
                 );
               },
             ),
           ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              style: TextButton.styleFrom(
+                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
+              ),
+              child: Text(
+                'Cancelar',
+                style: TextStyle(
+                  color: Colors.grey[600],
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
         );
       },
     );
+  }
+
+// Método auxiliar para obtener timoteos con su conteo de registros asignados
+  Future<List<Map<String, dynamic>>> _obtenerTimoteosConConteo(
+      List<QueryDocumentSnapshot> timoteosDocs) async {
+    List<Map<String, dynamic>> resultado = [];
+
+    for (var timoteoDoc in timoteosDocs) {
+      // Contar cuántos registros tiene asignados este timoteo
+      final registrosAsignados = await FirebaseFirestore.instance
+          .collection('registros')
+          .where('timoteoAsignado', isEqualTo: timoteoDoc.id)
+          .get();
+
+      resultado.add({
+        'doc': timoteoDoc,
+        'cantidad': registrosAsignados.docs.length,
+      });
+    }
+
+    // Ordenar: primero los que tienen menos asignados
+    resultado
+        .sort((a, b) => (a['cantidad'] as int).compareTo(b['cantidad'] as int));
+
+    return resultado;
   }
 
 //VER DETALLES DEL REGISTRO

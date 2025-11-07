@@ -4811,29 +4811,43 @@ class TimoteosTab extends StatelessWidget {
                   );
                 }
 
-                final docs = snapshot.data!.docs.where((doc) {
-                  return !doc.data().toString().contains('coordinadorId') ||
-                      doc.get('coordinadorId') == null;
-                }).toList();
+                // ✅ CAMBIO: Ya no filtramos, mostramos todos los timoteos
+                final docs = snapshot.data!.docs;
 
                 return ListView.builder(
                   itemCount: docs.length,
                   itemBuilder: (context, index) {
                     final timoteo = docs[index];
+                    // ✅ Verificar si está asignado a un coordinador
+                    final bool estaAsignado =
+                        timoteo.data().toString().contains('coordinadorId') &&
+                            timoteo.get('coordinadorId') != null;
+
                     return Card(
                       elevation: 3,
                       margin: EdgeInsets.symmetric(vertical: 8),
                       child: Container(
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(12),
+                          // ✅ CAMBIO: Borde diferente según estado de asignación
                           border: Border.all(
-                            color: ThemeConstants.primaryTeal.withOpacity(0.3),
-                            width: 1,
+                            color: estaAsignado
+                                ? ThemeConstants.secondaryOrange
+                                    .withOpacity(0.5)
+                                : ThemeConstants.primaryTeal.withOpacity(0.3),
+                            width: estaAsignado ? 2 : 1,
                           ),
+                          // ✅ Fondo ligeramente diferente si está asignado
+                          color: estaAsignado
+                              ? ThemeConstants.secondaryOrange.withOpacity(0.05)
+                              : Colors.white,
                         ),
                         child: ExpansionTile(
                           leading: CircleAvatar(
-                            backgroundColor: ThemeConstants.primaryTeal,
+                            // ✅ Color diferente del avatar según estado
+                            backgroundColor: estaAsignado
+                                ? ThemeConstants.secondaryOrange
+                                : ThemeConstants.primaryTeal,
                             child: Text(
                               '${timoteo['nombre'][0]}${timoteo['apellido'][0]}',
                               style: TextStyle(
@@ -4842,14 +4856,70 @@ class TimoteosTab extends StatelessWidget {
                               ),
                             ),
                           ),
-                          title: Text(
-                            '${timoteo['nombre']} ${timoteo['apellido']}',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: ThemeConstants.primaryTeal,
-                              fontSize: 16,
-                            ),
+                          title: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  '${timoteo['nombre']} ${timoteo['apellido']}',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: estaAsignado
+                                        ? ThemeConstants.secondaryOrange
+                                        : ThemeConstants.primaryTeal,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ),
+                              // ✅ Indicador visual si está asignado
+                              if (estaAsignado)
+                                Container(
+                                  padding: EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: ThemeConstants.secondaryOrange
+                                        .withOpacity(0.2),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: ThemeConstants.secondaryOrange,
+                                      width: 1,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.check_circle,
+                                        size: 14,
+                                        color: ThemeConstants.secondaryOrange,
+                                      ),
+                                      SizedBox(width: 4),
+                                      Text(
+                                        'Asignado',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
+                                          color: ThemeConstants.secondaryOrange,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                            ],
                           ),
+                          // ✅ Mostrar coordinador asignado como subtitle si existe
+                          subtitle: estaAsignado
+                              ? Padding(
+                                  padding: EdgeInsets.only(top: 4),
+                                  child: Text(
+                                    'Coordinador: ${timoteo['nombreCoordinador'] ?? 'Sin nombre'}',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: ThemeConstants.accentGrey,
+                                      fontStyle: FontStyle.italic,
+                                    ),
+                                  ),
+                                )
+                              : null,
                           children: [
                             Padding(
                               padding: EdgeInsets.all(16),
@@ -4867,6 +4937,16 @@ class TimoteosTab extends StatelessWidget {
                                     'Contraseña',
                                     timoteo['contrasena'],
                                   ),
+                                  // ✅ Mostrar info del coordinador si está asignado
+                                  if (estaAsignado) ...[
+                                    SizedBox(height: 8),
+                                    _buildInfoRow(
+                                      Icons.supervisor_account,
+                                      'Coordinador',
+                                      timoteo['nombreCoordinador'] ??
+                                          'Sin asignar',
+                                    ),
+                                  ],
                                   SizedBox(height: 16),
                                   Row(
                                     mainAxisAlignment: MainAxisAlignment.end,
@@ -4887,10 +4967,14 @@ class TimoteosTab extends StatelessWidget {
                                       ),
                                       IconButton(
                                         icon: Icon(
-                                          Icons.person_add,
+                                          estaAsignado
+                                              ? Icons.person_remove
+                                              : Icons.person_add,
                                           color: ThemeConstants.secondaryOrange,
                                         ),
-                                        tooltip: 'Asignar a Coordinador',
+                                        tooltip: estaAsignado
+                                            ? 'Reasignar Coordinador'
+                                            : 'Asignar a Coordinador',
                                         onPressed: () => _asignarACoordinador(
                                             context, timoteo),
                                       ),

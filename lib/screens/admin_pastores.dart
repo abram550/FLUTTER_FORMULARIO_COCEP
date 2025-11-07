@@ -5075,7 +5075,8 @@ class _AdminPastoresState extends State<AdminPastores>
                               }
 
                               // Validar la clave sin mostrarla en logs
-                              const String claveCorrecta = 'TiempoCocep!';
+                              //Clave para confirmacion de una tribu
+                              const String claveCorrecta = 'T1empoC0cep!';
                               if (claveController.text != claveCorrecta) {
                                 _mostrarSnackBar(
                                     'Clave incorrecta. Eliminación cancelada.',
