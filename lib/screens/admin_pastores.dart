@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
+import 'package:formulario_app/services/credentials_service.dart';
 import 'package:go_router/go_router.dart';
 import 'TribusScreen.dart' hide showDialog;
 import 'admin_screen.dart';
@@ -1063,12 +1064,30 @@ class _AdminPastoresState extends State<AdminPastores>
                             }).toList();
 
                             // Ordenar por fecha de creación
+                            // Ordenar por fecha de creación manualmente (con manejo de nulos)
                             tribus.sort((a, b) {
-                              final aData = a.data() as Map<String, dynamic>;
-                              final bData = b.data() as Map<String, dynamic>;
-                              final aDate = aData['createdAt'] as Timestamp;
-                              final bDate = bData['createdAt'] as Timestamp;
-                              return bDate.compareTo(aDate);
+                              try {
+                                final aData = a.data() as Map<String, dynamic>;
+                                final bData = b.data() as Map<String, dynamic>;
+
+                                // Verificar si ambos tienen createdAt
+                                if (!aData.containsKey('createdAt') ||
+                                    aData['createdAt'] == null) {
+                                  return 1; // Mover al final
+                                }
+                                if (!bData.containsKey('createdAt') ||
+                                    bData['createdAt'] == null) {
+                                  return -1; // Mover al final
+                                }
+
+                                final aDate = aData['createdAt'] as Timestamp;
+                                final bDate = bData['createdAt'] as Timestamp;
+                                return bDate
+                                    .compareTo(aDate); // orden descendente
+                              } catch (e) {
+                                print('Error al ordenar tribus: $e');
+                                return 0; // Mantener orden si hay error
+                              }
                             });
 
                             if (tribus.isEmpty) {
@@ -3578,12 +3597,27 @@ class _AdminPastoresState extends State<AdminPastores>
         }
 
         // Ordenar por fecha de creación manualmente
+// Ordenar por fecha de creación (con manejo de nulos)
         tribus.sort((a, b) {
-          final aData = a.data() as Map<String, dynamic>;
-          final bData = b.data() as Map<String, dynamic>;
-          final aDate = aData['createdAt'] as Timestamp;
-          final bDate = bData['createdAt'] as Timestamp;
-          return bDate.compareTo(aDate); // orden descendente
+          try {
+            final aData = a.data() as Map<String, dynamic>;
+            final bData = b.data() as Map<String, dynamic>;
+
+            // Verificar si ambos tienen createdAt
+            if (!aData.containsKey('createdAt') || aData['createdAt'] == null) {
+              return 1; // Mover al final
+            }
+            if (!bData.containsKey('createdAt') || bData['createdAt'] == null) {
+              return -1; // Mover al final
+            }
+
+            final aDate = aData['createdAt'] as Timestamp;
+            final bDate = bData['createdAt'] as Timestamp;
+            return bDate.compareTo(aDate);
+          } catch (e) {
+            print('Error al ordenar tribus: $e');
+            return 0;
+          }
         });
 
         return ListView.builder(
@@ -5076,15 +5110,15 @@ class _AdminPastoresState extends State<AdminPastores>
 
                               // Validar la clave sin mostrarla en logs
                               //Clave para confirmacion de una tribu
-                              const String claveCorrecta = 'T1empoC0cep!';
-                              if (claveController.text != claveCorrecta) {
+                              // Validar la clave usando el servicio ofuscado
+                              if (!CredentialsService.validateDeletionKey(
+                                  claveController.text)) {
                                 _mostrarSnackBar(
                                     'Clave incorrecta. Eliminación cancelada.',
                                     isSuccess: false);
                                 claveController.clear();
                                 return;
                               }
-
                               setDialogState(() => isDeleting = true);
 
                               try {

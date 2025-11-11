@@ -5404,20 +5404,16 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
     // Función mejorada para obtener un valor seguro del documento con mejor manejo de nulos
     T? getSafeValue<T>(String field) {
       try {
-        // Check if data() is null first
         final data = registro.data();
         if (data == null) return null;
 
-        // Comprobar que data es un Map antes de intentar acceder a sus elementos
         if (data is Map) {
-          // ✅ USAR LA NUEVA FUNCIÓN PARA OBTENER EL VALOR CON DETECCIÓN DE VARIANTES
           final value =
               obtenerValorCampoEdicion(data as Map<String, dynamic>, field);
 
           if (value is T) {
             return value;
           } else if (value != null) {
-            // Intentar convertir al tipo correcto si es posible
             if (T == String && value != null) {
               return value.toString() as T;
             } else if (T == int && value is num) {
@@ -5478,18 +5474,21 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
       }
     }
 
-    // Controladores para los campos (solo se crean para campos que existen)
+    // Controladores para los campos
     final Map<String, TextEditingController> controllers = {};
 
-    // Estado para campos de selección con valores predeterminados para evitar nulos
+    // Estado para campos de selección
     String estadoCivilSeleccionado =
         getSafeValue<String>('estadoCivil') ?? 'Soltero(a)';
     String sexoSeleccionado = getSafeValue<String>('sexo') ?? 'Hombre';
 
-    // NUEVO: Estado activo del registro
+    // Estado activo del registro
     bool estadoActivo = getSafeValue<bool>('activo') ?? true;
 
-    // NUEVO: Fecha de nacimiento
+    // ✅ NUEVO: Variable para controlar el estado anterior
+    bool estadoActivoAnterior = estadoActivo;
+
+    // Fecha de nacimiento
     DateTime? fechaNacimiento;
     final fechaNacimientoValue = getSafeValue('fechaNacimiento');
     if (fechaNacimientoValue != null) {
@@ -5543,10 +5542,8 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
     // Inicializar controladores de manera segura
     camposDefinicion.forEach((key, value) {
       if (key != 'estadoCivil' && key != 'sexo' && key != 'fechaNacimiento') {
-        // Estos se manejan con dropdowns o date picker
         var fieldValue = getSafeValue(key);
 
-        // Crear controladores para todos los campos definidos para evitar errores de nullability
         if (value['type'] == 'list' && fieldValue is List) {
           controllers[key] = TextEditingController(text: fieldValue.join(', '));
         } else if (value['type'] == 'int' && fieldValue != null) {
@@ -5554,13 +5551,11 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
         } else if (fieldValue != null) {
           controllers[key] = TextEditingController(text: fieldValue.toString());
         } else {
-          // Crear controladores vacíos para todos los campos para evitar problemas de nulabilidad
           controllers[key] = TextEditingController();
         }
       }
     });
 
-    // Asegurar que nombrePareja siempre tenga un controlador para evitar null errors
     if (controllers['nombrePareja'] == null) {
       controllers['nombrePareja'] = TextEditingController();
     }
@@ -5602,17 +5597,220 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
       }
     }
 
-    // Función para mostrar el diálogo de confirmación con manejo seguro de context
+    // ✅ NUEVA FUNCIÓN: Mostrar diálogo de observaciones al desactivar
+    Future<String?> _mostrarDialogoObservacionesDesactivacion() async {
+      final TextEditingController observacionesController =
+          TextEditingController();
+      String? resultado;
+
+      await showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext dialogContext) {
+          return AlertDialog(
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    Icons.warning_amber_rounded,
+                    color: Colors.orange,
+                    size: 24,
+                  ),
+                ),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Observaciones Requeridas',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: primaryTeal,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: Colors.orange.withOpacity(0.3),
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.info_outline,
+                            color: Colors.orange, size: 20),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Por favor, explica la razón por la cual esta persona ya no forma parte de la iglesia.',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.orange[800],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(height: 16),
+                  TextField(
+                    controller: observacionesController,
+                    maxLines: 5,
+                    maxLength: 500,
+                    decoration: InputDecoration(
+                      labelText: 'Observaciones *',
+                      labelStyle: TextStyle(
+                        color: primaryTeal.withOpacity(0.8),
+                        fontWeight: FontWeight.w500,
+                      ),
+                      hintText: 'Describe el motivo de la desactivación...',
+                      hintStyle: TextStyle(
+                        color: Colors.grey[400],
+                        fontSize: 14,
+                      ),
+                      prefixIcon: Container(
+                        margin: EdgeInsets.all(12),
+                        padding: EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: primaryTeal.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child:
+                            Icon(Icons.edit_note, color: primaryTeal, size: 20),
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide:
+                            BorderSide(color: primaryTeal.withOpacity(0.3)),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide:
+                            BorderSide(color: primaryTeal.withOpacity(0.5)),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: primaryTeal, width: 2),
+                      ),
+                      errorBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide:
+                            BorderSide(color: Colors.red.shade400, width: 2),
+                      ),
+                      filled: true,
+                      fillColor: Colors.white,
+                      contentPadding:
+                          EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                      counterStyle:
+                          TextStyle(color: Colors.grey[600], fontSize: 12),
+                    ),
+                    style: TextStyle(fontSize: 15),
+                    textCapitalization: TextCapitalization.sentences,
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.of(dialogContext).pop();
+                  resultado = null;
+                },
+                style: TextButton.styleFrom(
+                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                child: Text(
+                  'Cancelar',
+                  style: TextStyle(
+                    color: Colors.grey[600],
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  if (observacionesController.text.trim().isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Row(
+                          children: [
+                            Icon(Icons.error_outline, color: Colors.white),
+                            SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                'Las observaciones son obligatorias al desactivar un registro',
+                                style: TextStyle(fontWeight: FontWeight.w500),
+                              ),
+                            ),
+                          ],
+                        ),
+                        backgroundColor: Colors.red,
+                        behavior: SnackBarBehavior.floating,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        margin: EdgeInsets.all(16),
+                      ),
+                    );
+                    return;
+                  }
+
+                  resultado = observacionesController.text.trim();
+                  Navigator.of(dialogContext).pop();
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: secondaryOrange,
+                  foregroundColor: Colors.white,
+                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  elevation: 2,
+                ),
+                child: Text(
+                  'Guardar Observación',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
+          );
+        },
+      );
+
+      observacionesController.dispose();
+      return resultado;
+    }
+
+    // Función para mostrar el diálogo de confirmación
     Future<bool> confirmarSalida() async {
       if (!hayModificaciones) return true;
 
-      // Verificar que el contexto sigue siendo válido
       if (!context.mounted) return false;
 
       bool confirmar = false;
       await showDialog(
         context: context,
-        barrierDismissible: true, // Evitar cierre accidental
+        barrierDismissible: true,
         builder: (BuildContext dialogContext) => AlertDialog(
           title: Row(
             children: [
@@ -5651,7 +5849,7 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
       return confirmar;
     }
 
-    // Mostrar el nombre del registro en lugar del ID con manejo seguro de nulos
+    // Mostrar el nombre del registro
     String getNombreCompleto() {
       String nombre = getSafeValue<String>('nombre') ?? '';
       String apellido = getSafeValue<String>('apellido') ?? '';
@@ -5663,12 +5861,11 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
       return 'Registro ${registro.id}';
     }
 
-    // Verificar si el contexto es válido antes de mostrar el diálogo
     if (!context.mounted) return;
 
     showDialog(
       context: context,
-      barrierDismissible: true, // No se cierra al tocar fuera
+      barrierDismissible: true,
       builder: (BuildContext dialogContext) {
         return StatefulBuilder(builder: (stateContext, setState) {
           return WillPopScope(
@@ -5749,7 +5946,7 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
                         ),
                         const SizedBox(height: 24),
 
-                        // NUEVO: Switch para estado activo/inactivo
+                        // Switch para estado activo/inactivo
                         Container(
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
@@ -5810,11 +6007,41 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
                                 activeColor: secondaryOrange,
                                 inactiveThumbColor: Colors.grey[400],
                                 inactiveTrackColor: Colors.grey[300],
-                                onChanged: (value) {
-                                  setState(() {
-                                    estadoActivo = value;
-                                    hayModificaciones = true;
-                                  });
+                                onChanged: (value) async {
+                                  // ✅ NUEVA LÓGICA: Si está desactivando, pedir observaciones
+                                  if (!value && estadoActivoAnterior) {
+                                    final observacion =
+                                        await _mostrarDialogoObservacionesDesactivacion();
+
+                                    if (observacion != null &&
+                                        observacion.isNotEmpty) {
+                                      // Guardar la observación en el campo de observaciones
+                                      if (controllers['observaciones'] !=
+                                          null) {
+                                        final observacionActual =
+                                            controllers['observaciones']!.text;
+                                        final nuevaObservacion = observacionActual
+                                                .isEmpty
+                                            ? 'MOTIVO DESACTIVACIÓN: $observacion'
+                                            : '$observacionActual\n\nMOTIVO DESACTIVACIÓN: $observacion';
+                                        controllers['observaciones']!.text =
+                                            nuevaObservacion;
+                                      }
+
+                                      setState(() {
+                                        estadoActivo = value;
+                                        estadoActivoAnterior = value;
+                                        hayModificaciones = true;
+                                      });
+                                    }
+                                  } else {
+                                    // Si está activando, no pedir observaciones
+                                    setState(() {
+                                      estadoActivo = value;
+                                      estadoActivoAnterior = value;
+                                      hayModificaciones = true;
+                                    });
+                                  }
                                 },
                               ),
                             ],
@@ -5853,8 +6080,7 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
                             ),
                           ),
 
-                        // Datos del formulario
-                        // Campos normales
+                        // Campos del formulario (resto del código sin cambios)
                         ...camposDefinicion.entries.map((entry) {
                           final fieldName = entry.key;
                           final fieldData = entry.value;
@@ -5862,7 +6088,6 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
                           final fieldIcon =
                               fieldData['icon'] ?? Icons.help_outline;
 
-                          // Manejar dropdown para estado civil
                           if (fieldName == 'estadoCivil') {
                             return _buildDropdownField(
                               label: 'Estado Civil',
@@ -5879,10 +6104,7 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
                                 }
                               },
                             );
-                          }
-
-                          // Manejar dropdown para sexo
-                          else if (fieldName == 'sexo') {
+                          } else if (fieldName == 'sexo') {
                             return _buildDropdownField(
                               label: 'Sexo',
                               icon: fieldIcon,
@@ -5898,13 +6120,9 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
                                 }
                               },
                             );
-                          }
-
-                          // NUEVO: Manejar campo de fecha de nacimiento
-                          else if (fieldName == 'fechaNacimiento') {
+                          } else if (fieldName == 'fechaNacimiento') {
                             return Column(
                               children: [
-                                // Campo de fecha de nacimiento
                                 Container(
                                   margin: const EdgeInsets.only(bottom: 16),
                                   child: InkWell(
@@ -5975,8 +6193,6 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
                                     ),
                                   ),
                                 ),
-
-                                // MOSTRAR INFORMACIÓN DE CUMPLEAÑOS SI EXISTE FECHA DE NACIMIENTO
                                 if (fechaNacimiento != null)
                                   Container(
                                     margin: const EdgeInsets.only(bottom: 16),
@@ -6115,10 +6331,7 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
                                   ),
                               ],
                             );
-                          }
-
-                          // Solo mostrar campo de nombre de pareja si es necesario
-                          else if (fieldName == 'nombrePareja') {
+                          } else if (fieldName == 'nombrePareja') {
                             if (mostrarNombrePareja() && controller != null) {
                               return _buildAnimatedTextField(
                                 label: 'Nombre de Pareja',
@@ -6132,10 +6345,7 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
                             } else {
                               return SizedBox.shrink();
                             }
-                          }
-
-                          // Campo para Estado en la Iglesia (estadoProceso)
-                          else if (fieldName == 'estadoProceso') {
+                          } else if (fieldName == 'estadoProceso') {
                             return _buildAnimatedTextField(
                               label: 'Estado en la Iglesia',
                               icon: fieldIcon,
@@ -6145,10 +6355,7 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
                                 hayModificaciones = true;
                               },
                             );
-                          }
-
-                          // Otros campos de texto normales
-                          else if (controller != null) {
+                          } else if (controller != null) {
                             return _buildAnimatedTextField(
                               label: _formatFieldName(fieldName),
                               icon: fieldIcon,
@@ -6202,31 +6409,25 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
                                       fontWeight: FontWeight.bold)),
                               onPressed: () async {
                                 try {
-                                  // Crear mapa para actualización con solo los campos que existen
                                   final Map<String, dynamic> updateData = {};
 
-                                  // Agregar campos de dropdown
                                   updateData['estadoCivil'] =
                                       estadoCivilSeleccionado;
                                   updateData['sexo'] = sexoSeleccionado;
 
-                                  // NUEVO: Agregar fecha de nacimiento
                                   if (fechaNacimiento != null) {
                                     updateData['fechaNacimiento'] =
                                         Timestamp.fromDate(fechaNacimiento!);
                                   }
 
-                                  // NUEVO: Agregar estado activo y lógica de desasignación
                                   updateData['activo'] = estadoActivo;
                                   if (!estadoActivo) {
-                                    // Si se desactiva, eliminar asignaciones
                                     updateData['coordinadorAsignado'] = null;
                                     updateData['coordinadorNombre'] = null;
                                     updateData['timoteoAsignado'] = null;
                                     updateData['nombreTimoteo'] = null;
                                   }
 
-                                  // Agregar otros campos de texto con manejo seguro
                                   controllers.forEach((key, controller) {
                                     if (controller != null) {
                                       final fieldType =
@@ -6240,7 +6441,6 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
                                                     .map((e) => e.trim())
                                                     .toList();
                                       } else if (fieldType == 'int') {
-                                        // Manejo seguro para valores numéricos
                                         int? parsedValue =
                                             int.tryParse(controller.text);
                                         updateData[key] = parsedValue ?? 0;
@@ -6250,12 +6450,9 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
                                     }
                                   });
 
-                                  // ✅ LÓGICA ESPECIAL: Al guardar, detectar cuál campo usar para descripcionOcupacion
-                                  // Si tenemos datos para descripcionOcupacion, podemos decidir en cuál campo guardarlo
                                   final data = registro.data();
                                   if (data != null &&
                                       data is Map<String, dynamic>) {
-                                    // Si ya existe descripcionOcupaciones en los datos originales, guardamos ahí
                                     if (data.containsKey(
                                             'descripcionOcupaciones') &&
                                         !data.containsKey(
@@ -6268,24 +6465,18 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
                                             .remove('descripcionOcupacion');
                                       }
                                     }
-                                    // Si existe descripcionOcupacion original, mantenemos ese campo
-                                    // No hacemos nada adicional, el campo se actualiza normalmente
                                   }
 
-                                  // Verificar que tenemos una referencia válida a Firestore
                                   if (FirebaseFirestore.instance != null) {
-                                    // Actualizar en Firestore de manera segura
                                     await FirebaseFirestore.instance
                                         .collection('registros')
                                         .doc(registro.id)
                                         .update(updateData);
 
-                                    // Cerrar el diálogo si el contexto sigue siendo válido
                                     if (dialogContext.mounted) {
                                       Navigator.pop(dialogContext);
                                     }
 
-                                    // Mostrar notificación de éxito si el contexto sigue siendo válido
                                     if (context.mounted) {
                                       ScaffoldMessenger.of(context)
                                           .showSnackBar(
@@ -6319,7 +6510,6 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
                                         "No se pudo conectar con Firestore");
                                   }
                                 } catch (e) {
-                                  // Mostrar error si el contexto sigue siendo válido
                                   if (dialogContext.mounted) {
                                     Navigator.pop(dialogContext);
                                   }

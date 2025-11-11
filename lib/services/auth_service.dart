@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:crypto/crypto.dart';
+import 'package:formulario_app/services/credentials_service.dart';
 import 'package:formulario_app/utils/error_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -19,13 +20,14 @@ class AuthService {
     try {
       print('Intentando login con usuario: $username');
 
-      // Verificar si las credenciales son las del usuario por defecto
-      if (username.toLowerCase() == 'admincocep' && password == 'Avivamiento_Cocep#') {
+      // Verificar credenciales de administrador usando servicio ofuscado
+      final adminCreds = CredentialsService.getAdminCredentials();
+      if (username.toLowerCase() == adminCreds['username']?.toLowerCase() &&
+          password == adminCreds['password']) {
         final result = {'role': 'adminPastores'};
-        await _guardarSesion(result); // 🆕 Guardar sesión
+        await _guardarSesion(result);
         return result;
       }
-
       // Buscar en la colección de usuarios
       final userQuery = await FirebaseFirestore.instance
           .collection('usuarios')
