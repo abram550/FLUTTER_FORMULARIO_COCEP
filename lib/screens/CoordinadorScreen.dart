@@ -3401,6 +3401,11 @@ class TimoteosTab extends StatelessWidget {
 
   Future<void> _editTimoteo(
       BuildContext context, DocumentSnapshot timoteo) async {
+    // Colores del tema
+    const Color primaryTeal = Color(0xFF1B8C8C);
+    const Color secondaryOrange = Color(0xFFFF4D2E);
+    const Color accentYellow = Color(0xFFFFB800);
+
     final TextEditingController _nameController =
         TextEditingController(text: timoteo['nombre']);
     final TextEditingController _lastNameController =
@@ -3410,55 +3415,461 @@ class TimoteosTab extends StatelessWidget {
     final TextEditingController _passwordController =
         TextEditingController(text: timoteo['contrasena']);
 
+    bool _isPasswordVisible = false;
+    bool _isSaving = false;
+
     await showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (context) {
-        return AlertDialog(
-          title: Text('Editar Timoteo'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: _nameController,
-                decoration: InputDecoration(labelText: 'Nombre'),
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return Dialog(
+              backgroundColor: Colors.transparent,
+              insetPadding: EdgeInsets.symmetric(horizontal: 20),
+              child: Container(
+                constraints: BoxConstraints(maxWidth: 500),
+                decoration: BoxDecoration(
+                  color: Color(0xFFF5F7FA),
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.2),
+                      blurRadius: 20,
+                      offset: Offset(0, 10),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // ============================================================
+                    // ENCABEZADO CON GRADIENTE
+                    // ============================================================
+                    Container(
+                      padding: EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            primaryTeal,
+                            primaryTeal.withOpacity(0.8),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.only(
+                          topLeft: Radius.circular(24),
+                          topRight: Radius.circular(24),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.2),
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: Colors.white.withOpacity(0.3),
+                                width: 2,
+                              ),
+                            ),
+                            child: Icon(
+                              Icons.edit_rounded,
+                              color: Colors.white,
+                              size: 24,
+                            ),
+                          ),
+                          SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Editar Timoteo',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 20,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                                SizedBox(height: 4),
+                                Text(
+                                  'Actualiza la información',
+                                  style: TextStyle(
+                                    color: Colors.white.withOpacity(0.9),
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // ============================================================
+                    // FORMULARIO
+                    // ============================================================
+                    Container(
+                      padding: EdgeInsets.all(24),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Campo Nombre
+                          _buildEnhancedTextField(
+                            controller: _nameController,
+                            label: 'Nombre',
+                            icon: Icons.person_outline,
+                            primaryColor: primaryTeal,
+                          ),
+                          SizedBox(height: 16),
+
+                          // Campo Apellido
+                          _buildEnhancedTextField(
+                            controller: _lastNameController,
+                            label: 'Apellido',
+                            icon: Icons.person,
+                            primaryColor: primaryTeal,
+                          ),
+                          SizedBox(height: 16),
+
+                          // Campo Usuario
+                          _buildEnhancedTextField(
+                            controller: _userController,
+                            label: 'Usuario',
+                            icon: Icons.account_circle_outlined,
+                            primaryColor: primaryTeal,
+                          ),
+                          SizedBox(height: 16),
+
+                          // Campo Contraseña con visibilidad
+                          _buildEnhancedTextField(
+                            controller: _passwordController,
+                            label: 'Contraseña',
+                            icon: Icons.lock_outline,
+                            primaryColor: primaryTeal,
+                            isPassword: true,
+                            isPasswordVisible: _isPasswordVisible,
+                            onToggleVisibility: () {
+                              setState(() {
+                                _isPasswordVisible = !_isPasswordVisible;
+                              });
+                            },
+                          ),
+                          SizedBox(height: 24),
+
+                          // ============================================================
+                          // BOTONES DE ACCIÓN
+                          // ============================================================
+                          Row(
+                            children: [
+                              // Botón Cancelar
+                              Expanded(
+                                child: TextButton(
+                                  onPressed: _isSaving
+                                      ? null
+                                      : () => Navigator.pop(context),
+                                  style: TextButton.styleFrom(
+                                    padding: EdgeInsets.symmetric(vertical: 16),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      side: BorderSide(
+                                        color: Colors.grey.shade300,
+                                        width: 1.5,
+                                      ),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.close_rounded,
+                                        color: Colors.grey.shade600,
+                                        size: 20,
+                                      ),
+                                      SizedBox(width: 8),
+                                      Text(
+                                        'Cancelar',
+                                        style: TextStyle(
+                                          color: Colors.grey.shade700,
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              SizedBox(width: 12),
+
+                              // Botón Guardar
+                              Expanded(
+                                flex: 2,
+                                child: ElevatedButton(
+                                  onPressed: _isSaving
+                                      ? null
+                                      : () async {
+                                          setState(() {
+                                            _isSaving = true;
+                                          });
+
+                                          try {
+                                            await FirebaseFirestore.instance
+                                                .collection('timoteos')
+                                                .doc(timoteo.id)
+                                                .update({
+                                              'nombre': _nameController.text,
+                                              'apellido':
+                                                  _lastNameController.text,
+                                              'usuario': _userController.text,
+                                              'contrasena':
+                                                  _passwordController.text,
+                                            });
+
+                                            if (context.mounted) {
+                                              Navigator.pop(context);
+                                              ScaffoldMessenger.of(context)
+                                                  .showSnackBar(
+                                                SnackBar(
+                                                  content: Row(
+                                                    children: [
+                                                      Container(
+                                                        padding:
+                                                            EdgeInsets.all(6),
+                                                        decoration:
+                                                            BoxDecoration(
+                                                          color: Colors.white
+                                                              .withOpacity(0.2),
+                                                          shape:
+                                                              BoxShape.circle,
+                                                        ),
+                                                        child: Icon(
+                                                          Icons
+                                                              .check_circle_rounded,
+                                                          color: Colors.white,
+                                                          size: 20,
+                                                        ),
+                                                      ),
+                                                      SizedBox(width: 12),
+                                                      Expanded(
+                                                        child: Text(
+                                                          'Timoteo actualizado exitosamente',
+                                                          style: TextStyle(
+                                                            fontWeight:
+                                                                FontWeight.w600,
+                                                            fontSize: 15,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                  backgroundColor:
+                                                      Colors.green.shade600,
+                                                  behavior:
+                                                      SnackBarBehavior.floating,
+                                                  shape: RoundedRectangleBorder(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            12),
+                                                  ),
+                                                  margin: EdgeInsets.all(16),
+                                                  duration:
+                                                      Duration(seconds: 3),
+                                                ),
+                                              );
+                                            }
+                                          } catch (e) {
+                                            setState(() {
+                                              _isSaving = false;
+                                            });
+
+                                            if (context.mounted) {
+                                              ScaffoldMessenger.of(context)
+                                                  .showSnackBar(
+                                                SnackBar(
+                                                  content: Row(
+                                                    children: [
+                                                      Icon(
+                                                        Icons.error_outline,
+                                                        color: Colors.white,
+                                                        size: 20,
+                                                      ),
+                                                      SizedBox(width: 12),
+                                                      Expanded(
+                                                        child: Text(
+                                                          'Error al actualizar: $e',
+                                                          style: TextStyle(
+                                                            fontWeight:
+                                                                FontWeight.w600,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                  backgroundColor:
+                                                      secondaryOrange,
+                                                  behavior:
+                                                      SnackBarBehavior.floating,
+                                                  shape: RoundedRectangleBorder(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            12),
+                                                  ),
+                                                  margin: EdgeInsets.all(16),
+                                                ),
+                                              );
+                                            }
+                                          }
+                                        },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: secondaryOrange,
+                                    foregroundColor: Colors.white,
+                                    padding: EdgeInsets.symmetric(vertical: 16),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    elevation: 0,
+                                    shadowColor:
+                                        secondaryOrange.withOpacity(0.4),
+                                  ),
+                                  child: _isSaving
+                                      ? SizedBox(
+                                          height: 20,
+                                          width: 20,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2.5,
+                                            valueColor:
+                                                AlwaysStoppedAnimation<Color>(
+                                                    Colors.white),
+                                          ),
+                                        )
+                                      : Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            Icon(
+                                              Icons.save_rounded,
+                                              size: 20,
+                                            ),
+                                            SizedBox(width: 8),
+                                            Text(
+                                              'Guardar Cambios',
+                                              style: TextStyle(
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              TextField(
-                controller: _lastNameController,
-                decoration: InputDecoration(labelText: 'Apellido'),
-              ),
-              TextField(
-                controller: _userController,
-                decoration: InputDecoration(labelText: 'Usuario'),
-              ),
-              TextField(
-                controller: _passwordController,
-                decoration: InputDecoration(labelText: 'Contraseña'),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text('Cancelar'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                await FirebaseFirestore.instance
-                    .collection('timoteos')
-                    .doc(timoteo.id)
-                    .update({
-                  'nombre': _nameController.text,
-                  'apellido': _lastNameController.text,
-                  'usuario': _userController.text,
-                  'contrasena': _passwordController.text,
-                });
-                Navigator.pop(context);
-              },
-              child: Text('Guardar'),
-            ),
-          ],
+            );
+          },
         );
       },
+    );
+  }
+
+// ============================================================
+// WIDGET AUXILIAR PARA CAMPOS DE TEXTO MEJORADOS
+// ============================================================
+  Widget _buildEnhancedTextField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    required Color primaryColor,
+    bool isPassword = false,
+    bool isPasswordVisible = false,
+    VoidCallback? onToggleVisibility,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: primaryColor.withOpacity(0.08),
+            blurRadius: 8,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: TextField(
+        controller: controller,
+        obscureText: isPassword && !isPasswordVisible,
+        style: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w500,
+          color: Colors.black87,
+        ),
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: TextStyle(
+            color: primaryColor.withOpacity(0.7),
+            fontWeight: FontWeight.w500,
+            fontSize: 14,
+          ),
+          prefixIcon: Container(
+            margin: EdgeInsets.all(12),
+            padding: EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: primaryColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(
+              icon,
+              color: primaryColor,
+              size: 20,
+            ),
+          ),
+          suffixIcon: isPassword
+              ? IconButton(
+                  icon: Icon(
+                    isPasswordVisible
+                        ? Icons.visibility_rounded
+                        : Icons.visibility_off_rounded,
+                    color: primaryColor.withOpacity(0.7),
+                    size: 22,
+                  ),
+                  onPressed: onToggleVisibility,
+                )
+              : null,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide.none,
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide(
+              color: Colors.grey.shade200,
+              width: 1,
+            ),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide(
+              color: primaryColor,
+              width: 2,
+            ),
+          ),
+          filled: true,
+          fillColor: Colors.white,
+          contentPadding: EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 18,
+          ),
+        ),
+      ),
     );
   }
 
@@ -3672,97 +4083,753 @@ class TimoteosTab extends StatelessWidget {
 
 Future<void> _viewAssignedRegistros(
     BuildContext context, DocumentSnapshot timoteo) async {
+  // Colores del tema
+  const Color primaryTeal = Color(0xFF1B8C8C);
+  const Color secondaryOrange = Color(0xFFFF4D2E);
+  const Color accentYellow = Color(0xFFFFB800);
+  const Color backgroundGrey = Color(0xFFF5F7FA);
+
   await showDialog(
     context: context,
+    barrierDismissible: true,
     builder: (context) {
       return Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 24),
         child: Container(
-          width: MediaQuery.of(context).size.width * 0.9,
-          height: MediaQuery.of(context).size.height * 0.8,
-          child: Scaffold(
-            appBar: AppBar(
-              title: Text(
-                  'Registros de ${timoteo['nombre']} ${timoteo['apellido']}'),
-              automaticallyImplyLeading: false,
-              actions: [
-                IconButton(
-                  icon: Icon(Icons.close),
-                  onPressed: () => Navigator.pop(context),
+          width: MediaQuery.of(context).size.width * 0.95,
+          height: MediaQuery.of(context).size.height * 0.85,
+          decoration: BoxDecoration(
+            color: backgroundGrey,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.2),
+                blurRadius: 20,
+                offset: Offset(0, 10),
+              ),
+            ],
+          ),
+          child: Column(
+            children: [
+              // ============================================================
+              // ENCABEZADO MEJORADO CON GRADIENTE
+              // ============================================================
+              Container(
+                padding: EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      primaryTeal,
+                      primaryTeal.withOpacity(0.8),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(24),
+                    topRight: Radius.circular(24),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: primaryTeal.withOpacity(0.3),
+                      blurRadius: 8,
+                      offset: Offset(0, 4),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            body: StreamBuilder(
-              stream: FirebaseFirestore.instance
-                  .collection('registros')
-                  .where('timoteoAsignado', isEqualTo: timoteo.id)
-                  .snapshots(),
-              builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return Center(child: CircularProgressIndicator());
-                }
-
-                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                  return Center(
-                    child: Text('No hay registros asignados a este Timoteo'),
-                  );
-                }
-
-                return ListView.builder(
-                  itemCount: snapshot.data!.docs.length,
-                  itemBuilder: (context, index) {
-                    final registro = snapshot.data!.docs[index];
-                    return Card(
-                      margin: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      child: ListTile(
-                        title: Text(
-                          '${registro['nombre']} ${registro['apellido']}',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('Teléfono: ${registro['telefono']}'),
-                            Text(
-                                'Fecha asignación: ${registro['fechaAsignacion']?.toDate().toString() ?? 'N/A'}'),
+                child: Row(
+                  children: [
+                    // Avatar del timoteo con animación
+                    Hero(
+                      tag: 'timoteo_${timoteo.id}',
+                      child: Container(
+                        padding: EdgeInsets.all(3),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.5),
+                            width: 2,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.2),
+                              blurRadius: 8,
+                              offset: Offset(0, 4),
+                            ),
                           ],
                         ),
-                        trailing: IconButton(
-                          icon: Icon(Icons.person_remove, color: Colors.red),
-                          tooltip: 'Quitar asignación',
-                          onPressed: () async {
-                            try {
-                              await FirebaseFirestore.instance
-                                  .collection('registros')
-                                  .doc(registro.id)
-                                  .update({
-                                'timoteoAsignado': null,
-                                'nombreTimoteo': null,
-                                'fechaAsignacion': null,
-                              });
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content:
-                                      Text('Registro desasignado exitosamente'),
-                                  backgroundColor: Colors.green,
-                                ),
-                              );
-                            } catch (e) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                      'Error al desasignar el registro: $e'),
-                                  backgroundColor: Colors.red,
-                                ),
-                              );
-                            }
-                          },
+                        child: CircleAvatar(
+                          radius: 28,
+                          backgroundColor: accentYellow,
+                          child: Text(
+                            '${timoteo['nombre'][0]}${timoteo['apellido'][0]}',
+                            style: TextStyle(
+                              color: primaryTeal,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 20,
+                            ),
+                          ),
                         ),
                       ),
+                    ),
+                    SizedBox(width: 16),
+                    // Información del timoteo
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${timoteo['nombre']} ${timoteo['apellido']}',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 20,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                          SizedBox(height: 4),
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.assignment_ind,
+                                  color: Colors.white,
+                                  size: 14,
+                                ),
+                                SizedBox(width: 6),
+                                Text(
+                                  'Registros Asignados',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    // Botón de cerrar mejorado
+                    Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () => Navigator.pop(context),
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          padding: EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: Colors.white.withOpacity(0.3),
+                              width: 1,
+                            ),
+                          ),
+                          child: Icon(
+                            Icons.close_rounded,
+                            color: Colors.white,
+                            size: 24,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // ============================================================
+              // CONTENIDO CON STREAMBUILDER
+              // ============================================================
+              Expanded(
+                child: StreamBuilder(
+                  stream: FirebaseFirestore.instance
+                      .collection('registros')
+                      .where('timoteoAsignado', isEqualTo: timoteo.id)
+                      .snapshots(),
+                  builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              padding: EdgeInsets.all(20),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: primaryTeal.withOpacity(0.2),
+                                    blurRadius: 12,
+                                    offset: Offset(0, 6),
+                                  ),
+                                ],
+                              ),
+                              child: CircularProgressIndicator(
+                                valueColor:
+                                    AlwaysStoppedAnimation<Color>(primaryTeal),
+                                strokeWidth: 3,
+                              ),
+                            ),
+                            SizedBox(height: 20),
+                            Text(
+                              'Cargando registros...',
+                              style: TextStyle(
+                                color: primaryTeal,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+
+                    if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                      return Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              padding: EdgeInsets.all(24),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.grey.withOpacity(0.1),
+                                    blurRadius: 12,
+                                    offset: Offset(0, 6),
+                                  ),
+                                ],
+                              ),
+                              child: Icon(
+                                Icons.inbox_outlined,
+                                size: 64,
+                                color: Colors.grey.shade400,
+                              ),
+                            ),
+                            SizedBox(height: 20),
+                            Text(
+                              'Sin registros asignados',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.grey.shade700,
+                              ),
+                            ),
+                            SizedBox(height: 8),
+                            Text(
+                              'Este timoteo aún no tiene personas asignadas',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey.shade500,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+
+                    final registros = snapshot.data!.docs;
+
+                    return Column(
+                      children: [
+                        // Badge con contador
+                        Container(
+                          margin: EdgeInsets.all(16),
+                          padding: EdgeInsets.symmetric(
+                              horizontal: 20, vertical: 12),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                primaryTeal.withOpacity(0.1),
+                                accentYellow.withOpacity(0.1),
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: primaryTeal.withOpacity(0.3),
+                              width: 1.5,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.people_alt_rounded,
+                                color: primaryTeal,
+                                size: 24,
+                              ),
+                              SizedBox(width: 12),
+                              Text(
+                                'Total: ',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: Colors.grey.shade700,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              Text(
+                                '${registros.length}',
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  color: primaryTeal,
+                                ),
+                              ),
+                              Text(
+                                ' persona${registros.length != 1 ? 's' : ''}',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: Colors.grey.shade700,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        // Lista de registros
+                        Expanded(
+                          child: ListView.builder(
+                            padding: EdgeInsets.symmetric(horizontal: 16),
+                            itemCount: registros.length,
+                            itemBuilder: (context, index) {
+                              final registro = registros[index];
+                              final data =
+                                  registro.data() as Map<String, dynamic>;
+
+                              return Container(
+                                margin: EdgeInsets.only(bottom: 12),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(16),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.05),
+                                      blurRadius: 8,
+                                      offset: Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: Material(
+                                  color: Colors.transparent,
+                                  child: InkWell(
+                                    borderRadius: BorderRadius.circular(16),
+                                    onTap: () {
+                                      // Animación de tap
+                                      HapticFeedback.lightImpact();
+                                    },
+                                    child: Padding(
+                                      padding: EdgeInsets.all(16),
+                                      child: Column(
+                                        children: [
+                                          Row(
+                                            children: [
+                                              // Avatar con gradiente
+                                              Container(
+                                                decoration: BoxDecoration(
+                                                  gradient: LinearGradient(
+                                                    begin: Alignment.topLeft,
+                                                    end: Alignment.bottomRight,
+                                                    colors: [
+                                                      primaryTeal,
+                                                      primaryTeal
+                                                          .withOpacity(0.7),
+                                                    ],
+                                                  ),
+                                                  shape: BoxShape.circle,
+                                                  boxShadow: [
+                                                    BoxShadow(
+                                                      color: primaryTeal
+                                                          .withOpacity(0.3),
+                                                      blurRadius: 8,
+                                                      offset: Offset(0, 4),
+                                                    ),
+                                                  ],
+                                                ),
+                                                child: CircleAvatar(
+                                                  radius: 24,
+                                                  backgroundColor:
+                                                      Colors.transparent,
+                                                  child: Text(
+                                                    '${data['nombre']?[0] ?? '?'}${data['apellido']?[0] ?? '?'}',
+                                                    style: TextStyle(
+                                                      color: Colors.white,
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                      fontSize: 16,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                              SizedBox(width: 16),
+                                              // Información
+                                              Expanded(
+                                                child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(
+                                                      '${data['nombre'] ?? 'Sin nombre'} ${data['apellido'] ?? ''}',
+                                                      style: TextStyle(
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                        fontSize: 16,
+                                                        color: Colors.black87,
+                                                      ),
+                                                    ),
+                                                    SizedBox(height: 6),
+                                                    Row(
+                                                      children: [
+                                                        Container(
+                                                          padding: EdgeInsets
+                                                              .symmetric(
+                                                            horizontal: 8,
+                                                            vertical: 4,
+                                                          ),
+                                                          decoration:
+                                                              BoxDecoration(
+                                                            color: primaryTeal
+                                                                .withOpacity(
+                                                                    0.1),
+                                                            borderRadius:
+                                                                BorderRadius
+                                                                    .circular(
+                                                                        8),
+                                                          ),
+                                                          child: Row(
+                                                            mainAxisSize:
+                                                                MainAxisSize
+                                                                    .min,
+                                                            children: [
+                                                              Icon(
+                                                                Icons.phone,
+                                                                size: 12,
+                                                                color:
+                                                                    primaryTeal,
+                                                              ),
+                                                              SizedBox(
+                                                                  width: 4),
+                                                              Text(
+                                                                data['telefono'] ??
+                                                                    'Sin teléfono',
+                                                                style:
+                                                                    TextStyle(
+                                                                  fontSize: 12,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .w600,
+                                                                  color:
+                                                                      primaryTeal,
+                                                                ),
+                                                              ),
+                                                            ],
+                                                          ),
+                                                        ),
+                                                        if (data[
+                                                                'fechaAsignacion'] !=
+                                                            null) ...[
+                                                          SizedBox(width: 8),
+                                                          Container(
+                                                            padding: EdgeInsets
+                                                                .symmetric(
+                                                              horizontal: 8,
+                                                              vertical: 4,
+                                                            ),
+                                                            decoration:
+                                                                BoxDecoration(
+                                                              color: accentYellow
+                                                                  .withOpacity(
+                                                                      0.2),
+                                                              borderRadius:
+                                                                  BorderRadius
+                                                                      .circular(
+                                                                          8),
+                                                            ),
+                                                            child: Row(
+                                                              mainAxisSize:
+                                                                  MainAxisSize
+                                                                      .min,
+                                                              children: [
+                                                                Icon(
+                                                                  Icons
+                                                                      .calendar_today,
+                                                                  size: 12,
+                                                                  color: Colors
+                                                                      .orange
+                                                                      .shade800,
+                                                                ),
+                                                                SizedBox(
+                                                                    width: 4),
+                                                                Text(
+                                                                  DateFormat(
+                                                                          'dd/MM/yy')
+                                                                      .format((data['fechaAsignacion']
+                                                                              as Timestamp)
+                                                                          .toDate()),
+                                                                  style:
+                                                                      TextStyle(
+                                                                    fontSize:
+                                                                        11,
+                                                                    fontWeight:
+                                                                        FontWeight
+                                                                            .w600,
+                                                                    color: Colors
+                                                                        .orange
+                                                                        .shade800,
+                                                                  ),
+                                                                ),
+                                                              ],
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ],
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                              // Botón de desasignar
+                                              Material(
+                                                color: Colors.transparent,
+                                                child: InkWell(
+                                                  onTap: () async {
+                                                    HapticFeedback
+                                                        .mediumImpact();
+
+                                                    final confirm =
+                                                        await showDialog<bool>(
+                                                      context: context,
+                                                      builder: (context) =>
+                                                          AlertDialog(
+                                                        shape:
+                                                            RoundedRectangleBorder(
+                                                          borderRadius:
+                                                              BorderRadius
+                                                                  .circular(20),
+                                                        ),
+                                                        title: Row(
+                                                          children: [
+                                                            Icon(
+                                                              Icons
+                                                                  .warning_amber_rounded,
+                                                              color:
+                                                                  secondaryOrange,
+                                                            ),
+                                                            SizedBox(width: 12),
+                                                            Text(
+                                                              'Confirmar',
+                                                              style: TextStyle(
+                                                                fontSize: 18,
+                                                              ),
+                                                            ),
+                                                          ],
+                                                        ),
+                                                        content: Text(
+                                                          '¿Deseas desasignar a ${data['nombre']} ${data['apellido']}?',
+                                                          style: TextStyle(
+                                                              fontSize: 15),
+                                                        ),
+                                                        actions: [
+                                                          TextButton(
+                                                            onPressed: () =>
+                                                                Navigator.pop(
+                                                                    context,
+                                                                    false),
+                                                            child: Text(
+                                                              'Cancelar',
+                                                              style: TextStyle(
+                                                                  color: Colors
+                                                                      .grey),
+                                                            ),
+                                                          ),
+                                                          ElevatedButton(
+                                                            onPressed: () =>
+                                                                Navigator.pop(
+                                                                    context,
+                                                                    true),
+                                                            style:
+                                                                ElevatedButton
+                                                                    .styleFrom(
+                                                              backgroundColor:
+                                                                  secondaryOrange,
+                                                              shape:
+                                                                  RoundedRectangleBorder(
+                                                                borderRadius:
+                                                                    BorderRadius
+                                                                        .circular(
+                                                                            10),
+                                                              ),
+                                                            ),
+                                                            child: Text(
+                                                              'Desasignar',
+                                                              style: TextStyle(
+                                                                  color: Colors
+                                                                      .white),
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    );
+
+                                                    if (confirm == true) {
+                                                      try {
+                                                        await FirebaseFirestore
+                                                            .instance
+                                                            .collection(
+                                                                'registros')
+                                                            .doc(registro.id)
+                                                            .update({
+                                                          'timoteoAsignado':
+                                                              null,
+                                                          'nombreTimoteo': null,
+                                                          'fechaAsignacion':
+                                                              null,
+                                                        });
+
+                                                        if (context.mounted) {
+                                                          ScaffoldMessenger.of(
+                                                                  context)
+                                                              .showSnackBar(
+                                                            SnackBar(
+                                                              content: Row(
+                                                                children: [
+                                                                  Icon(
+                                                                    Icons
+                                                                        .check_circle,
+                                                                    color: Colors
+                                                                        .white,
+                                                                  ),
+                                                                  SizedBox(
+                                                                      width:
+                                                                          12),
+                                                                  Expanded(
+                                                                    child: Text(
+                                                                      'Desasignado exitosamente',
+                                                                      style:
+                                                                          TextStyle(
+                                                                        fontWeight:
+                                                                            FontWeight.w500,
+                                                                      ),
+                                                                    ),
+                                                                  ),
+                                                                ],
+                                                              ),
+                                                              backgroundColor:
+                                                                  Colors.green,
+                                                              behavior:
+                                                                  SnackBarBehavior
+                                                                      .floating,
+                                                              shape:
+                                                                  RoundedRectangleBorder(
+                                                                borderRadius:
+                                                                    BorderRadius
+                                                                        .circular(
+                                                                            12),
+                                                              ),
+                                                            ),
+                                                          );
+                                                        }
+                                                      } catch (e) {
+                                                        if (context.mounted) {
+                                                          ScaffoldMessenger.of(
+                                                                  context)
+                                                              .showSnackBar(
+                                                            SnackBar(
+                                                              content: Row(
+                                                                children: [
+                                                                  Icon(
+                                                                    Icons.error,
+                                                                    color: Colors
+                                                                        .white,
+                                                                  ),
+                                                                  SizedBox(
+                                                                      width:
+                                                                          12),
+                                                                  Expanded(
+                                                                    child: Text(
+                                                                      'Error: $e',
+                                                                      style:
+                                                                          TextStyle(
+                                                                        fontWeight:
+                                                                            FontWeight.w500,
+                                                                      ),
+                                                                    ),
+                                                                  ),
+                                                                ],
+                                                              ),
+                                                              backgroundColor:
+                                                                  secondaryOrange,
+                                                              behavior:
+                                                                  SnackBarBehavior
+                                                                      .floating,
+                                                              shape:
+                                                                  RoundedRectangleBorder(
+                                                                borderRadius:
+                                                                    BorderRadius
+                                                                        .circular(
+                                                                            12),
+                                                              ),
+                                                            ),
+                                                          );
+                                                        }
+                                                      }
+                                                    }
+                                                  },
+                                                  borderRadius:
+                                                      BorderRadius.circular(12),
+                                                  child: Container(
+                                                    padding: EdgeInsets.all(8),
+                                                    decoration: BoxDecoration(
+                                                      color: secondaryOrange
+                                                          .withOpacity(0.1),
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                              12),
+                                                      border: Border.all(
+                                                        color: secondaryOrange
+                                                            .withOpacity(0.3),
+                                                        width: 1,
+                                                      ),
+                                                    ),
+                                                    child: Icon(
+                                                      Icons
+                                                          .person_remove_rounded,
+                                                      color: secondaryOrange,
+                                                      size: 20,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ],
                     );
                   },
-                );
-              },
-            ),
+                ),
+              ),
+            ],
           ),
         ),
       );
@@ -3854,249 +4921,397 @@ class PersonasAsignadasTab extends StatelessWidget {
           content: Container(
             width: double.maxFinite,
             constraints: BoxConstraints(maxHeight: 400),
-            child: FutureBuilder<List<Map<String, dynamic>>>(
-              future: _obtenerTimoteosConConteo(timoteosSnapshot.docs),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        CircularProgressIndicator(
-                          valueColor:
-                              AlwaysStoppedAnimation<Color>(kPrimaryColor),
-                        ),
-                        SizedBox(height: 16),
-                        Text(
-                          'Cargando timoteos...',
-                          style: TextStyle(color: Colors.grey[600]),
-                        ),
-                      ],
+            // ============================================================
+            // ⚠️ FUNCIONALIDAD DE LÍMITE DE 10 PERSONAS - TEMPORALMENTE DESACTIVADA
+            // ============================================================
+            // TODO EL SIGUIENTE BLOQUE ESTÁ COMENTADO:
+            // - Valida que cada timoteo tenga máximo 10 personas asignadas
+            // - Muestra el contador "X/10 asignados"
+            // - Bloquea la asignación cuando se alcanza el límite
+            // - Ordena timoteos por cantidad de asignados
+            //
+            // Para reactivar: Descomenta desde aquí hasta el comentario de cierre
+            // y comenta el ListView.builder simple que está debajo.
+            // ============================================================
+            /*
+  child: FutureBuilder<List<Map<String, dynamic>>>(
+    future: _obtenerTimoteosConConteo(timoteosSnapshot.docs),
+    builder: (context, snapshot) {
+      if (snapshot.connectionState == ConnectionState.waiting) {
+        return Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(
+                valueColor:
+                    AlwaysStoppedAnimation<Color>(kPrimaryColor),
+              ),
+              SizedBox(height: 16),
+              Text(
+                'Cargando timoteos...',
+                style: TextStyle(color: Colors.grey[600]),
+              ),
+            ],
+          ),
+        );
+      }
+
+      if (snapshot.hasError) {
+        return Center(
+          child: Text(
+            'Error al cargar timoteos',
+            style: TextStyle(color: Colors.red),
+          ),
+        );
+      }
+
+      final timoteosConConteo = snapshot.data ?? [];
+
+      return ListView.builder(
+        shrinkWrap: true,
+        itemCount: timoteosConConteo.length,
+        itemBuilder: (context, index) {
+          final timoteoData = timoteosConConteo[index];
+          final timoteoDoc = timoteoData['doc'] as DocumentSnapshot;
+          final cantidadAsignados = timoteoData['cantidad'] as int;
+          final bool estaLleno = cantidadAsignados >= 10;
+
+          return Container(
+            margin: EdgeInsets.only(bottom: 8),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: estaLleno
+                    ? Colors.grey.withOpacity(0.3)
+                    : kPrimaryColor.withOpacity(0.3),
+                width: 1,
+              ),
+              color: estaLleno
+                  ? Colors.grey.withOpacity(0.05)
+                  : Colors.white,
+            ),
+            child: ListTile(
+              enabled: !estaLleno,
+              leading: CircleAvatar(
+                backgroundColor: estaLleno
+                    ? Colors.grey.withOpacity(0.3)
+                    : kPrimaryColor.withOpacity(0.1),
+                child: Text(
+                  '${timoteoDoc['nombre'][0]}${timoteoDoc['apellido'][0]}',
+                  style: TextStyle(
+                    color: estaLleno ? Colors.grey : kPrimaryColor,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              title: Text(
+                '${timoteoDoc['nombre']} ${timoteoDoc['apellido']}',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: estaLleno ? Colors.grey : Colors.black87,
+                ),
+              ),
+              subtitle: Row(
+                children: [
+                  Icon(
+                    Icons.people,
+                    size: 14,
+                    color: estaLleno ? Colors.grey : kPrimaryColor,
+                  ),
+                  SizedBox(width: 4),
+                  Text(
+                    '$cantidadAsignados/10 asignados',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color:
+                          estaLleno ? Colors.grey : Colors.grey[600],
+                      fontWeight: FontWeight.w500,
                     ),
-                  );
-                }
-
-                if (snapshot.hasError) {
-                  return Center(
-                    child: Text(
-                      'Error al cargar timoteos',
-                      style: TextStyle(color: Colors.red),
-                    ),
-                  );
-                }
-
-                final timoteosConConteo = snapshot.data ?? [];
-
-                return ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: timoteosConConteo.length,
-                  itemBuilder: (context, index) {
-                    final timoteoData = timoteosConConteo[index];
-                    final timoteoDoc = timoteoData['doc'] as DocumentSnapshot;
-                    final cantidadAsignados = timoteoData['cantidad'] as int;
-                    final bool estaLleno = cantidadAsignados >= 10;
-
-                    return Container(
-                      margin: EdgeInsets.only(bottom: 8),
+                  ),
+                  if (estaLleno) ...[
+                    SizedBox(width: 8),
+                    Container(
+                      padding: EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: estaLleno
-                              ? Colors.grey.withOpacity(0.3)
-                              : kPrimaryColor.withOpacity(0.3),
-                          width: 1,
-                        ),
-                        color: estaLleno
-                            ? Colors.grey.withOpacity(0.05)
-                            : Colors.white,
+                        color: Colors.grey.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(8),
                       ),
-                      child: ListTile(
-                        enabled: !estaLleno,
-                        leading: CircleAvatar(
-                          backgroundColor: estaLleno
-                              ? Colors.grey.withOpacity(0.3)
-                              : kPrimaryColor.withOpacity(0.1),
-                          child: Text(
-                            '${timoteoDoc['nombre'][0]}${timoteoDoc['apellido'][0]}',
-                            style: TextStyle(
-                              color: estaLleno ? Colors.grey : kPrimaryColor,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
+                      child: Text(
+                        'COMPLETO',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey[700],
                         ),
-                        title: Text(
-                          '${timoteoDoc['nombre']} ${timoteoDoc['apellido']}',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            color: estaLleno ? Colors.grey : Colors.black87,
-                          ),
-                        ),
-                        subtitle: Row(
-                          children: [
-                            Icon(
-                              Icons.people,
-                              size: 14,
-                              color: estaLleno ? Colors.grey : kPrimaryColor,
-                            ),
-                            SizedBox(width: 4),
-                            Text(
-                              '$cantidadAsignados/10 asignados',
-                              style: TextStyle(
-                                fontSize: 13,
-                                color:
-                                    estaLleno ? Colors.grey : Colors.grey[600],
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            if (estaLleno) ...[
-                              SizedBox(width: 8),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              trailing: estaLleno
+                  ? Icon(Icons.block, color: Colors.grey)
+                  : Icon(Icons.arrow_forward_ios,
+                      color: kPrimaryColor, size: 16),
+              onTap: estaLleno
+                  ? () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Row(
+                            children: [
                               Container(
-                                padding: EdgeInsets.symmetric(
-                                    horizontal: 6, vertical: 2),
+                                padding: EdgeInsets.all(4),
                                 decoration: BoxDecoration(
-                                  color: Colors.grey.withOpacity(0.2),
-                                  borderRadius: BorderRadius.circular(8),
+                                  color:
+                                      Colors.white.withOpacity(0.2),
+                                  borderRadius:
+                                      BorderRadius.circular(6),
                                 ),
+                                child: Icon(Icons.block,
+                                    color: Colors.white, size: 20),
+                              ),
+                              SizedBox(width: 12),
+                              Expanded(
                                 child: Text(
-                                  'COMPLETO',
+                                  'Un Timoteo solo puede tener 10 almas asignadas',
                                   style: TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.grey[700],
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w500,
                                   ),
                                 ),
                               ),
                             ],
-                          ],
+                          ),
+                          backgroundColor: kSecondaryColor,
+                          behavior: SnackBarBehavior.floating,
+                          shape: RoundedRectangleBorder(
+                              borderRadius:
+                                  BorderRadius.circular(12)),
+                          margin: EdgeInsets.all(16),
+                          duration: Duration(seconds: 3),
                         ),
-                        trailing: estaLleno
-                            ? Icon(Icons.block, color: Colors.grey)
-                            : Icon(Icons.arrow_forward_ios,
-                                color: kPrimaryColor, size: 16),
-                        onTap: estaLleno
-                            ? () {
-                                // Mostrar mensaje de límite alcanzado
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Row(
-                                      children: [
-                                        Container(
-                                          padding: EdgeInsets.all(4),
-                                          decoration: BoxDecoration(
-                                            color:
-                                                Colors.white.withOpacity(0.2),
-                                            borderRadius:
-                                                BorderRadius.circular(6),
-                                          ),
-                                          child: Icon(Icons.block,
-                                              color: Colors.white, size: 20),
-                                        ),
-                                        SizedBox(width: 12),
-                                        Expanded(
-                                          child: Text(
-                                            'Un Timoteo solo puede tener 10 almas asignadas',
-                                            style: TextStyle(
-                                              color: Colors.white,
-                                              fontWeight: FontWeight.w500,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    backgroundColor: kSecondaryColor,
-                                    behavior: SnackBarBehavior.floating,
-                                    shape: RoundedRectangleBorder(
-                                        borderRadius:
-                                            BorderRadius.circular(12)),
-                                    margin: EdgeInsets.all(16),
-                                    duration: Duration(seconds: 3),
-                                  ),
-                                );
-                              }
-                            : () async {
-                                try {
-                                  await FirebaseFirestore.instance
-                                      .collection('registros')
-                                      .doc(registro.id)
-                                      .update({
-                                    'timoteoAsignado': timoteoDoc.id,
-                                    'nombreTimoteo':
-                                        '${timoteoDoc['nombre']} ${timoteoDoc['apellido']}',
-                                    'fechaAsignacion':
-                                        FieldValue.serverTimestamp(),
-                                  });
+                      );
+                    }
+                  : () async {
+                      try {
+                        await FirebaseFirestore.instance
+                            .collection('registros')
+                            .doc(registro.id)
+                            .update({
+                          'timoteoAsignado': timoteoDoc.id,
+                          'nombreTimoteo':
+                              '${timoteoDoc['nombre']} ${timoteoDoc['apellido']}',
+                          'fechaAsignacion':
+                              FieldValue.serverTimestamp(),
+                        });
 
-                                  Navigator.pop(context);
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Row(
-                                        children: [
-                                          Container(
-                                            padding: EdgeInsets.all(2),
-                                            decoration: BoxDecoration(
-                                              color:
-                                                  Colors.white.withOpacity(0.2),
-                                              shape: BoxShape.circle,
-                                            ),
-                                            child: Icon(Icons.check,
-                                                color: Colors.white, size: 20),
-                                          ),
-                                          SizedBox(width: 12),
-                                          Expanded(
-                                            child: Text(
-                                              'Registro asignado exitosamente a ${timoteoDoc['nombre']}',
-                                              style: TextStyle(
-                                                color: Colors.white,
-                                                fontWeight: FontWeight.w500,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      backgroundColor: kPrimaryColor,
-                                      behavior: SnackBarBehavior.floating,
-                                      shape: RoundedRectangleBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(12)),
-                                      margin: EdgeInsets.all(16),
-                                      duration: Duration(seconds: 3),
+                        Navigator.pop(context);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Row(
+                              children: [
+                                Container(
+                                  padding: EdgeInsets.all(2),
+                                  decoration: BoxDecoration(
+                                    color:
+                                        Colors.white.withOpacity(0.2),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(Icons.check,
+                                      color: Colors.white, size: 20),
+                                ),
+                                SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    'Registro asignado exitosamente a ${timoteoDoc['nombre']}',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w500,
                                     ),
-                                  );
-                                } catch (e) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Row(
-                                        children: [
-                                          Icon(Icons.error,
-                                              color: Colors.white, size: 20),
-                                          SizedBox(width: 12),
-                                          Expanded(
-                                            child: Text(
-                                              'Error al asignar el registro: $e',
-                                              style: TextStyle(
-                                                color: Colors.white,
-                                                fontWeight: FontWeight.w500,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      backgroundColor: kSecondaryColor,
-                                      behavior: SnackBarBehavior.floating,
-                                      shape: RoundedRectangleBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(12)),
-                                      margin: EdgeInsets.all(16),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            backgroundColor: kPrimaryColor,
+                            behavior: SnackBarBehavior.floating,
+                            shape: RoundedRectangleBorder(
+                                borderRadius:
+                                    BorderRadius.circular(12)),
+                            margin: EdgeInsets.all(16),
+                            duration: Duration(seconds: 3),
+                          ),
+                        );
+                      } catch (e) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Row(
+                              children: [
+                                Icon(Icons.error,
+                                    color: Colors.white, size: 20),
+                                SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    'Error al asignar el registro: $e',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w500,
                                     ),
-                                  );
-                                }
-                              },
+                                  ),
+                                ),
+                              ],
+                            ),
+                            backgroundColor: kSecondaryColor,
+                            behavior: SnackBarBehavior.floating,
+                            shape: RoundedRectangleBorder(
+                                borderRadius:
+                                    BorderRadius.circular(12)),
+                            margin: EdgeInsets.all(16),
+                          ),
+                        );
+                      }
+                    },
+            ),
+          );
+        },
+      );
+    },
+  ),
+  */
+            // ============================================================
+            // FIN DEL BLOQUE COMENTADO - LÍMITE DE 10 PERSONAS
+            // ============================================================
+
+            // ============================================================
+            // VERSIÓN TEMPORAL SIN LÍMITE (ACTIVA)
+            // ============================================================
+            // Esta versión simple permite asignar personas sin restricciones.
+            // Comentar este bloque cuando se reactive el límite arriba.
+            // ============================================================
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: timoteosSnapshot.docs.length,
+              itemBuilder: (context, index) {
+                final timoteoDoc = timoteosSnapshot.docs[index];
+
+                return Container(
+                  margin: EdgeInsets.only(bottom: 8),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: kPrimaryColor.withOpacity(0.3),
+                      width: 1,
+                    ),
+                    color: Colors.white,
+                  ),
+                  child: ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: kPrimaryColor.withOpacity(0.1),
+                      child: Text(
+                        '${timoteoDoc['nombre'][0]}${timoteoDoc['apellido'][0]}',
+                        style: TextStyle(
+                          color: kPrimaryColor,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                    );
-                  },
+                    ),
+                    title: Text(
+                      '${timoteoDoc['nombre']} ${timoteoDoc['apellido']}',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    subtitle: Text(
+                      'Disponible para asignación',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey[600],
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    trailing: Icon(Icons.arrow_forward_ios,
+                        color: kPrimaryColor, size: 16),
+                    onTap: () async {
+                      try {
+                        await FirebaseFirestore.instance
+                            .collection('registros')
+                            .doc(registro.id)
+                            .update({
+                          'timoteoAsignado': timoteoDoc.id,
+                          'nombreTimoteo':
+                              '${timoteoDoc['nombre']} ${timoteoDoc['apellido']}',
+                          'fechaAsignacion': FieldValue.serverTimestamp(),
+                        });
+
+                        Navigator.pop(context);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Row(
+                              children: [
+                                Container(
+                                  padding: EdgeInsets.all(2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.2),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(Icons.check,
+                                      color: Colors.white, size: 20),
+                                ),
+                                SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    'Registro asignado exitosamente a ${timoteoDoc['nombre']}',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            backgroundColor: kPrimaryColor,
+                            behavior: SnackBarBehavior.floating,
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
+                            margin: EdgeInsets.all(16),
+                            duration: Duration(seconds: 3),
+                          ),
+                        );
+                      } catch (e) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Row(
+                              children: [
+                                Icon(Icons.error,
+                                    color: Colors.white, size: 20),
+                                SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    'Error al asignar el registro: $e',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            backgroundColor: kSecondaryColor,
+                            behavior: SnackBarBehavior.floating,
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
+                            margin: EdgeInsets.all(16),
+                          ),
+                        );
+                      }
+                    },
+                  ),
                 );
               },
             ),
+            // ============================================================
+            // FIN VERSIÓN TEMPORAL SIN LÍMITE
+            // ============================================================
           ),
           actions: [
             TextButton(
@@ -4120,30 +5335,44 @@ class PersonasAsignadasTab extends StatelessWidget {
     );
   }
 
-// Método auxiliar para obtener timoteos con su conteo de registros asignados
-  Future<List<Map<String, dynamic>>> _obtenerTimoteosConConteo(
-      List<QueryDocumentSnapshot> timoteosDocs) async {
-    List<Map<String, dynamic>> resultado = [];
+// ============================================================
+// ⚠️ MÉTODO AUXILIAR PARA LÍMITE - TEMPORALMENTE DESACTIVADO
+// ============================================================
+// Este método:
+// - Cuenta cuántas personas tiene asignadas cada timoteo
+// - Ordena los timoteos por cantidad de asignados (menos a más)
+// - Retorna la información para mostrar "X/10 asignados"
+//
+// Para reactivar: Descomenta todo el método
+// ============================================================
+/*
+Future<List<Map<String, dynamic>>> _obtenerTimoteosConConteo(
+    List<QueryDocumentSnapshot> timoteosDocs) async {
+  List<Map<String, dynamic>> resultado = [];
 
-    for (var timoteoDoc in timoteosDocs) {
-      // Contar cuántos registros tiene asignados este timoteo
-      final registrosAsignados = await FirebaseFirestore.instance
-          .collection('registros')
-          .where('timoteoAsignado', isEqualTo: timoteoDoc.id)
-          .get();
+  for (var timoteoDoc in timoteosDocs) {
+    // Contar cuántos registros tiene asignados este timoteo
+    final registrosAsignados = await FirebaseFirestore.instance
+        .collection('registros')
+        .where('timoteoAsignado', isEqualTo: timoteoDoc.id)
+        .get();
 
-      resultado.add({
-        'doc': timoteoDoc,
-        'cantidad': registrosAsignados.docs.length,
-      });
-    }
-
-    // Ordenar: primero los que tienen menos asignados
-    resultado
-        .sort((a, b) => (a['cantidad'] as int).compareTo(b['cantidad'] as int));
-
-    return resultado;
+    resultado.add({
+      'doc': timoteoDoc,
+      'cantidad': registrosAsignados.docs.length,
+    });
   }
+
+  // Ordenar: primero los que tienen menos asignados
+  resultado
+      .sort((a, b) => (a['cantidad'] as int).compareTo(b['cantidad'] as int));
+
+  return resultado;
+}
+*/
+// ============================================================
+// FIN MÉTODO AUXILIAR COMENTADO
+// ============================================================
 
 //VER DETALLES DEL REGISTRO
   void _mostrarDetallesRegistro(

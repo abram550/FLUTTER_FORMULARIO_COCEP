@@ -164,6 +164,7 @@ class _FormularioPageState extends State<FormularioPage> {
 
   Future<void> _enviarFormulario() async {
     if (_formKey.currentState!.validate()) {
+      // Validación de servicio (obligatorio para todos)
       if (_servicioSeleccionado == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -176,6 +177,7 @@ class _FormularioPageState extends State<FormularioPage> {
         return;
       }
 
+      // Validación de tipo de persona (obligatorio para todos)
       if (_tipoPersona == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -188,83 +190,166 @@ class _FormularioPageState extends State<FormularioPage> {
         return;
       }
 
-      if (_sexo == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Por favor, seleccione su género',
-                style: GoogleFonts.poppins()),
-            backgroundColor: Colors.red,
-          ),
-        );
-        await _scrollToFirstError();
-        return;
+      // ✅ VALIDACIONES SOLO PARA "NUEVO"
+      if (_tipoPersona == 'Nuevo') {
+        if (_sexo == null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Por favor, seleccione su género',
+                  style: GoogleFonts.poppins()),
+              backgroundColor: Colors.red,
+            ),
+          );
+          await _scrollToFirstError();
+          return;
+        }
+
+        if (_estadoCivil == null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Por favor, seleccione su estado civil',
+                  style: GoogleFonts.poppins()),
+              backgroundColor: Colors.red,
+            ),
+          );
+          await _scrollToFirstError();
+          return;
+        }
+
+        if (_tieneHijos == null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Por favor, indique si tiene hijos',
+                  style: GoogleFonts.poppins()),
+              backgroundColor: Colors.red,
+            ),
+          );
+          await _scrollToFirstError();
+          return;
+        }
       }
 
-      if (_estadoCivil == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Por favor, seleccione su estado civil',
-                style: GoogleFonts.poppins()),
-            backgroundColor: Colors.red,
-          ),
-        );
-        await _scrollToFirstError();
-        return;
-      }
+      // ✅ VALIDACIONES SOLO PARA "VISITA"
+      if (_tipoPersona == 'Visita') {
+        if (_motivoVisita == null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Por favor, seleccione el motivo de su visita',
+                  style: GoogleFonts.poppins()),
+              backgroundColor: Colors.red,
+            ),
+          );
+          await _scrollToFirstError();
+          return;
+        }
 
-      if (_tieneHijos == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Por favor, indique si tiene hijos',
-                style: GoogleFonts.poppins()),
-            backgroundColor: Colors.red,
-          ),
-        );
-        await _scrollToFirstError();
-        return;
+        if (_peticionesSeleccionadas.isEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                  'Por favor, seleccione al menos una petición de oración',
+                  style: GoogleFonts.poppins()),
+              backgroundColor: Colors.red,
+            ),
+          );
+          await _scrollToFirstError();
+          return;
+        }
+
+        if (_consolidadorSeleccionado == null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Por favor, seleccione un consolidador',
+                  style: GoogleFonts.poppins()),
+              backgroundColor: Colors.red,
+            ),
+          );
+          await _scrollToFirstError();
+          return;
+        }
       }
 
       setState(() => _isLoading = true);
 
       try {
-        final registro = Registro(
-          nombre: _nombreController.text,
-          apellido: _apellidoController.text,
-          telefono: _telefonoController.text,
-          servicio: _servicioSeleccionado ?? '',
-          tipo: _tipoPersona,
-          fecha: DateTime.now(),
-          motivo: _tipoPersona == 'Visita'
-              ? (_motivoVisita == 'Otro'
-                  ? _otroMotivoController.text
-                  : _motivoVisita)
-              : null,
-          peticiones: _peticionesSeleccionadas.map((peticion) {
-            if (peticion == 'Otro') {
-              return _otroPeticionController.text;
-            }
-            return peticion;
-          }).join(', '),
-          consolidador: (_consolidadorSeleccionado == 'Otro'
-              ? _otroConsolidadorController.text
-              : _consolidadorSeleccionado),
-          sexo: _sexo ?? '',
-          edad: _edad ?? 0,
-          direccion: _direccionController.text,
-          barrio: _barrioController.text,
-          estadoCivil: _estadoCivil ?? '',
-          nombrePareja: _nombreParejaController.text,
-          ocupaciones: _ocupacionesSeleccionadas.map((ocupacion) {
-            if (ocupacion == 'Otro') {
-              return _descripcionOcupacionController.text;
-            }
-            return ocupacion;
-          }).toList(),
-          descripcionOcupacion: _descripcionOcupacionController.text,
-          tieneHijos: _tieneHijos ?? false,
-          referenciaInvitacion: _referenciaInvitacionController.text,
-          observaciones: _observacionesController.text,
-        );
+        // 🔥 CAMBIO CRÍTICO: Crear registro según el tipo
+        final Registro registro;
+
+        if (_tipoPersona == 'Visita') {
+          // ✅ VISITA: Solo enviar campos llenados
+          registro = Registro(
+            nombre: _nombreController.text,
+            apellido: _apellidoController.text,
+            telefono: _telefonoController.text,
+            servicio: _servicioSeleccionado!,
+            tipo: _tipoPersona,
+            fecha: DateTime.now(),
+            motivo: _motivoVisita == 'Otro'
+                ? _otroMotivoController.text
+                : _motivoVisita,
+            peticiones: _peticionesSeleccionadas.map((peticion) {
+              if (peticion == 'Otro') {
+                return _otroPeticionController.text;
+              }
+              return peticion;
+            }).join(', '),
+            consolidador: _consolidadorSeleccionado == 'Otro'
+                ? _otroConsolidadorController.text
+                : _consolidadorSeleccionado,
+            // ⚠️ CAMPOS REQUERIDOS POR EL MODELO (con valores mínimos)
+            sexo: '', // Campo requerido pero vacío para visitas
+            edad: 0, // Campo requerido pero 0 para visitas
+            direccion: '', // Campo requerido pero vacío
+            barrio: '', // Campo requerido pero vacío
+            estadoCivil: '', // Campo requerido pero vacío
+            ocupaciones: [], // Lista vacía
+            descripcionOcupacion: '', // Campo requerido pero vacío
+            tieneHijos: false, // Valor por defecto
+            referenciaInvitacion: '', // Campo requerido pero vacío
+          );
+        } else {
+          // ✅ NUEVO: Enviar todos los campos llenados
+          registro = Registro(
+            nombre: _nombreController.text,
+            apellido: _apellidoController.text,
+            telefono: _telefonoController.text,
+            servicio: _servicioSeleccionado!,
+            tipo: _tipoPersona,
+            fecha: DateTime.now(),
+            sexo: _sexo!,
+            edad: _edad ?? 0,
+            direccion: _direccionController.text,
+            barrio: _barrioController.text,
+            estadoCivil: _estadoCivil!,
+            nombrePareja:
+                (_estadoCivil == 'Casado(a)' || _estadoCivil == 'Unión Libre')
+                    ? _nombreParejaController.text
+                    : null,
+            ocupaciones: _ocupacionesSeleccionadas.map((ocupacion) {
+              if (ocupacion == 'Otro') {
+                return _descripcionOcupacionController.text;
+              }
+              return ocupacion;
+            }).toList(),
+            descripcionOcupacion: _descripcionOcupacionController.text,
+            tieneHijos: _tieneHijos!,
+            referenciaInvitacion: _referenciaInvitacionController.text,
+            observaciones: _observacionesController.text.isEmpty
+                ? null
+                : _observacionesController.text,
+            peticiones: _peticionesSeleccionadas.isEmpty
+                ? null
+                : _peticionesSeleccionadas.map((peticion) {
+                    if (peticion == 'Otro') {
+                      return _otroPeticionController.text;
+                    }
+                    return peticion;
+                  }).join(', '),
+            consolidador: _consolidadorSeleccionado == 'Otro'
+                ? _otroConsolidadorController.text
+                : _consolidadorSeleccionado,
+          );
+        }
 
         var connectivityResult = await Connectivity().checkConnectivity();
 

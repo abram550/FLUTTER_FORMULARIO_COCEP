@@ -95,35 +95,86 @@ class Registro {
   }
 
   Map<String, dynamic> toFirestoreMap() {
-    return {
+    // 🔥 MAPA BASE CON CAMPOS SIEMPRE REQUERIDOS
+    final Map<String, dynamic> data = {
       'nombre': nombre,
       'apellido': apellido,
       'telefono': telefono,
       'servicio': servicio,
-      'tipo': tipo,
       'fecha': fecha,
-      'motivo': motivo,
-      'peticiones': peticiones,
-      'consolidador': consolidador,
-      'sexo': sexo,
-      'edad': edad,
-      'direccion': direccion,
-      'barrio': barrio,
-      'estadoCivil': estadoCivil,
-      'nombrePareja': nombrePareja,
-      'ocupaciones': ocupaciones,
-      'descripcionOcupacion': descripcionOcupacion,
-      'tieneHijos': tieneHijos,
-      'referenciaInvitacion': referenciaInvitacion,
-      'observaciones': observaciones,
-      'tribuAsignada': tribuAsignada,
-      'estadoFonovisita': estadoFonovisita,
-      'observaciones2': observaciones2,
-      // NUEVO CAMPO EN toFirestoreMap
-      'fechaNacimiento': fechaNacimiento,
-      'coordinadorAsignado': coordinadorAsignado,
       'activo': activo,
     };
+
+    // ✅ AGREGAR CAMPOS SOLO SI TIENEN VALOR
+
+    // Tipo de registro
+    if (tipo != null && tipo!.isNotEmpty) {
+      data['tipo'] = tipo;
+    }
+
+    // Campos específicos para VISITA
+    if (tipo?.toLowerCase() == 'visita') {
+      if (motivo != null && motivo!.isNotEmpty) {
+        data['motivo'] = motivo;
+      }
+      if (peticiones != null && peticiones!.isNotEmpty) {
+        data['peticiones'] = peticiones;
+      }
+      if (consolidador != null && consolidador!.isNotEmpty) {
+        data['consolidador'] = consolidador;
+      }
+    }
+
+    // Campos específicos para NUEVO
+    if (tipo?.toLowerCase() == 'nuevo') {
+      // Campos obligatorios para nuevos
+      if (sexo.isNotEmpty) data['sexo'] = sexo;
+      if (edad > 0) data['edad'] = edad;
+      if (direccion.isNotEmpty) data['direccion'] = direccion;
+      if (barrio.isNotEmpty) data['barrio'] = barrio;
+      if (estadoCivil.isNotEmpty) data['estadoCivil'] = estadoCivil;
+      if (ocupaciones.isNotEmpty) data['ocupaciones'] = ocupaciones;
+      if (descripcionOcupacion.isNotEmpty) {
+        data['descripcionOcupacion'] = descripcionOcupacion;
+      }
+      data['tieneHijos'] = tieneHijos;
+      if (referenciaInvitacion.isNotEmpty) {
+        data['referenciaInvitacion'] = referenciaInvitacion;
+      }
+
+      // Campos opcionales para nuevos
+      if (nombrePareja != null && nombrePareja!.isNotEmpty) {
+        data['nombrePareja'] = nombrePareja;
+      }
+      if (observaciones != null && observaciones!.isNotEmpty) {
+        data['observaciones'] = observaciones;
+      }
+      if (peticiones != null && peticiones!.isNotEmpty) {
+        data['peticiones'] = peticiones;
+      }
+      if (consolidador != null && consolidador!.isNotEmpty) {
+        data['consolidador'] = consolidador;
+      }
+    }
+
+    // Campos administrativos (solo si existen)
+    if (tribuAsignada != null && tribuAsignada!.isNotEmpty) {
+      data['tribuAsignada'] = tribuAsignada;
+    }
+    if (estadoFonovisita != null && estadoFonovisita!.isNotEmpty) {
+      data['estadoFonovisita'] = estadoFonovisita;
+    }
+    if (observaciones2 != null && observaciones2!.isNotEmpty) {
+      data['observaciones2'] = observaciones2;
+    }
+    if (fechaNacimiento != null) {
+      data['fechaNacimiento'] = fechaNacimiento;
+    }
+    if (coordinadorAsignado != null && coordinadorAsignado!.isNotEmpty) {
+      data['coordinadorAsignado'] = coordinadorAsignado;
+    }
+
+    return data;
   }
 
   factory Registro.fromLocalMap(Map<String, dynamic> map) {
