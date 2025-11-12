@@ -4093,15 +4093,65 @@ Future<void> _viewAssignedRegistros(
     context: context,
     barrierDismissible: true,
     builder: (context) {
+      // ============================================================
+      // RESPONSIVIDAD: Detectar tamaño de pantalla
+      // ============================================================
+      final screenWidth = MediaQuery.of(context).size.width;
+      final screenHeight = MediaQuery.of(context).size.height;
+      final isSmallScreen = screenWidth < 600;
+      final isMediumScreen = screenWidth >= 600 && screenWidth < 1024;
+      final isLargeScreen = screenWidth >= 1024;
+
+      // Calcular dimensiones responsivas
+      double dialogWidth;
+      double dialogHeight;
+      double horizontalPadding;
+      double avatarRadius;
+      double titleFontSize;
+      double contentPadding;
+
+      if (isSmallScreen) {
+        // Móviles pequeños (< 600px)
+        dialogWidth = screenWidth * 0.95;
+        dialogHeight = screenHeight * 0.85;
+        horizontalPadding = 16;
+        avatarRadius = 24;
+        titleFontSize = 18;
+        contentPadding = 12;
+      } else if (isMediumScreen) {
+        // Tablets (600px - 1024px)
+        dialogWidth = screenWidth * 0.75;
+        dialogHeight = screenHeight * 0.80;
+        horizontalPadding = 24;
+        avatarRadius = 28;
+        titleFontSize = 20;
+        contentPadding = 16;
+      } else {
+        // Desktop/Web (> 1024px)
+        dialogWidth = 800; // Ancho fijo para desktop
+        dialogHeight = screenHeight * 0.85;
+        horizontalPadding = 32;
+        avatarRadius = 32;
+        titleFontSize = 22;
+        contentPadding = 20;
+      }
+
       return Dialog(
         backgroundColor: Colors.transparent,
-        insetPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+        insetPadding: EdgeInsets.symmetric(
+          horizontal: isSmallScreen ? 16 : 32,
+          vertical: isSmallScreen ? 24 : 40,
+        ),
         child: Container(
-          width: MediaQuery.of(context).size.width * 0.95,
-          height: MediaQuery.of(context).size.height * 0.85,
+          width: dialogWidth,
+          height: dialogHeight,
+          constraints: BoxConstraints(
+            maxWidth: isLargeScreen ? 900 : double.infinity,
+            maxHeight: screenHeight * 0.90,
+          ),
           decoration: BoxDecoration(
             color: backgroundGrey,
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(isSmallScreen ? 20 : 24),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withOpacity(0.2),
@@ -4113,10 +4163,10 @@ Future<void> _viewAssignedRegistros(
           child: Column(
             children: [
               // ============================================================
-              // ENCABEZADO MEJORADO CON GRADIENTE
+              // ENCABEZADO RESPONSIVO
               // ============================================================
               Container(
-                padding: EdgeInsets.all(20),
+                padding: EdgeInsets.all(contentPadding),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
@@ -4127,8 +4177,8 @@ Future<void> _viewAssignedRegistros(
                     ],
                   ),
                   borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(24),
-                    topRight: Radius.circular(24),
+                    topLeft: Radius.circular(isSmallScreen ? 20 : 24),
+                    topRight: Radius.circular(isSmallScreen ? 20 : 24),
                   ),
                   boxShadow: [
                     BoxShadow(
@@ -4140,11 +4190,11 @@ Future<void> _viewAssignedRegistros(
                 ),
                 child: Row(
                   children: [
-                    // Avatar del timoteo con animación
+                    // Avatar responsivo
                     Hero(
                       tag: 'timoteo_${timoteo.id}',
                       child: Container(
-                        padding: EdgeInsets.all(3),
+                        padding: EdgeInsets.all(isSmallScreen ? 2 : 3),
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           border: Border.all(
@@ -4160,20 +4210,20 @@ Future<void> _viewAssignedRegistros(
                           ],
                         ),
                         child: CircleAvatar(
-                          radius: 28,
+                          radius: avatarRadius,
                           backgroundColor: accentYellow,
                           child: Text(
                             '${timoteo['nombre'][0]}${timoteo['apellido'][0]}',
                             style: TextStyle(
                               color: primaryTeal,
                               fontWeight: FontWeight.bold,
-                              fontSize: 20,
+                              fontSize: avatarRadius * 0.7,
                             ),
                           ),
                         ),
                       ),
                     ),
-                    SizedBox(width: 16),
+                    SizedBox(width: isSmallScreen ? 12 : 16),
                     // Información del timoteo
                     Expanded(
                       child: Column(
@@ -4184,14 +4234,18 @@ Future<void> _viewAssignedRegistros(
                             style: TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.bold,
-                              fontSize: 20,
+                              fontSize: titleFontSize,
                               letterSpacing: 0.5,
                             ),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
                           ),
                           SizedBox(height: 4),
                           Container(
                             padding: EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 4),
+                              horizontal: isSmallScreen ? 8 : 10,
+                              vertical: 4,
+                            ),
                             decoration: BoxDecoration(
                               color: Colors.white.withOpacity(0.2),
                               borderRadius: BorderRadius.circular(12),
@@ -4202,15 +4256,18 @@ Future<void> _viewAssignedRegistros(
                                 Icon(
                                   Icons.assignment_ind,
                                   color: Colors.white,
-                                  size: 14,
+                                  size: isSmallScreen ? 12 : 14,
                                 ),
                                 SizedBox(width: 6),
-                                Text(
-                                  'Registros Asignados',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w500,
+                                Flexible(
+                                  child: Text(
+                                    'Registros Asignados',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: isSmallScreen ? 11 : 12,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
                               ],
@@ -4219,14 +4276,14 @@ Future<void> _viewAssignedRegistros(
                         ],
                       ),
                     ),
-                    // Botón de cerrar mejorado
+                    // Botón de cerrar responsivo
                     Material(
                       color: Colors.transparent,
                       child: InkWell(
                         onTap: () => Navigator.pop(context),
                         borderRadius: BorderRadius.circular(12),
                         child: Container(
-                          padding: EdgeInsets.all(8),
+                          padding: EdgeInsets.all(isSmallScreen ? 6 : 8),
                           decoration: BoxDecoration(
                             color: Colors.white.withOpacity(0.2),
                             borderRadius: BorderRadius.circular(12),
@@ -4238,7 +4295,7 @@ Future<void> _viewAssignedRegistros(
                           child: Icon(
                             Icons.close_rounded,
                             color: Colors.white,
-                            size: 24,
+                            size: isSmallScreen ? 20 : 24,
                           ),
                         ),
                       ),
@@ -4248,7 +4305,7 @@ Future<void> _viewAssignedRegistros(
               ),
 
               // ============================================================
-              // CONTENIDO CON STREAMBUILDER
+              // CONTENIDO RESPONSIVO CON STREAMBUILDER
               // ============================================================
               Expanded(
                 child: StreamBuilder(
@@ -4263,7 +4320,7 @@ Future<void> _viewAssignedRegistros(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Container(
-                              padding: EdgeInsets.all(20),
+                              padding: EdgeInsets.all(isSmallScreen ? 16 : 20),
                               decoration: BoxDecoration(
                                 color: Colors.white,
                                 shape: BoxShape.circle,
@@ -4286,7 +4343,7 @@ Future<void> _viewAssignedRegistros(
                               'Cargando registros...',
                               style: TextStyle(
                                 color: primaryTeal,
-                                fontSize: 16,
+                                fontSize: isSmallScreen ? 14 : 16,
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
@@ -4297,47 +4354,52 @@ Future<void> _viewAssignedRegistros(
 
                     if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
                       return Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Container(
-                              padding: EdgeInsets.all(24),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                shape: BoxShape.circle,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.grey.withOpacity(0.1),
-                                    blurRadius: 12,
-                                    offset: Offset(0, 6),
-                                  ),
-                                ],
+                        child: Padding(
+                          padding: EdgeInsets.all(horizontalPadding),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Container(
+                                padding:
+                                    EdgeInsets.all(isSmallScreen ? 20 : 24),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.grey.withOpacity(0.1),
+                                      blurRadius: 12,
+                                      offset: Offset(0, 6),
+                                    ),
+                                  ],
+                                ),
+                                child: Icon(
+                                  Icons.inbox_outlined,
+                                  size: isSmallScreen ? 48 : 64,
+                                  color: Colors.grey.shade400,
+                                ),
                               ),
-                              child: Icon(
-                                Icons.inbox_outlined,
-                                size: 64,
-                                color: Colors.grey.shade400,
+                              SizedBox(height: 20),
+                              Text(
+                                'Sin registros asignados',
+                                style: TextStyle(
+                                  fontSize: isSmallScreen ? 16 : 18,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.grey.shade700,
+                                ),
+                                textAlign: TextAlign.center,
                               ),
-                            ),
-                            SizedBox(height: 20),
-                            Text(
-                              'Sin registros asignados',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.grey.shade700,
+                              SizedBox(height: 8),
+                              Text(
+                                'Este timoteo aún no tiene personas asignadas',
+                                style: TextStyle(
+                                  fontSize: isSmallScreen ? 13 : 14,
+                                  color: Colors.grey.shade500,
+                                ),
+                                textAlign: TextAlign.center,
                               ),
-                            ),
-                            SizedBox(height: 8),
-                            Text(
-                              'Este timoteo aún no tiene personas asignadas',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.grey.shade500,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       );
                     }
@@ -4346,11 +4408,13 @@ Future<void> _viewAssignedRegistros(
 
                     return Column(
                       children: [
-                        // Badge con contador
+                        // Badge con contador responsivo
                         Container(
-                          margin: EdgeInsets.all(16),
+                          margin: EdgeInsets.all(horizontalPadding),
                           padding: EdgeInsets.symmetric(
-                              horizontal: 20, vertical: 12),
+                            horizontal: isSmallScreen ? 16 : 20,
+                            vertical: isSmallScreen ? 10 : 12,
+                          ),
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
                               colors: [
@@ -4370,459 +4434,60 @@ Future<void> _viewAssignedRegistros(
                               Icon(
                                 Icons.people_alt_rounded,
                                 color: primaryTeal,
-                                size: 24,
+                                size: isSmallScreen ? 20 : 24,
                               ),
-                              SizedBox(width: 12),
-                              Text(
-                                'Total: ',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: Colors.grey.shade700,
-                                  fontWeight: FontWeight.w500,
+                              SizedBox(width: isSmallScreen ? 8 : 12),
+                              Flexible(
+                                child: Text(
+                                  'Total: ',
+                                  style: TextStyle(
+                                    fontSize: isSmallScreen ? 14 : 16,
+                                    color: Colors.grey.shade700,
+                                    fontWeight: FontWeight.w500,
+                                  ),
                                 ),
                               ),
                               Text(
                                 '${registros.length}',
                                 style: TextStyle(
-                                  fontSize: 20,
+                                  fontSize: isSmallScreen ? 18 : 20,
                                   fontWeight: FontWeight.bold,
                                   color: primaryTeal,
                                 ),
                               ),
-                              Text(
-                                ' persona${registros.length != 1 ? 's' : ''}',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: Colors.grey.shade700,
-                                  fontWeight: FontWeight.w500,
+                              Flexible(
+                                child: Text(
+                                  ' persona${registros.length != 1 ? 's' : ''}',
+                                  style: TextStyle(
+                                    fontSize: isSmallScreen ? 14 : 16,
+                                    color: Colors.grey.shade700,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                             ],
                           ),
                         ),
 
-                        // Lista de registros
+                        // Lista de registros responsiva (Grid en pantallas grandes)
                         Expanded(
-                          child: ListView.builder(
-                            padding: EdgeInsets.symmetric(horizontal: 16),
-                            itemCount: registros.length,
-                            itemBuilder: (context, index) {
-                              final registro = registros[index];
-                              final data =
-                                  registro.data() as Map<String, dynamic>;
-
-                              return Container(
-                                margin: EdgeInsets.only(bottom: 12),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(16),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withOpacity(0.05),
-                                      blurRadius: 8,
-                                      offset: Offset(0, 4),
-                                    ),
-                                  ],
+                          child: isLargeScreen
+                              ? _buildGridView(
+                                  registros,
+                                  primaryTeal,
+                                  secondaryOrange,
+                                  accentYellow,
+                                  horizontalPadding,
+                                )
+                              : _buildListView(
+                                  registros,
+                                  primaryTeal,
+                                  secondaryOrange,
+                                  accentYellow,
+                                  horizontalPadding,
+                                  isSmallScreen,
                                 ),
-                                child: Material(
-                                  color: Colors.transparent,
-                                  child: InkWell(
-                                    borderRadius: BorderRadius.circular(16),
-                                    onTap: () {
-                                      // Animación de tap
-                                      HapticFeedback.lightImpact();
-                                    },
-                                    child: Padding(
-                                      padding: EdgeInsets.all(16),
-                                      child: Column(
-                                        children: [
-                                          Row(
-                                            children: [
-                                              // Avatar con gradiente
-                                              Container(
-                                                decoration: BoxDecoration(
-                                                  gradient: LinearGradient(
-                                                    begin: Alignment.topLeft,
-                                                    end: Alignment.bottomRight,
-                                                    colors: [
-                                                      primaryTeal,
-                                                      primaryTeal
-                                                          .withOpacity(0.7),
-                                                    ],
-                                                  ),
-                                                  shape: BoxShape.circle,
-                                                  boxShadow: [
-                                                    BoxShadow(
-                                                      color: primaryTeal
-                                                          .withOpacity(0.3),
-                                                      blurRadius: 8,
-                                                      offset: Offset(0, 4),
-                                                    ),
-                                                  ],
-                                                ),
-                                                child: CircleAvatar(
-                                                  radius: 24,
-                                                  backgroundColor:
-                                                      Colors.transparent,
-                                                  child: Text(
-                                                    '${data['nombre']?[0] ?? '?'}${data['apellido']?[0] ?? '?'}',
-                                                    style: TextStyle(
-                                                      color: Colors.white,
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                      fontSize: 16,
-                                                    ),
-                                                  ),
-                                                ),
-                                              ),
-                                              SizedBox(width: 16),
-                                              // Información
-                                              Expanded(
-                                                child: Column(
-                                                  crossAxisAlignment:
-                                                      CrossAxisAlignment.start,
-                                                  children: [
-                                                    Text(
-                                                      '${data['nombre'] ?? 'Sin nombre'} ${data['apellido'] ?? ''}',
-                                                      style: TextStyle(
-                                                        fontWeight:
-                                                            FontWeight.bold,
-                                                        fontSize: 16,
-                                                        color: Colors.black87,
-                                                      ),
-                                                    ),
-                                                    SizedBox(height: 6),
-                                                    Row(
-                                                      children: [
-                                                        Container(
-                                                          padding: EdgeInsets
-                                                              .symmetric(
-                                                            horizontal: 8,
-                                                            vertical: 4,
-                                                          ),
-                                                          decoration:
-                                                              BoxDecoration(
-                                                            color: primaryTeal
-                                                                .withOpacity(
-                                                                    0.1),
-                                                            borderRadius:
-                                                                BorderRadius
-                                                                    .circular(
-                                                                        8),
-                                                          ),
-                                                          child: Row(
-                                                            mainAxisSize:
-                                                                MainAxisSize
-                                                                    .min,
-                                                            children: [
-                                                              Icon(
-                                                                Icons.phone,
-                                                                size: 12,
-                                                                color:
-                                                                    primaryTeal,
-                                                              ),
-                                                              SizedBox(
-                                                                  width: 4),
-                                                              Text(
-                                                                data['telefono'] ??
-                                                                    'Sin teléfono',
-                                                                style:
-                                                                    TextStyle(
-                                                                  fontSize: 12,
-                                                                  fontWeight:
-                                                                      FontWeight
-                                                                          .w600,
-                                                                  color:
-                                                                      primaryTeal,
-                                                                ),
-                                                              ),
-                                                            ],
-                                                          ),
-                                                        ),
-                                                        if (data[
-                                                                'fechaAsignacion'] !=
-                                                            null) ...[
-                                                          SizedBox(width: 8),
-                                                          Container(
-                                                            padding: EdgeInsets
-                                                                .symmetric(
-                                                              horizontal: 8,
-                                                              vertical: 4,
-                                                            ),
-                                                            decoration:
-                                                                BoxDecoration(
-                                                              color: accentYellow
-                                                                  .withOpacity(
-                                                                      0.2),
-                                                              borderRadius:
-                                                                  BorderRadius
-                                                                      .circular(
-                                                                          8),
-                                                            ),
-                                                            child: Row(
-                                                              mainAxisSize:
-                                                                  MainAxisSize
-                                                                      .min,
-                                                              children: [
-                                                                Icon(
-                                                                  Icons
-                                                                      .calendar_today,
-                                                                  size: 12,
-                                                                  color: Colors
-                                                                      .orange
-                                                                      .shade800,
-                                                                ),
-                                                                SizedBox(
-                                                                    width: 4),
-                                                                Text(
-                                                                  DateFormat(
-                                                                          'dd/MM/yy')
-                                                                      .format((data['fechaAsignacion']
-                                                                              as Timestamp)
-                                                                          .toDate()),
-                                                                  style:
-                                                                      TextStyle(
-                                                                    fontSize:
-                                                                        11,
-                                                                    fontWeight:
-                                                                        FontWeight
-                                                                            .w600,
-                                                                    color: Colors
-                                                                        .orange
-                                                                        .shade800,
-                                                                  ),
-                                                                ),
-                                                              ],
-                                                            ),
-                                                          ),
-                                                        ],
-                                                      ],
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                              // Botón de desasignar
-                                              Material(
-                                                color: Colors.transparent,
-                                                child: InkWell(
-                                                  onTap: () async {
-                                                    HapticFeedback
-                                                        .mediumImpact();
-
-                                                    final confirm =
-                                                        await showDialog<bool>(
-                                                      context: context,
-                                                      builder: (context) =>
-                                                          AlertDialog(
-                                                        shape:
-                                                            RoundedRectangleBorder(
-                                                          borderRadius:
-                                                              BorderRadius
-                                                                  .circular(20),
-                                                        ),
-                                                        title: Row(
-                                                          children: [
-                                                            Icon(
-                                                              Icons
-                                                                  .warning_amber_rounded,
-                                                              color:
-                                                                  secondaryOrange,
-                                                            ),
-                                                            SizedBox(width: 12),
-                                                            Text(
-                                                              'Confirmar',
-                                                              style: TextStyle(
-                                                                fontSize: 18,
-                                                              ),
-                                                            ),
-                                                          ],
-                                                        ),
-                                                        content: Text(
-                                                          '¿Deseas desasignar a ${data['nombre']} ${data['apellido']}?',
-                                                          style: TextStyle(
-                                                              fontSize: 15),
-                                                        ),
-                                                        actions: [
-                                                          TextButton(
-                                                            onPressed: () =>
-                                                                Navigator.pop(
-                                                                    context,
-                                                                    false),
-                                                            child: Text(
-                                                              'Cancelar',
-                                                              style: TextStyle(
-                                                                  color: Colors
-                                                                      .grey),
-                                                            ),
-                                                          ),
-                                                          ElevatedButton(
-                                                            onPressed: () =>
-                                                                Navigator.pop(
-                                                                    context,
-                                                                    true),
-                                                            style:
-                                                                ElevatedButton
-                                                                    .styleFrom(
-                                                              backgroundColor:
-                                                                  secondaryOrange,
-                                                              shape:
-                                                                  RoundedRectangleBorder(
-                                                                borderRadius:
-                                                                    BorderRadius
-                                                                        .circular(
-                                                                            10),
-                                                              ),
-                                                            ),
-                                                            child: Text(
-                                                              'Desasignar',
-                                                              style: TextStyle(
-                                                                  color: Colors
-                                                                      .white),
-                                                            ),
-                                                          ),
-                                                        ],
-                                                      ),
-                                                    );
-
-                                                    if (confirm == true) {
-                                                      try {
-                                                        await FirebaseFirestore
-                                                            .instance
-                                                            .collection(
-                                                                'registros')
-                                                            .doc(registro.id)
-                                                            .update({
-                                                          'timoteoAsignado':
-                                                              null,
-                                                          'nombreTimoteo': null,
-                                                          'fechaAsignacion':
-                                                              null,
-                                                        });
-
-                                                        if (context.mounted) {
-                                                          ScaffoldMessenger.of(
-                                                                  context)
-                                                              .showSnackBar(
-                                                            SnackBar(
-                                                              content: Row(
-                                                                children: [
-                                                                  Icon(
-                                                                    Icons
-                                                                        .check_circle,
-                                                                    color: Colors
-                                                                        .white,
-                                                                  ),
-                                                                  SizedBox(
-                                                                      width:
-                                                                          12),
-                                                                  Expanded(
-                                                                    child: Text(
-                                                                      'Desasignado exitosamente',
-                                                                      style:
-                                                                          TextStyle(
-                                                                        fontWeight:
-                                                                            FontWeight.w500,
-                                                                      ),
-                                                                    ),
-                                                                  ),
-                                                                ],
-                                                              ),
-                                                              backgroundColor:
-                                                                  Colors.green,
-                                                              behavior:
-                                                                  SnackBarBehavior
-                                                                      .floating,
-                                                              shape:
-                                                                  RoundedRectangleBorder(
-                                                                borderRadius:
-                                                                    BorderRadius
-                                                                        .circular(
-                                                                            12),
-                                                              ),
-                                                            ),
-                                                          );
-                                                        }
-                                                      } catch (e) {
-                                                        if (context.mounted) {
-                                                          ScaffoldMessenger.of(
-                                                                  context)
-                                                              .showSnackBar(
-                                                            SnackBar(
-                                                              content: Row(
-                                                                children: [
-                                                                  Icon(
-                                                                    Icons.error,
-                                                                    color: Colors
-                                                                        .white,
-                                                                  ),
-                                                                  SizedBox(
-                                                                      width:
-                                                                          12),
-                                                                  Expanded(
-                                                                    child: Text(
-                                                                      'Error: $e',
-                                                                      style:
-                                                                          TextStyle(
-                                                                        fontWeight:
-                                                                            FontWeight.w500,
-                                                                      ),
-                                                                    ),
-                                                                  ),
-                                                                ],
-                                                              ),
-                                                              backgroundColor:
-                                                                  secondaryOrange,
-                                                              behavior:
-                                                                  SnackBarBehavior
-                                                                      .floating,
-                                                              shape:
-                                                                  RoundedRectangleBorder(
-                                                                borderRadius:
-                                                                    BorderRadius
-                                                                        .circular(
-                                                                            12),
-                                                              ),
-                                                            ),
-                                                          );
-                                                        }
-                                                      }
-                                                    }
-                                                  },
-                                                  borderRadius:
-                                                      BorderRadius.circular(12),
-                                                  child: Container(
-                                                    padding: EdgeInsets.all(8),
-                                                    decoration: BoxDecoration(
-                                                      color: secondaryOrange
-                                                          .withOpacity(0.1),
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                              12),
-                                                      border: Border.all(
-                                                        color: secondaryOrange
-                                                            .withOpacity(0.3),
-                                                        width: 1,
-                                                      ),
-                                                    ),
-                                                    child: Icon(
-                                                      Icons
-                                                          .person_remove_rounded,
-                                                      color: secondaryOrange,
-                                                      size: 20,
-                                                    ),
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
                         ),
                       ],
                     );
@@ -4834,6 +4499,370 @@ Future<void> _viewAssignedRegistros(
         ),
       );
     },
+  );
+}
+
+// ============================================================
+// WIDGET AUXILIAR: ListView para móviles/tablets
+// ============================================================
+Widget _buildListView(
+  List<QueryDocumentSnapshot> registros,
+  Color primaryTeal,
+  Color secondaryOrange,
+  Color accentYellow,
+  double horizontalPadding,
+  bool isSmallScreen,
+) {
+  return ListView.builder(
+    padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+    itemCount: registros.length,
+    itemBuilder: (context, index) {
+      return _buildRegistroCard(
+        context,
+        registros[index],
+        primaryTeal,
+        secondaryOrange,
+        accentYellow,
+        isSmallScreen,
+      );
+    },
+  );
+}
+
+// ============================================================
+// WIDGET AUXILIAR: GridView para desktop
+// ============================================================
+Widget _buildGridView(
+  List<QueryDocumentSnapshot> registros,
+  Color primaryTeal,
+  Color secondaryOrange,
+  Color accentYellow,
+  double horizontalPadding,
+) {
+  return GridView.builder(
+    padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+      crossAxisCount: 2, // 2 columnas en desktop
+      childAspectRatio: 3.5, // Ajustar proporción
+      crossAxisSpacing: 16,
+      mainAxisSpacing: 12,
+    ),
+    itemCount: registros.length,
+    itemBuilder: (context, index) {
+      return _buildRegistroCard(
+        context,
+        registros[index],
+        primaryTeal,
+        secondaryOrange,
+        accentYellow,
+        false, // No es pantalla pequeña
+      );
+    },
+  );
+}
+
+// ============================================================
+// WIDGET AUXILIAR: Card de registro (reutilizable)
+// ============================================================
+Widget _buildRegistroCard(
+  BuildContext context,
+  QueryDocumentSnapshot registro,
+  Color primaryTeal,
+  Color secondaryOrange,
+  Color accentYellow,
+  bool isSmallScreen,
+) {
+  final data = registro.data() as Map<String, dynamic>;
+
+  return Container(
+    margin: EdgeInsets.only(bottom: 12),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(16),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.05),
+          blurRadius: 8,
+          offset: Offset(0, 4),
+        ),
+      ],
+    ),
+    child: Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () {
+          HapticFeedback.lightImpact();
+        },
+        child: Padding(
+          padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
+          child: Row(
+            children: [
+              // Avatar con gradiente
+              Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      primaryTeal,
+                      primaryTeal.withOpacity(0.7),
+                    ],
+                  ),
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: primaryTeal.withOpacity(0.3),
+                      blurRadius: 8,
+                      offset: Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: CircleAvatar(
+                  radius: isSmallScreen ? 20 : 24,
+                  backgroundColor: Colors.transparent,
+                  child: Text(
+                    '${data['nombre']?[0] ?? '?'}${data['apellido']?[0] ?? '?'}',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: isSmallScreen ? 14 : 16,
+                    ),
+                  ),
+                ),
+              ),
+              SizedBox(width: isSmallScreen ? 12 : 16),
+              // Información
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${data['nombre'] ?? 'Sin nombre'} ${data['apellido'] ?? ''}',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: isSmallScreen ? 14 : 16,
+                        color: Colors.black87,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                    ),
+                    SizedBox(height: 6),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 4,
+                      children: [
+                        Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: isSmallScreen ? 6 : 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: primaryTeal.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.phone,
+                                size: isSmallScreen ? 10 : 12,
+                                color: primaryTeal,
+                              ),
+                              SizedBox(width: 4),
+                              Text(
+                                data['telefono'] ?? 'Sin teléfono',
+                                style: TextStyle(
+                                  fontSize: isSmallScreen ? 11 : 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: primaryTeal,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (data['fechaAsignacion'] != null)
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: isSmallScreen ? 6 : 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: accentYellow.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.calendar_today,
+                                  size: isSmallScreen ? 10 : 12,
+                                  color: Colors.orange.shade800,
+                                ),
+                                SizedBox(width: 4),
+                                Text(
+                                  DateFormat('dd/MM/yy').format(
+                                      (data['fechaAsignacion'] as Timestamp)
+                                          .toDate()),
+                                  style: TextStyle(
+                                    fontSize: isSmallScreen ? 10 : 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.orange.shade800,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              // Botón de desasignar
+              Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () async {
+                    HapticFeedback.mediumImpact();
+
+                    final confirm = await showDialog<bool>(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        title: Row(
+                          children: [
+                            Icon(
+                              Icons.warning_amber_rounded,
+                              color: secondaryOrange,
+                            ),
+                            SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                'Confirmar',
+                                style: TextStyle(
+                                    fontSize: isSmallScreen ? 16 : 18),
+                              ),
+                            ),
+                          ],
+                        ),
+                        content: Text(
+                          '¿Deseas desasignar a ${data['nombre']} ${data['apellido']}?',
+                          style: TextStyle(fontSize: isSmallScreen ? 14 : 15),
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context, false),
+                            child: Text(
+                              'Cancelar',
+                              style: TextStyle(color: Colors.grey),
+                            ),
+                          ),
+                          ElevatedButton(
+                            onPressed: () => Navigator.pop(context, true),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: secondaryOrange,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                            child: Text(
+                              'Desasignar',
+                              style: TextStyle(color: Colors.white),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+
+                    if (confirm == true) {
+                      try {
+                        await FirebaseFirestore.instance
+                            .collection('registros')
+                            .doc(registro.id)
+                            .update({
+                          'timoteoAsignado': null,
+                          'nombreTimoteo': null,
+                          'fechaAsignacion': null,
+                        });
+
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Row(
+                                children: [
+                                  Icon(Icons.check_circle, color: Colors.white),
+                                  SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      'Desasignado exitosamente',
+                                      style: TextStyle(
+                                          fontWeight: FontWeight.w500),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              backgroundColor: Colors.green,
+                              behavior: SnackBarBehavior.floating,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                          );
+                        }
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Row(
+                                children: [
+                                  Icon(Icons.error, color: Colors.white),
+                                  SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      'Error: $e',
+                                      style: TextStyle(
+                                          fontWeight: FontWeight.w500),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              backgroundColor: secondaryOrange,
+                              behavior: SnackBarBehavior.floating,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                          );
+                        }
+                      }
+                    }
+                  },
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    padding: EdgeInsets.all(isSmallScreen ? 6 : 8),
+                    decoration: BoxDecoration(
+                      color: secondaryOrange.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: secondaryOrange.withOpacity(0.3),
+                        width: 1,
+                      ),
+                    ),
+                    child: Icon(
+                      Icons.person_remove_rounded,
+                      color: secondaryOrange,
+                      size: isSmallScreen ? 18 : 20,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
   );
 }
 
