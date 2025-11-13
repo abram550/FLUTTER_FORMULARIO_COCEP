@@ -434,97 +434,163 @@ class PerfilTab extends StatelessWidget {
     final TextEditingController _passwordController =
         TextEditingController(text: datos['contrasena']);
 
+    // Variable para controlar la visibilidad de la contraseña
+    bool _obscurePassword = true;
+
     await showDialog(
       context: context,
       builder: (context) {
-        return AlertDialog(
-          backgroundColor: kCardColor,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          title: Row(
-            children: [
-              Icon(
-                Icons.edit,
-                color: kSecondaryColor,
-                size: 24,
+        return StatefulBuilder(
+          builder: (stateContext, setState) {
+            return AlertDialog(
+              backgroundColor: kCardColor,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
               ),
-              const SizedBox(width: 8),
-              const Text(
-                'Editar Perfil',
-                style: TextStyle(
-                  color: kPrimaryColor,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 20,
-                ),
-              ),
-            ],
-          ),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _buildTextField(_nameController, 'Nombre', Icons.person),
-                const SizedBox(height: 16),
-                _buildTextField(
-                    _lastNameController, 'Apellido', Icons.person_outline),
-                const SizedBox(height: 16),
-                _buildTextField(
-                    _userController, 'Usuario', Icons.account_circle),
-                const SizedBox(height: 16),
-                _buildTextField(_passwordController, 'Contraseña', Icons.lock,
-                    isPassword: true),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text(
-                'Cancelar',
-                style: TextStyle(color: Colors.grey.shade600),
-              ),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: kSecondaryColor,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(30),
-                ),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                elevation: 2,
-              ),
-              onPressed: () async {
-                await FirebaseFirestore.instance
-                    .collection('timoteos')
-                    .doc(timoteoId)
-                    .update({
-                  'nombre': _nameController.text,
-                  'apellido': _lastNameController.text,
-                  'usuario': _userController.text,
-                  'contrasena': _passwordController.text,
-                });
-                Navigator.pop(context);
-                // Mostrar SnackBar de confirmación
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Perfil actualizado correctamente'),
-                    backgroundColor: kPrimaryColor,
-                    behavior: SnackBarBehavior.floating,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
+              title: Row(
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: kSecondaryColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      Icons.edit_rounded,
+                      color: kSecondaryColor,
+                      size: 24,
                     ),
                   ),
-                );
-              },
-              child: const Text(
-                'Guardar',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  const SizedBox(width: 12),
+                  const Text(
+                    'Editar Perfil',
+                    style: TextStyle(
+                      color: kPrimaryColor,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 20,
+                    ),
+                  ),
+                ],
               ),
-            ),
-          ],
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildTextField(_nameController, 'Nombre', Icons.person),
+                    const SizedBox(height: 16),
+                    _buildTextField(
+                        _lastNameController, 'Apellido', Icons.person_outline),
+                    const SizedBox(height: 16),
+                    _buildTextField(
+                        _userController, 'Usuario', Icons.account_circle),
+                    const SizedBox(height: 16),
+                    // Campo de contraseña con visibilidad toggle
+                    TextField(
+                      controller: _passwordController,
+                      obscureText: _obscurePassword,
+                      style: TextStyle(fontSize: 16),
+                      decoration: InputDecoration(
+                        labelText: 'Contraseña',
+                        labelStyle: TextStyle(color: Colors.grey.shade700),
+                        prefixIcon: Container(
+                          padding: EdgeInsets.all(8),
+                          child: Icon(Icons.lock_outline, color: kPrimaryColor),
+                        ),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _obscurePassword
+                                ? Icons.visibility_outlined
+                                : Icons.visibility_off_outlined,
+                            color: kPrimaryColor,
+                            size: 22,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _obscurePassword = !_obscurePassword;
+                            });
+                          },
+                          tooltip: _obscurePassword
+                              ? 'Mostrar contraseña'
+                              : 'Ocultar contraseña',
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(15),
+                          borderSide: BorderSide(color: Colors.grey.shade400),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(15),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(15),
+                          borderSide:
+                              BorderSide(color: kPrimaryColor, width: 2),
+                        ),
+                        filled: true,
+                        fillColor: Colors.grey.shade50,
+                        contentPadding: EdgeInsets.symmetric(vertical: 16),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: TextButton.styleFrom(
+                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10)),
+                  ),
+                  child: Text(
+                    'Cancelar',
+                    style: TextStyle(
+                      color: Colors.grey.shade600,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    await FirebaseFirestore.instance
+                        .collection('timoteos')
+                        .doc(timoteoId)
+                        .update({
+                      'nombre': _nameController.text,
+                      'apellido': _lastNameController.text,
+                      'usuario': _userController.text,
+                      'contrasena': _passwordController.text,
+                    });
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Perfil actualizado correctamente'),
+                        backgroundColor: kPrimaryColor,
+                        behavior: SnackBarBehavior.floating,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: kSecondaryColor,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 24, vertical: 12),
+                    elevation: 2,
+                  ),
+                  child: const Text(
+                    'Guardar',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            );
+          },
         );
       },
     );
@@ -905,6 +971,8 @@ class JovenesAsignadosTab extends StatelessWidget {
     }
   }
 
+  /// Muestra un diálogo profesional para actualizar el estado del proceso del discípulo
+  /// Utiliza los colores del tema y un diseño limpio y moderno
   Future<void> _actualizarEstado(
       BuildContext context, DocumentSnapshot registro) async {
     // Obtener el estado actual del proceso de manera segura
@@ -921,53 +989,391 @@ class JovenesAsignadosTab extends StatelessWidget {
 
     await showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Actualizar Estado del Proceso'),
-        content: SingleChildScrollView(
+      barrierDismissible: false,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+        ),
+        elevation: 8,
+        child: Container(
+          constraints: BoxConstraints(
+            maxWidth: 500,
+            maxHeight: MediaQuery.of(context).size.height * 0.7,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextField(
-                controller: estadoController,
-                maxLines: 3,
-                decoration: InputDecoration(
-                  labelText: 'Estado actual del proceso',
-                  hintText:
-                      'Describe el estado actual del joven en la iglesia...',
-                  border: OutlineInputBorder(),
+              // ===== ENCABEZADO CON GRADIENTE =====
+              // Header profesional con los colores del tema
+              Container(
+                padding: EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Color(0xFF147B7C),
+                      Color(0xFF147B7C).withOpacity(0.8),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(24),
+                    topRight: Radius.circular(24),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Color(0xFF147B7C).withOpacity(0.3),
+                      blurRadius: 8,
+                      offset: Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    // Ícono decorativo
+                    Container(
+                      padding: EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.3),
+                          width: 2,
+                        ),
+                      ),
+                      child: Icon(
+                        Icons.edit_note_rounded,
+                        color: Colors.white,
+                        size: 28,
+                      ),
+                    ),
+                    SizedBox(width: 16),
+
+                    // Título
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Actualizar Estado',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 20,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                          SizedBox(height: 4),
+                          Text(
+                            'Estado del proceso del discípulo',
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.9),
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // ===== CONTENIDO DEL FORMULARIO =====
+              Flexible(
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.all(24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Etiqueta del campo
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.timeline_rounded,
+                            color: Color(0xFF147B7C),
+                            size: 20,
+                          ),
+                          SizedBox(width: 8),
+                          Text(
+                            'Estado actual del proceso',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF147B7C),
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 12),
+
+                      // Campo de texto profesional
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: Color(0xFF147B7C).withOpacity(0.3),
+                            width: 1.5,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Color(0xFF147B7C).withOpacity(0.1),
+                              blurRadius: 8,
+                              offset: Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: TextField(
+                          controller: estadoController,
+                          maxLines: 5,
+                          maxLength: 500,
+                          style: TextStyle(
+                            fontSize: 15,
+                            color: Colors.black87,
+                            height: 1.5,
+                          ),
+                          decoration: InputDecoration(
+                            hintText:
+                                'Describe el estado actual del joven en la iglesia...\n\nEjemplo: Asistiendo regularmente, participando en actividades juveniles...',
+                            hintStyle: TextStyle(
+                              color: Colors.grey[400],
+                              fontSize: 14,
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: BorderSide.none,
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: BorderSide.none,
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: BorderSide(
+                                color: Color(0xFF147B7C),
+                                width: 2,
+                              ),
+                            ),
+                            filled: true,
+                            fillColor: Colors.grey[50],
+                            contentPadding: EdgeInsets.all(16),
+                            counterStyle: TextStyle(
+                              color: Colors.grey[600],
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      SizedBox(height: 16),
+
+                      // Nota informativa
+                      Container(
+                        padding: EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Color(0xFFFFB74D).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: Color(0xFFFFB74D).withOpacity(0.3),
+                            width: 1,
+                          ),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(
+                              Icons.info_outline,
+                              color: Color(0xFFFFB74D),
+                              size: 20,
+                            ),
+                            SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Esta información ayuda a dar seguimiento al progreso del discípulo en su caminar espiritual.',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.grey[700],
+                                  height: 1.4,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // ===== BOTONES DE ACCIÓN =====
+              Container(
+                padding: EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 10,
+                      offset: Offset(0, -4),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    // Botón Cancelar
+                    Expanded(
+                      child: OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.grey[700],
+                          side: BorderSide(
+                            color: Colors.grey[300]!,
+                            width: 1.5,
+                          ),
+                          padding: EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        onPressed: () => Navigator.pop(context),
+                        child: Text(
+                          'Cancelar',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    SizedBox(width: 12),
+
+                    // Botón Guardar
+                    Expanded(
+                      flex: 2,
+                      child: ElevatedButton.icon(
+                        icon: Icon(Icons.check_circle_outline, size: 20),
+                        label: Text(
+                          'Guardar Cambios',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Color(0xFF147B7C),
+                          foregroundColor: Colors.white,
+                          padding: EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: 2,
+                        ),
+                        onPressed: () async {
+                          // Validar que haya contenido
+                          if (estadoController.text.trim().isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Row(
+                                  children: [
+                                    Icon(Icons.warning, color: Colors.white),
+                                    SizedBox(width: 12),
+                                    Expanded(
+                                      child:
+                                          Text('Por favor, ingresa un estado'),
+                                    ),
+                                  ],
+                                ),
+                                backgroundColor: Color(0xFFFF4B2B),
+                                behavior: SnackBarBehavior.floating,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                            );
+                            return;
+                          }
+
+                          try {
+                            // Guardar en Firestore
+                            await FirebaseFirestore.instance
+                                .collection('registros')
+                                .doc(registro.id)
+                                .set({
+                              'estadoProceso': estadoController.text.trim(),
+                              'fechaActualizacionEstado':
+                                  FieldValue.serverTimestamp(),
+                            }, SetOptions(merge: true));
+
+                            Navigator.pop(context);
+
+                            // Mostrar confirmación exitosa
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Row(
+                                  children: [
+                                    Container(
+                                      padding: EdgeInsets.all(4),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withOpacity(0.2),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Icon(
+                                        Icons.check,
+                                        color: Colors.white,
+                                        size: 20,
+                                      ),
+                                    ),
+                                    SizedBox(width: 12),
+                                    Expanded(
+                                      child: Text(
+                                        'Estado actualizado correctamente',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                backgroundColor: Color(0xFF147B7C),
+                                behavior: SnackBarBehavior.floating,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                duration: Duration(seconds: 3),
+                              ),
+                            );
+                          } catch (e) {
+                            print('Error al actualizar el estado: $e');
+
+                            // Mostrar error
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Row(
+                                  children: [
+                                    Icon(Icons.error, color: Colors.white),
+                                    SizedBox(width: 12),
+                                    Expanded(
+                                      child: Text('Error: ${e.toString()}'),
+                                    ),
+                                  ],
+                                ),
+                                backgroundColor: Color(0xFFFF4B2B),
+                                behavior: SnackBarBehavior.floating,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                            );
+                          }
+                        },
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Cancelar'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              try {
-                await FirebaseFirestore.instance
-                    .collection('registros')
-                    .doc(registro.id)
-                    .set({
-                  'estadoProceso': estadoController.text.trim(),
-                  'fechaActualizacionEstado': FieldValue.serverTimestamp(),
-                }, SetOptions(merge: true));
-
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                    content: Text('Estado actualizado correctamente')));
-              } catch (e) {
-                print('Error al actualizar el estado: $e');
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                    content: Text('Error al actualizar el estado: $e')));
-              }
-            },
-            child: Text('Guardar'),
-          ),
-        ],
       ),
     );
   }
@@ -2026,13 +2432,20 @@ class JovenesAsignadosTab extends StatelessWidget {
                               estadoAlerta == 'pendiente' ||
                                   estadoAlerta == 'en_revision';
 
+                          // ===== TARJETA REDUCIDA Y MÁS COMPACTA =====
+// Se reduce el margen inferior de 16 a 12 para hacer las tarjetas más pequeñas
+// Se mantiene la elevación pero con bordes más sutiles
                           return Container(
-                            margin: EdgeInsets.only(bottom: 16),
+                            margin: EdgeInsets.only(
+                                bottom: 12), // Reducido de 16 a 12
                             child: Card(
-                              elevation: 6,
-                              shadowColor: Colors.grey.withOpacity(0.3),
+                              elevation:
+                                  4, // Reducido de 6 a 4 para sombra más sutil
+                              shadowColor: Colors.grey
+                                  .withOpacity(0.2), // Sombra más suave
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(20),
+                                borderRadius: BorderRadius.circular(
+                                    16), // Reducido de 20 a 16
                               ),
                               child: Container(
                                 decoration: BoxDecoration(
@@ -2058,7 +2471,9 @@ class JovenesAsignadosTab extends StatelessWidget {
                                       : null,
                                 ),
                                 child: ExpansionTile(
-                                  tilePadding: EdgeInsets.all(20),
+                                  // Padding reducido para hacer la tarjeta más compacta
+                                  tilePadding: EdgeInsets.symmetric(
+                                      horizontal: 16, vertical: 12), // Reducido
                                   childrenPadding: EdgeInsets.all(0),
                                   backgroundColor: Colors.transparent,
                                   collapsedBackgroundColor: Colors.transparent,
@@ -2070,9 +2485,10 @@ class JovenesAsignadosTab extends StatelessWidget {
                                   ),
                                   leading: Stack(
                                     children: [
+                                      // Avatar más pequeño para reducir altura de la tarjeta
                                       Container(
-                                        width: 50,
-                                        height: 50,
+                                        width: 44, // Reducido de 50 a 44
+                                        height: 44, // Reducido de 50 a 44
                                         decoration: BoxDecoration(
                                           gradient: LinearGradient(
                                             colors: [
@@ -2100,7 +2516,7 @@ class JovenesAsignadosTab extends StatelessWidget {
                                             style: TextStyle(
                                               color: Colors.white,
                                               fontWeight: FontWeight.bold,
-                                              fontSize: 18,
+                                              fontSize: 16,
                                             ),
                                           ),
                                         ),
@@ -2132,7 +2548,7 @@ class JovenesAsignadosTab extends StatelessWidget {
                                   title: Text(
                                     '$nombre $apellido',
                                     style: TextStyle(
-                                      fontSize: 18,
+                                      fontSize: 16,
                                       fontWeight: FontWeight.bold,
                                       color: Color(0xFF147B7C),
                                     ),
@@ -2143,17 +2559,19 @@ class JovenesAsignadosTab extends StatelessWidget {
                                       spacing: 8,
                                       runSpacing: 4,
                                       children: [
+                                        // Badge más compacto para reducir espacio
                                         Container(
                                           padding: EdgeInsets.symmetric(
-                                              horizontal: 8, vertical: 4),
+                                              horizontal: 6,
+                                              vertical: 3), // Reducido
                                           decoration: BoxDecoration(
                                             color: faltas >= 3
                                                 ? Color(0xFFFF4B2B)
                                                     .withOpacity(0.1)
                                                 : Color(0xFF147B7C)
                                                     .withOpacity(0.1),
-                                            borderRadius:
-                                                BorderRadius.circular(12),
+                                            borderRadius: BorderRadius.circular(
+                                                10), // Reducido de 12 a 10
                                           ),
                                           child: Row(
                                             mainAxisSize: MainAxisSize.min,
@@ -2162,12 +2580,14 @@ class JovenesAsignadosTab extends StatelessWidget {
                                                 faltas >= 3
                                                     ? Icons.warning
                                                     : Icons.check_circle,
-                                                size: 14,
+                                                size: 12, // Reducido de 14 a 12
                                                 color: faltas >= 3
                                                     ? Color(0xFFFF4B2B)
                                                     : Color(0xFF147B7C),
                                               ),
-                                              SizedBox(width: 4),
+                                              SizedBox(
+                                                  width:
+                                                      3), // Reducido de 4 a 3
                                               Text(
                                                 'Faltas: $faltas',
                                                 style: TextStyle(
@@ -2175,56 +2595,68 @@ class JovenesAsignadosTab extends StatelessWidget {
                                                       ? Color(0xFFFF4B2B)
                                                       : Color(0xFF147B7C),
                                                   fontWeight: FontWeight.w600,
-                                                  fontSize: 12,
+                                                  fontSize:
+                                                      11, // Reducido de 12 a 11
                                                 ),
                                               ),
                                             ],
                                           ),
                                         ),
+                                        // Badge de alerta más compacto
                                         if (!visible)
                                           Container(
                                             padding: EdgeInsets.symmetric(
-                                                horizontal: 8, vertical: 4),
+                                                horizontal: 6,
+                                                vertical: 3), // Reducido
                                             decoration: BoxDecoration(
                                               color: Color(0xFFFF4B2B)
                                                   .withOpacity(0.1),
                                               borderRadius:
-                                                  BorderRadius.circular(12),
+                                                  BorderRadius.circular(
+                                                      10), // Reducido
                                             ),
                                             child: Text(
                                               'ALERTA ACTIVA',
                                               style: TextStyle(
                                                 color: Color(0xFFFF4B2B),
                                                 fontWeight: FontWeight.bold,
-                                                fontSize: 10,
+                                                fontSize:
+                                                    9, // Reducido de 10 a 9
                                               ),
                                             ),
                                           ),
                                         // === INDICADOR DE BLOQUEO ===
+                                        // Badge de bloqueado más compacto
                                         if (tieneBloqueoPendiente)
                                           Container(
                                             padding: EdgeInsets.symmetric(
-                                                horizontal: 8, vertical: 4),
+                                                horizontal: 6,
+                                                vertical: 3), // Reducido
                                             decoration: BoxDecoration(
                                               color: Colors.grey.shade300,
                                               borderRadius:
-                                                  BorderRadius.circular(12),
+                                                  BorderRadius.circular(
+                                                      10), // Reducido
                                             ),
                                             child: Row(
                                               mainAxisSize: MainAxisSize.min,
                                               children: [
                                                 Icon(
                                                   Icons.block,
-                                                  size: 14,
+                                                  size:
+                                                      12, // Reducido de 14 a 12
                                                   color: Colors.grey.shade700,
                                                 ),
-                                                SizedBox(width: 4),
+                                                SizedBox(
+                                                    width:
+                                                        3), // Reducido de 4 a 3
                                                 Text(
                                                   'BLOQUEADO',
                                                   style: TextStyle(
                                                     color: Colors.grey.shade700,
                                                     fontWeight: FontWeight.bold,
-                                                    fontSize: 10,
+                                                    fontSize:
+                                                        9, // Reducido de 10 a 9
                                                   ),
                                                 ),
                                               ],
@@ -2272,6 +2704,8 @@ class JovenesAsignadosTab extends StatelessWidget {
     );
   }
 
+  /// Construye el contenido expandido de cada tarjeta de discípulo
+  /// Muestra información resumida sin dirección ni barrio (eso va en "Ver Detalles")
   Widget _buildExpandedContent(
     BuildContext context,
     DocumentSnapshot registro,
@@ -2281,42 +2715,38 @@ class JovenesAsignadosTab extends StatelessWidget {
     List asistencias,
   ) {
     return Container(
-      padding: EdgeInsets.all(16), // Reducido de 24 a 16
+      // Padding reducido para hacer la tarjeta más compacta
+      padding: EdgeInsets.all(14), // Reducido de 16 a 14
       decoration: BoxDecoration(
         color: Colors.grey[50],
         borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(20),
-          bottomRight: Radius.circular(20),
+          bottomLeft: Radius.circular(16), // Ajustado a 16
+          bottomRight: Radius.circular(16), // Ajustado a 16
         ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Sección de información de contacto
           _buildInfoSection(telefono),
-          SizedBox(height: 12), // Reducido de 16 a 12
+          SizedBox(height: 10), // Reducido de 12 a 10
+
+          // Sección de estado del proceso
           _buildEstadoSection(estadoProceso),
-          SizedBox(height: 16), // Reducido de 24 a 16
+          SizedBox(height: 14), // Reducido de 16 a 14
+
+          // Botones de acción
           _buildActionButtons(context, registro),
+
+          // Historial de asistencias (si existen)
           if (asistencias.isNotEmpty) ...[
-            SizedBox(height: 16), // Reducido de 24 a 16
+            SizedBox(height: 14), // Reducido de 16 a 14
             _buildAsistenciasSection(asistencias),
           ],
-          SizedBox(height: 8), // Añadido espacio antes de dirección
-          Text(
-            'Dirección: ${registro.get('direccion') ?? 'No especificada'}',
-            style: const TextStyle(
-              fontSize: 13, // Reducido de 14 a 13
-              color: Color(0xFF147B7C),
-            ),
-          ),
-          SizedBox(height: 3), // Reducido de 4 a 3
-          Text(
-            'Barrio: ${registro.get('barrio') ?? 'No especificado'}',
-            style: const TextStyle(
-              fontSize: 13, // Reducido de 14 a 13
-              color: Color(0xFF147B7C),
-            ),
-          ),
+
+          // ===== DIRECCIÓN Y BARRIO ELIMINADOS =====
+          // Esta información ahora solo aparece en el diálogo "Ver Detalles"
+          // para mantener las tarjetas más compactas y limpias
         ],
       ),
     );
@@ -2373,12 +2803,14 @@ class JovenesAsignadosTab extends StatelessWidget {
     );
   }
 
+  /// Construye la sección del estado del proceso del discípulo
+  /// Muestra el estado actual de forma compacta
   Widget _buildEstadoSection(String estadoProceso) {
     return Container(
-      padding: EdgeInsets.all(12), // Reducido de 16 a 12
+      padding: EdgeInsets.all(10), // Reducido de 12 a 10
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(10), // Reducido de 12 a 10
         border: Border.all(color: Color(0xFF147B7C).withOpacity(0.2)),
       ),
       child: Column(
@@ -2386,102 +2818,199 @@ class JovenesAsignadosTab extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(Icons.timeline, color: Color(0xFF147B7C), size: 20),
-              SizedBox(width: 10), // Reducido de 12 a 10
+              Icon(Icons.timeline,
+                  color: Color(0xFF147B7C), size: 18), // Reducido de 20 a 18
+              SizedBox(width: 8), // Reducido de 10 a 8
               Text(
                 'Estado del proceso',
                 style: TextStyle(
-                  fontSize: 13, // Reducido de 14 a 13
+                  fontSize: 12, // Reducido de 13 a 12
                   color: Colors.grey[600],
                 ),
               ),
             ],
           ),
-          SizedBox(height: 6), // Reducido de 8 a 6
+          SizedBox(height: 4), // Reducido de 6 a 4
           Text(
             estadoProceso,
             style: TextStyle(
-              fontSize: 15, // Reducido de 16 a 15
+              fontSize: 14, // Reducido de 15 a 14
               color: Colors.black87,
             ),
+            maxLines: 2, // Limitar a 2 líneas para mantener compacto
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
     );
   }
 
+  /// Construye los botones de acción para cada discípulo
+  /// Incluye: Actualizar Estado, Ver Detalles y Registrar Asistencia
+  /// Los botones son responsivos y se adaptan al tamaño de pantalla
   Widget _buildActionButtons(BuildContext context, DocumentSnapshot registro) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        // Responsivo: si la pantalla es muy pequeña, poner botones en columna
         bool isSmallScreen = constraints.maxWidth < 320;
 
         if (isSmallScreen) {
+          // ===== LAYOUT VERTICAL PARA PANTALLAS PEQUEÑAS =====
           return Column(
             children: [
+              // Botón: Actualizar Estado
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
-                  icon: Icon(Icons.edit_note, color: Colors.white, size: 18),
-                  label:
-                      Text('Actualizar Estado', style: TextStyle(fontSize: 14)),
+                  icon: Icon(Icons.edit_note,
+                      color: Colors.white, size: 16), // Reducido
+                  label: Text('Actualizar Estado',
+                      style: TextStyle(fontSize: 13)), // Reducido
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Color(0xFF147B7C),
                     foregroundColor: Colors.white,
                     padding: EdgeInsets.symmetric(
-                        vertical: 12), // Reducido de 16 a 12
+                        vertical: 10), // Reducido de 12 a 10
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius:
+                          BorderRadius.circular(10), // Reducido de 12 a 10
                     ),
+                    elevation: 2,
                   ),
                   onPressed: () => _actualizarEstado(context, registro),
                 ),
               ),
-              SizedBox(height: 8),
+              SizedBox(height: 6), // Reducido de 8 a 6
+
+              // Botón: Ver Detalles
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
-                  icon:
-                      Icon(Icons.calendar_today, color: Colors.white, size: 18),
-                  label: Text('Registrar Asistencia',
-                      style: TextStyle(fontSize: 14)),
+                  icon: Icon(Icons.info_outline,
+                      color: Colors.white, size: 16), // Reducido
+                  label: Text('Ver Detalles',
+                      style: TextStyle(fontSize: 13)), // Reducido
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Color(0xFFFF4B2B),
+                    backgroundColor: Color(0xFFFFB74D),
                     foregroundColor: Colors.white,
-                    padding: EdgeInsets.symmetric(
-                        vertical: 12), // Reducido de 16 a 12
+                    padding: EdgeInsets.symmetric(vertical: 10), // Reducido
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(10), // Reducido
                     ),
+                    elevation: 2,
                   ),
-                  onPressed: () => _registrarAsistencia(context, registro),
+                  onPressed: () => _mostrarDetallesDiscipulo(context, registro),
+                ),
+              ),
+              SizedBox(height: 6), // Reducido
+
+              // Botón: Registrar Asistencia (con verificación de bloqueo)
+              SizedBox(
+                width: double.infinity,
+                child: FutureBuilder<bool>(
+                  future: _tieneBloqueoPorFaltas(
+                    registro.id,
+                    (registro.data()
+                            as Map<String, dynamic>)['faltasConsecutivas'] ??
+                        0,
+                  ),
+                  builder: (context, snapshot) {
+                    final bool bloqueado = snapshot.data == true;
+                    final bool cargando =
+                        snapshot.connectionState == ConnectionState.waiting;
+
+                    return ElevatedButton.icon(
+                      icon: Icon(
+                        bloqueado ? Icons.block : Icons.calendar_today,
+                        color: Colors.white,
+                        size: 16, // Reducido
+                      ),
+                      label: Text(
+                        bloqueado
+                            ? 'Bloqueado'
+                            : (cargando
+                                ? 'Verificando...'
+                                : 'Registrar Asistencia'),
+                        style: TextStyle(fontSize: 13), // Reducido
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: bloqueado
+                            ? Colors.grey.shade400
+                            : Color(0xFFFF4B2B),
+                        foregroundColor: Colors.white,
+                        padding: EdgeInsets.symmetric(vertical: 10), // Reducido
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10), // Reducido
+                        ),
+                        disabledBackgroundColor: Colors.grey.shade300,
+                        disabledForegroundColor: Colors.grey.shade500,
+                        elevation: 2,
+                      ),
+                      onPressed: (bloqueado || cargando)
+                          ? null
+                          : () => _registrarAsistencia(context, registro),
+                    );
+                  },
                 ),
               ),
             ],
           );
         }
 
-        return Row(
+        // ===== LAYOUT HORIZONTAL PARA PANTALLAS NORMALES =====
+        return Column(
           children: [
-            Expanded(
-              child: ElevatedButton.icon(
-                icon: Icon(Icons.edit_note, color: Colors.white, size: 18),
-                label:
-                    Text('Actualizar Estado', style: TextStyle(fontSize: 14)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Color(0xFF147B7C),
-                  foregroundColor: Colors.white,
-                  padding:
-                      EdgeInsets.symmetric(vertical: 12), // Reducido de 16 a 12
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+            Row(
+              children: [
+                // Botón: Actualizar Estado
+                Expanded(
+                  child: ElevatedButton.icon(
+                    icon: Icon(Icons.edit_note,
+                        color: Colors.white, size: 16), // Reducido
+                    label: Text('Actualizar',
+                        style: TextStyle(
+                            fontSize: 13)), // Reducido y texto más corto
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Color(0xFF147B7C),
+                      foregroundColor: Colors.white,
+                      padding: EdgeInsets.symmetric(vertical: 10), // Reducido
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10), // Reducido
+                      ),
+                      elevation: 2,
+                    ),
+                    onPressed: () => _actualizarEstado(context, registro),
                   ),
                 ),
-                onPressed: () => _actualizarEstado(context, registro),
-              ),
+                SizedBox(width: 6), // Reducido de 8 a 6
+
+                // Botón: Ver Detalles
+                Expanded(
+                  child: ElevatedButton.icon(
+                    icon: Icon(Icons.info_outline,
+                        color: Colors.white, size: 16), // Reducido
+                    label: Text('Detalles',
+                        style: TextStyle(
+                            fontSize: 13)), // Reducido y texto más corto
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Color(0xFFFFB74D),
+                      foregroundColor: Colors.white,
+                      padding: EdgeInsets.symmetric(vertical: 10), // Reducido
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10), // Reducido
+                      ),
+                      elevation: 2,
+                    ),
+                    onPressed: () =>
+                        _mostrarDetallesDiscipulo(context, registro),
+                  ),
+                ),
+              ],
             ),
-            SizedBox(width: 8), // Reducido de 12 a 8
-            Expanded(
+            SizedBox(height: 6), // Reducido de 8 a 6
+
+            // Botón: Registrar Asistencia (ancho completo)
+            SizedBox(
+              width: double.infinity,
               child: FutureBuilder<bool>(
                 future: _tieneBloqueoPorFaltas(
                   registro.id,
@@ -2498,7 +3027,7 @@ class JovenesAsignadosTab extends StatelessWidget {
                     icon: Icon(
                       bloqueado ? Icons.block : Icons.calendar_today,
                       color: Colors.white,
-                      size: 18,
+                      size: 16, // Reducido
                     ),
                     label: Text(
                       bloqueado
@@ -2506,18 +3035,19 @@ class JovenesAsignadosTab extends StatelessWidget {
                           : (cargando
                               ? 'Verificando...'
                               : 'Registrar Asistencia'),
-                      style: TextStyle(fontSize: 14),
+                      style: TextStyle(fontSize: 13), // Reducido
                     ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor:
                           bloqueado ? Colors.grey.shade400 : Color(0xFFFF4B2B),
                       foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(vertical: 12),
+                      padding: EdgeInsets.symmetric(vertical: 10), // Reducido
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(10), // Reducido
                       ),
                       disabledBackgroundColor: Colors.grey.shade300,
                       disabledForegroundColor: Colors.grey.shade500,
+                      elevation: 2,
                     ),
                     onPressed: (bloqueado || cargando)
                         ? null
@@ -2587,6 +3117,7 @@ class JovenesAsignadosTab extends StatelessWidget {
     return agrupadas;
   }
 
+
   Widget _buildAsistenciasSection(List asistencias) {
     if (asistencias.isEmpty) {
       return Container(
@@ -2617,7 +3148,6 @@ class JovenesAsignadosTab extends StatelessWidget {
       );
     }
 
-    // Ordenar las asistencias de más reciente a más antigua
     final asistenciasOrdenadas = List.from(asistencias);
     asistenciasOrdenadas.sort((a, b) {
       try {
@@ -2721,6 +3251,7 @@ class JovenesAsignadosTab extends StatelessWidget {
                               Border.all(color: Colors.grey.withOpacity(0.2)),
                           borderRadius: BorderRadius.circular(12),
                         ),
+                        // ✅ SIN Theme wrapper - esto causaba el error
                         child: ExpansionTile(
                           initiallyExpanded: year == DateTime.now().year,
                           tilePadding:
@@ -2792,6 +3323,7 @@ class JovenesAsignadosTab extends StatelessWidget {
                                 color: Colors.grey[50],
                                 borderRadius: BorderRadius.circular(8),
                               ),
+                              // ✅ SIN Theme wrapper
                               child: ExpansionTile(
                                 initiallyExpanded:
                                     month == DateTime.now().month &&
@@ -2836,7 +3368,6 @@ class JovenesAsignadosTab extends StatelessWidget {
                                   ],
                                 ),
                                 children: [
-                                  // Aquí mostramos las semanas
                                   Column(
                                     children: entradaMes.value.entries
                                         .map((entradaSemana) {
@@ -2854,6 +3385,7 @@ class JovenesAsignadosTab extends StatelessWidget {
                                               color:
                                                   Colors.grey.withOpacity(0.3)),
                                         ),
+                                        // ✅ SIN Theme wrapper
                                         child: ExpansionTile(
                                           initiallyExpanded: false,
                                           tilePadding: EdgeInsets.symmetric(
@@ -2911,195 +3443,197 @@ class JovenesAsignadosTab extends StatelessWidget {
                                                 return Container(
                                                   constraints: BoxConstraints(
                                                       maxHeight: 100),
-                                                  child: Scrollbar(
-                                                    thumbVisibility: false,
-                                                    child: GridView.builder(
-                                                      shrinkWrap: true,
-                                                      physics:
-                                                          BouncingScrollPhysics(),
-                                                      padding:
-                                                          EdgeInsets.symmetric(
-                                                              horizontal: 2),
-                                                      gridDelegate:
-                                                          SliverGridDelegateWithFixedCrossAxisCount(
-                                                        crossAxisCount:
-                                                            crossAxisCount,
-                                                        childAspectRatio: 0.9,
-                                                        crossAxisSpacing: 6,
-                                                        mainAxisSpacing: 6,
-                                                      ),
-                                                      itemCount:
-                                                          asistenciasSemana
-                                                              .length,
-                                                      itemBuilder:
-                                                          (context, index) {
-                                                        final asistencia =
-                                                            asistenciasSemana[
-                                                                index];
-                                                        final bool asistio =
-                                                            asistencia[
-                                                                    'asistio'] ??
-                                                                false;
-                                                        final fecha =
-                                                            (asistencia['fecha']
-                                                                    as Timestamp)
-                                                                .toDate();
-                                                        final nombreServicioRaw =
-                                                            asistencia[
-                                                                    'nombreServicio'] ??
-                                                                'Servicio';
-                                                        final nombreServicio =
-                                                            _normalizarNombreServicio(
-                                                                nombreServicioRaw);
+                                                  // ✅ SIN Scrollbar interno - esto también causaba conflicto
+                                                  child: GridView.builder(
+                                                    shrinkWrap: true,
+                                                    physics:
+                                                        BouncingScrollPhysics(),
+                                                    padding:
+                                                        EdgeInsets.symmetric(
+                                                            horizontal: 2),
+                                                    gridDelegate:
+                                                        SliverGridDelegateWithFixedCrossAxisCount(
+                                                      crossAxisCount:
+                                                          crossAxisCount,
+                                                      childAspectRatio: 0.9,
+                                                      crossAxisSpacing: 6,
+                                                      mainAxisSpacing: 6,
+                                                    ),
+                                                    itemCount: asistenciasSemana
+                                                        .length,
+                                                    itemBuilder:
+                                                        (context, index) {
+                                                      final asistencia =
+                                                          asistenciasSemana[
+                                                              index];
+                                                      final bool asistio =
+                                                          asistencia[
+                                                                  'asistio'] ??
+                                                              false;
+                                                      final fecha =
+                                                          (asistencia['fecha']
+                                                                  as Timestamp)
+                                                              .toDate();
+                                                      final nombreServicioRaw =
+                                                          asistencia[
+                                                                  'nombreServicio'] ??
+                                                              'Servicio';
+                                                      final nombreServicio =
+                                                          _normalizarNombreServicio(
+                                                              nombreServicioRaw);
 
-                                                        return Container(
-                                                          decoration:
-                                                              BoxDecoration(
-                                                            gradient:
-                                                                LinearGradient(
-                                                              begin: Alignment
-                                                                  .topLeft,
-                                                              end: Alignment
-                                                                  .bottomRight,
-                                                              colors:
-                                                                  asistio
-                                                                      ? [
-                                                                          Color(
-                                                                              0xFF147B7C),
-                                                                          Color(0xFF147B7C)
-                                                                              .withOpacity(0.8)
-                                                                        ]
-                                                                      : [
-                                                                          Color(
-                                                                              0xFFFF4B2B),
-                                                                          Color(0xFFFF4B2B)
-                                                                              .withOpacity(0.8)
-                                                                        ],
+                                                      return Container(
+                                                        decoration:
+                                                            BoxDecoration(
+                                                          gradient:
+                                                              LinearGradient(
+                                                            begin: Alignment
+                                                                .topLeft,
+                                                            end: Alignment
+                                                                .bottomRight,
+                                                            colors:
+                                                                asistio
+                                                                    ? [
+                                                                        Color(
+                                                                            0xFF147B7C),
+                                                                        Color(0xFF147B7C)
+                                                                            .withOpacity(0.8)
+                                                                      ]
+                                                                    : [
+                                                                        Color(
+                                                                            0xFFFF4B2B),
+                                                                        Color(0xFFFF4B2B)
+                                                                            .withOpacity(0.8)
+                                                                      ],
+                                                          ),
+                                                          borderRadius:
+                                                              BorderRadius
+                                                                  .circular(10),
+                                                          boxShadow: [
+                                                            BoxShadow(
+                                                              color: (asistio
+                                                                      ? Color(
+                                                                          0xFF147B7C)
+                                                                      : Color(
+                                                                          0xFFFF4B2B))
+                                                                  .withOpacity(
+                                                                      0.3),
+                                                              spreadRadius: 1,
+                                                              blurRadius: 2,
+                                                              offset:
+                                                                  Offset(0, 1),
                                                             ),
+                                                          ],
+                                                        ),
+                                                        child: Material(
+                                                          color: Colors
+                                                              .transparent,
+                                                          child: InkWell(
                                                             borderRadius:
                                                                 BorderRadius
                                                                     .circular(
                                                                         10),
-                                                            boxShadow: [
-                                                              BoxShadow(
-                                                                color: (asistio
-                                                                        ? Color(
-                                                                            0xFF147B7C)
-                                                                        : Color(
-                                                                            0xFFFF4B2B))
-                                                                    .withOpacity(
-                                                                        0.3),
-                                                                spreadRadius: 1,
-                                                                blurRadius: 2,
-                                                                offset: Offset(
-                                                                    0, 1),
-                                                              ),
-                                                            ],
-                                                          ),
-                                                          child: Material(
-                                                            color: Colors
-                                                                .transparent,
-                                                            child: InkWell(
-                                                              borderRadius:
-                                                                  BorderRadius
-                                                                      .circular(
-                                                                          10),
-                                                              onTap: () {
-                                                                _mostrarDetalleAsistencia(
-                                                                    context,
-                                                                    asistencia,
-                                                                    asistio);
-                                                              },
-                                                              child: Padding(
-                                                                padding:
-                                                                    EdgeInsets
-                                                                        .all(6),
-                                                                child: Column(
-                                                                  mainAxisAlignment:
-                                                                      MainAxisAlignment
-                                                                          .center,
-                                                                  children: [
-                                                                    Icon(
-                                                                      asistio
-                                                                          ? Icons
-                                                                              .check_circle
-                                                                          : Icons
-                                                                              .cancel,
+                                                            onTap: () {
+                                                              _mostrarDetalleAsistencia(
+                                                                  context,
+                                                                  asistencia,
+                                                                  asistio);
+                                                            },
+                                                            child: Padding(
+                                                              padding:
+                                                                  EdgeInsets
+                                                                      .all(6),
+                                                              child: Column(
+                                                                mainAxisAlignment:
+                                                                    MainAxisAlignment
+                                                                        .center,
+                                                                children: [
+                                                                  Icon(
+                                                                    asistio
+                                                                        ? Icons
+                                                                            .check_circle
+                                                                        : Icons
+                                                                            .cancel,
+                                                                    color: Colors
+                                                                        .white,
+                                                                    size: 16,
+                                                                  ),
+                                                                  SizedBox(
+                                                                      height:
+                                                                          2),
+                                                                  Text(
+                                                                    DateFormat(
+                                                                            'dd')
+                                                                        .format(
+                                                                            fecha),
+                                                                    style:
+                                                                        TextStyle(
+                                                                      fontSize:
+                                                                          12,
+                                                                      fontWeight:
+                                                                          FontWeight
+                                                                              .bold,
                                                                       color: Colors
                                                                           .white,
-                                                                      size: 16,
                                                                     ),
+                                                                  ),
+                                                                  Text(
+                                                                    DateFormat(
+                                                                            'EEE',
+                                                                            'es')
+                                                                        .format(
+                                                                            fecha)
+                                                                        .toUpperCase(),
+                                                                    style:
+                                                                        TextStyle(
+                                                                      fontSize:
+                                                                          7,
+                                                                      color: Colors
+                                                                          .white
+                                                                          .withOpacity(
+                                                                              0.9),
+                                                                      fontWeight:
+                                                                          FontWeight
+                                                                              .w500,
+                                                                    ),
+                                                                  ),
+                                                                  if (nombreServicio
+                                                                              .length <=
+                                                                          12 &&
+                                                                      crossAxisCount <=
+                                                                          4) ...[
                                                                     SizedBox(
                                                                         height:
-                                                                            2),
+                                                                            1),
                                                                     Text(
-                                                                      DateFormat(
-                                                                              'dd')
-                                                                          .format(
-                                                                              fecha),
+                                                                      nombreServicio,
                                                                       style:
                                                                           TextStyle(
                                                                         fontSize:
-                                                                            12,
-                                                                        fontWeight:
-                                                                            FontWeight.bold,
-                                                                        color: Colors
-                                                                            .white,
-                                                                      ),
-                                                                    ),
-                                                                    Text(
-                                                                      DateFormat(
-                                                                              'EEE',
-                                                                              'es')
-                                                                          .format(
-                                                                              fecha)
-                                                                          .toUpperCase(),
-                                                                      style:
-                                                                          TextStyle(
-                                                                        fontSize:
-                                                                            7,
+                                                                            6,
                                                                         color: Colors
                                                                             .white
-                                                                            .withOpacity(0.9),
+                                                                            .withOpacity(0.8),
                                                                         fontWeight:
-                                                                            FontWeight.w500,
+                                                                            FontWeight.w400,
                                                                       ),
+                                                                      textAlign:
+                                                                          TextAlign
+                                                                              .center,
+                                                                      maxLines:
+                                                                          1,
+                                                                      overflow:
+                                                                          TextOverflow
+                                                                              .ellipsis,
                                                                     ),
-                                                                    if (nombreServicio.length <=
-                                                                            12 &&
-                                                                        crossAxisCount <=
-                                                                            4) ...[
-                                                                      SizedBox(
-                                                                          height:
-                                                                              1),
-                                                                      Text(
-                                                                        nombreServicio,
-                                                                        style:
-                                                                            TextStyle(
-                                                                          fontSize:
-                                                                              6,
-                                                                          color: Colors
-                                                                              .white
-                                                                              .withOpacity(0.8),
-                                                                          fontWeight:
-                                                                              FontWeight.w400,
-                                                                        ),
-                                                                        textAlign:
-                                                                            TextAlign.center,
-                                                                        maxLines:
-                                                                            1,
-                                                                        overflow:
-                                                                            TextOverflow.ellipsis,
-                                                                      ),
-                                                                    ],
                                                                   ],
-                                                                ),
+                                                                ],
                                                               ),
                                                             ),
                                                           ),
-                                                        );
-                                                      },
-                                                    ),
+                                                        ),
+                                                      );
+                                                    },
                                                   ),
                                                 );
                                               },
@@ -3249,6 +3783,537 @@ class JovenesAsignadosTab extends StatelessWidget {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  void _mostrarDetallesDiscipulo(
+      BuildContext context, DocumentSnapshot registro) {
+    final data = registro.data() as Map<String, dynamic>?;
+
+    if (data == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: No se pueden cargar los datos'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    // Función para obtener valor seguro
+    String obtenerValorSeguro(String campo,
+        {String defecto = 'No disponible'}) {
+      try {
+        final valor = data[campo];
+        if (valor == null) return defecto;
+        if (valor is String && valor.trim().isEmpty) return defecto;
+        if (valor is Timestamp) {
+          final fecha = valor.toDate();
+          return '${fecha.day}/${fecha.month}/${fecha.year}';
+        }
+        return valor.toString();
+      } catch (e) {
+        return defecto;
+      }
+    }
+
+    // Concatenar observaciones
+    String obtenerObservaciones() {
+      final obs1 = obtenerValorSeguro('observaciones', defecto: '');
+      final obs2 = obtenerValorSeguro('observaciones2', defecto: '');
+
+      if (obs1.isEmpty && obs2.isEmpty) return 'Sin observaciones';
+      if (obs1.isEmpty) return obs2;
+      if (obs2.isEmpty) return obs1;
+      return '$obs1\n\n$obs2';
+    }
+
+    /// Calcula la edad actual y muestra la fecha exacta del próximo cumpleaños
+    /// Incluye días restantes y fecha completa del cumpleaños
+    String calcularEdadYCumpleanos() {
+      try {
+        final fechaNacimiento = data['fechaNacimiento'];
+        if (fechaNacimiento == null) return 'No disponible';
+
+        DateTime fecha;
+
+        // Procesar diferentes formatos de fecha
+        if (fechaNacimiento is Timestamp) {
+          fecha = fechaNacimiento.toDate();
+        } else if (fechaNacimiento is String) {
+          if (fechaNacimiento.contains('Timestamp')) {
+            final regex = RegExp(r'seconds=(\d+)');
+            final match = regex.firstMatch(fechaNacimiento);
+            if (match != null) {
+              final seconds = int.tryParse(match.group(1) ?? '');
+              if (seconds != null) {
+                fecha = DateTime.fromMillisecondsSinceEpoch(seconds * 1000);
+              } else {
+                return 'No disponible';
+              }
+            } else {
+              return 'No disponible';
+            }
+          } else {
+            fecha = DateTime.parse(fechaNacimiento);
+          }
+        } else {
+          return 'No disponible';
+        }
+
+        final hoy = DateTime.now();
+
+        // Calcular edad actual
+        int edad = hoy.year - fecha.year;
+        if (hoy.month < fecha.month ||
+            (hoy.month == fecha.month && hoy.day < fecha.day)) {
+          edad--;
+        }
+
+        // Calcular próximo cumpleaños
+        DateTime proximoCumpleanos = DateTime(hoy.year, fecha.month, fecha.day);
+        if (proximoCumpleanos.isBefore(hoy) ||
+            proximoCumpleanos.isAtSameMomentAs(hoy)) {
+          proximoCumpleanos = DateTime(hoy.year + 1, fecha.month, fecha.day);
+        }
+
+        final diferencia = proximoCumpleanos.difference(hoy).inDays;
+
+        // ===== FORMATO MEJORADO CON FECHA EXACTA =====
+        // Muestra edad, fecha exacta del cumpleaños y días restantes
+        String fechaCumpleanos = DateFormat('d \'de\' MMMM', 'es')
+            .format(DateTime(2000, fecha.month, fecha.day));
+        String proximoCumpleanosTexto;
+
+        if (diferencia == 0) {
+          proximoCumpleanosTexto = '¡Hoy es su cumpleaños! 🎉';
+        } else if (diferencia == 1) {
+          proximoCumpleanosTexto = 'Mañana ($fechaCumpleanos)';
+        } else if (diferencia <= 7) {
+          proximoCumpleanosTexto = 'En $diferencia días ($fechaCumpleanos)';
+        } else if (diferencia <= 30) {
+          proximoCumpleanosTexto = 'En $diferencia días ($fechaCumpleanos)';
+        } else {
+          final meses = (diferencia / 30).floor();
+          proximoCumpleanosTexto = meses == 1
+              ? 'En aproximadamente 1 mes ($fechaCumpleanos)'
+              : 'En aproximadamente $meses meses ($fechaCumpleanos)';
+        }
+
+        // Retornar edad y fecha completa del cumpleaños
+        return '$edad años • Cumple el $fechaCumpleanos • $proximoCumpleanosTexto';
+      } catch (e) {
+        return 'No disponible';
+      }
+    }
+
+    final nombre = obtenerValorSeguro('nombre');
+    final apellido = obtenerValorSeguro('apellido');
+    final direccion = obtenerValorSeguro('direccion');
+    final barrio = obtenerValorSeguro('barrio');
+    final cumpleanos = calcularEdadYCumpleanos();
+    final observaciones = obtenerObservaciones();
+
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+          elevation: 8,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              // Responsividad
+              final screenWidth = MediaQuery.of(context).size.width;
+              final isSmallScreen = screenWidth < 600;
+              final dialogWidth = isSmallScreen
+                  ? screenWidth * 0.95
+                  : (screenWidth < 900 ? screenWidth * 0.7 : 600.0);
+
+              return Container(
+                width: dialogWidth,
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.8,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Encabezado con gradiente
+                    Container(
+                      padding: EdgeInsets.all(isSmallScreen ? 16 : 24),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            Color(0xFF147B7C),
+                            Color(0xFF147B7C).withOpacity(0.8),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.only(
+                          topLeft: Radius.circular(24),
+                          topRight: Radius.circular(24),
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Color(0xFF147B7C).withOpacity(0.3),
+                            blurRadius: 8,
+                            offset: Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: EdgeInsets.all(isSmallScreen ? 10 : 12),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.2),
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: Colors.white.withOpacity(0.3),
+                                width: 2,
+                              ),
+                            ),
+                            child: Icon(
+                              Icons.person_outline,
+                              color: Colors.white,
+                              size: isSmallScreen ? 24 : 28,
+                            ),
+                          ),
+                          SizedBox(width: isSmallScreen ? 12 : 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Información del Discípulo',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: isSmallScreen ? 16 : 18,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                                SizedBox(height: 4),
+                                Text(
+                                  '$nombre $apellido',
+                                  style: TextStyle(
+                                    color: Colors.white.withOpacity(0.9),
+                                    fontSize: isSmallScreen ? 13 : 14,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ),
+                          ),
+                          Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(12),
+                              onTap: () => Navigator.pop(dialogContext),
+                              child: Container(
+                                padding: EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: Colors.white.withOpacity(0.3),
+                                    width: 1,
+                                  ),
+                                ),
+                                child: Icon(
+                                  Icons.close_rounded,
+                                  color: Colors.white,
+                                  size: isSmallScreen ? 20 : 24,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // Contenido scrolleable
+                    Flexible(
+                      child: SingleChildScrollView(
+                        padding: EdgeInsets.all(isSmallScreen ? 16 : 24),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Dirección
+                            _buildDetalleCard(
+                              context: context,
+                              icono: Icons.home_outlined,
+                              titulo: 'Dirección',
+                              contenido: direccion,
+                              color: Color(0xFF147B7C),
+                              isSmallScreen: isSmallScreen,
+                            ),
+                            SizedBox(height: 12),
+
+                            // Barrio
+                            _buildDetalleCard(
+                              context: context,
+                              icono: Icons.location_city_outlined,
+                              titulo: 'Barrio',
+                              contenido: barrio,
+                              color: Color(0xFFFF4B2B),
+                              isSmallScreen: isSmallScreen,
+                            ),
+                            SizedBox(height: 12),
+
+                            // Cumpleaños
+                            _buildDetalleCard(
+                              context: context,
+                              icono: Icons.cake_outlined,
+                              titulo: 'Cumpleaños',
+                              contenido: cumpleanos,
+                              color: Color(0xFFFFB74D),
+                              isSmallScreen: isSmallScreen,
+                            ),
+                            SizedBox(height: 12),
+
+                            // Observaciones (expandible)
+                            _buildObservacionesCard(
+                              context: context,
+                              observaciones: observaciones,
+                              isSmallScreen: isSmallScreen,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    // Footer con botón
+                    Container(
+                      padding: EdgeInsets.all(isSmallScreen ? 16 : 20),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.05),
+                            blurRadius: 10,
+                            offset: Offset(0, -4),
+                          ),
+                        ],
+                      ),
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          icon: Icon(Icons.check_circle_outline, size: 20),
+                          label: Text(
+                            'Cerrar',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Color(0xFF147B7C),
+                            foregroundColor: Colors.white,
+                            padding: EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            elevation: 2,
+                          ),
+                          onPressed: () => Navigator.pop(dialogContext),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  /// Widget para mostrar tarjetas de detalles con texto seleccionable
+  /// Permite al usuario copiar la información directamente desde la UI
+  Widget _buildDetalleCard({
+    required BuildContext context,
+    required IconData icono,
+    required String titulo,
+    required String contenido,
+    required Color color,
+    required bool isSmallScreen,
+  }) {
+    return Container(
+      padding: EdgeInsets.all(isSmallScreen ? 14 : 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: color.withOpacity(0.3),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: color.withOpacity(0.1),
+            blurRadius: 8,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Ícono decorativo
+          Container(
+            padding: EdgeInsets.all(isSmallScreen ? 10 : 12),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              icono,
+              color: color,
+              size: isSmallScreen ? 22 : 24,
+            ),
+          ),
+          SizedBox(width: isSmallScreen ? 12 : 16),
+
+          // Contenido con texto seleccionable
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Título (no seleccionable)
+                Text(
+                  titulo,
+                  style: TextStyle(
+                    fontSize: isSmallScreen ? 13 : 14,
+                    color: Colors.grey[600],
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                SizedBox(height: 6),
+
+                // ===== CONTENIDO SELECCIONABLE =====
+                // Permite al usuario seleccionar y copiar el texto
+                SelectableText(
+                  contenido,
+                  style: TextStyle(
+                    fontSize: isSmallScreen ? 15 : 16,
+                    color: Colors.black87,
+                    fontWeight: FontWeight.w500,
+                    height: 1.4,
+                  ),
+                  // Configuración del cursor y selección
+                  cursorColor: color,
+                  showCursor: true,
+                  toolbarOptions: ToolbarOptions(
+                    copy: true,
+                    selectAll: true,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Widget para mostrar observaciones en formato expandible
+  /// El texto es seleccionable para permitir copiar información
+  Widget _buildObservacionesCard({
+    required BuildContext context,
+    required String observaciones,
+    required bool isSmallScreen,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Color(0xFF147B7C).withOpacity(0.3),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Color(0xFF147B7C).withOpacity(0.1),
+            blurRadius: 8,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          tilePadding: EdgeInsets.symmetric(
+            horizontal: isSmallScreen ? 14 : 16,
+            vertical: 8,
+          ),
+          childrenPadding: EdgeInsets.fromLTRB(
+            isSmallScreen ? 14 : 16,
+            0,
+            isSmallScreen ? 14 : 16,
+            isSmallScreen ? 14 : 16,
+          ),
+          leading: Container(
+            padding: EdgeInsets.all(isSmallScreen ? 10 : 12),
+            decoration: BoxDecoration(
+              color: Color(0xFF147B7C).withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              Icons.notes_outlined,
+              color: Color(0xFF147B7C),
+              size: isSmallScreen ? 22 : 24,
+            ),
+          ),
+          title: Text(
+            'Observaciones',
+            style: TextStyle(
+              fontSize: isSmallScreen ? 15 : 16,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF147B7C),
+            ),
+          ),
+          subtitle: observaciones != 'Sin observaciones'
+              ? Text(
+                  'Toca para ver más detalles',
+                  style: TextStyle(
+                    fontSize: isSmallScreen ? 12 : 13,
+                    color: Colors.grey[600],
+                  ),
+                )
+              : null,
+          children: [
+            Container(
+              padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
+              decoration: BoxDecoration(
+                color: Colors.grey[50],
+                borderRadius: BorderRadius.circular(12),
+              ),
+              width: double.infinity,
+
+              // ===== TEXTO SELECCIONABLE =====
+              // Permite copiar las observaciones del discípulo
+              child: SelectableText(
+                observaciones,
+                style: TextStyle(
+                  fontSize: isSmallScreen ? 14 : 15,
+                  color: Colors.black87,
+                  height: 1.5,
+                ),
+                // Configuración de selección
+                cursorColor: Color(0xFF147B7C),
+                showCursor: true,
+                toolbarOptions: ToolbarOptions(
+                  copy: true,
+                  selectAll: true,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
