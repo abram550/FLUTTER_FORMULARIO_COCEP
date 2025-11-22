@@ -308,13 +308,20 @@ class _TimoteoScreenState extends State<TimoteoScreen>
             ],
           ),
           actions: [
-            IconButton(
-              icon: const Icon(Icons.notifications_outlined),
-              onPressed: () {
-                _resetInactivityTimer();
-              },
-              tooltip: 'Notificaciones',
-            ),
+            // ===== BOTÓN DE NOTIFICACIONES (COMENTADO) =====
+            // Descomentar cuando se implemente la funcionalidad de notificaciones
+            /*
+  IconButton(
+    icon: const Icon(Icons.notifications_outlined),
+    onPressed: () {
+      _resetInactivityTimer();
+      // TODO: Implementar funcionalidad de notificaciones
+    },
+    tooltip: 'Notificaciones',
+  ),
+  */
+            // ===== FIN BOTÓN DE NOTIFICACIONES =====
+
             Container(
               margin: EdgeInsets.only(right: 8),
               decoration: BoxDecoration(
@@ -2293,7 +2300,88 @@ class JovenesAsignadosTab extends StatelessWidget {
           );
         }
 
-        final docs = snapshot.data?.docs ?? [];
+        final docsOriginales = snapshot.data?.docs ?? [];
+
+        // ===== ORDENAMIENTO POR PRIORIDAD (NUEVOS PRIMERO) =====
+        // Los registros con asignación reciente (<14 días) aparecen primero
+        final docs = List<QueryDocumentSnapshot>.from(docsOriginales);
+        docs.sort((a, b) {
+          final dataA = a.data() as Map<String, dynamic>;
+          final dataB = b.data() as Map<String, dynamic>;
+
+          // Calcular días desde asignación para A
+          int diasA = 999;
+          try {
+            final fechaA = dataA['fechaAsignacion'];
+            if (fechaA != null) {
+              DateTime fechaAsigA;
+              if (fechaA is Timestamp) {
+                fechaAsigA = fechaA.toDate();
+              } else if (fechaA is String && fechaA.contains('Timestamp')) {
+                final regex = RegExp(r'seconds=(\d+)');
+                final match = regex.firstMatch(fechaA);
+                if (match != null) {
+                  final seconds = int.tryParse(match.group(1) ?? '');
+                  if (seconds != null) {
+                    fechaAsigA =
+                        DateTime.fromMillisecondsSinceEpoch(seconds * 1000);
+                  } else {
+                    fechaAsigA = DateTime.now().subtract(Duration(days: 30));
+                  }
+                } else {
+                  fechaAsigA = DateTime.now().subtract(Duration(days: 30));
+                }
+              } else {
+                fechaAsigA = DateTime.now().subtract(Duration(days: 30));
+              }
+              diasA = DateTime.now().difference(fechaAsigA).inDays;
+            }
+          } catch (e) {
+            diasA = 999;
+          }
+
+          // Calcular días desde asignación para B
+          int diasB = 999;
+          try {
+            final fechaB = dataB['fechaAsignacion'];
+            if (fechaB != null) {
+              DateTime fechaAsigB;
+              if (fechaB is Timestamp) {
+                fechaAsigB = fechaB.toDate();
+              } else if (fechaB is String && fechaB.contains('Timestamp')) {
+                final regex = RegExp(r'seconds=(\d+)');
+                final match = regex.firstMatch(fechaB);
+                if (match != null) {
+                  final seconds = int.tryParse(match.group(1) ?? '');
+                  if (seconds != null) {
+                    fechaAsigB =
+                        DateTime.fromMillisecondsSinceEpoch(seconds * 1000);
+                  } else {
+                    fechaAsigB = DateTime.now().subtract(Duration(days: 30));
+                  }
+                } else {
+                  fechaAsigB = DateTime.now().subtract(Duration(days: 30));
+                }
+              } else {
+                fechaAsigB = DateTime.now().subtract(Duration(days: 30));
+              }
+              diasB = DateTime.now().difference(fechaAsigB).inDays;
+            }
+          } catch (e) {
+            diasB = 999;
+          }
+
+          // Determinar si son asignaciones recientes
+          bool esNuevoA = diasA >= 0 && diasA <= 13;
+          bool esNuevoB = diasB >= 0 && diasB <= 13;
+
+          // Prioridad: nuevos primero, luego por días (más reciente primero)
+          if (esNuevoA && !esNuevoB) return -1;
+          if (!esNuevoA && esNuevoB) return 1;
+          if (esNuevoA && esNuevoB) return diasA.compareTo(diasB);
+          return 0;
+        });
+        // ===== FIN ORDENAMIENTO =====
 
         if (docs.isEmpty) {
           return Container(
@@ -2435,17 +2523,65 @@ class JovenesAsignadosTab extends StatelessWidget {
                           // ===== TARJETA REDUCIDA Y MÁS COMPACTA =====
 // Se reduce el margen inferior de 16 a 12 para hacer las tarjetas más pequeñas
 // Se mantiene la elevación pero con bordes más sutiles
+                          // ===== CÁLCULO DE ASIGNACIÓN RECIENTE =====
+                          bool esAsignacionReciente = false;
+                          int diasDesdeAsignacion = 0;
+
+                          try {
+                            final fechaAsignacion = data['fechaAsignacion'];
+                            if (fechaAsignacion != null) {
+                              DateTime fechaAsig;
+
+                              if (fechaAsignacion is Timestamp) {
+                                fechaAsig = fechaAsignacion.toDate();
+                              } else if (fechaAsignacion is String &&
+                                  fechaAsignacion.isNotEmpty) {
+                                if (fechaAsignacion.contains('Timestamp')) {
+                                  final regex = RegExp(r'seconds=(\d+)');
+                                  final match =
+                                      regex.firstMatch(fechaAsignacion);
+                                  if (match != null) {
+                                    final seconds =
+                                        int.tryParse(match.group(1) ?? '');
+                                    if (seconds != null) {
+                                      fechaAsig =
+                                          DateTime.fromMillisecondsSinceEpoch(
+                                              seconds * 1000);
+                                    } else {
+                                      fechaAsig = DateTime.now()
+                                          .subtract(Duration(days: 30));
+                                    }
+                                  } else {
+                                    fechaAsig = DateTime.now()
+                                        .subtract(Duration(days: 30));
+                                  }
+                                } else {
+                                  fechaAsig = DateTime.parse(fechaAsignacion);
+                                }
+                              } else {
+                                fechaAsig =
+                                    DateTime.now().subtract(Duration(days: 30));
+                              }
+
+                              diasDesdeAsignacion =
+                                  DateTime.now().difference(fechaAsig).inDays;
+                              esAsignacionReciente = diasDesdeAsignacion >= 0 &&
+                                  diasDesdeAsignacion <= 13;
+                            }
+                          } catch (e) {
+                            print('Error calculando días desde asignación: $e');
+                            esAsignacionReciente = false;
+                          }
+
                           return Container(
-                            margin: EdgeInsets.only(
-                                bottom: 12), // Reducido de 16 a 12
+                            margin: EdgeInsets.only(bottom: 12),
                             child: Card(
-                              elevation:
-                                  4, // Reducido de 6 a 4 para sombra más sutil
-                              shadowColor: Colors.grey
-                                  .withOpacity(0.2), // Sombra más suave
+                              elevation: esAsignacionReciente ? 6 : 4,
+                              shadowColor: esAsignacionReciente
+                                  ? Color(0xFFFFB74D).withOpacity(0.4)
+                                  : Colors.grey.withOpacity(0.2),
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(
-                                    16), // Reducido de 20 a 16
+                                borderRadius: BorderRadius.circular(16),
                               ),
                               child: Container(
                                 decoration: BoxDecoration(
@@ -2453,21 +2589,46 @@ class JovenesAsignadosTab extends StatelessWidget {
                                   gradient: LinearGradient(
                                     begin: Alignment.topLeft,
                                     end: Alignment.bottomRight,
-                                    colors: [
-                                      Colors.white,
-                                      (tieneBloqueoPendiente &&
-                                              tieneAlertaActiva)
-                                          ? Color(0xFFFF4B2B).withOpacity(0.03)
-                                          : Colors.white,
-                                    ],
+                                    colors: esAsignacionReciente
+                                        ? [
+                                            Color(0xFFFFF3E0), // Amarillo claro
+                                            Color(0xFFFFE0B2).withOpacity(0.6),
+                                          ]
+                                        : (tieneBloqueoPendiente &&
+                                                tieneAlertaActiva)
+                                            ? [
+                                                Colors.white,
+                                                Color(0xFFFF4B2B)
+                                                    .withOpacity(0.03),
+                                              ]
+                                            : [
+                                                Colors.white,
+                                                Colors.white,
+                                              ],
                                   ),
-                                  border: (tieneBloqueoPendiente &&
-                                          tieneAlertaActiva)
+                                  border: esAsignacionReciente
                                       ? Border.all(
-                                          color: Color(0xFFFF4B2B)
-                                              .withOpacity(0.3),
-                                          width: 2,
+                                          color: Color(0xFFFFB74D),
+                                          width: 2.5,
                                         )
+                                      : (tieneBloqueoPendiente &&
+                                              tieneAlertaActiva)
+                                          ? Border.all(
+                                              color: Color(0xFFFF4B2B)
+                                                  .withOpacity(0.3),
+                                              width: 2,
+                                            )
+                                          : null,
+                                  boxShadow: esAsignacionReciente
+                                      ? [
+                                          BoxShadow(
+                                            color: Color(0xFFFFB74D)
+                                                .withOpacity(0.3),
+                                            blurRadius: 12,
+                                            offset: Offset(0, 6),
+                                            spreadRadius: 2,
+                                          ),
+                                        ]
                                       : null,
                                 ),
                                 child: ExpansionTile(
@@ -2485,22 +2646,28 @@ class JovenesAsignadosTab extends StatelessWidget {
                                   ),
                                   leading: Stack(
                                     children: [
-                                      // Avatar más pequeño para reducir altura de la tarjeta
                                       Container(
-                                        width: 44, // Reducido de 50 a 44
-                                        height: 44, // Reducido de 50 a 44
+                                        width: 44,
+                                        height: 44,
                                         decoration: BoxDecoration(
                                           gradient: LinearGradient(
-                                            colors: [
-                                              Color(0xFF147B7C),
-                                              Color(0xFF147B7C)
-                                                  .withOpacity(0.8),
-                                            ],
+                                            colors: esAsignacionReciente
+                                                ? [
+                                                    Color(0xFFFFB74D),
+                                                    Color(0xFFFF9800),
+                                                  ]
+                                                : [
+                                                    Color(0xFF147B7C),
+                                                    Color(0xFF147B7C)
+                                                        .withOpacity(0.8),
+                                                  ],
                                           ),
                                           shape: BoxShape.circle,
                                           boxShadow: [
                                             BoxShadow(
-                                              color: Color(0xFF147B7C)
+                                              color: (esAsignacionReciente
+                                                      ? Color(0xFFFFB74D)
+                                                      : Color(0xFF147B7C))
                                                   .withOpacity(0.3),
                                               spreadRadius: 2,
                                               blurRadius: 6,
@@ -2521,7 +2688,49 @@ class JovenesAsignadosTab extends StatelessWidget {
                                           ),
                                         ),
                                       ),
-                                      if (tieneBloqueoPendiente &&
+                                      // Badge de "NUEVO" para asignaciones recientes
+                                      if (esAsignacionReciente)
+                                        Positioned(
+                                          top: -2,
+                                          right: -2,
+                                          child: Container(
+                                            padding: EdgeInsets.symmetric(
+                                                horizontal: 4, vertical: 2),
+                                            decoration: BoxDecoration(
+                                              gradient: LinearGradient(
+                                                colors: [
+                                                  Color(0xFFFF6F00),
+                                                  Color(0xFFFF9800),
+                                                ],
+                                              ),
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                              border: Border.all(
+                                                  color: Colors.white,
+                                                  width: 1.5),
+                                              boxShadow: [
+                                                BoxShadow(
+                                                  color: Color(0xFFFF6F00)
+                                                      .withOpacity(0.4),
+                                                  blurRadius: 4,
+                                                  offset: Offset(0, 2),
+                                                ),
+                                              ],
+                                            ),
+                                            child: Text(
+                                              'NUEVO',
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 7,
+                                                fontWeight: FontWeight.bold,
+                                                letterSpacing: 0.3,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      // Badge de alerta (si existe)
+                                      if (!esAsignacionReciente &&
+                                          tieneBloqueoPendiente &&
                                           tieneAlertaActiva)
                                         Positioned(
                                           top: -2,
@@ -2559,19 +2768,85 @@ class JovenesAsignadosTab extends StatelessWidget {
                                       spacing: 8,
                                       runSpacing: 4,
                                       children: [
-                                        // Badge más compacto para reducir espacio
+                                        // ===== BADGE NUEVO (Prioridad 1) =====
+                                        if (esAsignacionReciente)
+                                          Container(
+                                            padding: EdgeInsets.symmetric(
+                                                horizontal: 8, vertical: 4),
+                                            decoration: BoxDecoration(
+                                              gradient: LinearGradient(
+                                                colors: [
+                                                  Color(0xFFFF6F00),
+                                                  Color(0xFFFF9800),
+                                                ],
+                                              ),
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                              boxShadow: [
+                                                BoxShadow(
+                                                  color: Color(0xFFFF6F00)
+                                                      .withOpacity(0.3),
+                                                  blurRadius: 6,
+                                                  offset: Offset(0, 2),
+                                                ),
+                                              ],
+                                            ),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Icon(
+                                                  Icons.fiber_new_rounded,
+                                                  size: 14,
+                                                  color: Colors.white,
+                                                ),
+                                                SizedBox(width: 4),
+                                                Text(
+                                                  'NUEVO',
+                                                  style: TextStyle(
+                                                    color: Colors.white,
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 10,
+                                                    letterSpacing: 0.5,
+                                                  ),
+                                                ),
+                                                SizedBox(width: 4),
+                                                Container(
+                                                  padding: EdgeInsets.symmetric(
+                                                      horizontal: 4,
+                                                      vertical: 1),
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.white
+                                                        .withOpacity(0.3),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            8),
+                                                  ),
+                                                  child: Text(
+                                                    '${14 - diasDesdeAsignacion}d',
+                                                    style: TextStyle(
+                                                      color: Colors.white,
+                                                      fontSize: 9,
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+
+                                        // Badge de faltas
                                         Container(
                                           padding: EdgeInsets.symmetric(
-                                              horizontal: 6,
-                                              vertical: 3), // Reducido
+                                              horizontal: 6, vertical: 3),
                                           decoration: BoxDecoration(
                                             color: faltas >= 3
                                                 ? Color(0xFFFF4B2B)
                                                     .withOpacity(0.1)
                                                 : Color(0xFF147B7C)
                                                     .withOpacity(0.1),
-                                            borderRadius: BorderRadius.circular(
-                                                10), // Reducido de 12 a 10
+                                            borderRadius:
+                                                BorderRadius.circular(10),
                                           ),
                                           child: Row(
                                             mainAxisSize: MainAxisSize.min,
@@ -2580,14 +2855,12 @@ class JovenesAsignadosTab extends StatelessWidget {
                                                 faltas >= 3
                                                     ? Icons.warning
                                                     : Icons.check_circle,
-                                                size: 12, // Reducido de 14 a 12
+                                                size: 12,
                                                 color: faltas >= 3
                                                     ? Color(0xFFFF4B2B)
                                                     : Color(0xFF147B7C),
                                               ),
-                                              SizedBox(
-                                                  width:
-                                                      3), // Reducido de 4 a 3
+                                              SizedBox(width: 3),
                                               Text(
                                                 'Faltas: $faltas',
                                                 style: TextStyle(
@@ -2595,8 +2868,7 @@ class JovenesAsignadosTab extends StatelessWidget {
                                                       ? Color(0xFFFF4B2B)
                                                       : Color(0xFF147B7C),
                                                   fontWeight: FontWeight.w600,
-                                                  fontSize:
-                                                      11, // Reducido de 12 a 11
+                                                  fontSize: 11,
                                                 ),
                                               ),
                                             ],
@@ -3116,7 +3388,6 @@ class JovenesAsignadosTab extends StatelessWidget {
 
     return agrupadas;
   }
-
 
   Widget _buildAsistenciasSection(List asistencias) {
     if (asistencias.isEmpty) {

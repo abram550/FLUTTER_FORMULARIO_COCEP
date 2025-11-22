@@ -53,6 +53,13 @@ class _AdminPanelState extends State<AdminPanel>
   List<int> _aniosDisponibles = [];
 
   bool _cargando = false;
+  String _tipoAgrupacionMensual = "dias";
+
+// Variables para filtros por semana con controladores
+  Map<String, String?> _filtrosSexoPorSemana = {};
+  Map<String, int?> _filtrosEdadPorSemana = {};
+  Map<String, TextEditingController> _controladoresEdadPorSemana = {};
+
   Map<String, List<ChartData>> _datosFiltrados = {
     "consolidacion": [],
     "redes": [],
@@ -137,6 +144,13 @@ class _AdminPanelState extends State<AdminPanel>
     _searchController.dispose();
     _animationController.dispose();
     _inactivityTimer?.cancel();
+
+    // Limpiar controladores de edad
+    _controladoresEdadPorSemana.forEach((key, controller) {
+      controller.dispose();
+    });
+    _controladoresEdadPorSemana.clear();
+
     super.dispose();
   }
 
@@ -4328,10 +4342,251 @@ class _AdminPanelState extends State<AdminPanel>
           fontWeight: FontWeight.w500,
         ),
       ),
-      children: registrosPorDia.entries
-          .map((entrada) => _buildFechaGroup(entrada.key, entrada.value))
-          .toList(),
+      children: [
+        // ✅ BOTONES DE AGRUPACIÓN RESPONSIVOS
+        StatefulBuilder(
+          builder: (BuildContext context, StateSetter setLocalState) {
+            return LayoutBuilder(
+              builder: (context, constraints) {
+                // Determinar si es pantalla pequeña
+                final isSmallScreen = constraints.maxWidth < 600;
+
+                return Column(
+                  children: [
+                    Container(
+                      margin: EdgeInsets.symmetric(
+                        horizontal: isSmallScreen ? 8 : 12,
+                        vertical: isSmallScreen ? 6 : 8,
+                      ),
+                      padding: EdgeInsets.all(isSmallScreen ? 10 : 12),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            primaryTeal.withOpacity(0.05),
+                            secondaryOrange.withOpacity(0.05),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: primaryTeal.withOpacity(0.2),
+                          width: 1.5,
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.view_module,
+                                color: primaryTeal,
+                                size: isSmallScreen ? 18 : 20,
+                              ),
+                              SizedBox(width: isSmallScreen ? 6 : 8),
+                              Text(
+                                'Agrupar por:',
+                                style: TextStyle(
+                                  fontSize: isSmallScreen ? 12 : 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.grey[700],
+                                ),
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: isSmallScreen ? 10 : 12),
+                          // Botones responsivos
+                          isSmallScreen
+                              ? Column(
+                                  children: [
+                                    _buildAgrupacionButton(
+                                      'Días',
+                                      Icons.calendar_view_day,
+                                      _tipoAgrupacionMensual == "dias",
+                                      () {
+                                        setLocalState(() {
+                                          _tipoAgrupacionMensual = "dias";
+                                        });
+                                      },
+                                      isSmall: true,
+                                    ),
+                                    const SizedBox(height: 8),
+                                    _buildAgrupacionButton(
+                                      'Semanas',
+                                      Icons.view_week,
+                                      _tipoAgrupacionMensual == "semanas",
+                                      () {
+                                        setLocalState(() {
+                                          _tipoAgrupacionMensual = "semanas";
+                                        });
+                                      },
+                                      isSmall: true,
+                                    ),
+                                  ],
+                                )
+                              : Row(
+                                  children: [
+                                    Expanded(
+                                      child: _buildAgrupacionButton(
+                                        'Días',
+                                        Icons.calendar_view_day,
+                                        _tipoAgrupacionMensual == "dias",
+                                        () {
+                                          setLocalState(() {
+                                            _tipoAgrupacionMensual = "dias";
+                                          });
+                                        },
+                                        isSmall: false,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: _buildAgrupacionButton(
+                                        'Semanas',
+                                        Icons.view_week,
+                                        _tipoAgrupacionMensual == "semanas",
+                                        () {
+                                          setLocalState(() {
+                                            _tipoAgrupacionMensual = "semanas";
+                                          });
+                                        },
+                                        isSmall: false,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                        ],
+                      ),
+                    ),
+                    // Contenido según tipo de agrupación
+                    ..._tipoAgrupacionMensual == "dias"
+                        ? registrosPorDia.entries
+                            .map((entrada) =>
+                                _buildFechaGroup(entrada.key, entrada.value))
+                            .toList()
+                        : _buildSemanaGroups(registrosPorDia),
+                  ],
+                );
+              },
+            );
+          },
+        ),
+      ],
     );
+  }
+
+  // ✅ MÉTODO AUXILIAR PARA BOTÓN DE AGRUPACIÓN
+  Widget _buildAgrupacionButton(
+      String label, IconData icon, bool isSelected, VoidCallback onTap,
+      {required bool isSmall}) {
+    final color = label == 'Días' ? primaryTeal : secondaryOrange;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        width: double.infinity,
+        padding: EdgeInsets.symmetric(
+          horizontal: isSmall ? 10 : 12,
+          vertical: isSmall ? 10 : 12,
+        ),
+        decoration: BoxDecoration(
+          gradient: isSelected
+              ? LinearGradient(
+                  colors: [color, color.withOpacity(0.8)],
+                )
+              : null,
+          color: isSelected ? null : Colors.grey[100],
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: isSelected ? color : Colors.grey.shade300,
+            width: isSelected ? 2 : 1,
+          ),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: color.withOpacity(0.3),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              color: isSelected ? Colors.white : Colors.grey[600],
+              size: isSmall ? 18 : 20,
+            ),
+            SizedBox(width: isSmall ? 6 : 8),
+            Text(
+              label,
+              style: TextStyle(
+                color: isSelected ? Colors.white : Colors.grey[700],
+                fontSize: isSmall ? 13 : 14,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+// Agrupa registros por semanas (Lunes a Domingo)
+  List<Widget> _buildSemanaGroups(
+      Map<DateTime, List<Registro>> registrosPorDia) {
+    // Agrupar registros por semana
+    Map<int, Map<DateTime, List<Registro>>> registrosPorSemana = {};
+
+    registrosPorDia.forEach((fecha, registros) {
+      int numeroSemana = _getNumeroSemanaDelMes(fecha);
+      registrosPorSemana[numeroSemana] ??= {};
+      registrosPorSemana[numeroSemana]![fecha] = registros;
+    });
+
+    // Ordenar semanas
+    List<int> semanasOrdenadas = registrosPorSemana.keys.toList()..sort();
+
+    return semanasOrdenadas
+        .map((semana) => _buildSemanaGroup(semana, registrosPorSemana[semana]!))
+        .toList();
+  }
+
+// Calcular número de semana dentro del mes (1-5)
+  int _getNumeroSemanaDelMes(DateTime fecha) {
+    // Encontrar el primer lunes del mes
+    DateTime primerDiaDelMes = DateTime(fecha.year, fecha.month, 1);
+
+    // Calcular cuántos días faltan para el primer lunes
+    int diasHastaLunes = (DateTime.monday - primerDiaDelMes.weekday + 7) % 7;
+    DateTime primerLunes = primerDiaDelMes.add(Duration(days: diasHastaLunes));
+
+    // Si la fecha es antes del primer lunes, está en la "semana 0"
+    if (fecha.isBefore(primerLunes)) {
+      return 0;
+    }
+
+    // Calcular la diferencia en días desde el primer lunes
+    int diasDesdePrimerLunes = fecha.difference(primerLunes).inDays;
+
+    // Calcular número de semana (1-indexed)
+    return (diasDesdePrimerLunes ~/ 7) + 1;
+  }
+
+// Obtener el rango de fechas de una semana
+  String _getRangoSemana(Map<DateTime, List<Registro>> registrosSemana) {
+    if (registrosSemana.isEmpty) return '';
+
+    List<DateTime> fechas = registrosSemana.keys.toList()..sort();
+    DateTime inicio = fechas.first;
+    DateTime fin = fechas.last;
+
+    return '${DateFormat('dd/MM').format(inicio)} - ${DateFormat('dd/MM').format(fin)}';
   }
 
   String _getNombreMes(int mes) {
@@ -4350,6 +4605,27 @@ class _AdminPanelState extends State<AdminPanel>
       'Diciembre'
     ];
     return meses[mes - 1];
+  }
+
+  String _getNombreDiaSemana(int weekday) {
+    switch (weekday) {
+      case DateTime.monday:
+        return 'Lunes';
+      case DateTime.tuesday:
+        return 'Martes';
+      case DateTime.wednesday:
+        return 'Miércoles';
+      case DateTime.thursday:
+        return 'Jueves';
+      case DateTime.friday:
+        return 'Viernes';
+      case DateTime.saturday:
+        return 'Sábado';
+      case DateTime.sunday:
+        return 'Domingo';
+      default:
+        return '';
+    }
   }
 
   Widget _buildFechaGroup(DateTime fecha, List<Registro> registros) {
@@ -4386,12 +4662,40 @@ class _AdminPanelState extends State<AdminPanel>
                 backgroundColor: primaryTeal,
                 child: const Icon(Icons.calendar_today, color: Colors.white),
               ),
-              title: Text(
-                DateFormat('dd/MM/yyyy').format(fecha),
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                ),
+              title: Row(
+                children: [
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: primaryTeal.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: primaryTeal.withOpacity(0.3),
+                        width: 1,
+                      ),
+                    ),
+                    child: Text(
+                      _getNombreDiaSemana(fecha.weekday),
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: primaryTeal,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Flexible(
+                    child: Text(
+                      DateFormat('dd/MM/yyyy').format(fecha),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
               ),
               subtitle: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -4411,66 +4715,345 @@ class _AdminPanelState extends State<AdminPanel>
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8),
-                            decoration: BoxDecoration(
-                              border: Border.all(color: Colors.grey.shade300),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: DropdownButtonHideUnderline(
-                              child: DropdownButton<String>(
-                                value: filtroSexoLocal,
-                                hint: const Text("Filtrar por Sexo"),
-                                isExpanded: true,
-                                icon: const Icon(Icons.person_outline),
-                                items: ['Hombre', 'Mujer'].map((sexo) {
-                                  return DropdownMenuItem(
-                                    value: sexo,
-                                    child: Text(sexo),
-                                  );
-                                }).toList(),
-                                onChanged: (value) {
-                                  setState(() {
-                                    filtroSexoLocal = value;
-                                    aplicarFiltros();
-                                  });
-                                },
-                              ),
-                            ),
+                  const SizedBox(height: 12),
+                  // ✅ FILTROS RESPONSIVOS
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      // Determinar si es pantalla pequeña
+                      final isSmallScreen = constraints.maxWidth < 600;
+
+                      return Container(
+                        padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              primaryTeal.withOpacity(0.05),
+                              secondaryOrange.withOpacity(0.05),
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: primaryTeal.withOpacity(0.2),
+                            width: 1.5,
                           ),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8),
-                            decoration: BoxDecoration(
-                              border: Border.all(color: Colors.grey.shade300),
-                              borderRadius: BorderRadius.circular(8),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Título de filtros
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(6),
+                                  decoration: BoxDecoration(
+                                    color: primaryTeal.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Icon(
+                                    Icons.filter_alt,
+                                    color: primaryTeal,
+                                    size: isSmallScreen ? 16 : 18,
+                                  ),
+                                ),
+                                SizedBox(width: isSmallScreen ? 6 : 8),
+                                Text(
+                                  'Filtros',
+                                  style: TextStyle(
+                                    fontSize: isSmallScreen ? 12 : 14,
+                                    fontWeight: FontWeight.bold,
+                                    color: primaryTeal,
+                                  ),
+                                ),
+                                const Spacer(),
+                                // Botón para limpiar todos los filtros
+                                if (filtroSexoLocal != null ||
+                                    filtroEdadLocal != null)
+                                  InkWell(
+                                    onTap: () {
+                                      setState(() {
+                                        filtroSexoLocal = null;
+                                        filtroEdadLocal = null;
+                                        aplicarFiltros();
+                                      });
+                                    },
+                                    borderRadius: BorderRadius.circular(8),
+                                    child: Container(
+                                      padding: EdgeInsets.symmetric(
+                                          horizontal: isSmallScreen ? 8 : 10,
+                                          vertical: isSmallScreen ? 4 : 6),
+                                      decoration: BoxDecoration(
+                                        color: secondaryOrange.withOpacity(0.1),
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(
+                                          color:
+                                              secondaryOrange.withOpacity(0.3),
+                                          width: 1,
+                                        ),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(
+                                            Icons.clear_all,
+                                            color: secondaryOrange,
+                                            size: isSmallScreen ? 14 : 16,
+                                          ),
+                                          SizedBox(
+                                              width: isSmallScreen ? 2 : 4),
+                                          Text(
+                                            'Limpiar',
+                                            style: TextStyle(
+                                              color: secondaryOrange,
+                                              fontSize: isSmallScreen ? 10 : 12,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                              ],
                             ),
-                            child: TextField(
-                              keyboardType: TextInputType.number,
-                              decoration: const InputDecoration(
-                                hintText: "Filtrar por Edad",
-                                border: InputBorder.none,
-                                prefixIcon: Icon(Icons.cake_outlined),
-                              ),
-                              onChanged: (value) {
-                                setState(() {
-                                  filtroEdadLocal = int.tryParse(value);
-                                  aplicarFiltros();
-                                });
-                              },
-                            ),
-                          ),
+                            SizedBox(height: isSmallScreen ? 12 : 16),
+
+                            // Filtro de Sexo con Chips Interactivos - RESPONSIVO
+                            isSmallScreen
+                                ? Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Icon(Icons.wc,
+                                              color: Colors.grey[600],
+                                              size: 18),
+                                          const SizedBox(width: 6),
+                                          Text(
+                                            'Sexo:',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.grey[700],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Row(
+                                        children: [
+                                          Expanded(
+                                            child: _buildChipSexo(
+                                              'Hombre',
+                                              Icons.male,
+                                              filtroSexoLocal == 'Hombre',
+                                              () {
+                                                setState(() {
+                                                  filtroSexoLocal =
+                                                      filtroSexoLocal ==
+                                                              'Hombre'
+                                                          ? null
+                                                          : 'Hombre';
+                                                  aplicarFiltros();
+                                                });
+                                              },
+                                              isSmall: true,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Expanded(
+                                            child: _buildChipSexo(
+                                              'Mujer',
+                                              Icons.female,
+                                              filtroSexoLocal == 'Mujer',
+                                              () {
+                                                setState(() {
+                                                  filtroSexoLocal =
+                                                      filtroSexoLocal == 'Mujer'
+                                                          ? null
+                                                          : 'Mujer';
+                                                  aplicarFiltros();
+                                                });
+                                              },
+                                              isSmall: true,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  )
+                                : Row(
+                                    children: [
+                                      Icon(Icons.wc,
+                                          color: Colors.grey[600], size: 20),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'Sexo:',
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.grey[700],
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Row(
+                                          children: [
+                                            Expanded(
+                                              child: _buildChipSexo(
+                                                'Hombre',
+                                                Icons.male,
+                                                filtroSexoLocal == 'Hombre',
+                                                () {
+                                                  setState(() {
+                                                    filtroSexoLocal =
+                                                        filtroSexoLocal ==
+                                                                'Hombre'
+                                                            ? null
+                                                            : 'Hombre';
+                                                    aplicarFiltros();
+                                                  });
+                                                },
+                                                isSmall: false,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Expanded(
+                                              child: _buildChipSexo(
+                                                'Mujer',
+                                                Icons.female,
+                                                filtroSexoLocal == 'Mujer',
+                                                () {
+                                                  setState(() {
+                                                    filtroSexoLocal =
+                                                        filtroSexoLocal ==
+                                                                'Mujer'
+                                                            ? null
+                                                            : 'Mujer';
+                                                    aplicarFiltros();
+                                                  });
+                                                },
+                                                isSmall: false,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+
+                            SizedBox(height: isSmallScreen ? 10 : 12),
+
+                            // Filtro de Edad - RESPONSIVO
+                            isSmallScreen
+                                ? Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Icon(Icons.cake,
+                                              color: Colors.grey[600],
+                                              size: 18),
+                                          const SizedBox(width: 6),
+                                          Text(
+                                            'Edad mínima:',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.grey[700],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 8),
+                                      _buildEdadTextField(
+                                        filtroEdadLocal,
+                                        (value) {
+                                          setState(() {
+                                            filtroEdadLocal =
+                                                int.tryParse(value);
+                                            aplicarFiltros();
+                                          });
+                                        },
+                                        () {
+                                          setState(() {
+                                            filtroEdadLocal = null;
+                                            aplicarFiltros();
+                                          });
+                                        },
+                                        isSmall: true,
+                                      ),
+                                    ],
+                                  )
+                                : Row(
+                                    children: [
+                                      Icon(Icons.cake,
+                                          color: Colors.grey[600], size: 20),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'Edad mínima:',
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.grey[700],
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: _buildEdadTextField(
+                                          filtroEdadLocal,
+                                          (value) {
+                                            setState(() {
+                                              filtroEdadLocal =
+                                                  int.tryParse(value);
+                                              aplicarFiltros();
+                                            });
+                                          },
+                                          () {
+                                            setState(() {
+                                              filtroEdadLocal = null;
+                                              aplicarFiltros();
+                                            });
+                                          },
+                                          isSmall: false,
+                                        ),
+                                      ),
+                                      if (filtroEdadLocal != null)
+                                        Padding(
+                                          padding:
+                                              const EdgeInsets.only(left: 8),
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 8, vertical: 4),
+                                            decoration: BoxDecoration(
+                                              color:
+                                                  primaryTeal.withOpacity(0.1),
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                              border: Border.all(
+                                                color: primaryTeal
+                                                    .withOpacity(0.3),
+                                                width: 1,
+                                              ),
+                                            ),
+                                            child: Text(
+                                              '≥ $filtroEdadLocal',
+                                              style: TextStyle(
+                                                color: primaryTeal,
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                          ],
                         ),
-                      ],
-                    ),
+                      );
+                    },
                   ),
                 ],
               ),
@@ -4493,6 +5076,818 @@ class _AdminPanelState extends State<AdminPanel>
           ),
         );
       },
+    );
+  }
+
+  // ✅ MÉTODO AUXILIAR PARA CHIP DE SEXO
+  Widget _buildChipSexo(
+      String label, IconData icon, bool isSelected, VoidCallback onTap,
+      {required bool isSmall}) {
+    final color = label == 'Hombre' ? primaryTeal : secondaryOrange;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: EdgeInsets.symmetric(
+          horizontal: isSmall ? 8 : 12,
+          vertical: isSmall ? 6 : 8,
+        ),
+        decoration: BoxDecoration(
+          gradient: isSelected
+              ? LinearGradient(
+                  colors: [color, color.withOpacity(0.8)],
+                )
+              : null,
+          color: isSelected ? null : Colors.grey[100],
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected ? color : Colors.grey.shade300,
+            width: isSelected ? 2 : 1,
+          ),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: color.withOpacity(0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              color: isSelected ? Colors.white : Colors.grey[600],
+              size: isSmall ? 16 : 18,
+            ),
+            SizedBox(width: isSmall ? 3 : 4),
+            Text(
+              label,
+              style: TextStyle(
+                color: isSelected ? Colors.white : Colors.grey[700],
+                fontSize: isSmall ? 11 : 12,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ✅ MÉTODO AUXILIAR PARA CAMPO DE EDAD
+  Widget _buildEdadTextField(
+      int? filtroEdad, Function(String) onChanged, VoidCallback onClear,
+      {required bool isSmall}) {
+    return Row(
+      children: [
+        Expanded(
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: filtroEdad != null ? primaryTeal : Colors.grey.shade300,
+                width: filtroEdad != null ? 2 : 1,
+              ),
+              boxShadow: filtroEdad != null
+                  ? [
+                      BoxShadow(
+                        color: primaryTeal.withOpacity(0.1),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ]
+                  : null,
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    keyboardType: TextInputType.number,
+                    style: TextStyle(
+                      fontSize: isSmall ? 13 : 14,
+                      fontWeight: FontWeight.w600,
+                      color: primaryTeal,
+                    ),
+                    decoration: InputDecoration(
+                      hintText: "Ej: 18",
+                      hintStyle: TextStyle(
+                        color: Colors.grey[400],
+                        fontSize: isSmall ? 12 : 13,
+                      ),
+                      border: InputBorder.none,
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: isSmall ? 10 : 12,
+                        vertical: isSmall ? 8 : 10,
+                      ),
+                    ),
+                    onChanged: onChanged,
+                  ),
+                ),
+                if (filtroEdad != null)
+                  Container(
+                    margin: const EdgeInsets.only(right: 4),
+                    decoration: BoxDecoration(
+                      color: secondaryOrange.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: IconButton(
+                      icon: Icon(
+                        Icons.clear,
+                        color: secondaryOrange,
+                        size: isSmall ? 16 : 18,
+                      ),
+                      padding: EdgeInsets.all(isSmall ? 3 : 4),
+                      constraints: const BoxConstraints(),
+                      onPressed: onClear,
+                      tooltip: 'Limpiar filtro de edad',
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+        if (isSmall && filtroEdad != null)
+          Padding(
+            padding: const EdgeInsets.only(left: 8),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: primaryTeal.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: primaryTeal.withOpacity(0.3),
+                  width: 1,
+                ),
+              ),
+              child: Text(
+                '≥ $filtroEdad',
+                style: TextStyle(
+                  color: primaryTeal,
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildSemanaGroup(
+      int numeroSemana, Map<DateTime, List<Registro>> registrosSemana) {
+    int totalRegistros =
+        registrosSemana.values.expand((registros) => registros).length;
+    String rangoFechas = _getRangoSemana(registrosSemana);
+
+    // Determinar el nombre de la semana con descripción más clara
+    String nombreSemana;
+    String descripcionSemana = '';
+
+    if (numeroSemana == 0) {
+      List<DateTime> fechas = registrosSemana.keys.toList()..sort();
+      String primerDia = _getNombreDiaSemana(fechas.first.weekday);
+      String ultimoDia = _getNombreDiaSemana(fechas.last.weekday);
+
+      nombreSemana = 'Inicio del Mes';
+      descripcionSemana = '($primerDia - $ultimoDia)';
+    } else {
+      nombreSemana = 'Semana $numeroSemana';
+      descripcionSemana = '(Lunes - Domingo)';
+    }
+
+    // ✅ CREAR CLAVE ÚNICA PARA ESTA SEMANA
+    List<DateTime> fechas = registrosSemana.keys.toList()..sort();
+    String claveUnicaSemana = fechas.isNotEmpty
+        ? '${fechas.first.year}_${fechas.first.month}_$numeroSemana'
+        : 'semana_$numeroSemana';
+
+    // ✅ INICIALIZAR FILTROS Y CONTROLADOR SI NO EXISTEN
+    if (!_filtrosSexoPorSemana.containsKey(claveUnicaSemana)) {
+      _filtrosSexoPorSemana[claveUnicaSemana] = null;
+    }
+    if (!_filtrosEdadPorSemana.containsKey(claveUnicaSemana)) {
+      _filtrosEdadPorSemana[claveUnicaSemana] = null;
+    }
+    if (!_controladoresEdadPorSemana.containsKey(claveUnicaSemana)) {
+      _controladoresEdadPorSemana[claveUnicaSemana] = TextEditingController();
+    }
+
+    // Obtener todos los registros de la semana
+    List<Registro> todosLosRegistros =
+        registrosSemana.values.expand((registros) => registros).toList();
+
+    return Theme(
+      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+      child: Card(
+        elevation: 2,
+        margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        child: ExpansionTile(
+          leading: CircleAvatar(
+            backgroundColor: primaryTeal,
+            child: Icon(
+              Icons.calendar_view_week,
+              color: Colors.white,
+              size: 20,
+            ),
+          ),
+          title: Row(
+            children: [
+              Text(
+                nombreSemana,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: numeroSemana == 0
+                      ? secondaryOrange.withOpacity(0.1)
+                      : primaryTeal.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: numeroSemana == 0
+                        ? secondaryOrange.withOpacity(0.3)
+                        : primaryTeal.withOpacity(0.3),
+                    width: 1,
+                  ),
+                ),
+                child: Text(
+                  descripcionSemana,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: numeroSemana == 0 ? secondaryOrange : primaryTeal,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  Icon(Icons.date_range, size: 14, color: Colors.grey[600]),
+                  const SizedBox(width: 4),
+                  Text(
+                    rangoFechas,
+                    style: TextStyle(
+                      color: Colors.grey[600],
+                      fontSize: 12,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Icon(Icons.people_outline, size: 16, color: secondaryOrange),
+                  const SizedBox(width: 4),
+                  // ✅ USAR StreamBuilder PARA ACTUALIZAR DINÁMICAMENTE
+                  StreamBuilder<int>(
+                    stream: Stream.value(0), // Trigger inicial
+                    builder: (context, snapshot) {
+                      // Calcular registros filtrados
+                      List<Registro> registrosFiltrados =
+                          todosLosRegistros.where((registro) {
+                        final coincideSexo =
+                            _filtrosSexoPorSemana[claveUnicaSemana] == null ||
+                                registro.sexo ==
+                                    _filtrosSexoPorSemana[claveUnicaSemana];
+                        final coincideEdad =
+                            _filtrosEdadPorSemana[claveUnicaSemana] == null ||
+                                registro.edad >=
+                                    _filtrosEdadPorSemana[claveUnicaSemana]!;
+                        return coincideSexo && coincideEdad;
+                      }).toList();
+
+                      return Text(
+                        '${registrosFiltrados.length} registros',
+                        style: TextStyle(
+                          color: secondaryOrange,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ],
+          ),
+          children: [
+            // ✅ USAR StatefulBuilder SOLO PARA ESTA SECCIÓN
+            StatefulBuilder(
+              builder: (BuildContext context, StateSetter setLocalState) {
+                // Función para actualizar SOLO este widget
+                void actualizarFiltroLocal() {
+                  setLocalState(() {});
+                }
+
+                // Calcular registros filtrados
+                List<Registro> registrosFiltrados =
+                    todosLosRegistros.where((registro) {
+                  final coincideSexo =
+                      _filtrosSexoPorSemana[claveUnicaSemana] == null ||
+                          registro.sexo ==
+                              _filtrosSexoPorSemana[claveUnicaSemana];
+                  final coincideEdad =
+                      _filtrosEdadPorSemana[claveUnicaSemana] == null ||
+                          registro.edad >=
+                              _filtrosEdadPorSemana[claveUnicaSemana]!;
+                  return coincideSexo && coincideEdad;
+                }).toList();
+
+                return Column(
+                  children: [
+                    // Filtros
+                    Container(
+                      margin: const EdgeInsets.all(12),
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            primaryTeal.withOpacity(0.05),
+                            secondaryOrange.withOpacity(0.05),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: primaryTeal.withOpacity(0.2),
+                          width: 1.5,
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(6),
+                                decoration: BoxDecoration(
+                                  color: primaryTeal.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Icon(
+                                  Icons.filter_alt,
+                                  color: primaryTeal,
+                                  size: 18,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Filtros',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  color: primaryTeal,
+                                ),
+                              ),
+                              const Spacer(),
+                              if (_filtrosSexoPorSemana[claveUnicaSemana] !=
+                                      null ||
+                                  _filtrosEdadPorSemana[claveUnicaSemana] !=
+                                      null)
+                                InkWell(
+                                  onTap: () {
+                                    _filtrosSexoPorSemana[claveUnicaSemana] =
+                                        null;
+                                    _filtrosEdadPorSemana[claveUnicaSemana] =
+                                        null;
+                                    _controladoresEdadPorSemana[
+                                            claveUnicaSemana]
+                                        ?.clear();
+                                    actualizarFiltroLocal();
+                                  },
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 10, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color: secondaryOrange.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(
+                                        color: secondaryOrange.withOpacity(0.3),
+                                        width: 1,
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(Icons.clear_all,
+                                            color: secondaryOrange, size: 16),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          'Limpiar',
+                                          style: TextStyle(
+                                            color: secondaryOrange,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+
+                          // Filtro de Sexo
+                          Row(
+                            children: [
+                              Icon(Icons.wc, color: Colors.grey[600], size: 20),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Sexo:',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.grey[700],
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: InkWell(
+                                        onTap: () {
+                                          _filtrosSexoPorSemana[
+                                                  claveUnicaSemana] =
+                                              _filtrosSexoPorSemana[
+                                                          claveUnicaSemana] ==
+                                                      'Hombre'
+                                                  ? null
+                                                  : 'Hombre';
+                                          actualizarFiltroLocal();
+                                        },
+                                        borderRadius: BorderRadius.circular(20),
+                                        child: AnimatedContainer(
+                                          duration:
+                                              const Duration(milliseconds: 200),
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 12, vertical: 8),
+                                          decoration: BoxDecoration(
+                                            gradient: _filtrosSexoPorSemana[
+                                                        claveUnicaSemana] ==
+                                                    'Hombre'
+                                                ? LinearGradient(
+                                                    colors: [
+                                                      primaryTeal,
+                                                      primaryTeal
+                                                          .withOpacity(0.8)
+                                                    ],
+                                                  )
+                                                : null,
+                                            color: _filtrosSexoPorSemana[
+                                                        claveUnicaSemana] ==
+                                                    'Hombre'
+                                                ? null
+                                                : Colors.grey[100],
+                                            borderRadius:
+                                                BorderRadius.circular(20),
+                                            border: Border.all(
+                                              color: _filtrosSexoPorSemana[
+                                                          claveUnicaSemana] ==
+                                                      'Hombre'
+                                                  ? primaryTeal
+                                                  : Colors.grey.shade300,
+                                              width: _filtrosSexoPorSemana[
+                                                          claveUnicaSemana] ==
+                                                      'Hombre'
+                                                  ? 2
+                                                  : 1,
+                                            ),
+                                            boxShadow: _filtrosSexoPorSemana[
+                                                        claveUnicaSemana] ==
+                                                    'Hombre'
+                                                ? [
+                                                    BoxShadow(
+                                                      color: primaryTeal
+                                                          .withOpacity(0.3),
+                                                      blurRadius: 8,
+                                                      offset:
+                                                          const Offset(0, 2),
+                                                    ),
+                                                  ]
+                                                : null,
+                                          ),
+                                          child: Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(
+                                                Icons.male,
+                                                color: _filtrosSexoPorSemana[
+                                                            claveUnicaSemana] ==
+                                                        'Hombre'
+                                                    ? Colors.white
+                                                    : Colors.grey[600],
+                                                size: 18,
+                                              ),
+                                              const SizedBox(width: 4),
+                                              Text(
+                                                'Hombre',
+                                                style: TextStyle(
+                                                  color: _filtrosSexoPorSemana[
+                                                              claveUnicaSemana] ==
+                                                          'Hombre'
+                                                      ? Colors.white
+                                                      : Colors.grey[700],
+                                                  fontSize: 12,
+                                                  fontWeight: _filtrosSexoPorSemana[
+                                                              claveUnicaSemana] ==
+                                                          'Hombre'
+                                                      ? FontWeight.bold
+                                                      : FontWeight.w500,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: InkWell(
+                                        onTap: () {
+                                          _filtrosSexoPorSemana[
+                                                  claveUnicaSemana] =
+                                              _filtrosSexoPorSemana[
+                                                          claveUnicaSemana] ==
+                                                      'Mujer'
+                                                  ? null
+                                                  : 'Mujer';
+                                          actualizarFiltroLocal();
+                                        },
+                                        borderRadius: BorderRadius.circular(20),
+                                        child: AnimatedContainer(
+                                          duration:
+                                              const Duration(milliseconds: 200),
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 12, vertical: 8),
+                                          decoration: BoxDecoration(
+                                            gradient: _filtrosSexoPorSemana[
+                                                        claveUnicaSemana] ==
+                                                    'Mujer'
+                                                ? LinearGradient(
+                                                    colors: [
+                                                      secondaryOrange,
+                                                      secondaryOrange
+                                                          .withOpacity(0.8)
+                                                    ],
+                                                  )
+                                                : null,
+                                            color: _filtrosSexoPorSemana[
+                                                        claveUnicaSemana] ==
+                                                    'Mujer'
+                                                ? null
+                                                : Colors.grey[100],
+                                            borderRadius:
+                                                BorderRadius.circular(20),
+                                            border: Border.all(
+                                              color: _filtrosSexoPorSemana[
+                                                          claveUnicaSemana] ==
+                                                      'Mujer'
+                                                  ? secondaryOrange
+                                                  : Colors.grey.shade300,
+                                              width: _filtrosSexoPorSemana[
+                                                          claveUnicaSemana] ==
+                                                      'Mujer'
+                                                  ? 2
+                                                  : 1,
+                                            ),
+                                            boxShadow: _filtrosSexoPorSemana[
+                                                        claveUnicaSemana] ==
+                                                    'Mujer'
+                                                ? [
+                                                    BoxShadow(
+                                                      color: secondaryOrange
+                                                          .withOpacity(0.3),
+                                                      blurRadius: 8,
+                                                      offset:
+                                                          const Offset(0, 2),
+                                                    ),
+                                                  ]
+                                                : null,
+                                          ),
+                                          child: Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(
+                                                Icons.female,
+                                                color: _filtrosSexoPorSemana[
+                                                            claveUnicaSemana] ==
+                                                        'Mujer'
+                                                    ? Colors.white
+                                                    : Colors.grey[600],
+                                                size: 18,
+                                              ),
+                                              const SizedBox(width: 4),
+                                              Text(
+                                                'Mujer',
+                                                style: TextStyle(
+                                                  color: _filtrosSexoPorSemana[
+                                                              claveUnicaSemana] ==
+                                                          'Mujer'
+                                                      ? Colors.white
+                                                      : Colors.grey[700],
+                                                  fontSize: 12,
+                                                  fontWeight: _filtrosSexoPorSemana[
+                                                              claveUnicaSemana] ==
+                                                          'Mujer'
+                                                      ? FontWeight.bold
+                                                      : FontWeight.w500,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+
+                          const SizedBox(height: 12),
+
+                          // Filtro de Edad
+                          Row(
+                            children: [
+                              Icon(Icons.cake,
+                                  color: Colors.grey[600], size: 20),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Edad mínima:',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.grey[700],
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: _filtrosEdadPorSemana[
+                                                  claveUnicaSemana] !=
+                                              null
+                                          ? primaryTeal
+                                          : Colors.grey.shade300,
+                                      width: _filtrosEdadPorSemana[
+                                                  claveUnicaSemana] !=
+                                              null
+                                          ? 2
+                                          : 1,
+                                    ),
+                                    boxShadow: _filtrosEdadPorSemana[
+                                                claveUnicaSemana] !=
+                                            null
+                                        ? [
+                                            BoxShadow(
+                                              color:
+                                                  primaryTeal.withOpacity(0.1),
+                                              blurRadius: 4,
+                                              offset: const Offset(0, 2),
+                                            ),
+                                          ]
+                                        : null,
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: TextField(
+                                          controller:
+                                              _controladoresEdadPorSemana[
+                                                  claveUnicaSemana],
+                                          keyboardType: TextInputType.number,
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w600,
+                                            color: primaryTeal,
+                                          ),
+                                          decoration: InputDecoration(
+                                            hintText: "Ej: 18",
+                                            hintStyle: TextStyle(
+                                              color: Colors.grey[400],
+                                              fontSize: 13,
+                                            ),
+                                            border: InputBorder.none,
+                                            contentPadding:
+                                                const EdgeInsets.symmetric(
+                                              horizontal: 12,
+                                              vertical: 10,
+                                            ),
+                                          ),
+                                          onChanged: (value) {
+                                            _filtrosEdadPorSemana[
+                                                    claveUnicaSemana] =
+                                                int.tryParse(value);
+                                            actualizarFiltroLocal();
+                                          },
+                                        ),
+                                      ),
+                                      if (_filtrosEdadPorSemana[
+                                              claveUnicaSemana] !=
+                                          null)
+                                        Container(
+                                          margin:
+                                              const EdgeInsets.only(right: 4),
+                                          decoration: BoxDecoration(
+                                            color: secondaryOrange
+                                                .withOpacity(0.1),
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: IconButton(
+                                            icon: Icon(Icons.clear,
+                                                color: secondaryOrange,
+                                                size: 18),
+                                            padding: const EdgeInsets.all(4),
+                                            constraints: const BoxConstraints(),
+                                            onPressed: () {
+                                              _filtrosEdadPorSemana[
+                                                  claveUnicaSemana] = null;
+                                              _controladoresEdadPorSemana[
+                                                      claveUnicaSemana]
+                                                  ?.clear();
+                                              actualizarFiltroLocal();
+                                            },
+                                            tooltip: 'Limpiar filtro de edad',
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              if (_filtrosEdadPorSemana[claveUnicaSemana] !=
+                                  null)
+                                Padding(
+                                  padding: const EdgeInsets.only(left: 8),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: primaryTeal.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(
+                                        color: primaryTeal.withOpacity(0.3),
+                                        width: 1,
+                                      ),
+                                    ),
+                                    child: Text(
+                                      '≥ ${_filtrosEdadPorSemana[claveUnicaSemana]}',
+                                      style: TextStyle(
+                                        color: primaryTeal,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // Lista de registros filtrados
+                    ...registrosFiltrados
+                        .map((registro) => _buildRegistroTile(registro)),
+                    if (registrosFiltrados.isEmpty)
+                      const Padding(
+                        padding: EdgeInsets.all(16.0),
+                        child: Text(
+                          'No se encontraron registros con los filtros seleccionados',
+                          style: TextStyle(
+                            fontStyle: FontStyle.italic,
+                            color: Colors.grey,
+                          ),
+                        ),
+                      ),
+                  ],
+                );
+              },
+            ),
+          ],
+        ),
+      ),
     );
   }
 
