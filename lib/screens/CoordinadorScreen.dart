@@ -852,18 +852,18 @@ class _AsistenciasCoordinadorTabState extends State<AsistenciasCoordinadorTab> {
       "Ministerio de Damas": {
         "martes": "Servicio de Damas",
         "viernes": "Viernes de Poder",
-        "domingo": "Servicio Familiar" // ⬅️ CAMBIADO
+        "domingo": "Servicio Familiar" 
       },
       "Ministerio de Caballeros": {
         "jueves": "Servicio de Caballeros",
         "viernes": "Viernes de Poder",
         "sábado": "Servicio de Caballeros",
-        "domingo": "Servicio Familiar" // ⬅️ CAMBIADO
+        "domingo": "Servicio Familiar"
       },
       "Ministerio Juvenil": {
         "viernes": "Viernes de Poder",
         "sábado": "Impacto Juvenil",
-        "domingo": "Servicio Familiar" // ⬅️ CAMBIADO
+        "domingo": "Servicio Familiar" 
       }
     };
 
@@ -872,7 +872,7 @@ class _AsistenciasCoordinadorTabState extends State<AsistenciasCoordinadorTab> {
       return servicios[categoriaTribu]![diaSemana]!;
     }
 
-    return "Servicio Especial"; // ⬅️ CAMBIADO
+    return "Servicio Especial";
   }
 
   /// Bloquea asistencia si el registro tiene 3+ faltas y existe una alerta no revisada.
@@ -966,25 +966,6 @@ class _AsistenciasCoordinadorTabState extends State<AsistenciasCoordinadorTab> {
       print('Error en _filtrarRegistros: $e');
       return [];
     }
-  }
-
-  String _determinarMinisterio(String nombreServicio) {
-    if (nombreServicio.toLowerCase().contains("damas"))
-      return "Ministerio de Damas";
-    if (nombreServicio.toLowerCase().contains("caballeros"))
-      return "Ministerio de Caballeros";
-    if (nombreServicio.toLowerCase().contains("juvenil") ||
-        nombreServicio.toLowerCase().contains("impacto"))
-      return "Ministerio Juvenil";
-    if (nombreServicio.toLowerCase().contains("familiar"))
-      return "Ministerio Familiar";
-    if (nombreServicio.toLowerCase().contains("poder"))
-      return "Viernes de Poder";
-    if (nombreServicio.toLowerCase().contains("dominical"))
-      return "Servicio Familiar"; // ⬅️ CAMBIADO
-    if (nombreServicio.toLowerCase().contains("especial")) // ⬅️ NUEVO
-      return "Servicio Especial"; // ⬅️ NUEVO
-    return "Otro Ministerio";
   }
 
   Future<void> _registrarAsistencia(DocumentSnapshot registro) async {
@@ -1190,10 +1171,25 @@ class _AsistenciasCoordinadorTabState extends State<AsistenciasCoordinadorTab> {
                             });
 
                             try {
-                              final startOfDay = DateTime(selectedDate.year,
-                                  selectedDate.month, selectedDate.day);
-                              final endOfDay =
-                                  startOfDay.add(Duration(days: 1));
+                              // ===== VALIDACIÓN ANTI-DUPLICACIÓN UNIFICADA =====
+                              final DateTime inicioDelDia = DateTime(
+                                selectedDate.year,
+                                selectedDate.month,
+                                selectedDate.day,
+                                0,
+                                0,
+                                0,
+                                0,
+                              );
+                              final DateTime finDelDia = DateTime(
+                                selectedDate.year,
+                                selectedDate.month,
+                                selectedDate.day,
+                                23,
+                                59,
+                                59,
+                                999,
+                              );
 
                               final yaRegistrada = await FirebaseFirestore
                                   .instance
@@ -1201,23 +1197,72 @@ class _AsistenciasCoordinadorTabState extends State<AsistenciasCoordinadorTab> {
                                   .where('jovenId', isEqualTo: registro.id)
                                   .where('fecha',
                                       isGreaterThanOrEqualTo:
-                                          Timestamp.fromDate(startOfDay))
+                                          Timestamp.fromDate(inicioDelDia))
                                   .where('fecha',
-                                      isLessThan: Timestamp.fromDate(endOfDay))
+                                      isLessThanOrEqualTo:
+                                          Timestamp.fromDate(finDelDia))
                                   .limit(1)
-                                  .get();
+                                  .get()
+                                  .timeout(
+                                    Duration(seconds: 10),
+                                    onTimeout: () => throw TimeoutException(
+                                        'Timeout verificando duplicados'),
+                                  );
 
                               if (yaRegistrada.docs.isNotEmpty) {
                                 Navigator.of(dialogContext).pop();
-                                if (mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
+
+                                // ✅ CORRECCIÓN: Usar context.mounted del BuildContext exterior
+                                if (builderContext.mounted) {
+                                  final registroExistente =
+                                      yaRegistrada.docs.first.data()
+                                          as Map<String, dynamic>?;
+                                  final nombreServicio =
+                                      registroExistente?['nombreServicio'] ??
+                                          'servicio';
+
+                                  ScaffoldMessenger.of(builderContext)
+                                      .showSnackBar(
                                     SnackBar(
-                                        content: Text(
-                                            'Ya se ha registrado asistencia para esta persona en esta fecha')),
+                                      content: Row(
+                                        children: [
+                                          Icon(Icons.warning_amber,
+                                              color: Colors.white),
+                                          SizedBox(width: 12),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Text(
+                                                  'Asistencia ya registrada',
+                                                  style: TextStyle(
+                                                      fontWeight:
+                                                          FontWeight.bold),
+                                                ),
+                                                Text(
+                                                  'Ya existe para "$nombreServicio"',
+                                                  style:
+                                                      TextStyle(fontSize: 12),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      backgroundColor: Color(0xFFFF4B2B),
+                                      behavior: SnackBarBehavior.floating,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      duration: Duration(seconds: 4),
+                                    ),
                                   );
                                 }
                                 return;
                               }
+                              // ===== FIN VALIDACIÓN =====
 
                               final String nombreServicio =
                                   obtenerNombreServicio(
@@ -1495,7 +1540,7 @@ class _AsistenciasCoordinadorTabState extends State<AsistenciasCoordinadorTab> {
 
         try {
           // Buscar el registro correspondiente
-          DocumentSnapshot? registro;
+          late DocumentSnapshot registro;
           try {
             registro = _filteredRegistros.firstWhere(
               (doc) => doc.id == entry.key,
@@ -1529,21 +1574,51 @@ class _AsistenciasCoordinadorTabState extends State<AsistenciasCoordinadorTab> {
           }
           // === FIN BLOQUEO ===
 
-          // Verificar si ya existe una asistencia para esta fecha
-          final yaRegistrada = await FirebaseFirestore.instance
-              .collection('asistencias')
-              .where('jovenId', isEqualTo: registro.id)
-              .where('fecha',
-                  isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay))
-              .where('fecha', isLessThan: Timestamp.fromDate(endOfDay))
-              .limit(1)
-              .get();
+          // ===== VALIDACIÓN CONSISTENTE CON TIMEOUT =====
+          try {
+            final yaRegistrada = await FirebaseFirestore.instance
+                .collection('asistencias')
+                .where('jovenId', isEqualTo: registro.id)
+                .where('fecha',
+                    isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay))
+                .where('fecha',
+                    isLessThanOrEqualTo: Timestamp.fromDate(DateTime(
+                        startOfDay.year,
+                        startOfDay.month,
+                        startOfDay.day,
+                        23,
+                        59,
+                        59,
+                        999)))
+                .limit(1)
+                .get()
+                .timeout(
+              Duration(seconds: 5),
+              onTimeout: () {
+                print('⚠️ Timeout verificando duplicado para: ${registro.id}');
+                errores++;
+                // ✅ CORRECCIÓN: Retornar un QuerySnapshot vacío en lugar de null
+                return Future.error('Timeout');
+              },
+            );
 
-          if (yaRegistrada.docs.isNotEmpty) {
-            yaRegistrados++;
+            if (yaRegistrada.docs.isNotEmpty) {
+              yaRegistrados++;
+              actualizarDialogo();
+              continue;
+            }
+          } on TimeoutException catch (e) {
+            print('⏱️ Timeout en validación: $e');
+            errores++;
+            actualizarDialogo();
+            continue;
+          } catch (e) {
+            print('❌ Error verificando duplicado en modo masivo: $e');
+            errores++;
             actualizarDialogo();
             continue;
           }
+          // ===== FIN VALIDACIÓN =====
 
           final nombre = data['nombre']?.toString() ?? '';
           final apellido = data['apellido']?.toString() ?? '';

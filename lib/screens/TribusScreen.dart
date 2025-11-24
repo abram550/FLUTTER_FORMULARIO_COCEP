@@ -2144,8 +2144,11 @@ class _AsistenciasTabState extends State<AsistenciasTab>
   // ========================================
   final Map<String, bool> _servicioExpand = {};
   Map<String, Map<String, Map<String, List<Map<String, dynamic>>>>>?
-      _cachedData;
-  bool _isFirstLoad = true;
+      _cachedDataAsistencias; // ⬅️ NUEVO: Caché separado para asistencias
+  Map<String, Map<String, Map<String, List<Map<String, dynamic>>>>>?
+      _cachedDataFallas; // ⬅️ NUEVO: Caché separado para fallas
+  bool _isFirstLoadAsistencias = true; // ⬅️ NUEVO: Control de carga por pestaña
+  bool _isFirstLoadFallas = true; // ⬅️ NUEVO
 
   // ========================================
   // INICIALIZACIÓN DEL TabController
@@ -2276,13 +2279,28 @@ class _AsistenciasTabState extends State<AsistenciasTab>
   // NUEVA FUNCIÓN: Construye el contenido para cada pestaña
   // Parámetro: mostrarAsistencias (true/false)
   // ========================================
+
+// ========================================
+// NUEVA FUNCIÓN OPTIMIZADA: Construye el contenido para cada pestaña
+// ========================================
   Widget _buildContenidoAsistencias(bool mostrarAsistencias) {
+    // ⬅️ OPTIMIZACIÓN: Determinar qué caché y control usar
+    final cachedData =
+        mostrarAsistencias ? _cachedDataAsistencias : _cachedDataFallas;
+    final isFirstLoad =
+        mostrarAsistencias ? _isFirstLoadAsistencias : _isFirstLoadFallas;
+
     return StreamBuilder<QuerySnapshot>(
       stream: obtenerAsistenciasPorTribu(widget.tribuId, mostrarAsistencias),
       builder: (context, snapshot) {
+        // ⬅️ OPTIMIZACIÓN: Si ya hay caché, mostrarlo inmediatamente
+        if (cachedData != null && cachedData.isNotEmpty) {
+          return _buildListaConDatos(cachedData, mostrarAsistencias);
+        }
+
         // Manejo de carga inicial
         if (snapshot.connectionState == ConnectionState.waiting &&
-            _isFirstLoad) {
+            isFirstLoad) {
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -2294,7 +2312,7 @@ class _AsistenciasTabState extends State<AsistenciasTab>
                     valueColor: AlwaysStoppedAnimation<Color>(
                       mostrarAsistencias
                           ? const Color(0xFF1D8A8A)
-                          : const Color(0xFFE74C3C), // ⬅️ Rojo para fallas
+                          : const Color(0xFFE74C3C),
                     ),
                     strokeWidth: 4,
                   ),
@@ -2318,77 +2336,26 @@ class _AsistenciasTabState extends State<AsistenciasTab>
         }
 
         // Manejo de datos vacíos
-        if ((!snapshot.hasData || snapshot.data!.docs.isEmpty) &&
-            _isFirstLoad) {
-          _isFirstLoad = false;
-          return Center(
-            child: Container(
-              padding: EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.08),
-                    blurRadius: 10,
-                    offset: Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    padding: EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: (mostrarAsistencias
-                              ? const Color(0xFF1D8A8A)
-                              : const Color(0xFFE74C3C))
-                          .withOpacity(0.1),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      mostrarAsistencias ? Icons.event_busy : Icons.person_off,
-                      size: 64,
-                      color: mostrarAsistencias
-                          ? const Color(0xFF1D8A8A)
-                          : const Color(0xFFE74C3C),
-                    ),
-                  ),
-                  SizedBox(height: 16),
-                  Text(
-                    mostrarAsistencias
-                        ? 'No hay asistencias registradas'
-                        : 'No hay inasistencias registradas',
-                    style: TextStyle(
-                      fontSize: 18,
-                      color: mostrarAsistencias
-                          ? const Color(0xFF1D8A8A)
-                          : const Color(0xFFE74C3C),
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    mostrarAsistencias
-                        ? 'Los datos de asistencia aparecerán aquí'
-                        : 'Los datos de inasistencias aparecerán aquí',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
+        if ((!snapshot.hasData || snapshot.data!.docs.isEmpty) && isFirstLoad) {
+          // ⬅️ OPTIMIZACIÓN: Actualizar control de primera carga
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              setState(() {
+                if (mostrarAsistencias) {
+                  _isFirstLoadAsistencias = false;
+                } else {
+                  _isFirstLoadFallas = false;
+                }
+              });
+            }
+          });
+
+          return _buildMensajeVacio(mostrarAsistencias, true);
         }
 
         // Procesamiento de datos
         if (snapshot.hasData && snapshot.data!.docs.isNotEmpty) {
-          _isFirstLoad = false;
-
+          // ⬅️ OPTIMIZACIÓN: Procesar y cachear datos
           final asistencias = snapshot.data!.docs.map((doc) {
             final data = doc.data() as Map<String, dynamic>;
             final nombre = data['nombre'] ?? "Sin nombre";
@@ -2407,190 +2374,158 @@ class _AsistenciasTabState extends State<AsistenciasTab>
             };
           }).toList();
 
-          _cachedData = _agruparAsistenciasPorFecha(asistencias);
+          final datosAgrupados = _agruparAsistenciasPorFecha(asistencias);
+
+          // ⬅️ OPTIMIZACIÓN: Guardar en caché correspondiente
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              setState(() {
+                if (mostrarAsistencias) {
+                  _cachedDataAsistencias = datosAgrupados;
+                  _isFirstLoadAsistencias = false;
+                } else {
+                  _cachedDataFallas = datosAgrupados;
+                  _isFirstLoadFallas = false;
+                }
+              });
+            }
+          });
+
+          return _buildListaConDatos(datosAgrupados, mostrarAsistencias);
         }
 
-        final asistenciasAgrupadas = _cachedData ?? {};
+        return _buildMensajeVacio(mostrarAsistencias, true);
+      },
+    );
+  }
 
-        if (asistenciasAgrupadas.isEmpty) {
-          return Center(
-            child: Container(
-              padding: EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.08),
-                    blurRadius: 10,
-                    offset: Offset(0, 4),
-                  ),
+// ========================================
+// FUNCIÓN CORREGIDA: Construye la lista con datos
+// ========================================
+  Widget _buildListaConDatos(
+    Map<String, Map<String, Map<String, List<Map<String, dynamic>>>>>
+        asistenciasAgrupadas,
+    bool mostrarAsistencias,
+  ) {
+    if (asistenciasAgrupadas.isEmpty) {
+      return _buildMensajeVacio(mostrarAsistencias, false);
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: mostrarAsistencias
+              ? [
+                  Colors.white,
+                  const Color(0xFF1D8A8A).withOpacity(0.05),
+                ]
+              : [
+                  Colors.white,
+                  const Color(0xFFE74C3C).withOpacity(0.05),
                 ],
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    padding: EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: (mostrarAsistencias
-                              ? const Color(0xFF1D8A8A)
-                              : const Color(0xFFE74C3C))
-                          .withOpacity(0.1),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      mostrarAsistencias ? Icons.event_busy : Icons.person_off,
-                      size: 64,
-                      color: mostrarAsistencias
-                          ? const Color(0xFF1D8A8A)
-                          : const Color(0xFFE74C3C),
-                    ),
-                  ),
-                  SizedBox(height: 16),
-                  Text(
-                    mostrarAsistencias
-                        ? 'No hay asistencias registradas'
-                        : 'No hay inasistencias registradas',
-                    style: TextStyle(
-                      fontSize: 18,
-                      color: mostrarAsistencias
-                          ? const Color(0xFF1D8A8A)
-                          : const Color(0xFFE74C3C),
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    mostrarAsistencias
-                        ? 'Los datos de asistencia aparecerán aquí'
-                        : 'Los datos de inasistencias aparecerán aquí',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[600],
+        ),
+      ),
+      child: ListView.builder(
+        // ⬅️ REMOVIDO: PageStorageKey que causaba el error
+        padding: EdgeInsets.all(16),
+        itemCount: asistenciasAgrupadas.keys.length,
+        cacheExtent: 1000,
+        itemBuilder: (context, yearIndex) {
+          final year = asistenciasAgrupadas.keys.elementAt(yearIndex);
+          final months = asistenciasAgrupadas[year]!;
+
+          return Card(
+            elevation: 4,
+            margin: EdgeInsets.only(bottom: 20),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: Column(
+              children: [
+                Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: mostrarAsistencias
+                          ? [
+                              const Color(0xFF1D8A8A),
+                              const Color(0xFF156D6D),
+                            ]
+                          : [
+                              const Color(0xFFE74C3C),
+                              const Color(0xFFC0392B),
+                            ],
                     ),
                   ),
-                ],
-              ),
+                  child: Theme(
+                    data: Theme.of(context).copyWith(
+                      dividerColor: Colors.transparent,
+                      colorScheme: ColorScheme.light(
+                        primary: Colors.white,
+                      ),
+                    ),
+                    child: ExpansionTile(
+                      // ⬅️ CORREGIDO: Key único sin conflictos
+                      key: ValueKey(
+                          'year_${year}_${mostrarAsistencias ? "asist" : "fallas"}'),
+                      maintainState: true,
+                      leading: Container(
+                        padding: EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.calendar_today,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                      ),
+                      title: Text(
+                        'Año $year',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      subtitle: Text(
+                        mostrarAsistencias
+                            ? 'Registro de asistencias'
+                            : 'Registro de inasistencias',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.white.withOpacity(0.8),
+                        ),
+                      ),
+                      iconColor: Colors.white,
+                      collapsedIconColor: Colors.white,
+                      childrenPadding:
+                          EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                      children: (() {
+                        final sortedMonths = months.keys.toList()
+                          ..sort((a, b) =>
+                              _monthToNumber(a).compareTo(_monthToNumber(b)));
+
+                        final ordered = sortedMonths.map((month) {
+                          return _buildMonthSection(context, month,
+                              months[month]!, year, mostrarAsistencias);
+                        }).toList();
+
+                        return ordered.reversed.toList();
+                      })(),
+                    ),
+                  ),
+                ),
+              ],
             ),
           );
-        }
-
-        return Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: mostrarAsistencias
-                  ? [
-                      Colors.white,
-                      const Color(0xFF1D8A8A).withOpacity(0.05),
-                    ]
-                  : [
-                      Colors.white,
-                      const Color(0xFFE74C3C)
-                          .withOpacity(0.05), // ⬅️ Rojo para fallas
-                    ],
-            ),
-          ),
-          child: ListView.builder(
-            padding: EdgeInsets.all(16),
-            itemCount: asistenciasAgrupadas.keys.length,
-            itemBuilder: (context, yearIndex) {
-              final year = asistenciasAgrupadas.keys.elementAt(yearIndex);
-              final months = asistenciasAgrupadas[year]!;
-
-              return Card(
-                elevation: 4,
-                margin: EdgeInsets.only(bottom: 20),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                clipBehavior: Clip.antiAlias,
-                child: Column(
-                  children: [
-                    Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: mostrarAsistencias
-                              ? [
-                                  const Color(0xFF1D8A8A),
-                                  const Color(0xFF156D6D),
-                                ]
-                              : [
-                                  const Color(
-                                      0xFFE74C3C), // ⬅️ Rojo para fallas
-                                  const Color(0xFFC0392B),
-                                ],
-                        ),
-                      ),
-                      child: Theme(
-                        data: Theme.of(context).copyWith(
-                          dividerColor: Colors.transparent,
-                          colorScheme: ColorScheme.light(
-                            primary: Colors.white,
-                          ),
-                        ),
-                        child: ExpansionTile(
-                          maintainState: true,
-                          leading: Container(
-                            padding: EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.2),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              Icons.calendar_today,
-                              color: Colors.white,
-                              size: 20,
-                            ),
-                          ),
-                          title: Text(
-                            'Año $year',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          ),
-                          subtitle: Text(
-                            mostrarAsistencias
-                                ? 'Registro de asistencias'
-                                : 'Registro de inasistencias',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.white.withOpacity(0.8),
-                            ),
-                          ),
-                          iconColor: Colors.white,
-                          collapsedIconColor: Colors.white,
-                          childrenPadding:
-                              EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-                          children: (() {
-                            final sortedMonths = months.keys.toList()
-                              ..sort((a, b) => _monthToNumber(a)
-                                  .compareTo(_monthToNumber(b)));
-
-                            final ordered = sortedMonths.map((month) {
-                              return _buildMonthSection(context, month,
-                                  months[month]!, year, mostrarAsistencias);
-                            }).toList();
-
-                            return ordered.reversed.toList();
-                          })(),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-        );
-      },
+        },
+      ),
     );
   }
 
@@ -2792,21 +2727,45 @@ class _AsistenciasTabState extends State<AsistenciasTab>
           iconColor: const Color(0xFFEE5A24),
           collapsedIconColor: const Color(0xFFEE5A24),
           children: [
-            ...porServicio.entries.map((entry) {
-              final servicio = entry.key;
-              final listaAsistencias = entry.value;
-              final ministerio = _determinarMinisterio(servicio);
+            // ⬅️ ORDENAR por fecha real de asistencia
+            ...(() {
+              // Convertir entries a lista para poder ordenar
+              final serviciosList = porServicio.entries.toList();
 
-              final groupKey = '$monthYear|$week|$servicio';
+              // Ordenar por fecha real del primer registro de asistencia
+              serviciosList.sort((a, b) {
+                // Obtener la primera fecha de cada servicio
+                final fechaA = a.value.isNotEmpty
+                    ? a.value.first['fecha'] as DateTime
+                    : DateTime.now();
+                final fechaB = b.value.isNotEmpty
+                    ? b.value.first['fecha'] as DateTime
+                    : DateTime.now();
 
-              return _buildServicioSection(
-                servicio,
-                ministerio,
-                listaAsistencias,
-                groupKey: groupKey,
-                mostrarAsistencias: mostrarAsistencias, // ⬅️ NUEVO PARÁMETRO
-              );
-            }).toList(),
+                // Comparar por día de la semana (1=Lunes, 7=Domingo)
+                final diaA = fechaA.weekday;
+                final diaB = fechaB.weekday;
+
+                return diaA.compareTo(diaB);
+              });
+
+              // Mapear a widgets
+              return serviciosList.map((entry) {
+                final servicio = entry.key;
+                final listaAsistencias = entry.value;
+                final ministerio = _determinarMinisterio(servicio);
+
+                final groupKey = '$monthYear|$week|$servicio';
+
+                return _buildServicioSection(
+                  servicio,
+                  ministerio,
+                  listaAsistencias,
+                  groupKey: groupKey,
+                  mostrarAsistencias: mostrarAsistencias,
+                );
+              }).toList();
+            })(),
             _buildTotalSection(resumen, mostrarAsistencias),
           ],
         ),
@@ -2818,13 +2777,20 @@ class _AsistenciasTabState extends State<AsistenciasTab>
   // FUNCIÓN MODIFICADA: Ahora recibe parámetro mostrarAsistencias
   // Cambia los colores y el ícono final según el tipo
   // ========================================
+
   Widget _buildServicioSection(
     String servicio,
     String ministerio,
     List<Map<String, dynamic>> asistencias, {
     required String groupKey,
-    required bool mostrarAsistencias, // ⬅️ NUEVO PARÁMETRO
+    required bool mostrarAsistencias,
   }) {
+    // ✅ NORMALIZAR NOMBRE DE SERVICIO PARA VISUALIZACIÓN
+    final servicioNormalizado = servicio
+        .replaceAll(RegExp(r'dominical', caseSensitive: false), 'Familiar')
+        .replaceAll(RegExp(r'reuni[óo]n general', caseSensitive: false),
+            'Servicio Especial');
+
     final color = _getColorByMinisterio(ministerio);
     final icon = _getIconByMinisterio(ministerio);
     final isOpen = _servicioExpand[groupKey] ?? false;
@@ -2889,7 +2855,7 @@ class _AsistenciasTabState extends State<AsistenciasTab>
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              _displayServiceName(servicio),
+                              servicioNormalizado, // ✅ CAMBIADO: era "_displayServiceName(servicio)"
                               style: TextStyle(
                                 fontSize: isNarrow ? 14 : 16,
                                 fontWeight: FontWeight.bold,
@@ -2946,7 +2912,7 @@ class _AsistenciasTabState extends State<AsistenciasTab>
             firstChild: SizedBox.shrink(),
             secondChild: asistencias.isNotEmpty
                 ? _buildListaAsistencias(asistencias, color, mostrarAsistencias)
-                : _buildMensajeVacio(mostrarAsistencias),
+                : _buildMensajeVacio(mostrarAsistencias, false),
             crossFadeState:
                 isOpen ? CrossFadeState.showSecond : CrossFadeState.showFirst,
             duration: Duration(milliseconds: 200),
@@ -3082,11 +3048,11 @@ class _AsistenciasTabState extends State<AsistenciasTab>
     );
   }
 
-  // ========================================
-  // FUNCIÓN MODIFICADA: Ahora recibe parámetro mostrarAsistencias
-  // ========================================
-  Widget _buildMensajeVacio(bool mostrarAsistencias) {
-    return Container(
+// ========================================
+// FUNCIÓN MODIFICADA: Ahora recibe parámetro adicional
+// ========================================
+  Widget _buildMensajeVacio(bool mostrarAsistencias, bool isInCenter) {
+    final widget = Container(
       padding: EdgeInsets.all(20),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -3108,6 +3074,71 @@ class _AsistenciasTabState extends State<AsistenciasTab>
             ),
           ),
         ],
+      ),
+    );
+
+    if (!isInCenter) return widget;
+
+    return Center(
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 10,
+              offset: Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: (mostrarAsistencias
+                        ? const Color(0xFF1D8A8A)
+                        : const Color(0xFFE74C3C))
+                    .withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                mostrarAsistencias ? Icons.event_busy : Icons.person_off,
+                size: 64,
+                color: mostrarAsistencias
+                    ? const Color(0xFF1D8A8A)
+                    : const Color(0xFFE74C3C),
+              ),
+            ),
+            SizedBox(height: 16),
+            Text(
+              mostrarAsistencias
+                  ? 'No hay asistencias registradas'
+                  : 'No hay inasistencias registradas',
+              style: TextStyle(
+                fontSize: 18,
+                color: mostrarAsistencias
+                    ? const Color(0xFF1D8A8A)
+                    : const Color(0xFFE74C3C),
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            SizedBox(height: 8),
+            Text(
+              mostrarAsistencias
+                  ? 'Los datos de asistencia aparecerán aquí'
+                  : 'Los datos de inasistencias aparecerán aquí',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey[600],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -3352,11 +3383,11 @@ class _AsistenciasTabState extends State<AsistenciasTab>
 
     // ✅ MODIFICADO: Aceptar tanto "familiar" como "dominical"
     if (servicioLower.contains("familiar") ||
-        servicioLower.contains("dominical")) return "Ministerio Familiar";
+        servicioLower.contains("dominical")) return "Servicio Familiar";
 
     if (servicioLower.contains("poder")) return "Viernes de Poder";
 
-    return "Otro Ministerio";
+    return "Servicio Especial";
   }
 
   Color _getColorByMinisterio(String ministerio) {
@@ -3367,12 +3398,12 @@ class _AsistenciasTabState extends State<AsistenciasTab>
         return Color(0xFF3498DB);
       case "Ministerio Juvenil":
         return Color(0xFFF5A623);
-      case "Ministerio Familiar":
+      case "Servicio Familiar":
         return Color(0xFF2ECC71);
       case "Viernes de Poder":
         return Color(0xFF1D8A8A);
       default:
-        return Color(0xFF7F8C8D);
+        return Color(0xFF9B59B6);
     }
   }
 
@@ -3384,12 +3415,12 @@ class _AsistenciasTabState extends State<AsistenciasTab>
         return Icons.fitness_center;
       case "Ministerio Juvenil":
         return Icons.emoji_people;
-      case "Ministerio Familiar":
+      case "Servicio Familiar":
         return Icons.family_restroom;
       case "Viernes de Poder":
         return Icons.local_fire_department;
       default:
-        return Icons.groups_2;
+        return Icons.star_border_rounded;
     }
   }
 

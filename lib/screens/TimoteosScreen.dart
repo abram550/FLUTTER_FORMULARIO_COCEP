@@ -1612,38 +1612,106 @@ class JovenesAsignadosTab extends StatelessWidget {
       }
 // === FIN BLOQUEO ===
 
-// Verificar duplicados ANTES de mostrar el diálogo
-      final yaRegistrada = await FirebaseFirestore.instance
-          .collection('asistencias')
-          .where('jovenId', isEqualTo: registro.id)
-          .where('fecha',
-              isGreaterThanOrEqualTo: Timestamp.fromDate(DateTime(
-                  fechaSeleccionada.year,
-                  fechaSeleccionada.month,
-                  fechaSeleccionada.day)))
-          .where('fecha',
-              isLessThan: Timestamp.fromDate(DateTime(fechaSeleccionada.year,
-                  fechaSeleccionada.month, fechaSeleccionada.day + 1)))
-          .get();
+// ===== VALIDACIÓN ANTI-DUPLICACIÓN MEJORADA =====
+      // Verificar con ventana de tiempo precisa (00:00:00 - 23:59:59)
+      final DateTime inicioDelDia = DateTime(
+        fechaSeleccionada.year,
+        fechaSeleccionada.month,
+        fechaSeleccionada.day,
+        0, 0, 0, 0, // Hora exacta: 00:00:00.000
+      );
+      final DateTime finDelDia = DateTime(
+        fechaSeleccionada.year,
+        fechaSeleccionada.month,
+        fechaSeleccionada.day,
+        23, 59, 59, 999, // Hora exacta: 23:59:59.999
+      );
 
-      if (yaRegistrada.docs.isNotEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                Icon(Icons.warning, color: Colors.white),
-                SizedBox(width: 8),
-                Expanded(child: Text('Ya existe registro para esta fecha')),
-              ],
+      try {
+        final yaRegistrada = await FirebaseFirestore.instance
+            .collection('asistencias')
+            .where('jovenId', isEqualTo: registro.id)
+            .where('fecha',
+                isGreaterThanOrEqualTo: Timestamp.fromDate(inicioDelDia))
+            .where('fecha', isLessThanOrEqualTo: Timestamp.fromDate(finDelDia))
+            .limit(1) // Optimización: solo necesitamos saber si existe 1
+            .get()
+            .timeout(
+              Duration(seconds: 10),
+              onTimeout: () =>
+                  throw TimeoutException('Timeout verificando duplicados'),
+            );
+
+        if (yaRegistrada.docs.isNotEmpty) {
+          // ✅ CORRECCIÓN: Verificar contexto válido en lugar de mounted
+          if (context.mounted) {
+            // Obtener información del registro existente para mensaje más informativo
+            final registroExistente =
+                yaRegistrada.docs.first.data() as Map<String, dynamic>?;
+            final nombreServicio =
+                registroExistente?['nombreServicio'] ?? 'servicio';
+
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Row(
+                  children: [
+                    Container(
+                      padding: EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Icon(Icons.warning_amber,
+                          color: Colors.white, size: 20),
+                    ),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'Asistencia ya registrada',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                          Text(
+                            'Ya existe registro para "$nombreServicio" en esta fecha',
+                            style: TextStyle(fontSize: 12),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                backgroundColor: Color(0xFFFF4B2B),
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+                margin: EdgeInsets.all(16),
+                duration: Duration(seconds: 4),
+              ),
+            );
+          }
+          return;
+        }
+      } catch (e) {
+        print('❌ Error verificando duplicados: $e');
+        // ✅ CORRECCIÓN: Verificar contexto válido
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                  'Error al verificar asistencias previas. Intenta nuevamente.'),
+              backgroundColor: Colors.red,
             ),
-            backgroundColor: Color(0xFFFF4B2B),
-            behavior: SnackBarBehavior.floating,
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          ),
-        );
+          );
+        }
         return;
       }
+      // ===== FIN VALIDACIÓN =====
 
       final bool? asistio = await showDialog<bool>(
         context: context,
@@ -1851,7 +1919,6 @@ class JovenesAsignadosTab extends StatelessWidget {
     }
   }
 
-// AGREGAR ESTE MÉTODO DESPUÉS DEL MÉTODO _registrarAsistencia
   Future<void> _procesarRegistroAsistencia(
       BuildContext context,
       DocumentSnapshot registro,
@@ -1869,7 +1936,7 @@ class JovenesAsignadosTab extends StatelessWidget {
 
       final data = doc.data() as Map<String, dynamic>;
 
-      // Obtener información de tribu de manera segura
+      // Obtener información de tribu
       DocumentSnapshot? timoteoDoc;
       String? tribuId;
       String categoriaTribu = "General";
@@ -1896,14 +1963,41 @@ class JovenesAsignadosTab extends StatelessWidget {
         }
       } catch (e) {
         print('Error obteniendo información de tribu: $e');
-        // Continuar con valores por defecto
       }
 
-      // Obtener nombre del servicio
+      // ✅ OBTENER Y NORMALIZAR NOMBRE DEL SERVICIO
       String nombreServicio =
           obtenerNombreServicio(categoriaTribu, fechaSeleccionada);
 
-      // Calcular faltas consecutivas
+      // ✅ NORMALIZACIÓN: Convertir "Dominical" a "Familiar"
+      nombreServicio = nombreServicio
+          .replaceAll(RegExp(r'dominical', caseSensitive: false), 'Familiar')
+          .replaceAll(RegExp(r'reuni[óo]n general', caseSensitive: false),
+              'Servicio Especial');
+
+      // ✅ VERIFICAR DUPLICADOS ANTES DE CREAR (clave para evitar duplicación)
+      final startOfDay = DateTime(
+        fechaSeleccionada.year,
+        fechaSeleccionada.month,
+        fechaSeleccionada.day,
+      );
+      final endOfDay = startOfDay.add(Duration(days: 1));
+
+      final existingAttendance = await FirebaseFirestore.instance
+          .collection('asistencias')
+          .where('jovenId', isEqualTo: registro.id)
+          .where('fecha',
+              isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay))
+          .where('fecha', isLessThan: Timestamp.fromDate(endOfDay))
+          .limit(1)
+          .get();
+
+      if (existingAttendance.docs.isNotEmpty) {
+        print('⚠️ Asistencia ya existe para esta fecha, omitiendo duplicado');
+        return;
+      }
+
+      // Calcular faltas
       int faltasConsecutivas = data['faltasConsecutivas'] ?? 0;
       if (!asistio) {
         faltasConsecutivas++;
@@ -1911,79 +2005,54 @@ class JovenesAsignadosTab extends StatelessWidget {
         faltasConsecutivas = 0;
       }
 
-      // Batch para operaciones atómicas
+      // ✅ BATCH PARA OPERACIONES ATÓMICAS
       final batch = FirebaseFirestore.instance.batch();
 
-      // Actualizar registro principal
+      // 1. Actualizar registro principal
       batch.update(registroRef, {
         'asistencias': FieldValue.arrayUnion([
           {
             'fecha': Timestamp.fromDate(fechaSeleccionada),
             'asistio': asistio,
-            'nombreServicio': nombreServicio,
+            'nombreServicio': nombreServicio, // ✅ Nombre normalizado
           }
         ]),
         'faltasConsecutivas': faltasConsecutivas,
         'ultimaAsistencia': Timestamp.fromDate(fechaSeleccionada),
       });
 
-      // Crear documento en colección asistencias
+      // 2. ✅ CREAR DOCUMENTO EN COLECCIÓN ASISTENCIAS (principal)
       final asistenciaRef =
           FirebaseFirestore.instance.collection('asistencias').doc();
       batch.set(asistenciaRef, {
         'jovenId': registro.id,
         'tribuId': tribuId,
-        'nombre': '${data['nombre']} ${data['apellido']}',
+        'nombre': data['nombre'] ?? '',
+        'apellido': data['apellido'] ?? '',
+        'nombreCompleto': '${data['nombre']} ${data['apellido']}',
         'fecha': Timestamp.fromDate(fechaSeleccionada),
-        'nombreServicio': nombreServicio,
+        'nombreServicio': nombreServicio, // ✅ Nombre normalizado
         'asistio': asistio,
         'diaSemana': DateFormat('EEEE', 'es').format(fechaSeleccionada),
         'fechaRegistro': FieldValue.serverTimestamp(),
+        'categoriaTribu': categoriaTribu,
+        'coordinadorId': timoteoDoc?.get('coordinadorId'),
       });
 
-      // Crear registro en asistenciaTribus si hay tribu
-      if (tribuId != null) {
-        try {
-          final tribusSnapshot = await FirebaseFirestore.instance
-              .collection('tribus')
-              .where('timoteoId', isEqualTo: timoteoId)
-              .limit(1)
-              .get();
-
-          if (tribusSnapshot.docs.isNotEmpty) {
-            final tribuDoc = tribusSnapshot.docs.first;
-            final asistenciaTribuRef =
-                FirebaseFirestore.instance.collection('asistenciaTribus').doc();
-
-            batch.set(asistenciaTribuRef, {
-              'tribuId': tribuDoc.id,
-              'tribuNombre': tribuDoc['nombre'],
-              'registroId': registro.id,
-              'nombreJoven': '${data['nombre']} ${data['apellido']}',
-              'fecha': Timestamp.fromDate(fechaSeleccionada),
-              'diaSemana': DateFormat('EEEE', 'es').format(fechaSeleccionada),
-              'nombreServicio': nombreServicio,
-              'asistio': asistio,
-              'fechaRegistro': FieldValue.serverTimestamp(),
-            });
-          }
-        } catch (e) {
-          print('Error al crear registro en asistenciaTribus: $e');
-          // Continuar sin fallar
-        }
-      }
+      // 3. ✅ NO CREAR EN asistenciaTribus para evitar duplicación
+      // (Esta colección ya no se usa para visualización)
 
       // Ejecutar batch
       await batch.commit();
+      print('✅ Asistencia registrada correctamente: $nombreServicio');
 
-      // Procesar alertas si es necesario (sin bloquear)
+      // Procesar alertas si es necesario
       if (faltasConsecutivas >= 3) {
         _procesarAlertaAsync(
             context, registro, faltasConsecutivas, timoteoDoc, data);
       }
     } catch (e) {
-      print('Error en _procesarRegistroAsistencia: $e');
-      // No mostrar error al usuario ya que la operación principal podría haber funcionado
+      print('❌ Error en _procesarRegistroAsistencia: $e');
     }
   }
 

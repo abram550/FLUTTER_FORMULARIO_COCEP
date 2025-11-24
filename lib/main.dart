@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:formulario_app/screens/ministerio_lider_screen.dart';
 import 'package:formulario_app/screens/splash_screen.dart';
+import 'package:formulario_app/utils/migrate_services.dart';
 import 'package:provider/provider.dart';
 import 'package:formulario_app/providers/app_provider.dart';
 import 'package:formulario_app/utils/error_handler.dart';
@@ -288,7 +289,7 @@ void main() async {
       await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform,
       );
-
+      //await migrarNombresServicios();
       // ❌ COMENTAR O ELIMINAR ESTAS LÍNEAS:
       // if (!kIsWeb) {
       //   await initializeFirebaseMessaging();
