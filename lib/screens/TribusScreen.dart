@@ -2766,7 +2766,7 @@ class _AsistenciasTabState extends State<AsistenciasTab>
                 );
               }).toList();
             })(),
-            _buildTotalSection(resumen, mostrarAsistencias),
+            _buildTotalSection(resumen, mostrarAsistencias, porServicio),
           ],
         ),
       ),
@@ -3146,7 +3146,11 @@ class _AsistenciasTabState extends State<AsistenciasTab>
   // ========================================
   // FUNCIÓN MODIFICADA: Ahora recibe parámetro mostrarAsistencias
   // ========================================
-  Widget _buildTotalSection(Map<String, int> resumen, bool mostrarAsistencias) {
+  Widget _buildTotalSection(
+    Map<String, int> resumen,
+    bool mostrarAsistencias,
+    Map<String, List<Map<String, dynamic>>> porServicio, // ⬅️ NUEVO parámetro
+  ) {
     final totalKey =
         mostrarAsistencias ? 'Total del Fin de Semana' : 'Total de Fallas';
     final totalUnico = resumen[totalKey] ?? 0;
@@ -3240,10 +3244,31 @@ class _AsistenciasTabState extends State<AsistenciasTab>
             padding: EdgeInsets.all(16),
             child: Column(
               children: [
-                ...resumen.entries.where((e) => e.key != totalKey).map(
-                      (entry) => _buildTotalRow(
-                          entry.key, entry.value, mostrarAsistencias),
-                    ),
+                // ⬅️ NUEVO: Ordenar resumen por fecha real de asistencia
+                ...(() {
+                  // Filtrar y convertir a lista
+                  final resumenList =
+                      resumen.entries.where((e) => e.key != totalKey).toList();
+
+                  // Ordenar por fecha real del servicio
+                  resumenList.sort((a, b) {
+                    // Obtener fecha real del servicio desde porServicio
+                    final fechaA = porServicio[a.key]?.isNotEmpty == true
+                        ? porServicio[a.key]!.first['fecha'] as DateTime
+                        : DateTime.now();
+                    final fechaB = porServicio[b.key]?.isNotEmpty == true
+                        ? porServicio[b.key]!.first['fecha'] as DateTime
+                        : DateTime.now();
+
+                    return fechaA.weekday.compareTo(fechaB.weekday);
+                  });
+
+                  // Mapear a widgets
+                  return resumenList
+                      .map((entry) => _buildTotalRow(
+                          entry.key, entry.value, mostrarAsistencias))
+                      .toList();
+                })(),
                 SizedBox(height: 8),
                 Divider(
                   height: 24,
