@@ -6910,16 +6910,84 @@ Future<List<Map<String, dynamic>>> _obtenerTimoteosConConteo(
                             }
                           }
 
-                          // Campo para Estado en la Iglesia (estadoProceso)
+                          // Campo para Estado en la Iglesia (estadoProceso) con opciones
                           else if (fieldName == 'estadoProceso') {
-                            return _buildAnimatedTextField(
-                              label: 'Estado en la Iglesia',
-                              icon: fieldIcon,
-                              controller: controller!,
-                              primaryColor: primaryTeal,
-                              onChanged: (value) {
-                                hayModificaciones = true;
-                              },
+                            // Obtener el valor actual del controlador
+                            String estadoActual = controller?.text ?? '';
+
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _buildAnimatedTextField(
+                                  label: 'Estado en la Iglesia',
+                                  icon: fieldIcon,
+                                  controller: controller!,
+                                  primaryColor: primaryTeal,
+                                  onChanged: (value) {
+                                    hayModificaciones = true;
+                                    // Actualizar la variable local para los chips
+                                    setState(() {
+                                      estadoActual = value;
+                                    });
+                                  },
+                                ),
+                                SizedBox(height: 8),
+                                Text(
+                                  'Opciones rápidas:',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    color: primaryTeal,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                SizedBox(height: 8),
+                                Wrap(
+                                  spacing: 8,
+                                  runSpacing: 8,
+                                  children: [
+                                    'Pendiente',
+                                    'Discipulado 1',
+                                    'Discipulado 2',
+                                    'Discipulado 3',
+                                    'Consolidación',
+                                    'Estudio Bíblico',
+                                    'Escuela de Líderes'
+                                  ].map((estado) {
+                                    final isSelected =
+                                        controller.text == estado;
+                                    return FilterChip(
+                                      label: Text(estado),
+                                      selected: isSelected,
+                                      onSelected: (selected) {
+                                        setState(() {
+                                          controller.text =
+                                              selected ? estado : '';
+                                          hayModificaciones = true;
+                                        });
+                                      },
+                                      selectedColor:
+                                          primaryTeal.withOpacity(0.2),
+                                      checkmarkColor: primaryTeal,
+                                      backgroundColor: Colors.white,
+                                      side: BorderSide(
+                                        color: isSelected
+                                            ? primaryTeal
+                                            : Colors.grey.withOpacity(0.5),
+                                      ),
+                                      labelStyle: TextStyle(
+                                        color: isSelected
+                                            ? primaryTeal
+                                            : Colors.black87,
+                                        fontWeight: isSelected
+                                            ? FontWeight.w600
+                                            : FontWeight.normal,
+                                        fontSize: 13,
+                                      ),
+                                    );
+                                  }).toList(),
+                                ),
+                                SizedBox(height: 16),
+                              ],
                             );
                           }
 
@@ -7719,14 +7787,77 @@ Future<List<Map<String, dynamic>>> _obtenerTimoteosConConteo(
                                   isRequired: false,
                                 ),
 
-                                _buildTextFieldWithController(
-                                  'Estado en la Iglesia',
-                                  Icons.track_changes_outlined,
-                                  _controllers['estadoProceso']!,
-                                  (value) => estadoProceso = value,
-                                  isRequired: false,
+                                // Campo Estado en la Iglesia con opciones rápidas
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    _buildTextFieldWithController(
+                                      'Estado en la Iglesia',
+                                      Icons.track_changes_outlined,
+                                      _controllers['estadoProceso']!,
+                                      (value) {
+                                        estadoProceso = value;
+                                      },
+                                      isRequired: false,
+                                    ),
+                                    SizedBox(height: 8),
+                                    Text(
+                                      'Opciones rápidas:',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        color: primaryTeal,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                    SizedBox(height: 8),
+                                    Wrap(
+                                      spacing: 8,
+                                      runSpacing: 8,
+                                      children: [
+                                        'Pendiente',
+                                        'Discipulado 1',
+                                        'Discipulado 2',
+                                        'Discipulado 3',
+                                        'Consolidación',
+                                        'Estudio Bíblico',
+                                        'Escuela de Líderes'
+                                      ].map((estado) {
+                                        final isSelected =
+                                            estadoProceso == estado;
+                                        return FilterChip(
+                                          label: Text(estado),
+                                          selected: isSelected,
+                                          onSelected: (selected) {
+                                            setState(() {
+                                              estadoProceso =
+                                                  selected ? estado : '';
+                                              _controllers['estadoProceso']!
+                                                  .text = estadoProceso;
+                                            });
+                                          },
+                                          selectedColor:
+                                              primaryTeal.withOpacity(0.2),
+                                          checkmarkColor: primaryTeal,
+                                          backgroundColor: Colors.white,
+                                          side: BorderSide(
+                                            color: isSelected
+                                                ? primaryTeal
+                                                : Colors.grey.withOpacity(0.5),
+                                          ),
+                                          labelStyle: TextStyle(
+                                            color: isSelected
+                                                ? primaryTeal
+                                                : Colors.black87,
+                                            fontWeight: isSelected
+                                                ? FontWeight.w600
+                                                : FontWeight.normal,
+                                            fontSize: 13,
+                                          ),
+                                        );
+                                      }).toList(),
+                                    ),
+                                  ],
                                 ),
-
                                 // Campo para seleccionar fecha
                                 Padding(
                                   padding:

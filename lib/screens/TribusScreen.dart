@@ -425,6 +425,15 @@ class _TribusScreenState extends State<TribusScreen>
       'Ama de Casa',
       'Otro'
     ];
+    final List<String> _estadosProceso = [
+      'Pendiente',
+      'Discipulado 1',
+      'Discipulado 2',
+      'Discipulado 3',
+      'Consolidación',
+      'Estudio Bíblico',
+      'Escuela de Líderes'
+    ];
 
     // Variables para almacenar datos del formulario
     String nombre = '';
@@ -848,10 +857,11 @@ class _TribusScreenState extends State<TribusScreen>
                               (value) => observaciones = value,
                               isRequired: false, isSmallScreen: isSmallScreen),
 
-                          _buildTextField(
+                          _buildTextFieldConOpciones(
                             'Estado en la Iglesia',
                             Icons.track_changes_outlined,
                             (value) => estadoProceso = value,
+                            opciones: _estadosProceso,
                             isRequired: false,
                             isSmallScreen: isSmallScreen,
                           ),
@@ -1423,6 +1433,160 @@ class _TribusScreenState extends State<TribusScreen>
     );
   }
 
+// Método auxiliar para campos de texto con opciones predefinidas
+  Widget _buildTextFieldConOpciones(
+      String label, IconData icon, Function(String) onChanged,
+      {List<String>? opciones,
+      bool isRequired = true,
+      bool isSmallScreen = false}) {
+    // Crear un controlador local para manejar el texto
+    final TextEditingController localController = TextEditingController();
+
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: isSmallScreen ? 6 : 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(isSmallScreen ? 12 : 16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.03),
+                  blurRadius: 4,
+                  offset: Offset(0, 2),
+                ),
+              ],
+            ),
+            child: TextFormField(
+              controller: localController,
+              style: TextStyle(fontSize: isSmallScreen ? 14 : 16),
+              decoration: InputDecoration(
+                labelText: label,
+                labelStyle: TextStyle(
+                  color: Colors.grey.shade600,
+                  fontSize: isSmallScreen ? 13 : 14,
+                ),
+                prefixIcon: Container(
+                  margin: EdgeInsets.all(isSmallScreen ? 8 : 12),
+                  padding: EdgeInsets.all(isSmallScreen ? 6 : 8),
+                  decoration: BoxDecoration(
+                    color: Color(0xFF1B998B).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(icon,
+                      color: Color(0xFF1B998B), size: isSmallScreen ? 18 : 20),
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(isSmallScreen ? 12 : 16),
+                  borderSide: BorderSide(color: Colors.grey.shade300),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(isSmallScreen ? 12 : 16),
+                  borderSide: BorderSide(color: Color(0xFF1B998B), width: 2),
+                ),
+                errorBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(isSmallScreen ? 12 : 16),
+                  borderSide: BorderSide(color: Colors.red.shade400, width: 2),
+                ),
+                focusedErrorBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(isSmallScreen ? 12 : 16),
+                  borderSide: BorderSide(color: Colors.red.shade400, width: 2),
+                ),
+                filled: true,
+                fillColor: Colors.white,
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: isSmallScreen ? 12 : 16,
+                  vertical: isSmallScreen ? 12 : 16,
+                ),
+              ),
+              validator: isRequired
+                  ? (value) => (value == null || value.isEmpty)
+                      ? 'Campo obligatorio'
+                      : null
+                  : null,
+              onChanged: (value) {
+                onChanged(value);
+              },
+            ),
+          ),
+          if (opciones != null && opciones.isNotEmpty) ...[
+            SizedBox(height: isSmallScreen ? 8 : 12),
+            Container(
+              padding: EdgeInsets.all(isSmallScreen ? 8 : 12),
+              decoration: BoxDecoration(
+                color: Color(0xFF1B998B).withOpacity(0.05),
+                borderRadius: BorderRadius.circular(isSmallScreen ? 12 : 16),
+                border: Border.all(
+                  color: Color(0xFF1B998B).withOpacity(0.2),
+                  width: 1,
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.touch_app_outlined,
+                        size: isSmallScreen ? 14 : 16,
+                        color: Color(0xFF1B998B),
+                      ),
+                      SizedBox(width: 6),
+                      Text(
+                        'Opciones rápidas:',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w500,
+                          color: Color(0xFF1B998B),
+                          fontSize: isSmallScreen ? 12 : 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: isSmallScreen ? 6 : 8),
+                  Wrap(
+                    spacing: isSmallScreen ? 6 : 8,
+                    runSpacing: isSmallScreen ? 6 : 8,
+                    children: opciones.map((opcion) {
+                      return ActionChip(
+                        label: Text(
+                          opcion,
+                          style: TextStyle(
+                            color: Color(0xFF1B998B),
+                            fontWeight: FontWeight.w500,
+                            fontSize: isSmallScreen ? 11 : 13,
+                          ),
+                        ),
+                        onPressed: () {
+                          // Actualizar el controlador local
+                          localController.text = opcion;
+                          // Llamar al callback onChanged
+                          onChanged(opcion);
+                        },
+                        backgroundColor: Colors.white,
+                        side: BorderSide(
+                          color: Color(0xFF1B998B).withOpacity(0.3),
+                          width: 1.5,
+                        ),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: isSmallScreen ? 8 : 10,
+                          vertical: isSmallScreen ? 4 : 6,
+                        ),
+                        elevation: 0,
+                        pressElevation: 2,
+                        shadowColor: Color(0xFF1B998B).withOpacity(0.3),
+                      );
+                    }).toList(),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final Color primaryTeal = Color(0xFF1B998B);
@@ -1677,7 +1841,9 @@ class _TribusScreenState extends State<TribusScreen>
 
 // ✅ NUEVA VERSIÓN: Acepta filtros como parámetros opcionales
   void descargarExcel(BuildContext context, String tribuId, String tribuNombre,
-      {String? anioFiltro, String? mesFiltro} // ⬅️ PARÁMETROS OPCIONALES
+      {String? anioFiltro,
+      String? mesFiltro,
+      String? estadoFiltro} // ✅ AGREGADO estadoFiltro
       ) async {
     const Color primaryTeal = Color(0xFF1B998B);
     const Color secondaryOrange = Color(0xFFFF7E00);
@@ -1744,13 +1910,14 @@ class _TribusScreenState extends State<TribusScreen>
     try {
       final excelGenerator = ExcelExporter();
 
-      // ✅ Pasar los filtros al exportador
+      // ✅ Pasar los filtros al exportador (incluyendo estado)
       await excelGenerator.exportarRegistros(
         context,
         tribuId,
         tribuNombre,
         anioFiltro: anioFiltro,
         mesFiltro: mesFiltro,
+        estadoFiltro: estadoFiltro, // ✅ NUEVO
       );
 
       if (context.mounted) {
@@ -1760,13 +1927,16 @@ class _TribusScreenState extends State<TribusScreen>
         String mensajeExito =
             'Archivo "Datos de las personas - $tribuNombre" generado correctamente';
 
-        if (anioFiltro != null || mesFiltro != null) {
+        if (anioFiltro != null || mesFiltro != null || estadoFiltro != null) {
           mensajeExito += ' (';
+
+          final List<String> filtrosActivos = [];
+
           if (anioFiltro != null) {
-            mensajeExito += 'Año: $anioFiltro';
+            filtrosActivos.add('Año: $anioFiltro');
           }
+
           if (mesFiltro != null) {
-            if (anioFiltro != null) mensajeExito += ', ';
             final mesesNombres = {
               '1': 'Enero',
               '2': 'Febrero',
@@ -1781,8 +1951,14 @@ class _TribusScreenState extends State<TribusScreen>
               '11': 'Noviembre',
               '12': 'Diciembre'
             };
-            mensajeExito += 'Mes: ${mesesNombres[mesFiltro] ?? mesFiltro}';
+            filtrosActivos.add('Mes: ${mesesNombres[mesFiltro] ?? mesFiltro}');
           }
+
+          if (estadoFiltro != null) {
+            filtrosActivos.add('Estado: $estadoFiltro');
+          }
+
+          mensajeExito += filtrosActivos.join(', ');
           mensajeExito += ')';
         }
 
@@ -5107,6 +5283,12 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
   List<String> _aniosDisponibles = [];
   bool _cargandoAnios = false;
 
+// ✅ AGREGADO: Variables para el nuevo filtro de Estado en la Iglesia
+  String _tipoBusqueda = 'nombre'; // 'nombre' o 'estado'
+  final TextEditingController _searchEstadoController = TextEditingController();
+  String _searchEstadoTerm = '';
+  final FocusNode _searchEstadoFocusNode = FocusNode();
+
   @override
   void initState() {
     super.initState();
@@ -5114,6 +5296,13 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
     _searchController.addListener(() {
       setState(() {
         _searchTerm = _searchController.text.toLowerCase();
+      });
+    });
+
+    // ✅ AGREGADO: Listener para búsqueda por estado
+    _searchEstadoController.addListener(() {
+      setState(() {
+        _searchEstadoTerm = _searchEstadoController.text.toLowerCase();
       });
     });
 
@@ -5126,6 +5315,9 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
     // ✅ NUEVO: Limpieza de recursos
     _searchController.dispose();
     _searchFocusNode.dispose();
+    // ✅ AGREGADO: Limpieza de recursos del nuevo controlador
+    _searchEstadoController.dispose();
+    _searchEstadoFocusNode.dispose();
     super.dispose();
   }
 
@@ -5234,11 +5426,29 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
     return true;
   }
 
-// ✅ NUEVO: Método para limpiar filtros
+// ✅ NUEVO: Método para filtrar registros por estado en la iglesia
+  bool _cumpleFiltroEstado(DocumentSnapshot doc) {
+    // Si no hay término de búsqueda de estado, no filtrar
+    if (_searchEstadoTerm.isEmpty) {
+      return true;
+    }
+
+    final data = doc.data() as Map<String, dynamic>;
+    final estadoProceso =
+        (data['estadoProceso'] as String? ?? '').toLowerCase();
+
+    // Búsqueda flexible: contiene el término
+    return estadoProceso.contains(_searchEstadoTerm);
+  }
+
   void _limpiarFiltros() {
     setState(() {
       _anioSeleccionado = null;
       _mesSeleccionado = null;
+      _searchController.clear();
+      _searchEstadoController.clear();
+      _searchTerm = '';
+      _searchEstadoTerm = '';
     });
   }
 
@@ -6402,11 +6612,20 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
                               return SizedBox.shrink();
                             }
                           } else if (fieldName == 'estadoProceso') {
-                            return _buildAnimatedTextField(
+                            return _buildAnimatedTextFieldConOpciones(
                               label: 'Estado en la Iglesia',
                               icon: fieldIcon,
                               controller: controller!,
                               primaryColor: primaryTeal,
+                              opciones: [
+                                'Pendiente',
+                                'Discipulado 1',
+                                'Discipulado 2',
+                                'Discipulado 3',
+                                'Consolidación',
+                                'Estudio Bíblico',
+                                'Escuela de Líderes'
+                              ],
                               onChanged: (value) {
                                 hayModificaciones = true;
                               },
@@ -6659,64 +6878,288 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
               child: Column(
                 children: [
                   // 🔍 BARRA DE BÚSQUEDA
+                  // 🔍 BARRA DE BÚSQUEDA MEJORADA CON SELECTOR DE TIPO
                   Padding(
                     padding: EdgeInsets.fromLTRB(12, 12, 12, 8),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: backgroundGrey.withOpacity(0.5),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: primaryTeal.withOpacity(0.2),
-                          width: 1,
-                        ),
-                      ),
-                      child: TextField(
-                        controller: _searchController,
-                        focusNode: _searchFocusNode,
-                        textInputAction: TextInputAction.search,
-                        enableInteractiveSelection: true,
-                        style: TextStyle(
-                          fontSize: 15,
-                          color: Colors.black87,
-                        ),
-                        decoration: InputDecoration(
-                          hintText: 'Buscar por nombre o apellido...',
-                          hintStyle: TextStyle(
-                            color: Colors.grey[400],
-                            fontSize: 14,
+                    child: Column(
+                      children: [
+                        // Selector de tipo de búsqueda
+                        Container(
+                          padding:
+                              EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: primaryTeal.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: primaryTeal.withOpacity(0.3),
+                              width: 1,
+                            ),
                           ),
-                          prefixIcon: Icon(
-                            Icons.search_rounded,
-                            color: primaryTeal,
-                            size: 22,
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.filter_list_rounded,
+                                color: primaryTeal,
+                                size: 18,
+                              ),
+                              SizedBox(width: 8),
+                              Text(
+                                'Buscar por:',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: primaryTeal,
+                                ),
+                              ),
+                              SizedBox(width: 12),
+                              Expanded(
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: InkWell(
+                                        onTap: () {
+                                          setState(() {
+                                            _tipoBusqueda = 'nombre';
+                                            _searchEstadoController.clear();
+                                            _searchEstadoTerm = '';
+                                          });
+                                        },
+                                        borderRadius: BorderRadius.circular(8),
+                                        child: Container(
+                                          padding: EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                            vertical: 8,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: _tipoBusqueda == 'nombre'
+                                                ? primaryTeal
+                                                : Colors.transparent,
+                                            borderRadius:
+                                                BorderRadius.circular(8),
+                                            border: Border.all(
+                                              color: _tipoBusqueda == 'nombre'
+                                                  ? primaryTeal
+                                                  : primaryTeal
+                                                      .withOpacity(0.3),
+                                              width: 1.5,
+                                            ),
+                                          ),
+                                          child: Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
+                                            children: [
+                                              Icon(
+                                                Icons.person_search_rounded,
+                                                color: _tipoBusqueda == 'nombre'
+                                                    ? Colors.white
+                                                    : primaryTeal,
+                                                size: 16,
+                                              ),
+                                              SizedBox(width: 6),
+                                              Flexible(
+                                                child: Text(
+                                                  'Nombre',
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: _tipoBusqueda ==
+                                                            'nombre'
+                                                        ? Colors.white
+                                                        : primaryTeal,
+                                                  ),
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    SizedBox(width: 8),
+                                    Expanded(
+                                      child: InkWell(
+                                        onTap: () {
+                                          setState(() {
+                                            _tipoBusqueda = 'estado';
+                                            _searchController.clear();
+                                            _searchTerm = '';
+                                          });
+                                        },
+                                        borderRadius: BorderRadius.circular(8),
+                                        child: Container(
+                                          padding: EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                            vertical: 8,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: _tipoBusqueda == 'estado'
+                                                ? secondaryOrange
+                                                : Colors.transparent,
+                                            borderRadius:
+                                                BorderRadius.circular(8),
+                                            border: Border.all(
+                                              color: _tipoBusqueda == 'estado'
+                                                  ? secondaryOrange
+                                                  : secondaryOrange
+                                                      .withOpacity(0.3),
+                                              width: 1.5,
+                                            ),
+                                          ),
+                                          child: Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
+                                            children: [
+                                              Icon(
+                                                Icons.track_changes_rounded,
+                                                color: _tipoBusqueda == 'estado'
+                                                    ? Colors.white
+                                                    : secondaryOrange,
+                                                size: 16,
+                                              ),
+                                              SizedBox(width: 6),
+                                              Flexible(
+                                                child: Text(
+                                                  'Estado',
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: _tipoBusqueda ==
+                                                            'estado'
+                                                        ? Colors.white
+                                                        : secondaryOrange,
+                                                  ),
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
-                          suffixIcon: _searchController.text.isNotEmpty
-                              ? IconButton(
-                                  icon: Icon(
-                                    Icons.close_rounded,
-                                    color: accentGrey,
+                        ),
+                        SizedBox(height: 8),
+
+                        // Campo de búsqueda (cambia según el tipo seleccionado)
+                        AnimatedSwitcher(
+                          duration: Duration(milliseconds: 300),
+                          transitionBuilder:
+                              (Widget child, Animation<double> animation) {
+                            return FadeTransition(
+                              opacity: animation,
+                              child: SlideTransition(
+                                position: Tween<Offset>(
+                                  begin: Offset(0.0, 0.2),
+                                  end: Offset.zero,
+                                ).animate(animation),
+                                child: child,
+                              ),
+                            );
+                          },
+                          child: Container(
+                            key: ValueKey<String>(_tipoBusqueda),
+                            decoration: BoxDecoration(
+                              color: backgroundGrey.withOpacity(0.5),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: (_tipoBusqueda == 'nombre'
+                                        ? primaryTeal
+                                        : secondaryOrange)
+                                    .withOpacity(0.3),
+                                width: 1.5,
+                              ),
+                            ),
+                            child: TextField(
+                              controller: _tipoBusqueda == 'nombre'
+                                  ? _searchController
+                                  : _searchEstadoController,
+                              focusNode: _tipoBusqueda == 'nombre'
+                                  ? _searchFocusNode
+                                  : _searchEstadoFocusNode,
+                              textInputAction: TextInputAction.search,
+                              enableInteractiveSelection: true,
+                              style: TextStyle(
+                                fontSize: 15,
+                                color: Colors.black87,
+                              ),
+                              decoration: InputDecoration(
+                                hintText: _tipoBusqueda == 'nombre'
+                                    ? 'Buscar por nombre o apellido...'
+                                    : 'Buscar por estado (ej: Discipulado 1)...',
+                                hintStyle: TextStyle(
+                                  color: Colors.grey[400],
+                                  fontSize: 14,
+                                ),
+                                prefixIcon: Container(
+                                  margin: EdgeInsets.all(8),
+                                  padding: EdgeInsets.all(6),
+                                  decoration: BoxDecoration(
+                                    color: (_tipoBusqueda == 'nombre'
+                                            ? primaryTeal
+                                            : secondaryOrange)
+                                        .withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Icon(
+                                    _tipoBusqueda == 'nombre'
+                                        ? Icons.search_rounded
+                                        : Icons.track_changes_rounded,
+                                    color: _tipoBusqueda == 'nombre'
+                                        ? primaryTeal
+                                        : secondaryOrange,
                                     size: 20,
                                   ),
-                                  onPressed: () {
-                                    setState(() {
-                                      _searchController.clear();
-                                      _searchTerm = '';
-                                    });
-                                    _searchFocusNode.requestFocus();
-                                  },
-                                )
-                              : null,
-                          border: InputBorder.none,
-                          contentPadding: EdgeInsets.symmetric(
-                            vertical: 12,
-                            horizontal: 4,
+                                ),
+                                suffixIcon: (_tipoBusqueda == 'nombre'
+                                        ? _searchController.text.isNotEmpty
+                                        : _searchEstadoController
+                                            .text.isNotEmpty)
+                                    ? IconButton(
+                                        icon: Icon(
+                                          Icons.close_rounded,
+                                          color: accentGrey,
+                                          size: 20,
+                                        ),
+                                        onPressed: () {
+                                          setState(() {
+                                            if (_tipoBusqueda == 'nombre') {
+                                              _searchController.clear();
+                                              _searchTerm = '';
+                                              _searchFocusNode.requestFocus();
+                                            } else {
+                                              _searchEstadoController.clear();
+                                              _searchEstadoTerm = '';
+                                              _searchEstadoFocusNode
+                                                  .requestFocus();
+                                            }
+                                          });
+                                        },
+                                      )
+                                    : null,
+                                border: InputBorder.none,
+                                contentPadding: EdgeInsets.symmetric(
+                                  vertical: 12,
+                                  horizontal: 4,
+                                ),
+                                isDense: true,
+                              ),
+                              onSubmitted: (value) {
+                                if (_tipoBusqueda == 'nombre') {
+                                  _searchFocusNode.unfocus();
+                                } else {
+                                  _searchEstadoFocusNode.unfocus();
+                                }
+                              },
+                            ),
                           ),
-                          isDense: true,
                         ),
-                        onSubmitted: (value) {
-                          _searchFocusNode.unfocus();
-                        },
-                      ),
+                      ],
                     ),
                   ),
 
@@ -6939,12 +7382,20 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
                           final tribusState = context
                               .findAncestorStateOfType<_TribusScreenState>();
                           if (tribusState != null) {
+                            // ✅ MODIFICADO: Pasar el filtro de estado activo
+                            String? estadoActivo;
+                            if (_tipoBusqueda == 'estado' &&
+                                _searchEstadoTerm.isNotEmpty) {
+                              estadoActivo = _searchEstadoTerm;
+                            }
+
                             tribusState.descargarExcel(
                               context,
                               widget.tribuId,
                               widget.tribuNombre,
                               anioFiltro: _anioSeleccionado,
                               mesFiltro: _mesSeleccionado,
+                              estadoFiltro: estadoActivo, // ✅ NUEVO PARÁMETRO
                             );
                           } else {
                             ScaffoldMessenger.of(context).showSnackBar(
@@ -7005,8 +7456,8 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
                   final allDocs = snapshot.data?.docs ?? [];
                   var filteredDocs = allDocs;
 
-                  // Aplicar filtro de búsqueda
-                  if (_searchTerm.isNotEmpty) {
+                  // ✅ MODIFICADO: Aplicar filtro de búsqueda según tipo
+                  if (_tipoBusqueda == 'nombre' && _searchTerm.isNotEmpty) {
                     filteredDocs = filteredDocs.where((doc) {
                       final data = doc.data() as Map<String, dynamic>;
                       final nombre =
@@ -7019,6 +7470,12 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
                           apellido.contains(_searchTerm) ||
                           nombreCompleto.contains(_searchTerm);
                     }).toList();
+                  } else if (_tipoBusqueda == 'estado' &&
+                      _searchEstadoTerm.isNotEmpty) {
+                    // ✅ AGREGADO: Filtro por estado en la iglesia
+                    filteredDocs = filteredDocs
+                        .where((doc) => _cumpleFiltroEstado(doc))
+                        .toList();
                   }
 
                   // Aplicar filtro de fecha
@@ -7075,9 +7532,17 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
 
                   // Mensaje cuando no hay resultados
                   if (filteredDocs.isEmpty) {
-                    String mensaje = _searchTerm.isNotEmpty
-                        ? 'No se encontraron resultados para "$_searchTerm"'
-                        : 'No hay registros con los filtros aplicados';
+                    String mensaje;
+                    if (_tipoBusqueda == 'nombre' && _searchTerm.isNotEmpty) {
+                      mensaje =
+                          'No se encontraron resultados para "$_searchTerm"';
+                    } else if (_tipoBusqueda == 'estado' &&
+                        _searchEstadoTerm.isNotEmpty) {
+                      mensaje =
+                          'No hay registros con estado "$_searchEstadoTerm"';
+                    } else {
+                      mensaje = 'No hay registros con los filtros aplicados';
+                    }
 
                     return Center(
                       child: Column(
@@ -7108,7 +7573,9 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
                             onPressed: () {
                               setState(() {
                                 _searchController.clear();
+                                _searchEstadoController.clear();
                                 _searchTerm = '';
+                                _searchEstadoTerm = '';
                                 _limpiarFiltros();
                               });
                             },
@@ -9307,6 +9774,128 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
           ),
           style: const TextStyle(fontSize: 16),
         ),
+      ),
+    );
+  }
+
+// Widget para campos de texto con animación y opciones predefinidas
+  Widget _buildAnimatedTextFieldConOpciones({
+    required String label,
+    required IconData icon,
+    required TextEditingController controller,
+    required Color primaryColor,
+    required List<String> opciones,
+    required Function(String) onChanged,
+  }) {
+    final TextEditingController safeController =
+        controller ?? TextEditingController();
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            child: TextField(
+              controller: safeController,
+              onChanged: onChanged,
+              decoration: InputDecoration(
+                labelText: label,
+                labelStyle: TextStyle(
+                  color: primaryColor.withOpacity(0.8),
+                  fontWeight: FontWeight.w500,
+                ),
+                prefixIcon: Icon(icon, color: primaryColor),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: primaryColor.withOpacity(0.3)),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: primaryColor.withOpacity(0.5)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: primaryColor, width: 2),
+                ),
+                filled: true,
+                fillColor: Colors.white,
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              ),
+              style: const TextStyle(fontSize: 16),
+            ),
+          ),
+          SizedBox(height: 12),
+          Container(
+            padding: EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: primaryColor.withOpacity(0.05),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: primaryColor.withOpacity(0.2),
+                width: 1,
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      Icons.touch_app_outlined,
+                      size: 14,
+                      color: primaryColor,
+                    ),
+                    SizedBox(width: 6),
+                    Text(
+                      'Opciones rápidas:',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w500,
+                        color: primaryColor,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 8),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: opciones.map((opcion) {
+                    return ActionChip(
+                      label: Text(
+                        opcion,
+                        style: TextStyle(
+                          color: primaryColor,
+                          fontWeight: FontWeight.w500,
+                          fontSize: 12,
+                        ),
+                      ),
+                      onPressed: () {
+                        safeController.text = opcion;
+                        onChanged(opcion);
+                      },
+                      backgroundColor: Colors.white,
+                      side: BorderSide(
+                        color: primaryColor.withOpacity(0.3),
+                        width: 1.5,
+                      ),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      elevation: 0,
+                      pressElevation: 2,
+                      shadowColor: primaryColor.withOpacity(0.3),
+                    );
+                  }).toList(),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

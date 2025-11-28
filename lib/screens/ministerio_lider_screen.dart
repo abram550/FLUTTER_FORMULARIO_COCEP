@@ -2255,13 +2255,6 @@ class _MinisterioLiderScreenState extends State<MinisterioLiderScreen>
           ),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_outlined),
-            onPressed: () {
-              _resetInactivityTimer();
-            },
-            tooltip: 'Notificaciones',
-          ),
           Container(
             margin: EdgeInsets.only(right: 8),
             decoration: BoxDecoration(

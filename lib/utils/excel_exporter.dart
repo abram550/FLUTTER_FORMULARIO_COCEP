@@ -184,6 +184,7 @@ class ExcelExporter {
     String tribuNombre, {
     String? anioFiltro,
     String? mesFiltro,
+    String? estadoFiltro, // ✅ NUEVO PARÁMETRO
   }) async {
     try {
       // Crear un nuevo libro de Excel
@@ -241,7 +242,14 @@ class ExcelExporter {
           }
         }).toList();
       }
-
+      if (estadoFiltro != null && estadoFiltro.isNotEmpty) {
+        registrosFiltrados = registrosFiltrados.where((doc) {
+          final data = doc.data();
+          final estadoProceso =
+              (data['estadoProceso'] as String? ?? '').toLowerCase();
+          return estadoProceso.contains(estadoFiltro.toLowerCase());
+        }).toList();
+      }
 // ✅ MODIFICADO: Usar registrosFiltrados en lugar de registrosSnapshot.docs
       if (registrosFiltrados.isEmpty) {
         if (context.mounted) {
