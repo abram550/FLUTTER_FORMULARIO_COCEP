@@ -798,32 +798,31 @@ class _AdminPastoresState extends State<AdminPastores>
           ],
         ),
       ),
-      floatingActionButton: SafeArea(
-        child: Padding(
-          padding: EdgeInsets.only(
-            bottom: 16,
-            right: 8,
+      floatingActionButton: Container(
+        margin: EdgeInsets.only(
+          bottom: MediaQuery.of(context).padding.bottom +
+              100, // Margen adaptativo más grande
+          right: 16,
+        ),
+        child: FloatingActionButton.extended(
+          onPressed: () {
+            showDialog(
+              context: context,
+              builder: (context) => StatisticsDialog(),
+            );
+          },
+          backgroundColor: Colors.orange,
+          elevation: 8,
+          label: Text(
+            'Estadísticas',
+            style: GoogleFonts.poppins(
+              fontSize: MediaQuery.of(context).size.width < 400 ? 12 : 14,
+              fontWeight: FontWeight.w600,
+            ),
           ),
-          child: FloatingActionButton.extended(
-            onPressed: () {
-              showDialog(
-                context: context,
-                builder: (context) => StatisticsDialog(),
-              );
-            },
-            backgroundColor: Colors.orange,
-            elevation: 8,
-            label: Text(
-              'Estadísticas',
-              style: GoogleFonts.poppins(
-                fontSize: MediaQuery.of(context).size.width < 400 ? 12 : 14,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            icon: Icon(
-              Icons.bar_chart,
-              size: MediaQuery.of(context).size.width < 400 ? 18 : 24,
-            ),
+          icon: Icon(
+            Icons.bar_chart,
+            size: MediaQuery.of(context).size.width < 400 ? 18 : 24,
           ),
         ),
       ),

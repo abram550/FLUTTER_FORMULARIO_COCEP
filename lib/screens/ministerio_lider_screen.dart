@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter/gestures.dart';
+import 'TribusScreen.dart' hide showDialog;
 
 class MinisterioLiderScreen extends StatefulWidget {
   final String ministerio; // 'Ministerio de Damas' o 'Ministerio de Caballeros'
@@ -274,6 +275,8 @@ class _MinisterioLiderScreenState extends State<MinisterioLiderScreen>
               itemCount: tribus.length,
               itemBuilder: (context, index) {
                 final data = tribus[index].data() as Map<String, dynamic>;
+                final tribuId = tribus[index].id;
+
                 return Card(
                   margin: const EdgeInsets.only(bottom: 16),
                   elevation: 3,
@@ -325,14 +328,31 @@ class _MinisterioLiderScreenState extends State<MinisterioLiderScreen>
                               color: secondaryColor,
                             ),
                             const SizedBox(width: 4),
-                            Text(
-                              'Líder: ${data['nombreLider'] ?? 'No asignado'}',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.black87,
+                            Expanded(
+                              child: Text(
+                                'Líder: ${data['nombreLider'] ?? 'No asignado'}',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.black87,
+                                ),
                               ),
                             ),
                           ],
+                        ),
+                      ),
+                      trailing: Container(
+                        decoration: BoxDecoration(
+                          color: primaryColor.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: IconButton(
+                          icon: Icon(Icons.visibility, color: primaryColor),
+                          tooltip: 'Ver Detalles',
+                          onPressed: () async {
+                            _resetInactivityTimer();
+                            await _navegarATribu(
+                                tribuId, data['nombre'] ?? 'Sin nombre');
+                          },
                         ),
                       ),
                     ),
@@ -769,6 +789,24 @@ class _MinisterioLiderScreenState extends State<MinisterioLiderScreen>
                   },
                 ),
               ),
+              const SizedBox(width: 8),
+              // NUEVO: Botón para ver detalles de la tribu
+              if (data['nombreTribu'] != null && data['tribuAsignada'] != null)
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: IconButton(
+                    icon: Icon(Icons.group_work_outlined, color: Colors.blue),
+                    tooltip: 'Ver tribu',
+                    onPressed: () async {
+                      _resetInactivityTimer();
+                      await _navegarATribu(
+                          data['tribuAsignada'], data['nombreTribu']);
+                    },
+                  ),
+                ),
               const SizedBox(width: 8),
               // Condicionalmente mostrar botón de asignar o cambiar tribu
               if (data['nombreTribu'] == null)
@@ -1326,6 +1364,84 @@ class _MinisterioLiderScreenState extends State<MinisterioLiderScreen>
         );
       },
     );
+  }
+
+  /// Navegar a la pantalla de detalles de la tribu
+  Future<void> _navegarATribu(String tribuId, String nombreTribu) async {
+    try {
+      _resetInactivityTimer();
+
+      // Validar que tengamos los datos necesarios
+      if (tribuId.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  Icon(Icons.error_outline, color: Colors.white),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text('Error: ID de tribu no válido'),
+                  ),
+                ],
+              ),
+              backgroundColor: Colors.red,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              margin: EdgeInsets.all(12),
+            ),
+          );
+        }
+        return;
+      }
+
+      // Importar TribusScreen (asegúrate de tener el import al inicio del archivo)
+      // import 'TribusScreen.dart' hide showDialog;
+
+      // Navegar a la pantalla de detalles de la tribu
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => TribusScreen(
+            tribuId: tribuId,
+            tribuNombre: nombreTribu,
+          ),
+        ),
+      );
+
+      // Resetear timer al regresar
+      if (mounted) {
+        _resetInactivityTimer();
+      }
+    } catch (e) {
+      print('Error al navegar a tribu: $e');
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.error_outline, color: Colors.white),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                      'Error al abrir detalles de la tribu: ${e.toString()}'),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            margin: EdgeInsets.all(12),
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    }
   }
 
 // Función para cambiar/eliminar asignación de registro
