@@ -605,36 +605,37 @@ class _CoordinadorScreenState extends State<CoordinadorScreen>
                 ),
               ],
             ),
-            floatingActionButton: AnimatedBuilder(
-              animation: _tabController,
-              builder: (context, child) {
-                if (_tabController.index == 3) {
-                  return FloatingActionButton(
-                    backgroundColor: kSecondaryColor,
-                    child: Icon(Icons.add, color: Colors.white),
-                    onPressed: () {
-                      _resetInactivityTimer();
-                      showModalBottomSheet(
-                        context: context,
-                        isScrollControlled: true,
-                        shape: RoundedRectangleBorder(
-                          borderRadius:
-                              BorderRadius.vertical(top: Radius.circular(20)),
-                        ),
-                        builder: (context) => buildActionSheet(
-                          context,
-                          () {
-                            _resetInactivityTimer();
-                            print('Registrar nuevo joven');
-                          },
-                        ),
-                      );
-                    },
-                  );
-                }
-                return SizedBox.shrink();
-              },
-            ),
+           // floatingActionButton: AnimatedBuilder(
+//   animation: _tabController,
+//   builder: (context, child) {
+//     if (_tabController.index == 3) {
+//       return FloatingActionButton(
+//         backgroundColor: kSecondaryColor,
+//         child: Icon(Icons.add, color: Colors.white),
+//         onPressed: () {
+//           _resetInactivityTimer();
+//           showModalBottomSheet(
+//             context: context,
+//             isScrollControlled: true,
+//             shape: RoundedRectangleBorder(
+//               borderRadius:
+//                   BorderRadius.vertical(top: Radius.circular(20)),
+//             ),
+//             builder: (context) => buildActionSheet(
+//               context,
+//               () {
+//                 _resetInactivityTimer();
+//                 print('Registrar nuevo joven');
+//               },
+//             ),
+//           );
+//         },
+//       );
+//     }
+//     return SizedBox.shrink();
+//   },
+// ),
+
           ),
         );
       },
@@ -807,6 +808,8 @@ class CustomTabContent extends StatelessWidget {
     );
   }
 }
+
+
 
 class AsistenciasCoordinadorTab extends StatefulWidget {
   final String tribuId;
@@ -2997,6 +3000,8 @@ class _AsistenciasCoordinadorTabState extends State<AsistenciasCoordinadorTab> {
     );
   }
 }
+
+
 
 class AlertasTab extends StatelessWidget {
   final String coordinadorId;
