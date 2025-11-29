@@ -11004,38 +11004,6 @@ class _InscripcionesTabState extends State<InscripcionesTab> {
     }
   }
 
-// Verificar si una persona tiene inscripciones en eventos activos
-  Future<bool> _tieneInscripcionActiva(String personaId) async {
-    try {
-      final eventosSnapshot = await FirebaseFirestore.instance
-          .collection('eventos')
-          .where('tribuId', isEqualTo: widget.tribuId)
-          .where('estado', isEqualTo: 'activo')
-          .get();
-
-      final ahora = DateTime.now();
-
-      for (var eventoDoc in eventosSnapshot.docs) {
-        final eventoData = eventoDoc.data();
-        final fechaFin = (eventoData['fechaFin'] as Timestamp).toDate();
-
-        // Solo verificar eventos que no han terminado
-        if (fechaFin.isAfter(ahora)) {
-          final inscripciones = List<Map<String, dynamic>>.from(
-              eventoData['inscripciones'] ?? []);
-
-          if (inscripciones.any((i) => i['personaId'] == personaId)) {
-            return true;
-          }
-        }
-      }
-      return false;
-    } catch (e) {
-      print('Error verificando inscripciones activas: $e');
-      return false;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -13930,33 +13898,75 @@ class _DetalleEventoModalState extends State<DetalleEventoModal> {
     setState(() => isLoading = true);
 
     try {
-      final personasSnapshot = await FirebaseFirestore.instance
-          .collection('registros')
-          .where('tribuAsignada', isEqualTo: widget.tribuId)
-          .get();
+      // ✅ OPTIMIZACIÓN: Consultas en paralelo
+      final results = await Future.wait([
+        // Consulta 1: Obtener personas de la tribu
+        FirebaseFirestore.instance
+            .collection('registros')
+            .where('tribuAsignada', isEqualTo: widget.tribuId)
+            .where('activo', isEqualTo: true) // ✅ Solo personas activas
+            .get(),
 
-      // Filtrar personas ya inscritas en este evento
-      final personasNoInscritas = personasSnapshot.docs.where((doc) {
-        return !inscripciones.any((i) => i['personaId'] == doc.id);
-      }).toList();
+        // Consulta 2: Obtener eventos activos de la tribu
+        FirebaseFirestore.instance
+            .collection('eventos')
+            .where('tribuId', isEqualTo: widget.tribuId)
+            .where('estado', isEqualTo: 'activo')
+            .get(),
+      ]);
 
-      // Verificar inscripciones activas para cada persona
-      List<DocumentSnapshot> personasDisponibles = [];
+      final personasSnapshot = results[0] as QuerySnapshot;
+      final eventosActivosSnapshot = results[1] as QuerySnapshot;
 
-      for (var persona in personasNoInscritas) {
-        bool tieneInscripcionActiva = await _tieneInscripcionActiva(persona.id);
-        if (!tieneInscripcionActiva) {
-          personasDisponibles.add(persona);
+      // ✅ OPTIMIZACIÓN: Crear Set de personas con inscripciones activas
+      final Set<String> personasConInscripcionActiva = {};
+      final ahora = DateTime.now();
+
+      for (var eventoDoc in eventosActivosSnapshot.docs) {
+        // Saltar el evento actual
+        if (eventoDoc.id == widget.eventoDoc.id) continue;
+
+        final eventoData = eventoDoc.data() as Map<String, dynamic>;
+        final fechaFin = (eventoData['fechaFin'] as Timestamp).toDate();
+
+        // Solo verificar eventos que no han terminado
+        if (fechaFin.isAfter(ahora)) {
+          final inscripciones = List<Map<String, dynamic>>.from(
+              eventoData['inscripciones'] ?? []);
+
+          for (var inscripcion in inscripciones) {
+            personasConInscripcionActiva
+                .add(inscripcion['personaId'] as String);
+          }
         }
       }
+
+      // ✅ OPTIMIZACIÓN: Filtrar usando Set (O(1) lookup)
+      final personasDisponibles = personasSnapshot.docs.where((doc) {
+        // Filtrar personas ya inscritas en este evento
+        if (inscripciones.any((i) => i['personaId'] == doc.id)) {
+          return false;
+        }
+
+        // Filtrar personas con inscripciones activas en otros eventos
+        if (personasConInscripcionActiva.contains(doc.id)) {
+          return false;
+        }
+
+        // Validar que tenga datos básicos
+        final data = doc.data() as Map<String, dynamic>?;
+        if (data == null) return false;
+
+        final nombre = data['nombre']?.toString().trim() ?? '';
+        return nombre.isNotEmpty && nombre != 'Sin nombre';
+      }).toList();
 
       setState(() => isLoading = false);
 
       if (personasDisponibles.isEmpty) {
         final totalPersonas = personasSnapshot.docs.length;
         final yaInscritas = inscripciones.length;
-        final conInscripcionesActivas =
-            personasNoInscritas.length - personasDisponibles.length;
+        final conInscripcionesActivas = personasConInscripcionActiva.length;
 
         String mensaje;
         if (yaInscritas == totalPersonas) {
@@ -14038,23 +14048,58 @@ class _DetalleEventoModalState extends State<DetalleEventoModal> {
   }
 
   Future<void> _inscribirPersona(DocumentSnapshot personaDoc) async {
-    final personaData = personaDoc.data() as Map<String, dynamic>;
-    final nombre = '${personaData['nombre']} ${personaData['apellido']}';
-
-    // Usar Timestamp.now() en lugar de FieldValue.serverTimestamp()
-    final nuevaInscripcion = {
-      'personaId': personaDoc.id,
-      'nombre': nombre,
-      'abono': 0,
-      'asistio': false,
-      'fechaInscripcion': Timestamp.now(), // Cambio aquí
-    };
-
     try {
-      setState(() {
-        inscripciones.add(nuevaInscripcion);
-      });
+      // ✅ Validar que el documento tenga datos
+      if (!personaDoc.exists || personaDoc.data() == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content:
+                  Text('Error: La persona seleccionada no tiene datos válidos'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
 
+      final personaData = personaDoc.data() as Map<String, dynamic>;
+
+      // ✅ Validar campos requeridos con valores por defecto seguros
+      final nombre = personaData['nombre']?.toString().trim() ?? 'Sin nombre';
+      final apellido = personaData['apellido']?.toString().trim() ?? '';
+      final nombreCompleto = apellido.isNotEmpty ? '$nombre $apellido' : nombre;
+
+      // ✅ Validar que el nombre no esté vacío
+      if (nombreCompleto.isEmpty || nombreCompleto == 'Sin nombre') {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error: La persona no tiene un nombre válido'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+
+      // ✅ Crear inscripción con validación
+      final nuevaInscripcion = {
+        'personaId': personaDoc.id,
+        'nombre': nombreCompleto,
+        'abono': 0,
+        'asistio': false,
+        'fechaInscripcion': Timestamp.now(),
+      };
+
+      // ✅ Actualizar estado local primero
+      if (mounted) {
+        setState(() {
+          inscripciones.add(nuevaInscripcion);
+        });
+      }
+
+      // ✅ Guardar en Firebase
       await FirebaseFirestore.instance
           .collection('eventos')
           .doc(widget.eventoDoc.id)
@@ -14062,22 +14107,57 @@ class _DetalleEventoModalState extends State<DetalleEventoModal> {
         'inscripciones': inscripciones,
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('$nombre inscrito correctamente'),
-          backgroundColor: Colors.green,
-        ),
-      );
-    } catch (e) {
-      setState(() {
-        inscripciones.removeLast();
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error al inscribir persona: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      // ✅ Mostrar confirmación
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.white),
+                SizedBox(width: 12),
+                Expanded(child: Text('$nombreCompleto inscrito correctamente')),
+              ],
+            ),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e, stackTrace) {
+      // ✅ Manejo de errores mejorado
+      print('❌ Error al inscribir persona: $e');
+      print('Stack trace: $stackTrace');
+
+      // Revertir cambios en caso de error
+      if (mounted) {
+        setState(() {
+          if (inscripciones.isNotEmpty) {
+            inscripciones.removeLast();
+          }
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.error_outline, color: Colors.white),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Text('Error al inscribir: ${e.toString()}'),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            duration: Duration(seconds: 4),
+          ),
+        );
+      }
     }
   }
 
@@ -14200,17 +14280,29 @@ class _DialogoBuscarPersonaState extends State<_DialogoBuscarPersona> {
   }
 
   void _filtrarPersonas() {
-    final query = _searchController.text.toLowerCase();
+    final query = _searchController.text.toLowerCase().trim();
+
     setState(() {
       if (query.isEmpty) {
         personasFiltradas = widget.personas;
       } else {
         personasFiltradas = widget.personas.where((doc) {
-          final data = doc.data() as Map<String, dynamic>;
-          final nombre = '${data['nombre']} ${data['apellido']}'.toLowerCase();
-          final registro = data['registro']?.toString().toLowerCase() ?? '';
+          try {
+            final data = doc.data() as Map<String, dynamic>?;
 
-          return nombre.contains(query) || registro.contains(query);
+            // ✅ Validar que data no sea null
+            if (data == null) return false;
+
+            // ✅ Manejo seguro de campos
+            final nombre = data['nombre']?.toString().toLowerCase() ?? '';
+            final apellido = data['apellido']?.toString().toLowerCase() ?? '';
+            final nombreCompleto = '$nombre $apellido'.trim();
+
+            return nombreCompleto.contains(query);
+          } catch (e) {
+            print('Error filtrando persona: $e');
+            return false;
+          }
         }).toList();
       }
     });
@@ -14323,47 +14415,65 @@ class _DialogoBuscarPersonaState extends State<_DialogoBuscarPersona> {
                       itemCount: personasFiltradas.length,
                       itemBuilder: (context, index) {
                         final doc = personasFiltradas[index];
-                        final data = doc.data() as Map<String, dynamic>;
-                        final nombre = '${data['nombre']} ${data['apellido']}';
-                        final registro =
-                            data['registro']?.toString() ?? 'Sin registro';
 
-                        return Card(
-                          margin: EdgeInsets.symmetric(vertical: 4),
-                          elevation: 2,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: ListTile(
-                            leading: CircleAvatar(
-                              backgroundColor:
-                                  widget.primaryColor.withOpacity(0.1),
-                              child: Text(
-                                nombre[0].toUpperCase(),
-                                style: TextStyle(
-                                  color: widget.primaryColor,
-                                  fontWeight: FontWeight.bold,
+                        try {
+                          final data = doc.data() as Map<String, dynamic>?;
+
+                          // ✅ Validar que data no sea null
+                          if (data == null) {
+                            return SizedBox.shrink();
+                          }
+
+                          // ✅ Manejo seguro de campos
+                          final nombre =
+                              data['nombre']?.toString() ?? 'Sin nombre';
+                          final apellido = data['apellido']?.toString() ?? '';
+                          final nombreCompleto = apellido.isNotEmpty
+                              ? '$nombre $apellido'
+                              : nombre;
+
+                          return Card(
+                            margin: EdgeInsets.symmetric(vertical: 4),
+                            elevation: 2,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: ListTile(
+                              leading: CircleAvatar(
+                                backgroundColor:
+                                    widget.primaryColor.withOpacity(0.1),
+                                child: Text(
+                                  nombreCompleto.isNotEmpty
+                                      ? nombreCompleto[0].toUpperCase()
+                                      : '?',
+                                  style: TextStyle(
+                                    color: widget.primaryColor,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                               ),
-                            ),
-                            title: Text(
-                              nombre,
-                              style: TextStyle(fontWeight: FontWeight.w600),
-                            ),
-                            subtitle: Text(
-                              'Registro: $registro',
-                              style: TextStyle(
-                                color: Colors.grey[600],
-                                fontSize: 13,
+                              title: Text(
+                                nombreCompleto,
+                                style: TextStyle(fontWeight: FontWeight.w600),
                               ),
+                              subtitle: Text(
+                                'ID: ${doc.id}',
+                                style: TextStyle(
+                                  color: Colors.grey[600],
+                                  fontSize: 13,
+                                ),
+                              ),
+                              trailing: Icon(
+                                Icons.add_circle_outline,
+                                color: widget.secondaryColor,
+                              ),
+                              onTap: () => Navigator.pop(context, doc),
                             ),
-                            trailing: Icon(
-                              Icons.add_circle_outline,
-                              color: widget.secondaryColor,
-                            ),
-                            onTap: () => Navigator.pop(context, doc),
-                          ),
-                        );
+                          );
+                        } catch (e) {
+                          print('Error mostrando persona: $e');
+                          return SizedBox.shrink();
+                        }
                       },
                     ),
             ),
