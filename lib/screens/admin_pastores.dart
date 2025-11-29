@@ -739,22 +739,20 @@ class _AdminPastoresState extends State<AdminPastores>
                   EdgeInsets.symmetric(horizontal: 8), // Padding reducido
               tabs: [
                 Tab(
-                  height: 35, // Altura fija para las tabs
+                  height: 35,
                   icon: Icon(
-                    Icons.groups,
-                    size: MediaQuery.of(context).size.width < 400
-                        ? 18
-                        : 20, // Reducido
+                    Icons.emoji_people, // Icono juvenil
+                    size: MediaQuery.of(context).size.width < 400 ? 18 : 20,
                   ),
-                  text: 'Tribus',
+                  text: 'Juvenil', 
                 ),
                 Tab(
                   height: 35,
                   icon: Icon(
-                    Icons.person_outline,
+                    Icons.handshake, // Icono para Líder de Consolidación
                     size: MediaQuery.of(context).size.width < 400 ? 18 : 20,
                   ),
-                  text: 'Líder',
+                  text: 'Líder de Consolidación',
                 ),
                 Tab(
                   height: 35,
