@@ -2817,8 +2817,8 @@ class _AsistenciasTabState extends State<AsistenciasTab>
                 return martesA.compareTo(martesB);
               });
 
-            // NO revertir - mostrar en orden cronológico natural
-            return sortedWeeks.map((entry) {
+            // Revertir para mostrar de más reciente a más antigua
+            return sortedWeeks.reversed.map((entry) {
               return _buildWeekSection(
                 context,
                 entry.key,
