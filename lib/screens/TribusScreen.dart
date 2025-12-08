@@ -2797,10 +2797,27 @@ class _AsistenciasTabState extends State<AsistenciasTab>
           collapsedIconColor: mostrarAsistencias
               ? const Color(0xFF1D8A8A)
               : const Color(0xFFE74C3C),
-          children: weeks.keys.map((week) {
-            return _buildWeekSection(context, week, weeks[week]!,
-                '$monthName $year', mostrarAsistencias);
-          }).toList(),
+          children: (() {
+            // Ordenar las semanas por la fecha del primer martes
+            final sortedWeeks = weeks.entries.toList()
+              ..sort((a, b) {
+                // Extraer el día inicial de la semana desde la clave (formato "5-11")
+                final diaInicioA = int.parse(a.key.split('-')[0]);
+                final diaInicioB = int.parse(b.key.split('-')[0]);
+                return diaInicioA.compareTo(diaInicioB);
+              });
+
+            // Revertir para mostrar las semanas más recientes primero
+            return sortedWeeks.reversed.map((entry) {
+              return _buildWeekSection(
+                context,
+                entry.key,
+                entry.value,
+                '$monthName $year',
+                mostrarAsistencias,
+              );
+            }).toList();
+          })(),
         ),
       ),
     );
@@ -3566,12 +3583,21 @@ class _AsistenciasTabState extends State<AsistenciasTab>
   }
 
   DateTime _obtenerLunesDeLaSemana(DateTime fecha) {
-    int diferencia = fecha.weekday - DateTime.monday;
+    // Calcular el martes de la semana (nueva lógica)
+    // DateTime.tuesday = 2
+    int diferencia = fecha.weekday - DateTime.tuesday;
+
+    // Si es lunes (weekday = 1), retroceder 6 días para llegar al martes anterior
+    if (fecha.weekday == DateTime.monday) {
+      diferencia = 6;
+    }
+
     return fecha.subtract(Duration(days: diferencia));
   }
 
-  DateTime _obtenerDomingoDeLaSemana(DateTime lunes) {
-    return lunes.add(Duration(days: 6));
+  DateTime _obtenerDomingoDeLaSemana(DateTime martes) {
+    // Ahora el rango es Martes a Lunes (7 días después)
+    return martes.add(Duration(days: 6));
   }
 
   String _determinarMinisterio(String nombreServicio) {
