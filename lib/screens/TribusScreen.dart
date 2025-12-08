@@ -2903,7 +2903,7 @@ class _AsistenciasTabState extends State<AsistenciasTab>
             ),
           ),
           title: Text(
-            'Semana $week',
+            _formatearRangoSemana(week, asistencias),
             style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w600,
@@ -2911,7 +2911,7 @@ class _AsistenciasTabState extends State<AsistenciasTab>
             ),
           ),
           subtitle: Text(
-            monthYear,
+            _obtenerRangoFechasCompleto(week, asistencias),
             style: TextStyle(
               fontSize: 12,
               color: Colors.grey[600],
@@ -3598,6 +3598,79 @@ class _AsistenciasTabState extends State<AsistenciasTab>
   DateTime _obtenerDomingoDeLaSemana(DateTime martes) {
     // Ahora el rango es Martes a Lunes (7 días después)
     return martes.add(Duration(days: 6));
+  }
+
+  String _formatearRangoSemana(
+      String week, List<Map<String, dynamic>> asistencias) {
+    if (asistencias.isEmpty) return 'Semana $week';
+
+    // Obtener la fecha real del primer registro
+    final fechaInicial = asistencias.first['fecha'] as DateTime;
+    final martes = _obtenerLunesDeLaSemana(fechaInicial);
+    final lunes = _obtenerDomingoDeLaSemana(martes);
+
+    // Formatear según si cruza meses o no
+    if (martes.month == lunes.month) {
+      // Mismo mes: "Semana 7-13"
+      return 'Semana ${martes.day}-${lunes.day}';
+    } else {
+      // Meses diferentes: "Semana 28 Oct - 3 Nov"
+      final mesMartes = _obtenerMesAbreviado(martes.month);
+      final mesLunes = _obtenerMesAbreviado(lunes.month);
+      return 'Semana ${martes.day} $mesMartes - ${lunes.day} $mesLunes';
+    }
+  }
+
+  String _obtenerRangoFechasCompleto(
+      String week, List<Map<String, dynamic>> asistencias) {
+    if (asistencias.isEmpty) return '';
+
+    final fechaInicial = asistencias.first['fecha'] as DateTime;
+    final martes = _obtenerLunesDeLaSemana(fechaInicial);
+    final lunes = _obtenerDomingoDeLaSemana(martes);
+
+    // Formato: "1 de octubre - 7 de octubre de 2025"
+    if (martes.month == lunes.month) {
+      return '${martes.day} - ${lunes.day} de ${_getSpanishMonth(_getNombreMesIngles(martes.month))} ${martes.year}';
+    } else {
+      return '${martes.day} de ${_getSpanishMonth(_getNombreMesIngles(martes.month))} - ${lunes.day} de ${_getSpanishMonth(_getNombreMesIngles(lunes.month))} ${lunes.year}';
+    }
+  }
+
+  String _obtenerMesAbreviado(int mes) {
+    const meses = [
+      'Ene',
+      'Feb',
+      'Mar',
+      'Abr',
+      'May',
+      'Jun',
+      'Jul',
+      'Ago',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dic'
+    ];
+    return meses[mes - 1];
+  }
+
+  String _getNombreMesIngles(int mes) {
+    const meses = [
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December'
+    ];
+    return meses[mes - 1];
   }
 
   String _determinarMinisterio(String nombreServicio) {
