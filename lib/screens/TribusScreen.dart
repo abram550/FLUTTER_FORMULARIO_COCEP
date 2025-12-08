@@ -2798,17 +2798,27 @@ class _AsistenciasTabState extends State<AsistenciasTab>
               ? const Color(0xFF1D8A8A)
               : const Color(0xFFE74C3C),
           children: (() {
-            // Ordenar las semanas por la fecha del primer martes
+            // Ordenar las semanas por la fecha REAL del primer registro
             final sortedWeeks = weeks.entries.toList()
               ..sort((a, b) {
-                // Extraer el día inicial de la semana desde la clave (formato "5-11")
-                final diaInicioA = int.parse(a.key.split('-')[0]);
-                final diaInicioB = int.parse(b.key.split('-')[0]);
-                return diaInicioA.compareTo(diaInicioB);
+                // Obtener la fecha real del primer registro de cada semana
+                final fechaA = a.value.isNotEmpty
+                    ? a.value.first['fecha'] as DateTime
+                    : DateTime.now();
+                final fechaB = b.value.isNotEmpty
+                    ? b.value.first['fecha'] as DateTime
+                    : DateTime.now();
+
+                // Obtener el martes de cada semana
+                final martesA = _obtenerLunesDeLaSemana(fechaA);
+                final martesB = _obtenerLunesDeLaSemana(fechaB);
+
+                // Comparar las fechas completas (año, mes, día)
+                return martesA.compareTo(martesB);
               });
 
-            // Revertir para mostrar las semanas más recientes primero
-            return sortedWeeks.reversed.map((entry) {
+            // NO revertir - mostrar en orden cronológico natural
+            return sortedWeeks.map((entry) {
               return _buildWeekSection(
                 context,
                 entry.key,
