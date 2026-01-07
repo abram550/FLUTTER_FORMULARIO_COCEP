@@ -1035,17 +1035,6 @@ class _FormularioPageState extends State<FormularioPage> {
                   textCapitalization: TextCapitalization.sentences,
                 ),
               ),
-            if (_peticionesSeleccionadas.isEmpty)
-              Padding(
-                padding: const EdgeInsets.only(top: 8.0, left: 8.0),
-                child: Text(
-                  'Por favor, seleccione al menos una petición',
-                  style: GoogleFonts.poppins(
-                    color: Colors.red,
-                    fontSize: 12,
-                  ),
-                ),
-              ),
           ],
         ),
       ),
@@ -1222,28 +1211,20 @@ class _FormularioPageState extends State<FormularioPage> {
               size: 28,
             ),
             const SizedBox(width: 8),
-            Text(
-              'TOMA DE DATOS CONSOLIDACIÓN',
-              style: GoogleFonts.poppins(
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
-                fontSize: 16.5, // Ajusta el tamaño de la fuente aquí
+            Expanded(
+              child: Text(
+                'TOMA DE DATOS CONSOLIDACIÓN ${DateTime.now().year}',
+                style: GoogleFonts.poppins(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 16.5,
+                ),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
               ),
             ),
           ],
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.admin_panel_settings, color: Colors.white),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const LoginPage()),
-              );
-            },
-            tooltip: 'Admin Login',
-          ),
-        ],
       ),
       body: SafeArea(
         child: Container(

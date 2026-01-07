@@ -4547,9 +4547,7 @@ Future<void> _viewAssignedRegistros(
   );
 }
 
-// ============================================================
 // WIDGET AUXILIAR: ListView para móviles/tablets
-// ============================================================
 Widget _buildListView(
   List<QueryDocumentSnapshot> registros,
   Color primaryTeal,
@@ -7400,15 +7398,15 @@ Future<List<Map<String, dynamic>>> _obtenerTimoteosConConteo(
     String nombre = '';
     String apellido = '';
     String telefono = '';
-    String? sexo; // Cambiado a nullable
+    String? sexo;
     int edad = 0;
     String direccion = '';
     String barrio = '';
-    String? estadoCivil; // Cambiado a nullable
+    String? estadoCivil;
     String? nombrePareja;
     List<String> ocupacionesSeleccionadas = [];
     String descripcionOcupaciones = '';
-    bool? tieneHijos; // Cambiado a nullable
+    bool? tieneHijos;
     String referenciaInvitacion = '';
     String? observaciones;
     DateTime? fechaAsignacionTribu;
@@ -7418,8 +7416,7 @@ Future<List<Map<String, dynamic>>> _obtenerTimoteosConConteo(
     String categoriaTribu = '';
     String nombreTribu = '';
     String ministerioAsignado = '';
-
-    String estadoProceso = ''; // Nueva variable para estado del proceso
+    String estadoProceso = '';
 
     try {
       final coordinadorSnapshot = await FirebaseFirestore.instance
@@ -7431,10 +7428,7 @@ Future<List<Map<String, dynamic>>> _obtenerTimoteosConConteo(
         final coordinadorData =
             coordinadorSnapshot.data() as Map<String, dynamic>;
 
-        // Obtener tribuId del coordinador
         tribuId = coordinadorData['tribuId'] ?? '';
-
-        // También obtener directamente el nombre de la tribu si está disponible
         String? tribuDirecta =
             coordinadorData['nombreTribu'] ?? coordinadorData['tribu'];
 
@@ -7456,17 +7450,14 @@ Future<List<Map<String, dynamic>>> _obtenerTimoteosConConteo(
                 tribuData['categoria'] ??
                 _determinarMinisterio(nombreTribu);
           } else {
-            // Si no encontramos la tribu por ID, usar el nombre directo del coordinador
             nombreTribu = tribuDirecta ?? 'Tribu no encontrada';
           }
         } else if (tribuDirecta != null && tribuDirecta.isNotEmpty) {
-          // Si no hay tribuId pero sí nombre directo, usarlo
           nombreTribu = tribuDirecta;
         } else {
           nombreTribu = 'Sin tribu asignada';
         }
 
-        // Debug: Imprimir para verificar
         print('Coordinador ID: $coordinadorId');
         print('Tribu ID: $tribuId');
         print('Nombre Tribu: $nombreTribu');
@@ -7485,7 +7476,6 @@ Future<List<Map<String, dynamic>>> _obtenerTimoteosConConteo(
       context: context,
       barrierDismissible: true,
       builder: (BuildContext dialogContext) {
-        // Crear controladores fuera del StatefulBuilder para persistencia
         final Map<String, TextEditingController> _controllers = {
           'nombre': TextEditingController(text: nombre),
           'apellido': TextEditingController(text: apellido),
@@ -7502,6 +7492,9 @@ Future<List<Map<String, dynamic>>> _obtenerTimoteosConConteo(
           'edad': TextEditingController(text: edad > 0 ? edad.toString() : ''),
         };
 
+        // ✅ ScrollController para mantener posición del scroll
+        final ScrollController _scrollController = ScrollController();
+
         return StatefulBuilder(
           builder: (stateContext, setState) {
             return Dialog(
@@ -7509,16 +7502,26 @@ Future<List<Map<String, dynamic>>> _obtenerTimoteosConConteo(
                 borderRadius: BorderRadius.circular(20),
               ),
               elevation: 5,
-              backgroundColor: backgroundGrey,
+              backgroundColor: Colors.transparent,
+              insetPadding: EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 24,
+              ),
               child: Container(
                 constraints: BoxConstraints(
                   maxWidth: 500,
-                  maxHeight: MediaQuery.of(dialogContext).size.height * 0.9,
+                  maxHeight: MediaQuery.of(dialogContext).size.height * 0.92,
+                ),
+                decoration: BoxDecoration(
+                  color: backgroundGrey,
+                  borderRadius: BorderRadius.circular(20),
                 ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Encabezado del diálogo
+                    // ============================================================
+                    // ENCABEZADO FIJO
+                    // ============================================================
                     Container(
                       padding: EdgeInsets.all(20),
                       decoration: BoxDecoration(
@@ -7573,7 +7576,14 @@ Future<List<Map<String, dynamic>>> _obtenerTimoteosConConteo(
                           Material(
                             color: Colors.transparent,
                             child: InkWell(
-                              onTap: () => Navigator.pop(dialogContext),
+                              onTap: () {
+                                // Limpiar controladores antes de cerrar
+                                _controllers.forEach((key, controller) {
+                                  controller.dispose();
+                                });
+                                _scrollController.dispose();
+                                Navigator.pop(dialogContext);
+                              },
                               borderRadius: BorderRadius.circular(50),
                               child: Padding(
                                 padding: const EdgeInsets.all(8.0),
@@ -7589,522 +7599,545 @@ Future<List<Map<String, dynamic>>> _obtenerTimoteosConConteo(
                       ),
                     ),
 
-                    // Contenido con scrolling
+                    // ============================================================
+                    // CONTENIDO SCROLLEABLE CON FORMULARIO Y BOTONES AL FINAL
+                    // ============================================================
                     Expanded(
                       child: SingleChildScrollView(
-                        child: Padding(
-                          padding: const EdgeInsets.all(20.0),
-                          child: Form(
-                            key: _formKey,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                // Información Personal
-                                _buildSectionTitle('Información Personal',
-                                    Icons.person_outline, primaryTeal),
+                        controller: _scrollController,
+                        physics: ClampingScrollPhysics(), // ✅ Evita rebotes
+                        padding: EdgeInsets.all(20),
+                        child: Form(
+                          key: _formKey,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Información Personal
+                              _buildSectionTitle('Información Personal',
+                                  Icons.person_outline, primaryTeal),
 
+                              _buildTextFieldWithController(
+                                'Nombre',
+                                Icons.person,
+                                _controllers['nombre']!,
+                                (value) => nombre = value,
+                              ),
+                              _buildTextFieldWithController(
+                                'Apellido',
+                                Icons.person_outline,
+                                _controllers['apellido']!,
+                                (value) => apellido = value,
+                              ),
+                              _buildTextFieldWithController(
+                                'Teléfono',
+                                Icons.phone,
+                                _controllers['telefono']!,
+                                (value) => telefono = value,
+                              ),
+                              _buildDropdown(
+                                  'Sexo',
+                                  ['Masculino', 'Femenino'],
+                                  sexo,
+                                  (value) => setState(() => sexo = value)),
+                              _buildTextFieldWithController(
+                                'Edad',
+                                Icons.cake,
+                                _controllers['edad']!,
+                                (value) => edad = int.tryParse(value) ?? 0,
+                                keyboardType: TextInputType.number,
+                              ),
+
+                              SizedBox(height: 16),
+
+                              // Ubicación
+                              _buildSectionTitle('Ubicación',
+                                  Icons.location_on_outlined, primaryTeal),
+
+                              _buildTextFieldWithController(
+                                'Dirección',
+                                Icons.location_on,
+                                _controllers['direccion']!,
+                                (value) => direccion = value,
+                              ),
+                              _buildTextFieldWithController(
+                                'Barrio',
+                                Icons.home,
+                                _controllers['barrio']!,
+                                (value) => barrio = value,
+                              ),
+
+                              SizedBox(height: 16),
+
+                              // Estado Civil y Familia
+                              _buildSectionTitle('Estado Civil y Familia',
+                                  Icons.family_restroom, primaryTeal),
+
+                              _buildDropdown(
+                                  'Estado Civil', _estadosCiviles, estadoCivil,
+                                  (value) {
+                                setState(() {
+                                  estadoCivil = value;
+                                  if (estadoCivil == 'Casado(a)' ||
+                                      estadoCivil == 'Unión Libre') {
+                                    nombrePareja = '';
+                                  } else {
+                                    nombrePareja = 'No aplica';
+                                  }
+                                });
+                              }),
+
+                              if (estadoCivil == 'Casado(a)' ||
+                                  estadoCivil == 'Unión Libre')
                                 _buildTextFieldWithController(
-                                  'Nombre',
-                                  Icons.person,
-                                  _controllers['nombre']!,
-                                  (value) => nombre = value,
-                                ),
-                                _buildTextFieldWithController(
-                                  'Apellido',
-                                  Icons.person_outline,
-                                  _controllers['apellido']!,
-                                  (value) => apellido = value,
-                                ),
-                                _buildTextFieldWithController(
-                                  'Teléfono',
-                                  Icons.phone,
-                                  _controllers['telefono']!,
-                                  (value) => telefono = value,
-                                ),
-                                _buildDropdown(
-                                    'Sexo',
-                                    ['Masculino', 'Femenino'],
-                                    sexo,
-                                    (value) => setState(() => sexo = value)),
-                                _buildTextFieldWithController(
-                                  'Edad',
-                                  Icons.cake,
-                                  _controllers['edad']!,
-                                  (value) => edad = int.tryParse(value) ?? 0,
-                                  keyboardType: TextInputType.number,
+                                  'Nombre de la Pareja',
+                                  Icons.favorite,
+                                  _controllers['nombrePareja']!,
+                                  (value) => nombrePareja = value,
                                 ),
 
-                                SizedBox(height: 16),
+                              _buildDropdown(
+                                  'Tiene Hijos',
+                                  ['Sí', 'No'],
+                                  tieneHijos == null
+                                      ? null
+                                      : (tieneHijos! ? 'Sí' : 'No'),
+                                  (value) => setState(
+                                      () => tieneHijos = (value == 'Sí'))),
 
-                                // Ubicación
-                                _buildSectionTitle('Ubicación',
-                                    Icons.location_on_outlined, primaryTeal),
+                              SizedBox(height: 16),
 
-                                _buildTextFieldWithController(
-                                  'Dirección',
-                                  Icons.location_on,
-                                  _controllers['direccion']!,
-                                  (value) => direccion = value,
-                                ),
-                                _buildTextFieldWithController(
-                                  'Barrio',
-                                  Icons.home,
-                                  _controllers['barrio']!,
-                                  (value) => barrio = value,
-                                ),
+                              // Ocupación
+                              _buildSectionTitle(
+                                  'Ocupación', Icons.work_outline, primaryTeal),
 
-                                SizedBox(height: 16),
-
-                                // Estado Civil y Familia
-                                _buildSectionTitle('Estado Civil y Familia',
-                                    Icons.family_restroom, primaryTeal),
-
-                                // Dropdown de Estado Civil
-                                _buildDropdown('Estado Civil', _estadosCiviles,
-                                    estadoCivil, (value) {
-                                  setState(() {
-                                    estadoCivil = value;
-                                    if (estadoCivil == 'Casado(a)' ||
-                                        estadoCivil == 'Unión Libre') {
-                                      nombrePareja = '';
-                                    } else {
-                                      nombrePareja = 'No aplica';
-                                    }
-                                  });
-                                }),
-
-                                // Campo dinámico para nombre de pareja
-                                if (estadoCivil == 'Casado(a)' ||
-                                    estadoCivil == 'Unión Libre')
-                                  _buildTextFieldWithController(
-                                    'Nombre de la Pareja',
-                                    Icons.favorite,
-                                    _controllers['nombrePareja']!,
-                                    (value) => nombrePareja = value,
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Ocupaciones',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      color: primaryTeal,
+                                      fontSize: 16,
+                                    ),
                                   ),
-
-                                _buildDropdown(
-                                    'Tiene Hijos',
-                                    ['Sí', 'No'],
-                                    tieneHijos == null
-                                        ? null
-                                        : (tieneHijos! ? 'Sí' : 'No'),
-                                    (value) => setState(
-                                        () => tieneHijos = (value == 'Sí'))),
-
-                                SizedBox(height: 16),
-
-                                // Ocupación
-                                _buildSectionTitle('Ocupación',
-                                    Icons.work_outline, primaryTeal),
-
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'Ocupaciones',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w600,
-                                        color: primaryTeal,
-                                        fontSize: 16,
-                                      ),
-                                    ),
-                                    SizedBox(height: 8),
-                                    Wrap(
-                                      spacing: 8,
-                                      runSpacing: 8,
-                                      children: _ocupaciones.map((ocupacion) {
-                                        final isSelected =
-                                            ocupacionesSeleccionadas
-                                                .contains(ocupacion);
-                                        return FilterChip(
-                                          label: Text(ocupacion),
-                                          selected: isSelected,
-                                          onSelected: (selected) {
-                                            setState(() {
-                                              if (selected) {
-                                                ocupacionesSeleccionadas
-                                                    .add(ocupacion);
-                                              } else {
-                                                ocupacionesSeleccionadas
-                                                    .remove(ocupacion);
-                                              }
-                                            });
-                                          },
-                                          selectedColor:
-                                              primaryTeal.withOpacity(0.2),
-                                          checkmarkColor: primaryTeal,
-                                          backgroundColor: Colors.white,
-                                          side: BorderSide(
-                                            color: isSelected
-                                                ? primaryTeal
-                                                : Colors.grey.withOpacity(0.5),
-                                          ),
-                                          labelStyle: TextStyle(
-                                            color: isSelected
-                                                ? primaryTeal
-                                                : Colors.black87,
-                                            fontWeight: isSelected
-                                                ? FontWeight.w600
-                                                : FontWeight.normal,
-                                          ),
-                                        );
-                                      }).toList(),
-                                    ),
-                                    if (ocupacionesSeleccionadas.isNotEmpty)
-                                      Padding(
-                                        padding: const EdgeInsets.only(top: 12),
-                                        child: _buildTextFieldWithController(
-                                          'Descripción de Ocupaciones',
-                                          Icons.work_outline,
-                                          _controllers[
-                                              'descripcionOcupaciones']!,
-                                          (value) =>
-                                              descripcionOcupaciones = value,
-                                          isRequired: false,
+                                  SizedBox(height: 8),
+                                  Wrap(
+                                    spacing: 8,
+                                    runSpacing: 8,
+                                    children: _ocupaciones.map((ocupacion) {
+                                      final isSelected =
+                                          ocupacionesSeleccionadas
+                                              .contains(ocupacion);
+                                      return FilterChip(
+                                        label: Text(ocupacion),
+                                        selected: isSelected,
+                                        onSelected: (selected) {
+                                          setState(() {
+                                            if (selected) {
+                                              ocupacionesSeleccionadas
+                                                  .add(ocupacion);
+                                            } else {
+                                              ocupacionesSeleccionadas
+                                                  .remove(ocupacion);
+                                            }
+                                          });
+                                        },
+                                        selectedColor:
+                                            primaryTeal.withOpacity(0.2),
+                                        checkmarkColor: primaryTeal,
+                                        backgroundColor: Colors.white,
+                                        side: BorderSide(
+                                          color: isSelected
+                                              ? primaryTeal
+                                              : Colors.grey.withOpacity(0.5),
                                         ),
-                                      ),
-                                  ],
-                                ),
-
-                                SizedBox(height: 16),
-
-                                // Información Ministerial
-                                _buildSectionTitle('Información Ministerial',
-                                    Icons.groups_outlined, primaryTeal),
-
-                                _buildTextFieldWithController(
-                                  'Referencia de Invitación',
-                                  Icons.link,
-                                  _controllers['referenciaInvitacion']!,
-                                  (value) => referenciaInvitacion = value,
-                                ),
-                                _buildTextFieldWithController(
-                                  'Observaciones',
-                                  Icons.note,
-                                  _controllers['observaciones']!,
-                                  (value) => observaciones = value,
-                                  isRequired: false,
-                                ),
-
-                                // Campo Estado en la Iglesia con opciones rápidas
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    _buildTextFieldWithController(
-                                      'Estado en la Iglesia',
-                                      Icons.track_changes_outlined,
-                                      _controllers['estadoProceso']!,
-                                      (value) {
-                                        estadoProceso = value;
-                                      },
-                                      isRequired: false,
-                                    ),
-                                    SizedBox(height: 8),
-                                    Text(
-                                      'Opciones rápidas:',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w600,
-                                        color: primaryTeal,
-                                        fontSize: 14,
+                                        labelStyle: TextStyle(
+                                          color: isSelected
+                                              ? primaryTeal
+                                              : Colors.black87,
+                                          fontWeight: isSelected
+                                              ? FontWeight.w600
+                                              : FontWeight.normal,
+                                        ),
+                                      );
+                                    }).toList(),
+                                  ),
+                                  if (ocupacionesSeleccionadas.isNotEmpty)
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 12),
+                                      child: _buildTextFieldWithController(
+                                        'Descripción de Ocupaciones',
+                                        Icons.work_outline,
+                                        _controllers['descripcionOcupaciones']!,
+                                        (value) =>
+                                            descripcionOcupaciones = value,
+                                        isRequired: false,
                                       ),
                                     ),
-                                    SizedBox(height: 8),
-                                    Wrap(
-                                      spacing: 8,
-                                      runSpacing: 8,
-                                      children: [
-                                        'Pendiente',
-                                        'Discipulado 1',
-                                        'Discipulado 2',
-                                        'Discipulado 3',
-                                        'Consolidación',
-                                        'Estudio Bíblico',
-                                        'Escuela de Líderes'
-                                      ].map((estado) {
-                                        final isSelected =
-                                            estadoProceso == estado;
-                                        return FilterChip(
-                                          label: Text(estado),
-                                          selected: isSelected,
-                                          onSelected: (selected) {
-                                            setState(() {
-                                              estadoProceso =
-                                                  selected ? estado : '';
-                                              _controllers['estadoProceso']!
-                                                  .text = estadoProceso;
-                                            });
-                                          },
-                                          selectedColor:
-                                              primaryTeal.withOpacity(0.2),
-                                          checkmarkColor: primaryTeal,
-                                          backgroundColor: Colors.white,
-                                          side: BorderSide(
-                                            color: isSelected
-                                                ? primaryTeal
-                                                : Colors.grey.withOpacity(0.5),
-                                          ),
-                                          labelStyle: TextStyle(
-                                            color: isSelected
-                                                ? primaryTeal
-                                                : Colors.black87,
-                                            fontWeight: isSelected
-                                                ? FontWeight.w600
-                                                : FontWeight.normal,
-                                            fontSize: 13,
-                                          ),
-                                        );
-                                      }).toList(),
+                                ],
+                              ),
+
+                              SizedBox(height: 16),
+
+                              // Información Ministerial
+                              _buildSectionTitle('Información Ministerial',
+                                  Icons.groups_outlined, primaryTeal),
+
+                              _buildTextFieldWithController(
+                                'Referencia de Invitación',
+                                Icons.link,
+                                _controllers['referenciaInvitacion']!,
+                                (value) => referenciaInvitacion = value,
+                              ),
+                              _buildTextFieldWithController(
+                                'Observaciones',
+                                Icons.note,
+                                _controllers['observaciones']!,
+                                (value) => observaciones = value,
+                                isRequired: false,
+                              ),
+
+                              // Estado en la Iglesia
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _buildTextFieldWithController(
+                                    'Estado en la Iglesia',
+                                    Icons.track_changes_outlined,
+                                    _controllers['estadoProceso']!,
+                                    (value) {
+                                      estadoProceso = value;
+                                    },
+                                    isRequired: false,
+                                  ),
+                                  SizedBox(height: 8),
+                                  Text(
+                                    'Opciones rápidas:',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      color: primaryTeal,
+                                      fontSize: 14,
                                     ),
-                                  ],
-                                ),
-                                // Campo para seleccionar fecha
-                                Padding(
-                                  padding:
-                                      const EdgeInsets.symmetric(vertical: 8),
-                                  child: TextFormField(
-                                    readOnly: true,
-                                    decoration: InputDecoration(
-                                      labelText:
-                                          'Fecha de Asignación de la Tribu',
-                                      labelStyle: TextStyle(
-                                        color: primaryTeal.withOpacity(0.8),
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                      prefixIcon: Icon(Icons.calendar_today,
-                                          color: primaryTeal),
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                        borderSide: BorderSide(
-                                            color:
-                                                primaryTeal.withOpacity(0.3)),
-                                      ),
-                                      enabledBorder: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                        borderSide: BorderSide(
-                                            color:
-                                                primaryTeal.withOpacity(0.5)),
-                                      ),
-                                      focusedBorder: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                        borderSide: BorderSide(
-                                            color: primaryTeal, width: 2),
-                                      ),
-                                      filled: true,
-                                      fillColor: Colors.white,
-                                      contentPadding: EdgeInsets.symmetric(
-                                          horizontal: 16, vertical: 16),
+                                  ),
+                                  SizedBox(height: 8),
+                                  Wrap(
+                                    spacing: 8,
+                                    runSpacing: 8,
+                                    children: [
+                                      'Pendiente',
+                                      'Discipulado 1',
+                                      'Discipulado 2',
+                                      'Discipulado 3',
+                                      'Consolidación',
+                                      'Estudio Bíblico',
+                                      'Escuela de Líderes'
+                                    ].map((estado) {
+                                      final isSelected =
+                                          estadoProceso == estado;
+                                      return FilterChip(
+                                        label: Text(estado),
+                                        selected: isSelected,
+                                        onSelected: (selected) {
+                                          setState(() {
+                                            estadoProceso =
+                                                selected ? estado : '';
+                                            _controllers['estadoProceso']!
+                                                .text = estadoProceso;
+                                          });
+                                        },
+                                        selectedColor:
+                                            primaryTeal.withOpacity(0.2),
+                                        checkmarkColor: primaryTeal,
+                                        backgroundColor: Colors.white,
+                                        side: BorderSide(
+                                          color: isSelected
+                                              ? primaryTeal
+                                              : Colors.grey.withOpacity(0.5),
+                                        ),
+                                        labelStyle: TextStyle(
+                                          color: isSelected
+                                              ? primaryTeal
+                                              : Colors.black87,
+                                          fontWeight: isSelected
+                                              ? FontWeight.w600
+                                              : FontWeight.normal,
+                                          fontSize: 13,
+                                        ),
+                                      );
+                                    }).toList(),
+                                  ),
+                                ],
+                              ),
+
+                              // Fecha de Asignación
+                              Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 8),
+                                child: TextFormField(
+                                  readOnly: true,
+                                  decoration: InputDecoration(
+                                    labelText:
+                                        'Fecha de Asignación de la Tribu',
+                                    labelStyle: TextStyle(
+                                      color: primaryTeal.withOpacity(0.8),
+                                      fontWeight: FontWeight.w500,
                                     ),
-                                    validator: (value) =>
-                                        fechaAsignacionTribu == null
-                                            ? 'Campo obligatorio'
-                                            : null,
-                                    onTap: () async {
-                                      final DateTime? pickedDate =
-                                          await showDatePicker(
-                                        context: dialogContext,
-                                        initialDate: DateTime.now(),
-                                        firstDate: DateTime(2000),
-                                        lastDate: DateTime(2101),
-                                        builder: (context, child) {
-                                          return Theme(
-                                            data: Theme.of(context).copyWith(
-                                              colorScheme: ColorScheme.light(
-                                                primary: primaryTeal,
-                                                onPrimary: Colors.white,
-                                                onSurface: Colors.black,
-                                              ),
-                                              textButtonTheme:
-                                                  TextButtonThemeData(
-                                                style: TextButton.styleFrom(
-                                                  foregroundColor:
-                                                      secondaryOrange,
-                                                ),
+                                    prefixIcon: Icon(Icons.calendar_today,
+                                        color: primaryTeal),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: BorderSide(
+                                          color: primaryTeal.withOpacity(0.3)),
+                                    ),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: BorderSide(
+                                          color: primaryTeal.withOpacity(0.5)),
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: BorderSide(
+                                          color: primaryTeal, width: 2),
+                                    ),
+                                    filled: true,
+                                    fillColor: Colors.white,
+                                    contentPadding: EdgeInsets.symmetric(
+                                        horizontal: 16, vertical: 16),
+                                  ),
+                                  validator: (value) =>
+                                      fechaAsignacionTribu == null
+                                          ? 'Campo obligatorio'
+                                          : null,
+                                  onTap: () async {
+                                    final DateTime? pickedDate =
+                                        await showDatePicker(
+                                      context: dialogContext,
+                                      initialDate: DateTime.now(),
+                                      firstDate: DateTime(2000),
+                                      lastDate: DateTime(2101),
+                                      builder: (context, child) {
+                                        return Theme(
+                                          data: Theme.of(context).copyWith(
+                                            colorScheme: ColorScheme.light(
+                                              primary: primaryTeal,
+                                              onPrimary: Colors.white,
+                                              onSurface: Colors.black,
+                                            ),
+                                            textButtonTheme:
+                                                TextButtonThemeData(
+                                              style: TextButton.styleFrom(
+                                                foregroundColor:
+                                                    secondaryOrange,
                                               ),
                                             ),
-                                            child: child!,
-                                          );
-                                        },
-                                      );
+                                          ),
+                                          child: child!,
+                                        );
+                                      },
+                                    );
 
-                                      if (pickedDate != null) {
-                                        setState(() {
-                                          fechaAsignacionTribu = pickedDate;
-                                        });
-                                      }
-                                    },
-                                    controller: TextEditingController(
-                                      text: fechaAsignacionTribu != null
-                                          ? DateFormat('dd/MM/yyyy')
-                                              .format(fechaAsignacionTribu!)
-                                          : '',
-                                    ),
+                                    if (pickedDate != null) {
+                                      setState(() {
+                                        fechaAsignacionTribu = pickedDate;
+                                      });
+                                    }
+                                  },
+                                  controller: TextEditingController(
+                                    text: fechaAsignacionTribu != null
+                                        ? DateFormat('dd/MM/yyyy')
+                                            .format(fechaAsignacionTribu!)
+                                        : '',
                                   ),
                                 ),
+                              ),
 
-                                SizedBox(height: 16),
+                              SizedBox(height: 16),
 
-                                // Nota informativa
-                                Container(
-                                  padding: EdgeInsets.all(12),
-                                  decoration: BoxDecoration(
-                                    color: primaryTeal.withOpacity(0.1),
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(
-                                      color: primaryTeal.withOpacity(0.3),
-                                    ),
+                              // Nota informativa
+                              Container(
+                                padding: EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: primaryTeal.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: primaryTeal.withOpacity(0.3),
                                   ),
-                                  child: Row(
-                                    children: [
-                                      Icon(
-                                        Icons.info_outline,
-                                        color: primaryTeal,
-                                        size: 20,
-                                      ),
-                                      SizedBox(width: 8),
-                                      Expanded(
-                                        child: Text(
-                                          'Este miembro será asignado automáticamente a tu coordinación.',
-                                          style: TextStyle(
-                                            color: primaryTeal,
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.w500,
-                                          ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.info_outline,
+                                      color: primaryTeal,
+                                      size: 20,
+                                    ),
+                                    SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        'Este miembro será asignado automáticamente al coordinador.',
+                                        style: TextStyle(
+                                          color: primaryTeal,
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w500,
                                         ),
                                       ),
-                                    ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+
+                              SizedBox(height: 24),
+
+                              // ============================================================
+                              // BOTONES AL FINAL DEL SCROLL
+                              // ============================================================
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: TextButton.icon(
+                                      onPressed: () {
+                                        _controllers.forEach((key, controller) {
+                                          controller.dispose();
+                                        });
+                                        _scrollController.dispose();
+                                        Navigator.pop(dialogContext);
+                                      },
+                                      icon: Icon(Icons.cancel_outlined,
+                                          color: accentGrey),
+                                      label: Text(
+                                        'Cancelar',
+                                        style: TextStyle(
+                                          color: accentGrey,
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                      style: TextButton.styleFrom(
+                                        padding:
+                                            EdgeInsets.symmetric(vertical: 12),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                        ),
+                                      ),
+                                    ),
                                   ),
-                                ),
-                              ],
-                            ),
+                                  SizedBox(width: 12),
+                                  Expanded(
+                                    flex: 2,
+                                    child: ElevatedButton.icon(
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: secondaryOrange,
+                                        foregroundColor: Colors.white,
+                                        padding:
+                                            EdgeInsets.symmetric(vertical: 16),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                        ),
+                                        elevation: 3,
+                                      ),
+                                      icon: Icon(Icons.save_outlined, size: 20),
+                                      label: Text(
+                                        'Registrar Miembro',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      onPressed: () async {
+                                        if (_formKey.currentState!.validate()) {
+                                          nombre = _controllers['nombre']!.text;
+                                          apellido =
+                                              _controllers['apellido']!.text;
+                                          telefono =
+                                              _controllers['telefono']!.text;
+                                          direccion =
+                                              _controllers['direccion']!.text;
+                                          barrio = _controllers['barrio']!.text;
+                                          nombrePareja =
+                                              _controllers['nombrePareja']!
+                                                  .text;
+                                          descripcionOcupaciones = _controllers[
+                                                  'descripcionOcupaciones']!
+                                              .text;
+                                          referenciaInvitacion = _controllers[
+                                                  'referenciaInvitacion']!
+                                              .text;
+                                          observaciones =
+                                              _controllers['observaciones']!
+                                                  .text;
+                                          estadoProceso =
+                                              _controllers['estadoProceso']!
+                                                  .text;
+                                          edad = int.tryParse(
+                                                  _controllers['edad']!.text) ??
+                                              0;
+
+                                          final registro = {
+                                            'fechaAsignacionTribu':
+                                                fechaAsignacionTribu != null
+                                                    ? Timestamp.fromDate(
+                                                        fechaAsignacionTribu!)
+                                                    : null,
+                                            'nombre': nombre,
+                                            'apellido': apellido,
+                                            'telefono': telefono,
+                                            'sexo': sexo,
+                                            'edad': edad,
+                                            'direccion': direccion,
+                                            'barrio': barrio,
+                                            'estadoCivil': estadoCivil,
+                                            'nombrePareja': nombrePareja,
+                                            'ocupaciones':
+                                                ocupacionesSeleccionadas,
+                                            'descripcionOcupaciones':
+                                                descripcionOcupaciones,
+                                            'tieneHijos': tieneHijos,
+                                            'referenciaInvitacion':
+                                                referenciaInvitacion,
+                                            'observaciones': observaciones,
+                                            'tribuAsignada': tribuId,
+                                            'nombreTribu': nombreTribu,
+                                            'ministerioAsignado':
+                                                ministerioAsignado,
+                                            'coordinadorAsignado':
+                                                coordinadorId,
+                                            'fechaRegistro':
+                                                FieldValue.serverTimestamp(),
+                                            'activo': true,
+                                            'tribuId': tribuId,
+                                            'categoria': categoriaTribu,
+                                            'estadoProceso': estadoProceso,
+                                          };
+
+                                          // Limpiar controladores
+                                          _controllers
+                                              .forEach((key, controller) {
+                                            controller.dispose();
+                                          });
+                                          _scrollController.dispose();
+
+                                          await _guardarRegistroEnFirebase(
+                                              dialogContext, registro, tribuId);
+                                        }
+                                      },
+                                    ),
+                                  ),
+                                ],
+                              ),
+
+                              // Padding extra para evitar que el teclado tape contenido
+                              SizedBox(
+                                  height: MediaQuery.of(dialogContext)
+                                              .viewInsets
+                                              .bottom >
+                                          0
+                                      ? 20
+                                      : 0),
+                            ],
                           ),
                         ),
-                      ),
-                    ),
-
-                    // Botones de acción
-                    Container(
-                      padding: const EdgeInsets.all(20.0),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.only(
-                          bottomLeft: Radius.circular(20),
-                          bottomRight: Radius.circular(20),
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: TextButton.icon(
-                              onPressed: () => Navigator.pop(dialogContext),
-                              icon: Icon(Icons.cancel_outlined,
-                                  color: accentGrey),
-                              label: Text(
-                                'Cancelar',
-                                style: TextStyle(
-                                  color: accentGrey,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              style: TextButton.styleFrom(
-                                padding: EdgeInsets.symmetric(vertical: 12),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                            ),
-                          ),
-                          SizedBox(width: 12),
-                          Expanded(
-                            flex: 2,
-                            child: ElevatedButton.icon(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: secondaryOrange,
-                                foregroundColor: Colors.white,
-                                padding: EdgeInsets.symmetric(vertical: 16),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                elevation: 3,
-                              ),
-                              icon: Icon(Icons.save_outlined, size: 20),
-                              label: Text(
-                                'Registrar Miembro',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              onPressed: () async {
-                                if (_formKey.currentState!.validate()) {
-                                  // Obtener valores de los controladores
-                                  nombre = _controllers['nombre']!.text;
-                                  apellido = _controllers['apellido']!.text;
-                                  telefono = _controllers['telefono']!.text;
-                                  direccion = _controllers['direccion']!.text;
-                                  barrio = _controllers['barrio']!.text;
-                                  nombrePareja =
-                                      _controllers['nombrePareja']!.text;
-                                  descripcionOcupaciones =
-                                      _controllers['descripcionOcupaciones']!
-                                          .text;
-                                  referenciaInvitacion =
-                                      _controllers['referenciaInvitacion']!
-                                          .text;
-                                  observaciones =
-                                      _controllers['observaciones']!.text;
-                                  estadoProceso =
-                                      _controllers['estadoProceso']!.text;
-                                  edad = int.tryParse(
-                                          _controllers['edad']!.text) ??
-                                      0;
-
-                                  final registro = {
-                                    'fechaAsignacionTribu':
-                                        fechaAsignacionTribu != null
-                                            ? Timestamp.fromDate(
-                                                fechaAsignacionTribu!)
-                                            : null,
-                                    'nombre': nombre,
-                                    'apellido': apellido,
-                                    'telefono': telefono,
-                                    'sexo': sexo,
-                                    'edad': edad,
-                                    'direccion': direccion,
-                                    'barrio': barrio,
-                                    'estadoCivil': estadoCivil,
-                                    'nombrePareja': nombrePareja,
-                                    'ocupaciones': ocupacionesSeleccionadas,
-                                    'descripcionOcupaciones':
-                                        descripcionOcupaciones,
-                                    'tieneHijos': tieneHijos,
-                                    'referenciaInvitacion':
-                                        referenciaInvitacion,
-                                    'observaciones': observaciones,
-                                    'tribuAsignada':
-                                        tribuId, // ✅ AHORA GUARDA EL ID
-                                    'nombreTribu':
-                                        nombreTribu, // ✅ AGREGA EL NOMBRE POR SEPARADO
-                                    'ministerioAsignado': ministerioAsignado,
-                                    'coordinadorAsignado': coordinadorId,
-                                    'fechaRegistro':
-                                        FieldValue.serverTimestamp(),
-                                    'activo': true,
-                                    'tribuId':
-                                        tribuId, // Este campo puede ser redundante ahora
-                                    'categoria': categoriaTribu,
-
-                                    'estadoProceso': estadoProceso,
-                                  };
-
-                                  await _guardarRegistroEnFirebase(
-                                      dialogContext, registro, tribuId);
-                                }
-                              },
-                            ),
-                          ),
-                        ],
                       ),
                     ),
                   ],

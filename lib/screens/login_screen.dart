@@ -243,7 +243,8 @@ class _LoginPageState extends State<LoginPage>
                             validator: (value) => value?.isEmpty ?? true
                                 ? 'Por favor ingresa el usuario'
                                 : null,
-                            onFieldSubmitted: (_) => _login(),
+                            onFieldSubmitted: (_) =>
+                                FocusScope.of(context).nextFocus(),
                           ),
                           const SizedBox(height: 20),
                           _buildTextField(
