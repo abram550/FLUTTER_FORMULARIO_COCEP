@@ -451,7 +451,6 @@ class _TribusScreenState extends State<TribusScreen>
     String referenciaInvitacion = '';
     String? observaciones;
     DateTime? fechaAsignacionTribu;
-
     String estadoProceso = '';
 
     // StatefulBuilder para manejar estado dinámico
@@ -563,7 +562,12 @@ class _TribusScreenState extends State<TribusScreen>
                     keyboardDismissBehavior:
                         ScrollViewKeyboardDismissBehavior.manual,
                     physics: ClampingScrollPhysics(),
-                    padding: EdgeInsets.all(isSmallScreen ? 16 : 24),
+                    padding: EdgeInsets.fromLTRB(
+                      isSmallScreen ? 16 : 24,
+                      isSmallScreen ? 16 : 24,
+                      isSmallScreen ? 16 : 24,
+                      isSmallScreen ? 16 : 24,
+                    ),
                     child: Form(
                       key: _formKey,
                       child: Column(
@@ -972,227 +976,231 @@ class _TribusScreenState extends State<TribusScreen>
                               ),
                             ),
                           ),
+
+                          // Espacio antes de los botones
+                          SizedBox(height: isSmallScreen ? 24 : 32),
+
+                          // Divisor visual
+                          Divider(
+                            color: Color(0xFF1B998B).withOpacity(0.2),
+                            thickness: 1,
+                          ),
+
+                          SizedBox(height: isSmallScreen ? 16 : 20),
+
+                          // Botones de acción DENTRO del scroll
+                          isSmallScreen
+                              ? Column(
+                                  children: [
+                                    SizedBox(
+                                      width: double.infinity,
+                                      child: ElevatedButton(
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Color(0xFFFF7E00),
+                                          foregroundColor: Colors.white,
+                                          padding: EdgeInsets.symmetric(
+                                              vertical: 14),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(12),
+                                          ),
+                                          elevation: 2,
+                                          shadowColor: Color(0xFFFF7E00)
+                                              .withOpacity(0.3),
+                                        ),
+                                        onPressed: () {
+                                          if (_formKey.currentState!
+                                              .validate()) {
+                                            final registro = {
+                                              'fechaAsignacionTribu':
+                                                  fechaAsignacionTribu != null
+                                                      ? Timestamp.fromDate(
+                                                          fechaAsignacionTribu!)
+                                                      : null,
+                                              'nombre': nombre,
+                                              'apellido': apellido,
+                                              'telefono': telefono,
+                                              'sexo': sexo,
+                                              'edad': edad,
+                                              'direccion': direccion,
+                                              'barrio': barrio,
+                                              'estadoCivil': estadoCivil,
+                                              'nombrePareja': nombrePareja,
+                                              'ocupaciones':
+                                                  ocupacionesSeleccionadas,
+                                              'descripcionOcupaciones':
+                                                  descripcionOcupaciones,
+                                              'tieneHijos': tieneHijos,
+                                              'referenciaInvitacion':
+                                                  referenciaInvitacion,
+                                              'observaciones': observaciones,
+                                              'tribuAsignada': widget.tribuId,
+                                              'ministerioAsignado':
+                                                  _determinarMinisterio(
+                                                      widget.tribuNombre),
+                                              'coordinadorAsignado': null,
+                                              'fechaRegistro':
+                                                  FieldValue.serverTimestamp(),
+                                              'activo': true,
+                                              'estadoProceso': estadoProceso,
+                                            };
+
+                                            _guardarRegistroEnFirebase(context,
+                                                registro, widget.tribuId);
+                                          }
+                                        },
+                                        child: Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            Icon(Icons.save_outlined, size: 18),
+                                            SizedBox(width: 8),
+                                            Text(
+                                              'Guardar Registro',
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.w600,
+                                                fontSize: 15,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                    SizedBox(height: 12),
+                                    SizedBox(
+                                      width: double.infinity,
+                                      child: TextButton(
+                                        onPressed: () => Navigator.pop(context),
+                                        style: TextButton.styleFrom(
+                                          padding: EdgeInsets.symmetric(
+                                              vertical: 14),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(12),
+                                            side: BorderSide(
+                                                color: Colors.grey.shade300),
+                                          ),
+                                        ),
+                                        child: Text(
+                                          'Cancelar',
+                                          style: TextStyle(
+                                            color: Colors.grey.shade700,
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 15,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                )
+                              : Row(
+                                  children: [
+                                    Expanded(
+                                      child: TextButton(
+                                        onPressed: () => Navigator.pop(context),
+                                        style: TextButton.styleFrom(
+                                          padding: EdgeInsets.symmetric(
+                                              vertical: 16),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(12),
+                                            side: BorderSide(
+                                                color: Colors.grey.shade300),
+                                          ),
+                                        ),
+                                        child: Text(
+                                          'Cancelar',
+                                          style: TextStyle(
+                                            color: Colors.grey.shade700,
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 16,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    SizedBox(width: 16),
+                                    Expanded(
+                                      flex: 2,
+                                      child: ElevatedButton(
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Color(0xFFFF7E00),
+                                          foregroundColor: Colors.white,
+                                          padding: EdgeInsets.symmetric(
+                                              vertical: 16),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(12),
+                                          ),
+                                          elevation: 2,
+                                          shadowColor: Color(0xFFFF7E00)
+                                              .withOpacity(0.3),
+                                        ),
+                                        onPressed: () {
+                                          if (_formKey.currentState!
+                                              .validate()) {
+                                            final registro = {
+                                              'fechaAsignacionTribu':
+                                                  fechaAsignacionTribu != null
+                                                      ? Timestamp.fromDate(
+                                                          fechaAsignacionTribu!)
+                                                      : null,
+                                              'nombre': nombre,
+                                              'apellido': apellido,
+                                              'telefono': telefono,
+                                              'sexo': sexo,
+                                              'edad': edad,
+                                              'direccion': direccion,
+                                              'barrio': barrio,
+                                              'estadoCivil': estadoCivil,
+                                              'nombrePareja': nombrePareja,
+                                              'ocupaciones':
+                                                  ocupacionesSeleccionadas,
+                                              'descripcionOcupaciones':
+                                                  descripcionOcupaciones,
+                                              'tieneHijos': tieneHijos,
+                                              'referenciaInvitacion':
+                                                  referenciaInvitacion,
+                                              'observaciones': observaciones,
+                                              'tribuAsignada': widget.tribuId,
+                                              'ministerioAsignado':
+                                                  _determinarMinisterio(
+                                                      widget.tribuNombre),
+                                              'coordinadorAsignado': null,
+                                              'fechaRegistro':
+                                                  FieldValue.serverTimestamp(),
+                                              'activo': true,
+                                              'estadoProceso': estadoProceso,
+                                            };
+
+                                            _guardarRegistroEnFirebase(context,
+                                                registro, widget.tribuId);
+                                          }
+                                        },
+                                        child: Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            Icon(Icons.save_outlined, size: 20),
+                                            SizedBox(width: 8),
+                                            Text(
+                                              'Guardar Registro',
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.w600,
+                                                fontSize: 16,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+
+                          // Espacio final
+                          SizedBox(height: isSmallScreen ? 16 : 20),
                         ],
                       ),
                     ),
-                  ),
-                ),
-
-                // Botones de acción con diseño mejorado
-                SafeArea(
-                  child: Container(
-                    padding: EdgeInsets.only(
-                      left: isSmallScreen ? 16 : 24,
-                      right: isSmallScreen ? 16 : 24,
-                      top: isSmallScreen ? 12 : 16,
-                      bottom: isSmallScreen ? 12 : 16,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade50,
-                      borderRadius: BorderRadius.only(
-                        bottomLeft: Radius.circular(isSmallScreen ? 16 : 24),
-                        bottomRight: Radius.circular(isSmallScreen ? 16 : 24),
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
-                          offset: Offset(0, -2),
-                          blurRadius: 4,
-                        ),
-                      ],
-                    ),
-                    child: isSmallScreen
-                        ? Column(
-                            children: [
-                              SizedBox(
-                                width: double.infinity,
-                                child: ElevatedButton(
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Color(0xFFFF7E00),
-                                    foregroundColor: Colors.white,
-                                    padding: EdgeInsets.symmetric(vertical: 14),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    elevation: 2,
-                                    shadowColor:
-                                        Color(0xFFFF7E00).withOpacity(0.3),
-                                  ),
-                                  onPressed: () {
-                                    if (_formKey.currentState!.validate()) {
-                                      final registro = {
-                                        'fechaAsignacionTribu':
-                                            fechaAsignacionTribu != null
-                                                ? Timestamp.fromDate(
-                                                    fechaAsignacionTribu!)
-                                                : null,
-                                        'nombre': nombre,
-                                        'apellido': apellido,
-                                        'telefono': telefono,
-                                        'sexo': sexo,
-                                        'edad': edad,
-                                        'direccion': direccion,
-                                        'barrio': barrio,
-                                        'estadoCivil': estadoCivil,
-                                        'nombrePareja': nombrePareja,
-                                        'ocupaciones': ocupacionesSeleccionadas,
-                                        'descripcionOcupaciones':
-                                            descripcionOcupaciones,
-                                        'tieneHijos': tieneHijos,
-                                        'referenciaInvitacion':
-                                            referenciaInvitacion,
-                                        'observaciones': observaciones,
-                                        'tribuAsignada': widget.tribuNombre,
-                                        'ministerioAsignado':
-                                            _determinarMinisterio(
-                                                widget.tribuNombre),
-                                        'coordinadorAsignado': null,
-                                        'fechaRegistro':
-                                            FieldValue.serverTimestamp(),
-                                        'activo': true,
-                                        'estadoProceso': estadoProceso,
-                                      };
-
-                                      _guardarRegistroEnFirebase(
-                                          context, registro, widget.tribuId);
-                                    }
-                                  },
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(Icons.save_outlined, size: 18),
-                                      SizedBox(width: 8),
-                                      Text(
-                                        'Guardar Registro',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: 15,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                              SizedBox(height: 12),
-                              SizedBox(
-                                width: double.infinity,
-                                child: TextButton(
-                                  onPressed: () => Navigator.pop(context),
-                                  style: TextButton.styleFrom(
-                                    padding: EdgeInsets.symmetric(vertical: 14),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                      side: BorderSide(
-                                          color: Colors.grey.shade300),
-                                    ),
-                                  ),
-                                  child: Text(
-                                    'Cancelar',
-                                    style: TextStyle(
-                                      color: Colors.grey.shade700,
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 15,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          )
-                        : Row(
-                            children: [
-                              Expanded(
-                                child: TextButton(
-                                  onPressed: () => Navigator.pop(context),
-                                  style: TextButton.styleFrom(
-                                    padding: EdgeInsets.symmetric(vertical: 16),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                      side: BorderSide(
-                                          color: Colors.grey.shade300),
-                                    ),
-                                  ),
-                                  child: Text(
-                                    'Cancelar',
-                                    style: TextStyle(
-                                      color: Colors.grey.shade700,
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 16,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              SizedBox(width: 16),
-                              Expanded(
-                                flex: 2,
-                                child: ElevatedButton(
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Color(0xFFFF7E00),
-                                    foregroundColor: Colors.white,
-                                    padding: EdgeInsets.symmetric(vertical: 16),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    elevation: 2,
-                                    shadowColor:
-                                        Color(0xFFFF7E00).withOpacity(0.3),
-                                  ),
-                                  onPressed: () {
-                                    if (_formKey.currentState!.validate()) {
-                                      final registro = {
-                                        'fechaAsignacionTribu':
-                                            fechaAsignacionTribu != null
-                                                ? Timestamp.fromDate(
-                                                    fechaAsignacionTribu!)
-                                                : null,
-                                        'nombre': nombre,
-                                        'apellido': apellido,
-                                        'telefono': telefono,
-                                        'sexo': sexo,
-                                        'edad': edad,
-                                        'direccion': direccion,
-                                        'barrio': barrio,
-                                        'estadoCivil': estadoCivil,
-                                        'nombrePareja': nombrePareja,
-                                        'ocupaciones': ocupacionesSeleccionadas,
-                                        'descripcionOcupaciones':
-                                            descripcionOcupaciones,
-                                        'tieneHijos': tieneHijos,
-                                        'referenciaInvitacion':
-                                            referenciaInvitacion,
-                                        'observaciones': observaciones,
-                                        'tribuAsignada': widget.tribuNombre,
-                                        'ministerioAsignado':
-                                            _determinarMinisterio(
-                                                widget.tribuNombre),
-                                        'coordinadorAsignado': null,
-                                        'fechaRegistro':
-                                            FieldValue.serverTimestamp(),
-                                        'activo': true,
-                                        'estadoProceso': estadoProceso,
-                                      };
-
-                                      _guardarRegistroEnFirebase(
-                                          context, registro, widget.tribuId);
-                                    }
-                                  },
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(Icons.save_outlined, size: 20),
-                                      SizedBox(width: 8),
-                                      Text(
-                                        'Guardar Registro',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: 16,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
                   ),
                 ),
               ],
