@@ -5242,74 +5242,65 @@ class CoordinadoresTab extends StatelessWidget {
       ),
       child: Column(
         children: [
-          // Botón de crear coordinador mejorado (compacto)
+          // Botón de crear coordinador
           Container(
-            margin: EdgeInsets.fromLTRB(16, 12, 16, 8),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          ThemeConstants.secondaryOrange,
-                          ThemeConstants.secondaryOrange.withOpacity(0.85),
-                        ],
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color:
-                              ThemeConstants.secondaryOrange.withOpacity(0.25),
-                          blurRadius: 8,
-                          offset: Offset(0, 4),
+            margin: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    ThemeConstants.secondaryOrange,
+                    ThemeConstants.secondaryOrange.withOpacity(0.85),
+                  ],
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: ThemeConstants.secondaryOrange.withOpacity(0.25),
+                    blurRadius: 8,
+                    offset: Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () => _crearCoordinador(context),
+                  borderRadius: BorderRadius.circular(12),
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          padding: EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(
+                            Icons.group_add,
+                            size: 20,
+                            color: Colors.white,
+                          ),
+                        ),
+                        SizedBox(width: 10),
+                        Text(
+                          'Crear Coordinador',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                            letterSpacing: 0.3,
+                          ),
                         ),
                       ],
                     ),
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: () => _crearCoordinador(context),
-                        borderRadius: BorderRadius.circular(12),
-                        child: Padding(
-                          padding: EdgeInsets.symmetric(
-                              vertical: 14, horizontal: 16),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(
-                                padding: EdgeInsets.all(6),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.2),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Icon(
-                                  Icons.group_add,
-                                  size: 20,
-                                  color: Colors.white,
-                                ),
-                              ),
-                              SizedBox(width: 10),
-                              Text(
-                                'Crear Coordinador',
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                  letterSpacing: 0.3,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
                   ),
                 ),
-              ],
+              ),
             ),
           ),
 
@@ -6615,11 +6606,21 @@ class TimoteosTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Colors.white,
+            ThemeConstants.primaryTeal.withOpacity(0.03),
+          ],
+        ),
+      ),
       child: Column(
         children: [
+          // Botón de crear timoteo
           Container(
-            margin: EdgeInsets.fromLTRB(0, 0, 0, 12),
+            margin: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Container(
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(12),
@@ -6645,10 +6646,9 @@ class TimoteosTab extends StatelessWidget {
                   onTap: () => _createTimoteo(context),
                   borderRadius: BorderRadius.circular(12),
                   child: Padding(
-                    padding: EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                    padding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
-                      mainAxisSize: MainAxisSize.min,
                       children: [
                         Container(
                           padding: EdgeInsets.all(6),
