@@ -1147,20 +1147,18 @@ class _StatisticsDialogState extends State<StatisticsDialog>
           }
 
           // Aplicar filtro de tribu con validaciones
+          // Aplicar filtro de tribu con validaciones (null-safe)
+// Nota: selectedTribe llega como "Nombre (ID)" desde el dropdown
           if (selectedTribe != null) {
-            final nombreTribu = data['nombreTribu'] as String?;
             final tribuAsignada = data['tribuAsignada'] as String?;
+            if (tribuAsignada == null || tribuAsignada.isEmpty) continue;
 
-            if (nombreTribu == null || nombreTribu.isEmpty) continue;
+            // Extraer el ID desde el texto del dropdown: "Nombre (ID)"
+            final match = RegExp(r'\(([^)]+)\)\s*$').firstMatch(selectedTribe!);
+            final selectedTribeId = match?.group(1);
 
-            // Si tribuAsignada existe, respeta el formato original "Nombre (ID)"
-            // Si NO existe, compara solo por nombreTribu para no excluir registros válidos
-            final String tribuDisplay =
-                (tribuAsignada != null && tribuAsignada.isNotEmpty)
-                    ? "$nombreTribu ($tribuAsignada)"
-                    : nombreTribu;
-
-            if (tribuDisplay != selectedTribe) continue;
+            if (selectedTribeId == null || selectedTribeId.isEmpty) continue;
+            if (tribuAsignada != selectedTribeId) continue;
           }
 
           // Crear clave para la agrupación de datos según el tipo de filtro

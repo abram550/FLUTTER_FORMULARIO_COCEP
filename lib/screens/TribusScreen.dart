@@ -406,6 +406,8 @@ class _TribusScreenState extends State<TribusScreen>
     }
   }
 
+  
+
   void _showRegistroDialog(BuildContext context) {
     _resetInactivityTimer();
 
@@ -1210,6 +1212,8 @@ class _TribusScreenState extends State<TribusScreen>
       }),
     );
   }
+
+
 
 // Widget para headers de sección
   Widget _buildSectionHeader(String title, IconData icon, bool isSmallScreen) {
