@@ -3921,204 +3921,377 @@ class TimoteosTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: kBackgroundColor,
-      child: Column(
-        children: [
-          Container(
-            padding: EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 10,
-                  offset: Offset(0, 5),
-                ),
-              ],
-            ),
-            margin: EdgeInsets.all(16),
-            child: Row(
-              children: [
-                Icon(Icons.people_outline, color: kPrimaryColor, size: 24),
-                SizedBox(width: 12),
-                Text(
-                  'Lista de Timoteos',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: kPrimaryColor,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Colors.white,
+            kPrimaryColor.withOpacity(0.02),
+          ],
+        ),
+      ),
+      child: StreamBuilder(
+        stream: FirebaseFirestore.instance
+            .collection('timoteos')
+            .where('coordinadorId', isEqualTo: coordinadorId)
+            .snapshots(),
+        builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: kPrimaryColor.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: CircularProgressIndicator(
+                      color: kPrimaryColor,
+                      strokeWidth: 3,
+                    ),
+                  ),
+                  SizedBox(height: 20),
+                  Text(
+                    'Cargando timoteos...',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: kPrimaryColor,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.person_off_outlined,
+                      size: 72,
+                      color: Colors.grey.shade400,
+                    ),
+                  ),
+                  SizedBox(height: 20),
+                  Text(
+                    'No hay Timoteos asignados',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    'Los timoteos aparecerán aquí',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey.shade500,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          return ListView.builder(
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            itemCount: snapshot.data!.docs.length,
+            itemBuilder: (context, index) {
+              final timoteo = snapshot.data!.docs[index];
+              final iniciales =
+                  '${timoteo['nombre'][0]}${timoteo['apellido'][0]}'
+                      .toUpperCase();
+
+              return Container(
+                margin: EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Colors.white,
+                      kPrimaryColor.withOpacity(0.02),
+                    ],
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.06),
+                      blurRadius: 12,
+                      offset: Offset(0, 4),
+                    ),
+                  ],
+                  border: Border.all(
+                    color: kPrimaryColor.withOpacity(0.12),
+                    width: 1,
                   ),
                 ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: StreamBuilder(
-              stream: FirebaseFirestore.instance
-                  .collection('timoteos')
-                  .where('coordinadorId', isEqualTo: coordinadorId)
-                  .snapshots(),
-              builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return Center(
-                    child: CircularProgressIndicator(color: kPrimaryColor),
-                  );
-                }
-
-                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.person_off_outlined,
-                          size: 64,
-                          color: Colors.grey,
-                        ),
-                        SizedBox(height: 16),
-                        Text(
-                          'No hay Timoteos asignados',
-                          style: TextStyle(
-                            fontSize: 18,
-                            color: Colors.grey,
+                child: Theme(
+                  data: Theme.of(context).copyWith(
+                    dividerColor: Colors.transparent,
+                  ),
+                  child: ExpansionTile(
+                    tilePadding:
+                        EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    childrenPadding: EdgeInsets.zero,
+                    leading: Hero(
+                      tag: 'timoteo_${timoteo.id}',
+                      child: Container(
+                        width: 56,
+                        height: 56,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              kPrimaryColor,
+                              kPrimaryColor.withOpacity(0.7),
+                            ],
                           ),
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: kPrimaryColor.withOpacity(0.3),
+                              blurRadius: 8,
+                              offset: Offset(0, 4),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                  );
-                }
-
-                return ListView.builder(
-                  padding: EdgeInsets.all(16),
-                  itemCount: snapshot.data!.docs.length,
-                  itemBuilder: (context, index) {
-                    final timoteo = snapshot.data!.docs[index];
-                    return Card(
-                      elevation: 2,
-                      margin: EdgeInsets.only(bottom: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: ExpansionTile(
-                        leading: CircleAvatar(
-                          backgroundColor: kPrimaryColor.withOpacity(0.1),
+                        child: Center(
                           child: Text(
-                            '${timoteo['nombre'][0]}${timoteo['apellido'][0]}',
+                            iniciales,
                             style: TextStyle(
-                              color: kPrimaryColor,
+                              color: Colors.white,
                               fontWeight: FontWeight.bold,
+                              fontSize: 18,
+                              letterSpacing: 1,
                             ),
                           ),
                         ),
-                        title: Text(
-                          '${timoteo['nombre']} ${timoteo['apellido']}',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black87,
-                          ),
-                        ),
-                        subtitle: Text(
-                          'Usuario: ${timoteo['usuario']}',
-                          style: TextStyle(color: Colors.grey),
-                        ),
+                      ),
+                    ),
+                    title: Text(
+                      '${timoteo['nombre']} ${timoteo['apellido']}',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: kPrimaryColor,
+                        fontSize: 17,
+                      ),
+                    ),
+                    subtitle: Padding(
+                      padding: EdgeInsets.only(top: 6),
+                      child: Row(
                         children: [
-                          Padding(
-                            padding: EdgeInsets.all(16),
-                            child: Column(
-                              children: [
-                                Row(
-                                  children: [
-                                    Icon(Icons.lock_outline,
-                                        color: Colors.grey, size: 20),
-                                    SizedBox(width: 8),
-                                    Text(
-                                      'Contraseña: ${timoteo['contrasena']}',
-                                      style: TextStyle(color: Colors.grey),
-                                    ),
-                                  ],
-                                ),
-                                SizedBox(height: 16),
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceEvenly,
-                                  children: [
-                                    _buildActionButton(
-                                      icon: Icons.edit,
-                                      label: 'Editar',
-                                      color: kPrimaryColor,
-                                      onPressed: () =>
-                                          _editTimoteo(context, timoteo),
-                                    ),
-                                    _buildActionButton(
-                                      icon: Icons.list,
-                                      label: 'Registros',
-                                      color: kSecondaryColor,
-                                      onPressed: () => _viewAssignedRegistros(
-                                          context, timoteo),
-                                    ),
-                                    _buildActionButton(
-                                      icon: Icons.person,
-                                      label: 'Perfil',
-                                      color: kAccentColor,
-                                      onPressed: () {
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (context) => TimoteoScreen(
-                                              timoteoId: timoteo.id,
-                                              timoteoNombre:
-                                                  '${timoteo['nombre']} ${timoteo['apellido']}',
-                                            ),
-                                          ),
-                                        );
-                                      },
-                                    ),
-                                  ],
-                                ),
-                              ],
+                          Icon(
+                            Icons.account_circle_outlined,
+                            size: 16,
+                            color: Colors.grey.shade600,
+                          ),
+                          SizedBox(width: 6),
+                          Text(
+                            'Usuario: ${timoteo['usuario']}',
+                            style: TextStyle(
+                              color: Colors.grey.shade600,
+                              fontSize: 14,
                             ),
                           ),
                         ],
                       ),
-                    );
-                  },
-                );
-              },
-            ),
-          ),
-        ],
+                    ),
+                    trailing: Icon(
+                      Icons.expand_more,
+                      color: kPrimaryColor,
+                    ),
+                    children: [
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade50,
+                          borderRadius: BorderRadius.only(
+                            bottomLeft: Radius.circular(20),
+                            bottomRight: Radius.circular(20),
+                          ),
+                        ),
+                        padding: EdgeInsets.all(20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Información de contraseña
+                            Container(
+                              padding: EdgeInsets.all(14),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: kPrimaryColor.withOpacity(0.15),
+                                  width: 1,
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    padding: EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: kPrimaryColor.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Icon(
+                                      Icons.lock_outline,
+                                      color: kPrimaryColor,
+                                      size: 20,
+                                    ),
+                                  ),
+                                  SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Contraseña',
+                                          style: TextStyle(
+                                            color: Colors.grey.shade600,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                        SizedBox(height: 2),
+                                        Text(
+                                          '${timoteo['contrasena']}',
+                                          style: TextStyle(
+                                            color: Colors.black87,
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            SizedBox(height: 16),
+
+                            // Divisor
+                            Divider(height: 1, color: Colors.grey.shade300),
+                            SizedBox(height: 16),
+
+                            // Botones de acción mejorados
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              alignment: WrapAlignment.center,
+                              children: [
+                                _buildModernActionButton(
+                                  icon: Icons.edit_rounded,
+                                  label: 'Editar',
+                                  color: kPrimaryColor,
+                                  onPressed: () =>
+                                      _editTimoteo(context, timoteo),
+                                ),
+                                _buildModernActionButton(
+                                  icon: Icons.list_alt_rounded,
+                                  label: 'Registros',
+                                  color: kSecondaryColor,
+                                  onPressed: () =>
+                                      _viewAssignedRegistros(context, timoteo),
+                                ),
+                                _buildModernActionButton(
+                                  icon: Icons.person_rounded,
+                                  label: 'Ver Perfil',
+                                  color: kAccentColor,
+                                  onPressed: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => TimoteoScreen(
+                                          timoteoId: timoteo.id,
+                                          timoteoNombre:
+                                              '${timoteo['nombre']} ${timoteo['apellido']}',
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          );
+        },
       ),
     );
   }
 
-  Widget _buildActionButton({
+  Widget _buildModernActionButton({
     required IconData icon,
     required String label,
     required Color color,
     required VoidCallback onPressed,
   }) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onPressed,
-        borderRadius: BorderRadius.circular(8),
-        child: Container(
-          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          decoration: BoxDecoration(
-            border: Border.all(color: color),
-            borderRadius: BorderRadius.circular(8),
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(10),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            color,
+            color.withOpacity(0.8),
+          ],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: color.withOpacity(0.25),
+            blurRadius: 6,
+            offset: Offset(0, 3),
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, color: color, size: 20),
-              SizedBox(width: 8),
-              Text(
-                label,
-                style: TextStyle(color: color, fontWeight: FontWeight.bold),
-              ),
-            ],
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: BorderRadius.circular(10),
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  icon,
+                  color: Colors.white,
+                  size: 18,
+                ),
+                SizedBox(width: 6),
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
