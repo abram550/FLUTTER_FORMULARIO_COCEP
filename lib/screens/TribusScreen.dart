@@ -6954,7 +6954,7 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
       },
       behavior: HitTestBehavior.opaque,
       child: Scaffold(
-        resizeToAvoidBottomInset: true, // ✅ Clave para que se ajuste al teclado
+        resizeToAvoidBottomInset: true,
         backgroundColor: Colors.transparent,
         body: Stack(
           children: [
@@ -7079,7 +7079,6 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
                                     ],
                                   ),
                                 ),
-                                // Indicador de filtros activos
                                 if (_hayFiltrosActivos())
                                   Container(
                                     margin: EdgeInsets.only(right: 8),
@@ -7116,7 +7115,6 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
                                       ],
                                     ),
                                   ),
-                                // Botón animado de expandir/contraer
                                 AnimatedRotation(
                                   turns: _filtrosExpandidos ? 0.5 : 0,
                                   duration: Duration(milliseconds: 300),
@@ -7139,557 +7137,495 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
                           ),
                         ),
 
-                        // 🔽 CONTENIDO EXPANDIBLE DE FILTROS
+                        // 🔽 CONTENIDO EXPANDIBLE DE FILTROS CON SCROLL INDEPENDIENTE
                         AnimatedSize(
                           duration: Duration(milliseconds: 300),
                           curve: Curves.easeInOut,
                           child: _filtrosExpandidos
-                              ? SingleChildScrollView(
-                                  // ✅ NUEVO: Scroll interno para filtros
-                                  physics: ClampingScrollPhysics(),
-                                  child: Column(
-                                    children: [
-                                      // 🔍 BARRA DE BÚSQUEDA
-                                      Padding(
-                                        padding:
-                                            EdgeInsets.fromLTRB(12, 12, 12, 8),
-                                        child: Column(
-                                          children: [
-                                            // Selector de tipo de búsqueda
-                                            Container(
-                                              padding: EdgeInsets.symmetric(
-                                                  horizontal: 12, vertical: 6),
-                                              decoration: BoxDecoration(
-                                                color: primaryTeal
-                                                    .withOpacity(0.1),
-                                                borderRadius:
-                                                    BorderRadius.circular(10),
-                                                border: Border.all(
-                                                  color: primaryTeal
-                                                      .withOpacity(0.3),
-                                                  width: 1,
-                                                ),
-                                              ),
-                                              child: Row(
-                                                children: [
-                                                  Icon(
-                                                    Icons.filter_list_rounded,
-                                                    color: primaryTeal,
-                                                    size: 18,
-                                                  ),
-                                                  SizedBox(width: 8),
-                                                  Text(
-                                                    'Buscar por:',
-                                                    style: TextStyle(
-                                                      fontSize: 13,
-                                                      fontWeight:
-                                                          FontWeight.w600,
-                                                      color: primaryTeal,
-                                                    ),
-                                                  ),
-                                                  SizedBox(width: 12),
-                                                  Expanded(
-                                                    child: Row(
-                                                      children: [
-                                                        Expanded(
-                                                          child: InkWell(
-                                                            onTap: () {
-                                                              setState(() {
-                                                                _tipoBusqueda =
-                                                                    'nombre';
-                                                                _searchEstadoController
-                                                                    .clear();
-                                                                _searchEstadoTerm =
-                                                                    '';
-                                                              });
-                                                            },
-                                                            borderRadius:
-                                                                BorderRadius
-                                                                    .circular(
-                                                                        8),
-                                                            child: Container(
-                                                              padding: EdgeInsets
-                                                                  .symmetric(
-                                                                horizontal: 12,
-                                                                vertical: 8,
-                                                              ),
-                                                              decoration:
-                                                                  BoxDecoration(
-                                                                color: _tipoBusqueda ==
-                                                                        'nombre'
-                                                                    ? primaryTeal
-                                                                    : Colors
-                                                                        .transparent,
-                                                                borderRadius:
-                                                                    BorderRadius
-                                                                        .circular(
-                                                                            8),
-                                                                border:
-                                                                    Border.all(
-                                                                  color: _tipoBusqueda ==
-                                                                          'nombre'
-                                                                      ? primaryTeal
-                                                                      : primaryTeal
-                                                                          .withOpacity(
-                                                                              0.3),
-                                                                  width: 1.5,
-                                                                ),
-                                                              ),
-                                                              child: Row(
-                                                                mainAxisAlignment:
-                                                                    MainAxisAlignment
-                                                                        .center,
-                                                                children: [
-                                                                  Icon(
-                                                                    Icons
-                                                                        .person_search_rounded,
-                                                                    color: _tipoBusqueda ==
-                                                                            'nombre'
-                                                                        ? Colors
-                                                                            .white
-                                                                        : primaryTeal,
-                                                                    size: 16,
-                                                                  ),
-                                                                  SizedBox(
-                                                                      width: 6),
-                                                                  Flexible(
-                                                                    child: Text(
-                                                                      'Nombre',
-                                                                      style:
-                                                                          TextStyle(
-                                                                        fontSize:
-                                                                            12,
-                                                                        fontWeight:
-                                                                            FontWeight.w600,
-                                                                        color: _tipoBusqueda ==
-                                                                                'nombre'
-                                                                            ? Colors.white
-                                                                            : primaryTeal,
-                                                                      ),
-                                                                      overflow:
-                                                                          TextOverflow
-                                                                              .ellipsis,
-                                                                    ),
-                                                                  ),
-                                                                ],
-                                                              ),
-                                                            ),
-                                                          ),
-                                                        ),
-                                                        SizedBox(width: 8),
-                                                        Expanded(
-                                                          child: InkWell(
-                                                            onTap: () {
-                                                              setState(() {
-                                                                _tipoBusqueda =
-                                                                    'estado';
-                                                                _searchController
-                                                                    .clear();
-                                                                _searchTerm =
-                                                                    '';
-                                                              });
-                                                            },
-                                                            borderRadius:
-                                                                BorderRadius
-                                                                    .circular(
-                                                                        8),
-                                                            child: Container(
-                                                              padding: EdgeInsets
-                                                                  .symmetric(
-                                                                horizontal: 12,
-                                                                vertical: 8,
-                                                              ),
-                                                              decoration:
-                                                                  BoxDecoration(
-                                                                color: _tipoBusqueda ==
-                                                                        'estado'
-                                                                    ? secondaryOrange
-                                                                    : Colors
-                                                                        .transparent,
-                                                                borderRadius:
-                                                                    BorderRadius
-                                                                        .circular(
-                                                                            8),
-                                                                border:
-                                                                    Border.all(
-                                                                  color: _tipoBusqueda ==
-                                                                          'estado'
-                                                                      ? secondaryOrange
-                                                                      : secondaryOrange
-                                                                          .withOpacity(
-                                                                              0.3),
-                                                                  width: 1.5,
-                                                                ),
-                                                              ),
-                                                              child: Row(
-                                                                mainAxisAlignment:
-                                                                    MainAxisAlignment
-                                                                        .center,
-                                                                children: [
-                                                                  Icon(
-                                                                    Icons
-                                                                        .track_changes_rounded,
-                                                                    color: _tipoBusqueda ==
-                                                                            'estado'
-                                                                        ? Colors
-                                                                            .white
-                                                                        : secondaryOrange,
-                                                                    size: 16,
-                                                                  ),
-                                                                  SizedBox(
-                                                                      width: 6),
-                                                                  Flexible(
-                                                                    child: Text(
-                                                                      'Estado',
-                                                                      style:
-                                                                          TextStyle(
-                                                                        fontSize:
-                                                                            12,
-                                                                        fontWeight:
-                                                                            FontWeight.w600,
-                                                                        color: _tipoBusqueda ==
-                                                                                'estado'
-                                                                            ? Colors.white
-                                                                            : secondaryOrange,
-                                                                      ),
-                                                                      overflow:
-                                                                          TextOverflow
-                                                                              .ellipsis,
-                                                                    ),
-                                                                  ),
-                                                                ],
-                                                              ),
-                                                            ),
-                                                          ),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                            SizedBox(height: 8),
-
-                                            // Campo de búsqueda (cambia según el tipo seleccionado)
-                                            AnimatedSwitcher(
-                                              duration:
-                                                  Duration(milliseconds: 300),
-                                              transitionBuilder: (Widget child,
-                                                  Animation<double> animation) {
-                                                return FadeTransition(
-                                                  opacity: animation,
-                                                  child: SlideTransition(
-                                                    position: Tween<Offset>(
-                                                      begin: Offset(0.0, 0.2),
-                                                      end: Offset.zero,
-                                                    ).animate(animation),
-                                                    child: child,
-                                                  ),
-                                                );
-                                              },
-                                              child: Container(
-                                                key: ValueKey<String>(
-                                                    _tipoBusqueda),
+                              ? ConstrainedBox(
+                                  constraints: BoxConstraints(
+                                    maxHeight:
+                                        MediaQuery.of(context).size.height *
+                                            0.4,
+                                  ),
+                                  child: SingleChildScrollView(
+                                    physics: ClampingScrollPhysics(),
+                                    child: Column(
+                                      children: [
+                                        // 🔍 BARRA DE BÚSQUEDA
+                                        Padding(
+                                          padding: EdgeInsets.fromLTRB(
+                                              12, 12, 12, 8),
+                                          child: Column(
+                                            children: [
+                                              // Selector de tipo de búsqueda
+                                              Container(
+                                                padding: EdgeInsets.symmetric(
+                                                    horizontal: 12,
+                                                    vertical: 6),
                                                 decoration: BoxDecoration(
-                                                  color: backgroundGrey
-                                                      .withOpacity(0.5),
+                                                  color: primaryTeal
+                                                      .withOpacity(0.1),
                                                   borderRadius:
-                                                      BorderRadius.circular(12),
+                                                      BorderRadius.circular(10),
                                                   border: Border.all(
-                                                    color: (_tipoBusqueda ==
-                                                                'nombre'
-                                                            ? primaryTeal
-                                                            : secondaryOrange)
+                                                    color: primaryTeal
                                                         .withOpacity(0.3),
-                                                    width: 1.5,
+                                                    width: 1,
                                                   ),
                                                 ),
-                                                child: TextField(
-                                                  controller: _tipoBusqueda ==
-                                                          'nombre'
-                                                      ? _searchController
-                                                      : _searchEstadoController,
-                                                  focusNode: _tipoBusqueda ==
-                                                          'nombre'
-                                                      ? _searchFocusNode
-                                                      : _searchEstadoFocusNode,
-                                                  textInputAction:
-                                                      TextInputAction.search,
-                                                  enableInteractiveSelection:
-                                                      true,
-                                                  style: TextStyle(
-                                                    fontSize: 15,
-                                                    color: Colors.black87,
-                                                  ),
-                                                  decoration: InputDecoration(
-                                                    hintText: _tipoBusqueda ==
-                                                            'nombre'
-                                                        ? 'Buscar por nombre o apellido...'
-                                                        : 'Buscar por estado (ej: Discipulado 1)...',
-                                                    hintStyle: TextStyle(
-                                                      color: Colors.grey[400],
-                                                      fontSize: 14,
-                                                    ),
-                                                    prefixIcon: Container(
-                                                      margin: EdgeInsets.all(8),
-                                                      padding:
-                                                          EdgeInsets.all(6),
-                                                      decoration: BoxDecoration(
-                                                        color: (_tipoBusqueda ==
-                                                                    'nombre'
-                                                                ? primaryTeal
-                                                                : secondaryOrange)
-                                                            .withOpacity(0.1),
-                                                        borderRadius:
-                                                            BorderRadius
-                                                                .circular(8),
-                                                      ),
-                                                      child: Icon(
-                                                        _tipoBusqueda ==
-                                                                'nombre'
-                                                            ? Icons
-                                                                .search_rounded
-                                                            : Icons
-                                                                .track_changes_rounded,
-                                                        color: _tipoBusqueda ==
-                                                                'nombre'
-                                                            ? primaryTeal
-                                                            : secondaryOrange,
-                                                        size: 20,
-                                                      ),
-                                                    ),
-                                                    suffixIcon: (_tipoBusqueda ==
-                                                                'nombre'
-                                                            ? _searchController
-                                                                .text.isNotEmpty
-                                                            : _searchEstadoController
-                                                                .text
-                                                                .isNotEmpty)
-                                                        ? IconButton(
-                                                            icon: Icon(
-                                                              Icons
-                                                                  .close_rounded,
-                                                              color: accentGrey,
-                                                              size: 20,
-                                                            ),
-                                                            onPressed: () {
-                                                              setState(() {
-                                                                if (_tipoBusqueda ==
-                                                                    'nombre') {
-                                                                  _searchController
-                                                                      .clear();
-                                                                  _searchTerm =
-                                                                      '';
-                                                                  _searchFocusNode
-                                                                      .requestFocus();
-                                                                } else {
-                                                                  _searchEstadoController
-                                                                      .clear();
-                                                                  _searchEstadoTerm =
-                                                                      '';
-                                                                  _searchEstadoFocusNode
-                                                                      .requestFocus();
-                                                                }
-                                                              });
-                                                            },
-                                                          )
-                                                        : null,
-                                                    border: InputBorder.none,
-                                                    contentPadding:
-                                                        EdgeInsets.symmetric(
-                                                      vertical: 12,
-                                                      horizontal: 4,
-                                                    ),
-                                                    isDense: true,
-                                                  ),
-                                                  onSubmitted: (value) {
-                                                    if (_tipoBusqueda ==
-                                                        'nombre') {
-                                                      _searchFocusNode
-                                                          .unfocus();
-                                                    } else {
-                                                      _searchEstadoFocusNode
-                                                          .unfocus();
-                                                    }
-                                                  },
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-
-                                      // 📅 FILTROS DE FECHA
-                                      Padding(
-                                        padding:
-                                            EdgeInsets.fromLTRB(12, 0, 12, 8),
-                                        child: LayoutBuilder(
-                                          builder: (context, constraints) {
-                                            final isSmallScreen =
-                                                constraints.maxWidth < 600;
-
-                                            return Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                // Encabezado de filtros
-                                                Row(
+                                                child: Row(
                                                   children: [
                                                     Icon(
                                                       Icons.filter_list_rounded,
                                                       color: primaryTeal,
                                                       size: 18,
                                                     ),
-                                                    SizedBox(width: 6),
+                                                    SizedBox(width: 8),
                                                     Text(
-                                                      'Filtrar por fecha de asignación',
+                                                      'Buscar por:',
                                                       style: TextStyle(
+                                                        fontSize: 13,
                                                         fontWeight:
                                                             FontWeight.w600,
                                                         color: primaryTeal,
-                                                        fontSize: 13,
-                                                        letterSpacing: 0.2,
                                                       ),
                                                     ),
-                                                    Spacer(),
-                                                    if (_anioSeleccionado !=
-                                                            null ||
-                                                        _mesSeleccionado !=
-                                                            null)
-                                                      InkWell(
-                                                        onTap: _limpiarFiltros,
-                                                        borderRadius:
-                                                            BorderRadius
-                                                                .circular(6),
-                                                        child: Container(
-                                                          padding: EdgeInsets
-                                                              .symmetric(
-                                                            horizontal: 8,
-                                                            vertical: 4,
-                                                          ),
-                                                          decoration:
-                                                              BoxDecoration(
-                                                            color:
-                                                                secondaryOrange
-                                                                    .withOpacity(
-                                                                        0.1),
-                                                            borderRadius:
-                                                                BorderRadius
-                                                                    .circular(
-                                                                        6),
-                                                          ),
-                                                          child: Row(
-                                                            mainAxisSize:
-                                                                MainAxisSize
-                                                                    .min,
-                                                            children: [
-                                                              Icon(
-                                                                Icons
-                                                                    .clear_rounded,
-                                                                color:
-                                                                    secondaryOrange,
-                                                                size: 14,
-                                                              ),
-                                                              SizedBox(
-                                                                  width: 4),
-                                                              Text(
-                                                                'Limpiar',
-                                                                style:
-                                                                    TextStyle(
-                                                                  color:
-                                                                      secondaryOrange,
-                                                                  fontSize: 11,
-                                                                  fontWeight:
-                                                                      FontWeight
-                                                                          .w600,
-                                                                ),
-                                                              ),
-                                                            ],
-                                                          ),
-                                                        ),
-                                                      ),
-                                                  ],
-                                                ),
-                                                SizedBox(height: 10),
-
-                                                // Selectores de filtro
-                                                isSmallScreen
-                                                    ? Column(
-                                                        children: [
-                                                          _buildDropdownFiltroCompacto(
-                                                            label: 'Año',
-                                                            icon: Icons
-                                                                .calendar_today_rounded,
-                                                            value:
-                                                                _anioSeleccionado,
-                                                            items: [
-                                                              'Todos',
-                                                              ..._aniosDisponibles
-                                                            ],
-                                                            onChanged: (value) {
-                                                              setState(() {
-                                                                _anioSeleccionado =
-                                                                    value;
-                                                              });
-                                                            },
-                                                            primaryTeal:
-                                                                primaryTeal,
-                                                            accentGrey:
-                                                                accentGrey,
-                                                            backgroundGrey:
-                                                                backgroundGrey,
-                                                          ),
-                                                          SizedBox(height: 8),
-                                                          _buildDropdownFiltroCompacto(
-                                                            label: 'Mes',
-                                                            icon: Icons
-                                                                .event_rounded,
-                                                            value:
-                                                                _mesSeleccionado,
-                                                            items: [
-                                                              'Todos',
-                                                              '1',
-                                                              '2',
-                                                              '3',
-                                                              '4',
-                                                              '5',
-                                                              '6',
-                                                              '7',
-                                                              '8',
-                                                              '9',
-                                                              '10',
-                                                              '11',
-                                                              '12'
-                                                            ],
-                                                            itemBuilder:
-                                                                (value) {
-                                                              if (value ==
-                                                                  'Todos')
-                                                                return 'Todos';
-                                                              return _obtenerNombreMes(
-                                                                  int.parse(
-                                                                      value));
-                                                            },
-                                                            onChanged: (value) {
-                                                              setState(() {
-                                                                _mesSeleccionado =
-                                                                    value;
-                                                              });
-                                                            },
-                                                            primaryTeal:
-                                                                primaryTeal,
-                                                            accentGrey:
-                                                                accentGrey,
-                                                            backgroundGrey:
-                                                                backgroundGrey,
-                                                          ),
-                                                        ],
-                                                      )
-                                                    : Row(
+                                                    SizedBox(width: 12),
+                                                    Expanded(
+                                                      child: Row(
                                                         children: [
                                                           Expanded(
-                                                            child:
-                                                                _buildDropdownFiltroCompacto(
+                                                            child: InkWell(
+                                                              onTap: () {
+                                                                setState(() {
+                                                                  _tipoBusqueda =
+                                                                      'nombre';
+                                                                  _searchEstadoController
+                                                                      .clear();
+                                                                  _searchEstadoTerm =
+                                                                      '';
+                                                                });
+                                                              },
+                                                              borderRadius:
+                                                                  BorderRadius
+                                                                      .circular(
+                                                                          8),
+                                                              child: Container(
+                                                                padding: EdgeInsets
+                                                                    .symmetric(
+                                                                  horizontal:
+                                                                      12,
+                                                                  vertical: 8,
+                                                                ),
+                                                                decoration:
+                                                                    BoxDecoration(
+                                                                  color: _tipoBusqueda ==
+                                                                          'nombre'
+                                                                      ? primaryTeal
+                                                                      : Colors
+                                                                          .transparent,
+                                                                  borderRadius:
+                                                                      BorderRadius
+                                                                          .circular(
+                                                                              8),
+                                                                  border: Border
+                                                                      .all(
+                                                                    color: _tipoBusqueda ==
+                                                                            'nombre'
+                                                                        ? primaryTeal
+                                                                        : primaryTeal
+                                                                            .withOpacity(0.3),
+                                                                    width: 1.5,
+                                                                  ),
+                                                                ),
+                                                                child: Row(
+                                                                  mainAxisAlignment:
+                                                                      MainAxisAlignment
+                                                                          .center,
+                                                                  children: [
+                                                                    Icon(
+                                                                      Icons
+                                                                          .person_search_rounded,
+                                                                      color: _tipoBusqueda ==
+                                                                              'nombre'
+                                                                          ? Colors
+                                                                              .white
+                                                                          : primaryTeal,
+                                                                      size: 16,
+                                                                    ),
+                                                                    SizedBox(
+                                                                        width:
+                                                                            6),
+                                                                    Flexible(
+                                                                      child:
+                                                                          Text(
+                                                                        'Nombre',
+                                                                        style:
+                                                                            TextStyle(
+                                                                          fontSize:
+                                                                              12,
+                                                                          fontWeight:
+                                                                              FontWeight.w600,
+                                                                          color: _tipoBusqueda == 'nombre'
+                                                                              ? Colors.white
+                                                                              : primaryTeal,
+                                                                        ),
+                                                                        overflow:
+                                                                            TextOverflow.ellipsis,
+                                                                      ),
+                                                                    ),
+                                                                  ],
+                                                                ),
+                                                              ),
+                                                            ),
+                                                          ),
+                                                          SizedBox(width: 8),
+                                                          Expanded(
+                                                            child: InkWell(
+                                                              onTap: () {
+                                                                setState(() {
+                                                                  _tipoBusqueda =
+                                                                      'estado';
+                                                                  _searchController
+                                                                      .clear();
+                                                                  _searchTerm =
+                                                                      '';
+                                                                });
+                                                              },
+                                                              borderRadius:
+                                                                  BorderRadius
+                                                                      .circular(
+                                                                          8),
+                                                              child: Container(
+                                                                padding: EdgeInsets
+                                                                    .symmetric(
+                                                                  horizontal:
+                                                                      12,
+                                                                  vertical: 8,
+                                                                ),
+                                                                decoration:
+                                                                    BoxDecoration(
+                                                                  color: _tipoBusqueda ==
+                                                                          'estado'
+                                                                      ? secondaryOrange
+                                                                      : Colors
+                                                                          .transparent,
+                                                                  borderRadius:
+                                                                      BorderRadius
+                                                                          .circular(
+                                                                              8),
+                                                                  border: Border
+                                                                      .all(
+                                                                    color: _tipoBusqueda ==
+                                                                            'estado'
+                                                                        ? secondaryOrange
+                                                                        : secondaryOrange
+                                                                            .withOpacity(0.3),
+                                                                    width: 1.5,
+                                                                  ),
+                                                                ),
+                                                                child: Row(
+                                                                  mainAxisAlignment:
+                                                                      MainAxisAlignment
+                                                                          .center,
+                                                                  children: [
+                                                                    Icon(
+                                                                      Icons
+                                                                          .track_changes_rounded,
+                                                                      color: _tipoBusqueda ==
+                                                                              'estado'
+                                                                          ? Colors
+                                                                              .white
+                                                                          : secondaryOrange,
+                                                                      size: 16,
+                                                                    ),
+                                                                    SizedBox(
+                                                                        width:
+                                                                            6),
+                                                                    Flexible(
+                                                                      child:
+                                                                          Text(
+                                                                        'Estado',
+                                                                        style:
+                                                                            TextStyle(
+                                                                          fontSize:
+                                                                              12,
+                                                                          fontWeight:
+                                                                              FontWeight.w600,
+                                                                          color: _tipoBusqueda == 'estado'
+                                                                              ? Colors.white
+                                                                              : secondaryOrange,
+                                                                        ),
+                                                                        overflow:
+                                                                            TextOverflow.ellipsis,
+                                                                      ),
+                                                                    ),
+                                                                  ],
+                                                                ),
+                                                              ),
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                              SizedBox(height: 8),
+
+                                              // Campo de búsqueda
+                                              AnimatedSwitcher(
+                                                duration:
+                                                    Duration(milliseconds: 300),
+                                                transitionBuilder:
+                                                    (Widget child,
+                                                        Animation<double>
+                                                            animation) {
+                                                  return FadeTransition(
+                                                    opacity: animation,
+                                                    child: SlideTransition(
+                                                      position: Tween<Offset>(
+                                                        begin: Offset(0.0, 0.2),
+                                                        end: Offset.zero,
+                                                      ).animate(animation),
+                                                      child: child,
+                                                    ),
+                                                  );
+                                                },
+                                                child: Container(
+                                                  key: ValueKey<String>(
+                                                      _tipoBusqueda),
+                                                  decoration: BoxDecoration(
+                                                    color: backgroundGrey
+                                                        .withOpacity(0.5),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            12),
+                                                    border: Border.all(
+                                                      color: (_tipoBusqueda ==
+                                                                  'nombre'
+                                                              ? primaryTeal
+                                                              : secondaryOrange)
+                                                          .withOpacity(0.3),
+                                                      width: 1.5,
+                                                    ),
+                                                  ),
+                                                  child: TextField(
+                                                    controller: _tipoBusqueda ==
+                                                            'nombre'
+                                                        ? _searchController
+                                                        : _searchEstadoController,
+                                                    focusNode: _tipoBusqueda ==
+                                                            'nombre'
+                                                        ? _searchFocusNode
+                                                        : _searchEstadoFocusNode,
+                                                    textInputAction:
+                                                        TextInputAction.search,
+                                                    enableInteractiveSelection:
+                                                        true,
+                                                    style: TextStyle(
+                                                      fontSize: 15,
+                                                      color: Colors.black87,
+                                                    ),
+                                                    decoration: InputDecoration(
+                                                      hintText: _tipoBusqueda ==
+                                                              'nombre'
+                                                          ? 'Buscar por nombre o apellido...'
+                                                          : 'Buscar por estado (ej: Discipulado 1)...',
+                                                      hintStyle: TextStyle(
+                                                        color: Colors.grey[400],
+                                                        fontSize: 14,
+                                                      ),
+                                                      prefixIcon: Container(
+                                                        margin:
+                                                            EdgeInsets.all(8),
+                                                        padding:
+                                                            EdgeInsets.all(6),
+                                                        decoration:
+                                                            BoxDecoration(
+                                                          color: (_tipoBusqueda ==
+                                                                      'nombre'
+                                                                  ? primaryTeal
+                                                                  : secondaryOrange)
+                                                              .withOpacity(0.1),
+                                                          borderRadius:
+                                                              BorderRadius
+                                                                  .circular(8),
+                                                        ),
+                                                        child: Icon(
+                                                          _tipoBusqueda == 'nombre'
+                                                              ? Icons
+                                                                  .search_rounded
+                                                              : Icons
+                                                                  .track_changes_rounded,
+                                                          color: _tipoBusqueda ==
+                                                                  'nombre'
+                                                              ? primaryTeal
+                                                              : secondaryOrange,
+                                                          size: 20,
+                                                        ),
+                                                      ),
+                                                      suffixIcon: (_tipoBusqueda ==
+                                                                  'nombre'
+                                                              ? _searchController
+                                                                  .text
+                                                                  .isNotEmpty
+                                                              : _searchEstadoController
+                                                                  .text
+                                                                  .isNotEmpty)
+                                                          ? IconButton(
+                                                              icon: Icon(
+                                                                Icons
+                                                                    .close_rounded,
+                                                                color:
+                                                                    accentGrey,
+                                                                size: 20,
+                                                              ),
+                                                              onPressed: () {
+                                                                setState(() {
+                                                                  if (_tipoBusqueda ==
+                                                                      'nombre') {
+                                                                    _searchController
+                                                                        .clear();
+                                                                    _searchTerm =
+                                                                        '';
+                                                                    _searchFocusNode
+                                                                        .requestFocus();
+                                                                  } else {
+                                                                    _searchEstadoController
+                                                                        .clear();
+                                                                    _searchEstadoTerm =
+                                                                        '';
+                                                                    _searchEstadoFocusNode
+                                                                        .requestFocus();
+                                                                  }
+                                                                });
+                                                              },
+                                                            )
+                                                          : null,
+                                                      border: InputBorder.none,
+                                                      contentPadding:
+                                                          EdgeInsets.symmetric(
+                                                        vertical: 12,
+                                                        horizontal: 4,
+                                                      ),
+                                                      isDense: true,
+                                                    ),
+                                                    onSubmitted: (value) {
+                                                      if (_tipoBusqueda ==
+                                                          'nombre') {
+                                                        _searchFocusNode
+                                                            .unfocus();
+                                                      } else {
+                                                        _searchEstadoFocusNode
+                                                            .unfocus();
+                                                      }
+                                                    },
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+
+                                        // 📅 FILTROS DE FECHA
+                                        Padding(
+                                          padding:
+                                              EdgeInsets.fromLTRB(12, 0, 12, 8),
+                                          child: LayoutBuilder(
+                                            builder: (context, constraints) {
+                                              final isSmallScreen =
+                                                  constraints.maxWidth < 600;
+
+                                              return Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Row(
+                                                    children: [
+                                                      Icon(
+                                                        Icons
+                                                            .filter_list_rounded,
+                                                        color: primaryTeal,
+                                                        size: 18,
+                                                      ),
+                                                      SizedBox(width: 6),
+                                                      Text(
+                                                        'Filtrar por fecha de asignación',
+                                                        style: TextStyle(
+                                                          fontWeight:
+                                                              FontWeight.w600,
+                                                          color: primaryTeal,
+                                                          fontSize: 13,
+                                                          letterSpacing: 0.2,
+                                                        ),
+                                                      ),
+                                                      Spacer(),
+                                                      if (_anioSeleccionado !=
+                                                              null ||
+                                                          _mesSeleccionado !=
+                                                              null)
+                                                        InkWell(
+                                                          onTap:
+                                                              _limpiarFiltros,
+                                                          borderRadius:
+                                                              BorderRadius
+                                                                  .circular(6),
+                                                          child: Container(
+                                                            padding: EdgeInsets
+                                                                .symmetric(
+                                                              horizontal: 8,
+                                                              vertical: 4,
+                                                            ),
+                                                            decoration:
+                                                                BoxDecoration(
+                                                              color: secondaryOrange
+                                                                  .withOpacity(
+                                                                      0.1),
+                                                              borderRadius:
+                                                                  BorderRadius
+                                                                      .circular(
+                                                                          6),
+                                                            ),
+                                                            child: Row(
+                                                              mainAxisSize:
+                                                                  MainAxisSize
+                                                                      .min,
+                                                              children: [
+                                                                Icon(
+                                                                  Icons
+                                                                      .clear_rounded,
+                                                                  color:
+                                                                      secondaryOrange,
+                                                                  size: 14,
+                                                                ),
+                                                                SizedBox(
+                                                                    width: 4),
+                                                                Text(
+                                                                  'Limpiar',
+                                                                  style:
+                                                                      TextStyle(
+                                                                    color:
+                                                                        secondaryOrange,
+                                                                    fontSize:
+                                                                        11,
+                                                                    fontWeight:
+                                                                        FontWeight
+                                                                            .w600,
+                                                                  ),
+                                                                ),
+                                                              ],
+                                                            ),
+                                                          ),
+                                                        ),
+                                                    ],
+                                                  ),
+                                                  SizedBox(height: 10),
+                                                  isSmallScreen
+                                                      ? Column(
+                                                          children: [
+                                                            _buildDropdownFiltroCompacto(
                                                               label: 'Año',
                                                               icon: Icons
                                                                   .calendar_today_rounded,
@@ -7713,11 +7649,8 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
                                                               backgroundGrey:
                                                                   backgroundGrey,
                                                             ),
-                                                          ),
-                                                          SizedBox(width: 10),
-                                                          Expanded(
-                                                            child:
-                                                                _buildDropdownFiltroCompacto(
+                                                            SizedBox(height: 8),
+                                                            _buildDropdownFiltroCompacto(
                                                               label: 'Mes',
                                                               icon: Icons
                                                                   .event_rounded,
@@ -7761,81 +7694,164 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
                                                               backgroundGrey:
                                                                   backgroundGrey,
                                                             ),
-                                                          ),
-                                                        ],
-                                                      ),
-                                              ],
-                                            );
-                                          },
-                                        ),
-                                      ),
-
-                                      // 📥 BOTÓN DE DESCARGAR EXCEL
-                                      Padding(
-                                        padding:
-                                            EdgeInsets.fromLTRB(12, 4, 12, 12),
-                                        child: SizedBox(
-                                          width: double.infinity,
-                                          child: ElevatedButton.icon(
-                                            style: ElevatedButton.styleFrom(
-                                              backgroundColor: secondaryOrange,
-                                              foregroundColor: Colors.white,
-                                              padding: EdgeInsets.symmetric(
-                                                horizontal: 16,
-                                                vertical: 14,
-                                              ),
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(12),
-                                              ),
-                                              elevation: 2,
-                                            ),
-                                            icon: Icon(Icons.download_rounded,
-                                                size: 20),
-                                            label: Text(
-                                              'Descargar Excel',
-                                              style: TextStyle(
-                                                fontSize: 15,
-                                                fontWeight: FontWeight.w600,
-                                                letterSpacing: 0.3,
-                                              ),
-                                            ),
-                                            onPressed: () {
-                                              final tribusState = context
-                                                  .findAncestorStateOfType<
-                                                      _TribusScreenState>();
-                                              if (tribusState != null) {
-                                                String? estadoActivo;
-                                                if (_tipoBusqueda == 'estado' &&
-                                                    _searchEstadoTerm
-                                                        .isNotEmpty) {
-                                                  estadoActivo =
-                                                      _searchEstadoTerm;
-                                                }
-                                                tribusState.descargarExcel(
-                                                  context,
-                                                  widget.tribuId,
-                                                  widget.tribuNombre,
-                                                  anioFiltro: _anioSeleccionado,
-                                                  mesFiltro: _mesSeleccionado,
-                                                  estadoFiltro: estadoActivo,
-                                                );
-                                              } else {
-                                                ScaffoldMessenger.of(context)
-                                                    .showSnackBar(
-                                                  SnackBar(
-                                                    content: Text(
-                                                      'Error: No se pudo acceder al contexto de descarga',
-                                                    ),
-                                                    backgroundColor: Colors.red,
-                                                  ),
-                                                );
-                                              }
+                                                          ],
+                                                        )
+                                                      : Row(
+                                                          children: [
+                                                            Expanded(
+                                                              child:
+                                                                  _buildDropdownFiltroCompacto(
+                                                                label: 'Año',
+                                                                icon: Icons
+                                                                    .calendar_today_rounded,
+                                                                value:
+                                                                    _anioSeleccionado,
+                                                                items: [
+                                                                  'Todos',
+                                                                  ..._aniosDisponibles
+                                                                ],
+                                                                onChanged:
+                                                                    (value) {
+                                                                  setState(() {
+                                                                    _anioSeleccionado =
+                                                                        value;
+                                                                  });
+                                                                },
+                                                                primaryTeal:
+                                                                    primaryTeal,
+                                                                accentGrey:
+                                                                    accentGrey,
+                                                                backgroundGrey:
+                                                                    backgroundGrey,
+                                                              ),
+                                                            ),
+                                                            SizedBox(width: 10),
+                                                            Expanded(
+                                                              child:
+                                                                  _buildDropdownFiltroCompacto(
+                                                                label: 'Mes',
+                                                                icon: Icons
+                                                                    .event_rounded,
+                                                                value:
+                                                                    _mesSeleccionado,
+                                                                items: [
+                                                                  'Todos',
+                                                                  '1',
+                                                                  '2',
+                                                                  '3',
+                                                                  '4',
+                                                                  '5',
+                                                                  '6',
+                                                                  '7',
+                                                                  '8',
+                                                                  '9',
+                                                                  '10',
+                                                                  '11',
+                                                                  '12'
+                                                                ],
+                                                                itemBuilder:
+                                                                    (value) {
+                                                                  if (value ==
+                                                                      'Todos')
+                                                                    return 'Todos';
+                                                                  return _obtenerNombreMes(
+                                                                      int.parse(
+                                                                          value));
+                                                                },
+                                                                onChanged:
+                                                                    (value) {
+                                                                  setState(() {
+                                                                    _mesSeleccionado =
+                                                                        value;
+                                                                  });
+                                                                },
+                                                                primaryTeal:
+                                                                    primaryTeal,
+                                                                accentGrey:
+                                                                    accentGrey,
+                                                                backgroundGrey:
+                                                                    backgroundGrey,
+                                                              ),
+                                                            ),
+                                                          ],
+                                                        ),
+                                                ],
+                                              );
                                             },
                                           ),
                                         ),
-                                      ),
-                                    ],
+
+                                        // 📥 BOTÓN DE DESCARGAR EXCEL
+                                        Padding(
+                                          padding: EdgeInsets.fromLTRB(
+                                              12, 4, 12, 12),
+                                          child: SizedBox(
+                                            width: double.infinity,
+                                            child: ElevatedButton.icon(
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor:
+                                                    secondaryOrange,
+                                                foregroundColor: Colors.white,
+                                                padding: EdgeInsets.symmetric(
+                                                  horizontal: 16,
+                                                  vertical: 14,
+                                                ),
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(12),
+                                                ),
+                                                elevation: 2,
+                                              ),
+                                              icon: Icon(Icons.download_rounded,
+                                                  size: 20),
+                                              label: Text(
+                                                'Descargar Excel',
+                                                style: TextStyle(
+                                                  fontSize: 15,
+                                                  fontWeight: FontWeight.w600,
+                                                  letterSpacing: 0.3,
+                                                ),
+                                              ),
+                                              onPressed: () {
+                                                final tribusState = context
+                                                    .findAncestorStateOfType<
+                                                        _TribusScreenState>();
+                                                if (tribusState != null) {
+                                                  String? estadoActivo;
+                                                  if (_tipoBusqueda ==
+                                                          'estado' &&
+                                                      _searchEstadoTerm
+                                                          .isNotEmpty) {
+                                                    estadoActivo =
+                                                        _searchEstadoTerm;
+                                                  }
+                                                  tribusState.descargarExcel(
+                                                    context,
+                                                    widget.tribuId,
+                                                    widget.tribuNombre,
+                                                    anioFiltro:
+                                                        _anioSeleccionado,
+                                                    mesFiltro: _mesSeleccionado,
+                                                    estadoFiltro: estadoActivo,
+                                                  );
+                                                } else {
+                                                  ScaffoldMessenger.of(context)
+                                                      .showSnackBar(
+                                                    SnackBar(
+                                                      content: Text(
+                                                        'Error: No se pudo acceder al contexto de descarga',
+                                                      ),
+                                                      backgroundColor:
+                                                          Colors.red,
+                                                    ),
+                                                  );
+                                                }
+                                              },
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 )
                               : SizedBox.shrink(),
@@ -7843,7 +7859,7 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
                       ],
                     ),
                   ),
-                  // 📋 CONTENIDO PRINCIPAL - LISTA DE REGISTROS
+// 📋 CONTENIDO PRINCIPAL - LISTA DE REGISTROS
                   Expanded(
                     child: StreamBuilder<QuerySnapshot>(
                       stream: FirebaseFirestore.instance
