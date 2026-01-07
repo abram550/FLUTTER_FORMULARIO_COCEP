@@ -7848,24 +7848,23 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
             right: 16,
             bottom: 16,
             child: Material(
-              elevation: 8,
-              shadowColor: secondaryOrange.withOpacity(0.4),
-              borderRadius: BorderRadius.circular(16),
+              elevation: 6,
+              shadowColor: secondaryOrange.withOpacity(0.3),
+              borderRadius: BorderRadius.circular(14),
               child: InkWell(
                 onTap: () {
-                  // Obtener el contexto del TribusScreen para llamar _showRegistroDialog
                   final tribusState =
                       context.findAncestorStateOfType<_TribusScreenState>();
                   if (tribusState != null) {
                     tribusState._showRegistroDialog(context);
                   }
                 },
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(14),
                 child: Container(
                   padding: EdgeInsets.symmetric(
                     horizontal:
-                        MediaQuery.of(context).size.width < 360 ? 16 : 20,
-                    vertical: 14,
+                        MediaQuery.of(context).size.width < 360 ? 12 : 16,
+                    vertical: 12,
                   ),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
@@ -7876,49 +7875,32 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(14),
                     boxShadow: [
                       BoxShadow(
-                        color: secondaryOrange.withOpacity(0.3),
-                        blurRadius: 12,
-                        offset: Offset(0, 4),
+                        color: secondaryOrange.withOpacity(0.25),
+                        blurRadius: 8,
+                        offset: Offset(0, 3),
                       ),
                     ],
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Container(
-                        padding: EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.25),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Icon(
-                          Icons.person_add_alt_1_rounded,
-                          color: Colors.white,
-                          size:
-                              MediaQuery.of(context).size.width < 360 ? 20 : 24,
-                        ),
+                      Icon(
+                        Icons.person_add_alt_1_rounded,
+                        color: Colors.white,
+                        size: 20,
                       ),
                       if (MediaQuery.of(context).size.width >= 360) ...[
-                        SizedBox(width: 12),
+                        SizedBox(width: 10),
                         Text(
-                          'Registrar Miembro',
+                          'Registrar',
                           style: GoogleFonts.poppins(
                             color: Colors.white,
-                            fontSize: MediaQuery.of(context).size.width < 400
-                                ? 14
-                                : 16,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.5,
-                            shadows: [
-                              Shadow(
-                                offset: Offset(0, 1),
-                                blurRadius: 2,
-                                color: Colors.black.withOpacity(0.25),
-                              ),
-                            ],
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 0.3,
                           ),
                         ),
                       ],
