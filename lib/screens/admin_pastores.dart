@@ -1830,167 +1830,52 @@ class _AdminPastoresState extends State<AdminPastores>
     }
   }
 
-
-Widget _buildTribusTab() {
-  return SingleChildScrollView(
-    padding: const EdgeInsets.all(16.0),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (!_mostrarFormularioTribu)
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  const Color(0xFF1B998B).withOpacity(0.1),
-                  const Color(0xFF1B998B).withOpacity(0.05),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+  Widget _buildTribusTab() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (!_mostrarFormularioTribu)
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    const Color(0xFF1B998B).withOpacity(0.1),
+                    const Color(0xFF1B998B).withOpacity(0.05),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(15),
+                border: Border.all(
+                  color: const Color(0xFF1B998B).withOpacity(0.2),
+                  width: 1,
+                ),
               ),
-              borderRadius: BorderRadius.circular(15),
-              border: Border.all(
-                color: const Color(0xFF1B998B).withOpacity(0.2),
-                width: 1,
-              ),
-            ),
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                bool isSmallScreen = constraints.maxWidth < 600;
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  bool isSmallScreen = constraints.maxWidth < 600;
 
-                return isSmallScreen
-                    ? Column(
-                        children: [
-                          _buildActionButton(
-                            onPressed: () =>
-                                setState(() => _mostrarFormularioTribu = true),
-                            icon: Icons.add_circle_outline,
-                            label: 'Crear Nueva Tribu',
-                            color: const Color(0xFF1B998B),
-                            isFullWidth: true,
-                          ),
-                          const SizedBox(height: 12),
-
-                          // ⚠️ BOTÓN TEMPORAL DE DIAGNÓSTICO - BORRAR DESPUÉS
-                          Container(
-                            width: double.infinity,
-                            child: ElevatedButton.icon(
-                              onPressed: () async {
-                                // Obtener ID de cualquier tribu para diagnosticar
-                                final tribusSnapshot = await _firestore
-                                    .collection('tribus')
-                                    .limit(1)
-                                    .get();
-                                if (tribusSnapshot.docs.isNotEmpty) {
-                                  await _diagnosticarEventos(
-                                      tribusSnapshot.docs.first.id);
-                                  _mostrarSnackBar(
-                                      'Revisa la consola del navegador (F12)',
-                                      isSuccess: true);
-                                } else {
-                                  _mostrarSnackBar(
-                                      'No hay tribus para diagnosticar',
-                                      isSuccess: false);
-                                }
-                              },
-                              icon: Icon(Icons.bug_report,
-                                  color: Colors.white),
-                              label: Text(
-                                '🔍 DIAGNÓSTICO DE EVENTOS',
-                                style: TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold),
-                              ),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.purple,
-                                padding: EdgeInsets.symmetric(vertical: 16),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                            ),
-                          ),
-
-                          const SizedBox(height: 12),
-                          _buildActionButton(
-                            onPressed: _mostrarDialogoSeleccionTribus,
-                            icon: Icons.merge_type,
-                            label: 'Unir Tribus',
-                            color: const Color(0xFF1B998B),
-                            isFullWidth: true,
-                            gradient: LinearGradient(
-                              colors: [
-                                const Color(0xFF1B998B),
-                                const Color(0xFF159B8C),
-                              ],
-                            ),
-                          ),
-                        ],
-                      )
-                    : Row(
-                        children: [
-                          Expanded(
-                            child: _buildActionButton(
+                  return isSmallScreen
+                      ? Column(
+                          children: [
+                            _buildActionButton(
                               onPressed: () => setState(
                                   () => _mostrarFormularioTribu = true),
                               icon: Icons.add_circle_outline,
                               label: 'Crear Nueva Tribu',
                               color: const Color(0xFF1B998B),
+                              isFullWidth: true,
                             ),
-                          ),
-
-                          const SizedBox(width: 16),
-
-                          // ⚠️ BOTÓN TEMPORAL DE DIAGNÓSTICO - BORRAR DESPUÉS
-                          Expanded(
-                            child: Container(
-                              width: double.infinity,
-                              child: ElevatedButton.icon(
-                                onPressed: () async {
-                                  // Obtener ID de cualquier tribu para diagnosticar
-                                  final tribusSnapshot = await _firestore
-                                      .collection('tribus')
-                                      .limit(1)
-                                      .get();
-                                  if (tribusSnapshot.docs.isNotEmpty) {
-                                    await _diagnosticarEventos(
-                                        tribusSnapshot.docs.first.id);
-                                    _mostrarSnackBar(
-                                        'Revisa la consola del navegador (F12)',
-                                        isSuccess: true);
-                                  } else {
-                                    _mostrarSnackBar(
-                                        'No hay tribus para diagnosticar',
-                                        isSuccess: false);
-                                  }
-                                },
-                                icon: Icon(Icons.bug_report,
-                                    color: Colors.white),
-                                label: Text(
-                                  '🔍 DIAGNÓSTICO DE EVENTOS',
-                                  style: TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold),
-                                ),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.purple,
-                                  padding: EdgeInsets.symmetric(vertical: 16),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: _buildActionButton(
+                            const SizedBox(height: 12),
+                            _buildActionButton(
                               onPressed: _mostrarDialogoSeleccionTribus,
                               icon: Icons.merge_type,
                               label: 'Unir Tribus',
                               color: const Color(0xFF1B998B),
+                              isFullWidth: true,
                               gradient: LinearGradient(
                                 colors: [
                                   const Color(0xFF1B998B),
@@ -1998,23 +1883,49 @@ Widget _buildTribusTab() {
                                 ],
                               ),
                             ),
-                          ),
-                        ],
-                      );
-              },
+                          ],
+                        )
+                      : Row(
+                          children: [
+                            Expanded(
+                              child: _buildActionButton(
+                                onPressed: () => setState(
+                                    () => _mostrarFormularioTribu = true),
+                                icon: Icons.add_circle_outline,
+                                label: 'Crear Nueva Tribu',
+                                color: const Color(0xFF1B998B),
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: _buildActionButton(
+                                onPressed: _mostrarDialogoSeleccionTribus,
+                                icon: Icons.merge_type,
+                                label: 'Unir Tribus',
+                                color: const Color(0xFF1B998B),
+                                gradient: LinearGradient(
+                                  colors: [
+                                    const Color(0xFF1B998B),
+                                    const Color(0xFF159B8C),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        );
+                },
+              ),
             ),
-          ),
-        if (_mostrarFormularioTribu) ...[
-          _buildFormularioTribu(),
+          if (_mostrarFormularioTribu) ...[
+            _buildFormularioTribu(),
+            const SizedBox(height: 20),
+          ],
           const SizedBox(height: 20),
+          _buildListaTribus(),
         ],
-        const SizedBox(height: 20),
-        _buildListaTribus(),
-      ],
-    ),
-  );
-}
-
+      ),
+    );
+  }
 
   Widget _buildActionButton({
     required VoidCallback onPressed,
@@ -4467,304 +4378,193 @@ Widget _buildTribusTab() {
 
 
 
-
-
-  Future<void> _unirTribus(String tribu1Id, String tribu2Id) async {
-    try {
-      print('🔄 Iniciando unión de tribus...');
-      print('   Tribu destino (1): $tribu1Id');
-      print('   Tribu origen (2): $tribu2Id');
-
-      // Verificar que ambas tribus existan
-      final tribu1Doc =
-          await _firestore.collection('tribus').doc(tribu1Id).get();
-      final tribu2Doc =
-          await _firestore.collection('tribus').doc(tribu2Id).get();
-
-      if (!tribu1Doc.exists || !tribu2Doc.exists) {
-        throw Exception('Una o ambas tribus no existen');
-      }
-
-      print('✅ Tribus verificadas');
-
-      // =========================================================================
-      // TRANSFERIR EVENTOS (con logs detallados)
-      // =========================================================================
-      print('\n📅 Buscando eventos de tribu2...');
-
-      final eventosSnapshot = await _firestore
-          .collection('eventos')
-          .where('tribuId', isEqualTo: tribu2Id)
-          .get();
-
-      print('   Eventos encontrados: ${eventosSnapshot.docs.length}');
-
-      if (eventosSnapshot.docs.isNotEmpty) {
-        print('   Transfiriendo eventos...');
-
-        for (var eventoDoc in eventosSnapshot.docs) {
-          try {
-            final eventoData = eventoDoc.data();
-            print('   - Evento: ${eventoData['nombre']} (ID: ${eventoDoc.id})');
-
-            await eventoDoc.reference.update({
-              'tribuId': tribu1Id,
-              'tribuOriginal': tribu2Id,
-              'fechaTransferencia': FieldValue.serverTimestamp(),
-            });
-
-            print('     ✅ Transferido correctamente');
-          } catch (e) {
-            print('     ❌ Error al transferir evento ${eventoDoc.id}: $e');
-            // Continuar con los demás eventos
-          }
-        }
-      } else {
-        print('   ℹ️ No hay eventos para transferir');
-      }
-
-      // =========================================================================
-      // TRANSFERIR COORDINADORES
-      // =========================================================================
-      print('\n👥 Buscando coordinadores de tribu2...');
-
-      final coordinadoresSnapshot = await _firestore
-          .collection('coordinadores')
-          .where('tribuId', isEqualTo: tribu2Id)
-          .get();
-
-      print(
-          '   Coordinadores encontrados: ${coordinadoresSnapshot.docs.length}');
-
-      for (var doc in coordinadoresSnapshot.docs) {
-        try {
-          await doc.reference.update({
-            'tribuId': tribu1Id,
-            'tribuOriginal': tribu2Id,
-            'fechaTransferencia': FieldValue.serverTimestamp(),
-          });
-          print('   ✅ Coordinador ${doc.id} transferido');
-        } catch (e) {
-          print('   ❌ Error al transferir coordinador ${doc.id}: $e');
-        }
-      }
-
-      // =========================================================================
-      // TRANSFERIR TIMOTEOS
-      // =========================================================================
-      print('\n🎓 Buscando timoteos de tribu2...');
-
-      final timoteosSnapshot = await _firestore
-          .collection('timoteos')
-          .where('tribuId', isEqualTo: tribu2Id)
-          .get();
-
-      print('   Timoteos encontrados: ${timoteosSnapshot.docs.length}');
-
-      for (var doc in timoteosSnapshot.docs) {
-        try {
-          await doc.reference.update({
-            'tribuId': tribu1Id,
-            'tribuOriginal': tribu2Id,
-            'fechaTransferencia': FieldValue.serverTimestamp(),
-          });
-          print('   ✅ Timoteo ${doc.id} transferido');
-        } catch (e) {
-          print('   ❌ Error al transferir timoteo ${doc.id}: $e');
-        }
-      }
-
-      // =========================================================================
-      // TRANSFERIR ASISTENCIAS
-      // =========================================================================
-      print('\n📋 Buscando asistencias de tribu2...');
-
-      final asistenciasSnapshot = await _firestore
-          .collection('asistencias')
-          .where('tribuId', isEqualTo: tribu2Id)
-          .get();
-
-      print('   Asistencias encontradas: ${asistenciasSnapshot.docs.length}');
-
-      for (var doc in asistenciasSnapshot.docs) {
-        try {
-          await doc.reference.update({
-            'tribuId': tribu1Id,
-            'tribuOriginal': tribu2Id,
-            'fechaTransferencia': FieldValue.serverTimestamp(),
-          });
-          print('   ✅ Asistencia ${doc.id} transferida');
-        } catch (e) {
-          print('   ❌ Error al transferir asistencia ${doc.id}: $e');
-        }
-      }
-
-      // =========================================================================
-      // TRANSFERIR REGISTROS (campo: tribuAsignada)
-      // =========================================================================
-      print('\n📝 Buscando registros de tribu2...');
-
-      final registrosSnapshot = await _firestore
-          .collection('registros')
-          .where('tribuAsignada', isEqualTo: tribu2Id)
-          .get();
-
-      print('   Registros encontrados: ${registrosSnapshot.docs.length}');
-
-      for (var doc in registrosSnapshot.docs) {
-        try {
-          await doc.reference.update({
-            'tribuAsignada': tribu1Id,
-            'tribuOriginal': tribu2Id,
-            'fechaTransferencia': FieldValue.serverTimestamp(),
-          });
-          print('   ✅ Registro ${doc.id} transferido');
-        } catch (e) {
-          print('   ❌ Error al transferir registro ${doc.id}: $e');
-        }
-      }
-
-      // =========================================================================
-      // ELIMINAR USUARIO DE TRIBU2
-      // =========================================================================
-      print('\n🗑️ Eliminando usuario de tribu2...');
-
-      final usuarioTribu2Snapshot = await _firestore
-          .collection('usuarios')
-          .where('tribuId', isEqualTo: tribu2Id)
-          .limit(1)
-          .get();
-
-      if (usuarioTribu2Snapshot.docs.isNotEmpty) {
-        await usuarioTribu2Snapshot.docs.first.reference.delete();
-        print('   ✅ Usuario eliminado');
-      } else {
-        print('   ℹ️ No se encontró usuario para eliminar');
-      }
-
-      // =========================================================================
-      // ELIMINAR TRIBU2
-      // =========================================================================
-      print('\n🗑️ Eliminando tribu2...');
-      await tribu2Doc.reference.delete();
-      print('   ✅ Tribu eliminada');
-
-      // =========================================================================
-      // CREAR HISTORIAL (OPCIONAL)
-      // =========================================================================
-      try {
-        await _firestore.collection('historialUnionTribus').add({
-          'tribu1Id': tribu1Id,
-          'tribu2Id': tribu2Id,
-          'fechaUnion': FieldValue.serverTimestamp(),
-          'eventosTransferidos': eventosSnapshot.docs.length,
-          'registrosTransferidos': registrosSnapshot.docs.length,
-          'asistenciasTransferidas': asistenciasSnapshot.docs.length,
-        });
-        print('\n📊 Historial creado');
-      } catch (e) {
-        print('\n⚠️ Error al crear historial (no crítico): $e');
-      }
-
-      print('\n✅ ¡UNIÓN COMPLETADA EXITOSAMENTE!');
-      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-
-      _mostrarSnackBar('Las tribus se han unido exitosamente');
-    } catch (e, stackTrace) {
-      print('\n❌ ERROR CRÍTICO EN UNIÓN DE TRIBUS');
-      print('Error: $e');
-      print('Stack trace: $stackTrace');
-      _mostrarSnackBar('Error al unir las tribus: $e');
-    }
-  }
-
-
-
-
-// ⚠️ FUNCIÓN TEMPORAL DE DIAGNÓSTICO - BORRAR DESPUÉS
-Future<void> _diagnosticarEventos(String tribuId) async {
-  print('\n🔍 ═════════════════════════════════════════════════════════');
-  print('   DIAGNÓSTICO DE EVENTOS PARA TRIBU: $tribuId');
-  print('═════════════════════════════════════════════════════════\n');
-
+Future<void> _unirTribus(String tribu1Id, String tribu2Id) async {
   try {
-    // 1. Buscar TODOS los eventos
-    final todosEventos = await _firestore.collection('eventos').get();
-    print('📊 Total de eventos en la base de datos: ${todosEventos.docs.length}');
+    print('\n🔄 ═══════════════════════════════════════════════════════');
+    print('   INICIANDO UNIÓN DE TRIBUS');
+    print('═══════════════════════════════════════════════════════\n');
+    print('📍 Tribu DESTINO (1): $tribu1Id');
+    print('📍 Tribu ORIGEN (2): $tribu2Id\n');
 
-    if (todosEventos.docs.isEmpty) {
-      print('⚠️ No hay eventos en la base de datos');
-      return;
+    // =========================================================================
+    // PASO 1: Verificar que ambas tribus existan
+    // =========================================================================
+    print('🔍 Verificando existencia de tribus...');
+    
+    final tribu1Doc = await _firestore.collection('tribus').doc(tribu1Id).get();
+    final tribu2Doc = await _firestore.collection('tribus').doc(tribu2Id).get();
+
+    if (!tribu1Doc.exists) {
+      throw Exception('La tribu destino (ID: $tribu1Id) no existe');
+    }
+    if (!tribu2Doc.exists) {
+      throw Exception('La tribu origen (ID: $tribu2Id) no existe');
     }
 
-    // 2. Mostrar estructura de cada evento
-    print('\n📋 Estructura de eventos:\n');
-    for (var doc in todosEventos.docs) {
-      final data = doc.data();
-      print('─────────────────────────────────────────────────────────');
-      print('Evento ID: ${doc.id}');
-      print('Nombre: ${data['nombre']}');
-      print('Campos disponibles: ${data.keys.toList()}');
-      
-      // Buscar campos que contengan "tribu"
-      final camposTribu = data.keys.where((key) => 
-        key.toLowerCase().contains('tribu')
-      ).toList();
-      
-      print('Campos relacionados con tribu: $camposTribu');
-      
-      // Mostrar valores de esos campos
-      for (var campo in camposTribu) {
-        print('  → $campo: ${data[campo]}');
+    final tribu1Data = tribu1Doc.data()!;
+    final tribu2Data = tribu2Doc.data()!;
+
+    print('✅ Tribu 1: ${tribu1Data['nombre']}');
+    print('✅ Tribu 2: ${tribu2Data['nombre']}\n');
+
+    // =========================================================================
+    // PASO 2: Obtener TODOS los documentos a transferir
+    // =========================================================================
+    print('📊 Obteniendo documentos a transferir...\n');
+
+    final results = await Future.wait([
+      _firestore.collection('eventos').where('tribuId', isEqualTo: tribu2Id).get(),
+      _firestore.collection('coordinadores').where('tribuId', isEqualTo: tribu2Id).get(),
+      _firestore.collection('timoteos').where('tribuId', isEqualTo: tribu2Id).get(),
+      _firestore.collection('asistencias').where('tribuId', isEqualTo: tribu2Id).get(),
+      _firestore.collection('registros').where('tribuAsignada', isEqualTo: tribu2Id).get(),
+      _firestore.collection('usuarios').where('tribuId', isEqualTo: tribu2Id).limit(1).get(),
+    ]);
+
+    final eventosSnapshot = results[0];
+    final coordinadoresSnapshot = results[1];
+    final timoteosSnapshot = results[2];
+    final asistenciasSnapshot = results[3];
+    final registrosSnapshot = results[4];
+    final usuarioTribu2Snapshot = results[5];
+
+    print('📅 Eventos encontrados: ${eventosSnapshot.docs.length}');
+    print('👥 Coordinadores encontrados: ${coordinadoresSnapshot.docs.length}');
+    print('🎓 Timoteos encontrados: ${timoteosSnapshot.docs.length}');
+    print('📋 Asistencias encontradas: ${asistenciasSnapshot.docs.length}');
+    print('📝 Registros encontrados: ${registrosSnapshot.docs.length}');
+    print('👤 Usuario encontrado: ${usuarioTribu2Snapshot.docs.isEmpty ? "No" : "Sí"}\n');
+
+    // =========================================================================
+    // PASO 3: Transferir por lotes (máximo 500 operaciones por batch)
+    // =========================================================================
+    int totalOperaciones = 0;
+
+    // Helper para procesar en lotes
+    Future<void> procesarEnLotes(
+      List<QueryDocumentSnapshot> docs,
+      String coleccion,
+      String campoId,
+      String emoji,
+    ) async {
+      if (docs.isEmpty) {
+        print('$emoji $coleccion: No hay documentos para transferir');
+        return;
       }
-      print('');
-    }
 
-    // 3. Buscar eventos por diferentes variaciones de campo
-    print('\n🔎 Probando diferentes consultas:\n');
+      print('$emoji Transfiriendo ${docs.length} documento(s) de $coleccion...');
 
-    final consultaPorTribuId = await _firestore
-        .collection('eventos')
-        .where('tribuId', isEqualTo: tribuId)
-        .get();
-    print('✓ where("tribuId", isEqualTo: "$tribuId"): ${consultaPorTribuId.docs.length} eventos');
+      // Procesar en lotes de 400 (margen de seguridad vs límite de 500)
+      const batchSize = 400;
+      
+      for (int i = 0; i < docs.length; i += batchSize) {
+        final batch = _firestore.batch();
+        final end = (i + batchSize < docs.length) ? i + batchSize : docs.length;
+        final lote = docs.sublist(i, end);
 
-    final consultaPorTribuAsignada = await _firestore
-        .collection('eventos')
-        .where('tribuAsignada', isEqualTo: tribuId)
-        .get();
-    print('✓ where("tribuAsignada", isEqualTo: "$tribuId"): ${consultaPorTribuAsignada.docs.length} eventos');
+        for (var doc in lote) {
+          batch.update(doc.reference, {
+            campoId: tribu1Id,
+            'tribuOriginal': tribu2Id,
+            'fechaTransferencia': FieldValue.serverTimestamp(),
+          });
+          totalOperaciones++;
+        }
 
-    final consultaPorTribu = await _firestore
-        .collection('eventos')
-        .where('tribu', isEqualTo: tribuId)
-        .get();
-    print('✓ where("tribu", isEqualTo: "$tribuId"): ${consultaPorTribu.docs.length} eventos');
-
-    // 4. Mostrar eventos que sí pertenecen a esta tribu
-    print('\n✅ Eventos encontrados para esta tribu:');
-    final eventosEncontrados = consultaPorTribuId.docs.isNotEmpty 
-        ? consultaPorTribuId.docs 
-        : (consultaPorTribuAsignada.docs.isNotEmpty 
-            ? consultaPorTribuAsignada.docs 
-            : consultaPorTribu.docs);
-
-    if (eventosEncontrados.isEmpty) {
-      print('   ⚠️ NO se encontraron eventos para esta tribu');
-    } else {
-      for (var doc in eventosEncontrados) {
-        final data = doc.data() as Map<String, dynamic>;
-        print('   - ${data['nombre']} (ID: ${doc.id})');
+        await batch.commit();
+        print('   ✅ Lote ${(i ~/ batchSize) + 1} completado (${lote.length} docs)');
       }
     }
 
-    print('\n═════════════════════════════════════════════════════════\n');
+    // Transferir cada colección
+    await procesarEnLotes(eventosSnapshot.docs, 'eventos', 'tribuId', '📅');
+    await procesarEnLotes(coordinadoresSnapshot.docs, 'coordinadores', 'tribuId', '👥');
+    await procesarEnLotes(timoteosSnapshot.docs, 'timoteos', 'tribuId', '🎓');
+    await procesarEnLotes(asistenciasSnapshot.docs, 'asistencias', 'tribuId', '📋');
+    await procesarEnLotes(registrosSnapshot.docs, 'registros', 'tribuAsignada', '📝');
+
+    print('');
+
+    // =========================================================================
+    // PASO 4: Eliminar usuario de tribu2 y la tribu misma
+    // =========================================================================
+    final batchFinal = _firestore.batch();
+
+    if (usuarioTribu2Snapshot.docs.isNotEmpty) {
+      print('🗑️ Eliminando usuario de tribu2...');
+      batchFinal.delete(usuarioTribu2Snapshot.docs.first.reference);
+      print('   ✅ Usuario marcado para eliminación');
+    }
+
+    print('🗑️ Eliminando tribu2...');
+    batchFinal.delete(tribu2Doc.reference);
+    print('   ✅ Tribu marcada para eliminación\n');
+
+    await batchFinal.commit();
+    print('✅ Eliminaciones completadas\n');
+
+    // =========================================================================
+    // PASO 5: Crear historial (opcional, no crítico)
+    // =========================================================================
+    try {
+      await _firestore.collection('historialUnionTribus').add({
+        'tribu1Id': tribu1Id,
+        'tribu1Nombre': tribu1Data['nombre'],
+        'tribu2Id': tribu2Id,
+        'tribu2Nombre': tribu2Data['nombre'],
+        'fechaUnion': FieldValue.serverTimestamp(),
+        'eventosTransferidos': eventosSnapshot.docs.length,
+        'coordinadoresTransferidos': coordinadoresSnapshot.docs.length,
+        'timoteosTransferidos': timoteosSnapshot.docs.length,
+        'asistenciasTransferidas': asistenciasSnapshot.docs.length,
+        'registrosTransferidos': registrosSnapshot.docs.length,
+        'totalOperaciones': totalOperaciones,
+      });
+      print('📊 Historial de unión creado\n');
+    } catch (e) {
+      print('⚠️ No se pudo crear historial (no crítico): $e\n');
+    }
+
+    // =========================================================================
+    // RESUMEN FINAL
+    // =========================================================================
+    print('╔═══════════════════════════════════════════════════════╗');
+    print('║           ✅ UNIÓN COMPLETADA EXITOSAMENTE            ║');
+    print('╚═══════════════════════════════════════════════════════╝');
+    print('');
+    print('📊 Resumen de transferencias:');
+    print('   • Eventos: ${eventosSnapshot.docs.length}');
+    print('   • Coordinadores: ${coordinadoresSnapshot.docs.length}');
+    print('   • Timoteos: ${timoteosSnapshot.docs.length}');
+    print('   • Asistencias: ${asistenciasSnapshot.docs.length}');
+    print('   • Registros: ${registrosSnapshot.docs.length}');
+    print('   • Total operaciones: $totalOperaciones');
+    print('');
+    print('🎯 Tribu "${tribu2Data['nombre']}" fusionada con "${tribu1Data['nombre']}"');
+    print('═══════════════════════════════════════════════════════\n');
+
+    _mostrarSnackBar(
+      'Tribus unidas exitosamente. ${eventosSnapshot.docs.length} eventos transferidos.',
+      isSuccess: true,
+    );
 
   } catch (e, stackTrace) {
-    print('❌ Error en diagnóstico: $e');
-    print('Stack trace: $stackTrace');
+    print('\n╔═══════════════════════════════════════════════════════╗');
+    print('║              ❌ ERROR EN UNIÓN DE TRIBUS              ║');
+    print('╚═══════════════════════════════════════════════════════╝\n');
+    print('Error: $e');
+    print('\nStack trace:');
+    print(stackTrace);
+    print('\n═══════════════════════════════════════════════════════\n');
+    
+    _mostrarSnackBar(
+      'Error al unir las tribus: ${e.toString()}',
+      isSuccess: false,
+    );
   }
 }
+
+
 
 
 
