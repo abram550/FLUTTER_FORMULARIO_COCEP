@@ -1896,6 +1896,37 @@ class _AdminPastoresState extends State<AdminPastores>
                                 color: const Color(0xFF1B998B),
                               ),
                             ),
+
+const SizedBox(height: 12),
+// ⚠️ BOTÓN TEMPORAL DE DIAGNÓSTICO - BORRAR DESPUÉS
+Container(
+  width: double.infinity,
+  child: ElevatedButton.icon(
+    onPressed: () async {
+      // Obtener ID de cualquier tribu para diagnosticar
+      final tribusSnapshot = await _firestore.collection('tribus').limit(1).get();
+      if (tribusSnapshot.docs.isNotEmpty) {
+        await _diagnosticarEventos(tribusSnapshot.docs.first.id);
+        _mostrarSnackBar('Revisa la consola del navegador (F12)', isSuccess: true);
+      } else {
+        _mostrarSnackBar('No hay tribus para diagnosticar', isSuccess: false);
+      }
+    },
+    icon: Icon(Icons.bug_report, color: Colors.white),
+    label: Text(
+      '🔍 DIAGNÓSTICO DE EVENTOS',
+      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+    ),
+    style: ElevatedButton.styleFrom(
+      backgroundColor: Colors.purple,
+      padding: EdgeInsets.symmetric(vertical: 16),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+    ),
+  ),
+),
+                            
                             const SizedBox(width: 16),
                             Expanded(
                               child: _buildActionButton(
@@ -4376,6 +4407,10 @@ class _AdminPastoresState extends State<AdminPastores>
     );
   }
 
+
+
+
+
   Future<void> _unirTribus(String tribu1Id, String tribu2Id) async {
     try {
       print('🔄 Iniciando unión de tribus...');
@@ -4584,6 +4619,96 @@ class _AdminPastoresState extends State<AdminPastores>
       _mostrarSnackBar('Error al unir las tribus: $e');
     }
   }
+
+
+
+
+// ⚠️ FUNCIÓN TEMPORAL DE DIAGNÓSTICO - BORRAR DESPUÉS
+Future<void> _diagnosticarEventos(String tribuId) async {
+  print('\n🔍 ═════════════════════════════════════════════════════════');
+  print('   DIAGNÓSTICO DE EVENTOS PARA TRIBU: $tribuId');
+  print('═════════════════════════════════════════════════════════\n');
+
+  try {
+    // 1. Buscar TODOS los eventos
+    final todosEventos = await _firestore.collection('eventos').get();
+    print('📊 Total de eventos en la base de datos: ${todosEventos.docs.length}');
+
+    if (todosEventos.docs.isEmpty) {
+      print('⚠️ No hay eventos en la base de datos');
+      return;
+    }
+
+    // 2. Mostrar estructura de cada evento
+    print('\n📋 Estructura de eventos:\n');
+    for (var doc in todosEventos.docs) {
+      final data = doc.data();
+      print('─────────────────────────────────────────────────────────');
+      print('Evento ID: ${doc.id}');
+      print('Nombre: ${data['nombre']}');
+      print('Campos disponibles: ${data.keys.toList()}');
+      
+      // Buscar campos que contengan "tribu"
+      final camposTribu = data.keys.where((key) => 
+        key.toLowerCase().contains('tribu')
+      ).toList();
+      
+      print('Campos relacionados con tribu: $camposTribu');
+      
+      // Mostrar valores de esos campos
+      for (var campo in camposTribu) {
+        print('  → $campo: ${data[campo]}');
+      }
+      print('');
+    }
+
+    // 3. Buscar eventos por diferentes variaciones de campo
+    print('\n🔎 Probando diferentes consultas:\n');
+
+    final consultaPorTribuId = await _firestore
+        .collection('eventos')
+        .where('tribuId', isEqualTo: tribuId)
+        .get();
+    print('✓ where("tribuId", isEqualTo: "$tribuId"): ${consultaPorTribuId.docs.length} eventos');
+
+    final consultaPorTribuAsignada = await _firestore
+        .collection('eventos')
+        .where('tribuAsignada', isEqualTo: tribuId)
+        .get();
+    print('✓ where("tribuAsignada", isEqualTo: "$tribuId"): ${consultaPorTribuAsignada.docs.length} eventos');
+
+    final consultaPorTribu = await _firestore
+        .collection('eventos')
+        .where('tribu', isEqualTo: tribuId)
+        .get();
+    print('✓ where("tribu", isEqualTo: "$tribuId"): ${consultaPorTribu.docs.length} eventos');
+
+    // 4. Mostrar eventos que sí pertenecen a esta tribu
+    print('\n✅ Eventos encontrados para esta tribu:');
+    final eventosEncontrados = consultaPorTribuId.docs.isNotEmpty 
+        ? consultaPorTribuId.docs 
+        : (consultaPorTribuAsignada.docs.isNotEmpty 
+            ? consultaPorTribuAsignada.docs 
+            : consultaPorTribu.docs);
+
+    if (eventosEncontrados.isEmpty) {
+      print('   ⚠️ NO se encontraron eventos para esta tribu');
+    } else {
+      for (var doc in eventosEncontrados) {
+        final data = doc.data() as Map<String, dynamic>;
+        print('   - ${data['nombre']} (ID: ${doc.id})');
+      }
+    }
+
+    print('\n═════════════════════════════════════════════════════════\n');
+
+  } catch (e, stackTrace) {
+    print('❌ Error en diagnóstico: $e');
+    print('Stack trace: $stackTrace');
+  }
+}
+
+
 
   Widget _buildListaLideresConsolidacion() {
     return StreamBuilder<QuerySnapshot>(
