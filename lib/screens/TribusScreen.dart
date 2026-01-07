@@ -467,8 +467,8 @@ class _TribusScreenState extends State<TribusScreen>
         return Dialog(
           backgroundColor: Colors.transparent,
           insetPadding: EdgeInsets.symmetric(
-            horizontal: isSmallScreen ? 8 : (isMediumScreen ? 32 : 40),
-            vertical: 8,
+            horizontal: isSmallScreen ? 16 : (isMediumScreen ? 32 : 40),
+            vertical: isSmallScreen ? 16 : 20,
           ),
           child: Container(
             constraints: BoxConstraints(
@@ -1234,14 +1234,11 @@ class _TribusScreenState extends State<TribusScreen>
     );
   }
 
+// Método auxiliar para campos de texto con diseño mejorado
   Widget _buildTextField(
       String label, IconData icon, Function(String) onChanged,
       {bool isRequired = true, bool isSmallScreen = false}) {
-    // Crear un GlobalKey único para este campo
-    final GlobalKey fieldKey = GlobalKey();
-
     return Padding(
-      key: fieldKey,
       padding: EdgeInsets.symmetric(vertical: isSmallScreen ? 6 : 8),
       child: Container(
         decoration: BoxDecoration(
@@ -1300,20 +1297,6 @@ class _TribusScreenState extends State<TribusScreen>
                   (value == null || value.isEmpty) ? 'Campo obligatorio' : null
               : null,
           onChanged: onChanged,
-          onTap: () {
-            // Hacer scroll automático al campo cuando se enfoca
-            Future.delayed(Duration(milliseconds: 300), () {
-              if (fieldKey.currentContext != null) {
-                Scrollable.ensureVisible(
-                  fieldKey.currentContext!,
-                  duration: Duration(milliseconds: 300),
-                  curve: Curves.easeInOut,
-                  alignment:
-                      0.2, // Posicionar el campo en el 20% superior de la pantalla
-                );
-              }
-            });
-          },
         ),
       ),
     );
@@ -2304,6 +2287,7 @@ class MiembroCard extends StatelessWidget {
     );
   }
 }
+
 
 //--------------------------PESTAÑA DE ASISTENCIA
 class AsistenciasTab extends StatefulWidget {
@@ -5371,6 +5355,8 @@ Widget _buildInfoRow(IconData icon, String label, String value) {
   );
 }
 
+
+
 //--Clase de la pestaña de Personas
 class RegistrosAsignadosTab extends StatefulWidget {
   final String tribuId;
@@ -6266,300 +6252,390 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
               child: Container(
                 constraints: BoxConstraints(
                   maxWidth: 500,
-                  maxHeight: MediaQuery.of(dialogContext).size.height * 0.85,
+                  maxHeight: MediaQuery.of(dialogContext).size.height * 0.8,
                 ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Encabezado fijo
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: lightTeal,
-                        borderRadius: BorderRadius.only(
-                          topLeft: Radius.circular(20),
-                          topRight: Radius.circular(20),
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(Icons.edit, color: primaryTeal, size: 24),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              'Editar Registro',
-                              style: TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                  color: primaryTeal),
-                            ),
+                child: SingleChildScrollView(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Encabezado
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: lightTeal,
+                            borderRadius: BorderRadius.circular(12),
                           ),
-                        ],
-                      ),
-                    ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.edit, color: primaryTeal, size: 28),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  'Editar Registro',
+                                  style: TextStyle(
+                                      fontSize: 22,
+                                      fontWeight: FontWeight.bold,
+                                      color: primaryTeal),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 24),
 
-                    // Contenido scrolleable
-                    Expanded(
-                      child: SingleChildScrollView(
-                        padding: const EdgeInsets.all(24.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                        // Información del registro
+                        Row(
                           children: [
-                            // Información del registro
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: Container(
-                                    padding: const EdgeInsets.all(12),
-                                    decoration: BoxDecoration(
-                                      color: Colors.grey.withOpacity(0.1),
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        Icon(Icons.person,
-                                            color: Colors.grey[700], size: 18),
-                                        SizedBox(width: 8),
-                                        Expanded(
-                                          child: Text(
-                                            getNombreCompleto(),
-                                            style: TextStyle(
-                                              fontSize: 16,
-                                              color: Colors.grey[800],
-                                              fontWeight: FontWeight.w500,
-                                            ),
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 24),
-
-                            // Switch para estado activo/inactivo
-                            Container(
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: estadoActivo
-                                    ? Colors.green.withOpacity(0.1)
-                                    : Colors.red.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: estadoActivo
-                                      ? Colors.green.withOpacity(0.3)
-                                      : Colors.red.withOpacity(0.3),
-                                  width: 1,
-                                ),
-                              ),
-                              child: Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Icon(
-                                        estadoActivo
-                                            ? Icons.check_circle
-                                            : Icons.cancel,
-                                        color: estadoActivo
-                                            ? Colors.green
-                                            : Colors.red,
-                                        size: 24,
-                                      ),
-                                      SizedBox(width: 12),
-                                      Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            'Estado del Registro',
-                                            style: TextStyle(
-                                              fontSize: 14,
-                                              color: Colors.grey[600],
-                                              fontWeight: FontWeight.w500,
-                                            ),
-                                          ),
-                                          Text(
-                                            estadoActivo
-                                                ? "Activo"
-                                                : "No Activo",
-                                            style: TextStyle(
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.w600,
-                                              color: estadoActivo
-                                                  ? Colors.green[700]
-                                                  : Colors.red[700],
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                  Switch(
-                                    value: estadoActivo,
-                                    activeColor: secondaryOrange,
-                                    inactiveThumbColor: Colors.grey[400],
-                                    inactiveTrackColor: Colors.grey[300],
-                                    onChanged: (value) async {
-                                      if (!value && estadoActivoAnterior) {
-                                        final observacion =
-                                            await _mostrarDialogoObservacionesDesactivacion();
-
-                                        if (observacion != null &&
-                                            observacion.isNotEmpty) {
-                                          if (controllers['observaciones'] !=
-                                              null) {
-                                            final observacionActual =
-                                                controllers['observaciones']!
-                                                    .text;
-                                            final nuevaObservacion = observacionActual
-                                                    .isEmpty
-                                                ? 'MOTIVO DESACTIVACIÓN: $observacion'
-                                                : '$observacionActual\n\nMOTIVO DESACTIVACIÓN: $observacion';
-                                            controllers['observaciones']!.text =
-                                                nuevaObservacion;
-                                          }
-
-                                          setState(() {
-                                            estadoActivo = value;
-                                            estadoActivoAnterior = value;
-                                            hayModificaciones = true;
-                                          });
-                                        }
-                                      } else {
-                                        setState(() {
-                                          estadoActivo = value;
-                                          estadoActivoAnterior = value;
-                                          hayModificaciones = true;
-                                        });
-                                      }
-                                    },
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 24),
-
-                            // Advertencia si está inactivo
-                            if (!estadoActivo)
-                              Container(
+                            Expanded(
+                              child: Container(
                                 padding: const EdgeInsets.all(12),
-                                margin: const EdgeInsets.only(bottom: 16),
                                 decoration: BoxDecoration(
-                                  color: Colors.orange.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(
-                                    color: Colors.orange.withOpacity(0.3),
-                                    width: 1,
-                                  ),
+                                  color: Colors.grey.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Row(
                                   children: [
-                                    Icon(Icons.info_outline,
-                                        color: Colors.orange, size: 20),
+                                    Icon(Icons.person,
+                                        color: Colors.grey[700], size: 18),
                                     SizedBox(width: 8),
                                     Expanded(
                                       child: Text(
-                                        'Al desactivar este registro, se eliminarán automáticamente las asignaciones de coordinador y timoteo.',
+                                        getNombreCompleto(),
                                         style: TextStyle(
-                                          fontSize: 13,
-                                          color: Colors.orange[800],
+                                          fontSize: 16,
+                                          color: Colors.grey[800],
+                                          fontWeight: FontWeight.w500,
                                         ),
+                                        overflow: TextOverflow.ellipsis,
                                       ),
                                     ),
                                   ],
                                 ),
                               ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 24),
 
-                            // Campos del formulario
-                            ...camposDefinicion.entries.map((entry) {
-                              final fieldName = entry.key;
-                              final fieldData = entry.value;
-                              final controller = controllers[fieldName];
-                              final fieldIcon =
-                                  fieldData['icon'] ?? Icons.help_outline;
+                        // Switch para estado activo/inactivo
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: estadoActivo
+                                ? Colors.green.withOpacity(0.1)
+                                : Colors.red.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: estadoActivo
+                                  ? Colors.green.withOpacity(0.3)
+                                  : Colors.red.withOpacity(0.3),
+                              width: 1,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(
+                                    estadoActivo
+                                        ? Icons.check_circle
+                                        : Icons.cancel,
+                                    color: estadoActivo
+                                        ? Colors.green
+                                        : Colors.red,
+                                    size: 24,
+                                  ),
+                                  SizedBox(width: 12),
+                                  Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Estado del Registro',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          color: Colors.grey[600],
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                      Text(
+                                        estadoActivo ? "Activo" : "No Activo",
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w600,
+                                          color: estadoActivo
+                                              ? Colors.green[700]
+                                              : Colors.red[700],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                              Switch(
+                                value: estadoActivo,
+                                activeColor: secondaryOrange,
+                                inactiveThumbColor: Colors.grey[400],
+                                inactiveTrackColor: Colors.grey[300],
+                                onChanged: (value) async {
+                                  // ✅ NUEVA LÓGICA: Si está desactivando, pedir observaciones
+                                  if (!value && estadoActivoAnterior) {
+                                    final observacion =
+                                        await _mostrarDialogoObservacionesDesactivacion();
 
-                              if (fieldName == 'estadoCivil') {
-                                return _buildDropdownField(
-                                  label: 'Estado Civil',
-                                  icon: fieldIcon,
-                                  value: estadoCivilSeleccionado,
-                                  items: opcionesEstadoCivil,
-                                  primaryColor: primaryTeal,
-                                  onChanged: (newValue) {
-                                    if (newValue != null) {
+                                    if (observacion != null &&
+                                        observacion.isNotEmpty) {
+                                      // Guardar la observación en el campo de observaciones
+                                      if (controllers['observaciones'] !=
+                                          null) {
+                                        final observacionActual =
+                                            controllers['observaciones']!.text;
+                                        final nuevaObservacion = observacionActual
+                                                .isEmpty
+                                            ? 'MOTIVO DESACTIVACIÓN: $observacion'
+                                            : '$observacionActual\n\nMOTIVO DESACTIVACIÓN: $observacion';
+                                        controllers['observaciones']!.text =
+                                            nuevaObservacion;
+                                      }
+
                                       setState(() {
-                                        estadoCivilSeleccionado = newValue;
+                                        estadoActivo = value;
+                                        estadoActivoAnterior = value;
                                         hayModificaciones = true;
                                       });
                                     }
-                                  },
-                                );
-                              } else if (fieldName == 'sexo') {
-                                return _buildDropdownField(
-                                  label: 'Sexo',
-                                  icon: fieldIcon,
-                                  value: sexoSeleccionado,
-                                  items: opcionesSexo,
-                                  primaryColor: primaryTeal,
-                                  onChanged: (newValue) {
-                                    if (newValue != null) {
-                                      setState(() {
-                                        sexoSeleccionado = newValue;
-                                        hayModificaciones = true;
-                                      });
-                                    }
-                                  },
-                                );
-                              } else if (fieldName == 'fechaNacimiento') {
-                                return Column(
-                                  children: [
-                                    Container(
-                                      margin: const EdgeInsets.only(bottom: 16),
-                                      child: InkWell(
-                                        onTap: () =>
-                                            _seleccionarFecha(setState),
-                                        child: Container(
-                                          padding: const EdgeInsets.all(16),
-                                          decoration: BoxDecoration(
-                                            color:
-                                                Colors.grey.withOpacity(0.05),
-                                            borderRadius:
-                                                BorderRadius.circular(12),
-                                            border: Border.all(
+                                  } else {
+                                    // Si está activando, no pedir observaciones
+                                    setState(() {
+                                      estadoActivo = value;
+                                      estadoActivoAnterior = value;
+                                      hayModificaciones = true;
+                                    });
+                                  }
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+
+                        // Mostrar advertencia si el registro está inactivo
+                        if (!estadoActivo)
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            margin: const EdgeInsets.only(bottom: 16),
+                            decoration: BoxDecoration(
+                              color: Colors.orange.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: Colors.orange.withOpacity(0.3),
+                                width: 1,
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.info_outline,
+                                    color: Colors.orange, size: 20),
+                                SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'Al desactivar este registro, se eliminarán automáticamente las asignaciones de coordinador y timoteo.',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: Colors.orange[800],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+
+                        // Campos del formulario (resto del código sin cambios)
+                        ...camposDefinicion.entries.map((entry) {
+                          final fieldName = entry.key;
+                          final fieldData = entry.value;
+                          final controller = controllers[fieldName];
+                          final fieldIcon =
+                              fieldData['icon'] ?? Icons.help_outline;
+
+                          if (fieldName == 'estadoCivil') {
+                            return _buildDropdownField(
+                              label: 'Estado Civil',
+                              icon: fieldIcon,
+                              value: estadoCivilSeleccionado,
+                              items: opcionesEstadoCivil,
+                              primaryColor: primaryTeal,
+                              onChanged: (newValue) {
+                                if (newValue != null) {
+                                  setState(() {
+                                    estadoCivilSeleccionado = newValue;
+                                    hayModificaciones = true;
+                                  });
+                                }
+                              },
+                            );
+                          } else if (fieldName == 'sexo') {
+                            return _buildDropdownField(
+                              label: 'Sexo',
+                              icon: fieldIcon,
+                              value: sexoSeleccionado,
+                              items: opcionesSexo,
+                              primaryColor: primaryTeal,
+                              onChanged: (newValue) {
+                                if (newValue != null) {
+                                  setState(() {
+                                    sexoSeleccionado = newValue;
+                                    hayModificaciones = true;
+                                  });
+                                }
+                              },
+                            );
+                          } else if (fieldName == 'fechaNacimiento') {
+                            return Column(
+                              children: [
+                                Container(
+                                  margin: const EdgeInsets.only(bottom: 16),
+                                  child: InkWell(
+                                    onTap: () => _seleccionarFecha(setState),
+                                    child: Container(
+                                      padding: const EdgeInsets.all(16),
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey.withOpacity(0.05),
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(
+                                          color: primaryTeal.withOpacity(0.3),
+                                          width: 1,
+                                        ),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Container(
+                                            padding: const EdgeInsets.all(8),
+                                            decoration: BoxDecoration(
                                               color:
-                                                  primaryTeal.withOpacity(0.3),
-                                              width: 1,
+                                                  primaryTeal.withOpacity(0.1),
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                            ),
+                                            child: Icon(
+                                              fieldIcon,
+                                              color: primaryTeal,
+                                              size: 20,
                                             ),
                                           ),
-                                          child: Row(
-                                            children: [
-                                              Container(
+                                          SizedBox(width: 12),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  'Fecha de Nacimiento',
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    color: Colors.grey[600],
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
+                                                ),
+                                                SizedBox(height: 4),
+                                                Text(
+                                                  fechaNacimiento != null
+                                                      ? '${fechaNacimiento!.day}/${fechaNacimiento!.month}/${fechaNacimiento!.year}'
+                                                      : 'Seleccionar fecha',
+                                                  style: TextStyle(
+                                                    fontSize: 16,
+                                                    fontWeight: FontWeight.w500,
+                                                    color:
+                                                        fechaNacimiento != null
+                                                            ? Colors.black87
+                                                            : Colors.grey[500],
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          Icon(
+                                            Icons.keyboard_arrow_down,
+                                            color: Colors.grey[600],
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                if (fechaNacimiento != null)
+                                  Container(
+                                    margin: const EdgeInsets.only(bottom: 16),
+                                    padding: const EdgeInsets.all(16),
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        colors: [
+                                          Color(0xFF1B998B).withOpacity(0.1),
+                                          Color(0xFFFF7E00).withOpacity(0.1),
+                                        ],
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                      ),
+                                      borderRadius: BorderRadius.circular(16),
+                                      border: Border.all(
+                                        color:
+                                            Color(0xFF1B998B).withOpacity(0.3),
+                                        width: 1,
+                                      ),
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            Container(
+                                              padding: const EdgeInsets.all(8),
+                                              decoration: BoxDecoration(
+                                                color: Color(0xFF1B998B)
+                                                    .withOpacity(0.2),
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                              ),
+                                              child: Icon(
+                                                Icons.celebration,
+                                                color: Color(0xFF1B998B),
+                                                size: 20,
+                                              ),
+                                            ),
+                                            SizedBox(width: 12),
+                                            Text(
+                                              'Información de Cumpleaños',
+                                              style: TextStyle(
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.bold,
+                                                color: Color(0xFF1B998B),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        SizedBox(height: 12),
+                                        Row(
+                                          children: [
+                                            Expanded(
+                                              child: Container(
                                                 padding:
-                                                    const EdgeInsets.all(8),
+                                                    const EdgeInsets.all(12),
                                                 decoration: BoxDecoration(
-                                                  color: primaryTeal
-                                                      .withOpacity(0.1),
+                                                  color: Colors.white
+                                                      .withOpacity(0.7),
                                                   borderRadius:
                                                       BorderRadius.circular(8),
                                                 ),
-                                                child: Icon(
-                                                  fieldIcon,
-                                                  color: primaryTeal,
-                                                  size: 20,
-                                                ),
-                                              ),
-                                              SizedBox(width: 12),
-                                              Expanded(
                                                 child: Column(
                                                   crossAxisAlignment:
                                                       CrossAxisAlignment.start,
                                                   children: [
                                                     Text(
-                                                      'Fecha de Nacimiento',
+                                                      'Edad Actual',
                                                       style: TextStyle(
                                                         fontSize: 12,
                                                         color: Colors.grey[600],
@@ -6567,373 +6643,276 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
                                                             FontWeight.w500,
                                                       ),
                                                     ),
-                                                    SizedBox(height: 4),
                                                     Text(
-                                                      fechaNacimiento != null
-                                                          ? '${fechaNacimiento!.day}/${fechaNacimiento!.month}/${fechaNacimiento!.year}'
-                                                          : 'Seleccionar fecha',
+                                                      '${_calcularEdad(fechaNacimiento!)} años',
                                                       style: TextStyle(
                                                         fontSize: 16,
                                                         fontWeight:
-                                                            FontWeight.w500,
+                                                            FontWeight.bold,
                                                         color:
-                                                            fechaNacimiento !=
-                                                                    null
-                                                                ? Colors.black87
-                                                                : Colors
-                                                                    .grey[500],
+                                                            Color(0xFF1B998B),
                                                       ),
                                                     ),
                                                   ],
                                                 ),
                                               ),
-                                              Icon(
-                                                Icons.keyboard_arrow_down,
-                                                color: Colors.grey[600],
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    if (fechaNacimiento != null)
-                                      Container(
-                                        margin:
-                                            const EdgeInsets.only(bottom: 16),
-                                        padding: const EdgeInsets.all(16),
-                                        decoration: BoxDecoration(
-                                          gradient: LinearGradient(
-                                            colors: [
-                                              Color(0xFF1B998B)
-                                                  .withOpacity(0.1),
-                                              Color(0xFFFF7E00)
-                                                  .withOpacity(0.1),
-                                            ],
-                                            begin: Alignment.topLeft,
-                                            end: Alignment.bottomRight,
-                                          ),
-                                          borderRadius:
-                                              BorderRadius.circular(16),
-                                          border: Border.all(
-                                            color: Color(0xFF1B998B)
-                                                .withOpacity(0.3),
-                                            width: 1,
-                                          ),
-                                        ),
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Row(
-                                              children: [
-                                                Container(
-                                                  padding:
-                                                      const EdgeInsets.all(8),
-                                                  decoration: BoxDecoration(
-                                                    color: Color(0xFF1B998B)
-                                                        .withOpacity(0.2),
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                            8),
-                                                  ),
-                                                  child: Icon(
-                                                    Icons.celebration,
-                                                    color: Color(0xFF1B998B),
-                                                    size: 20,
-                                                  ),
-                                                ),
-                                                SizedBox(width: 12),
-                                                Text(
-                                                  'Información de Cumpleaños',
-                                                  style: TextStyle(
-                                                    fontSize: 16,
-                                                    fontWeight: FontWeight.bold,
-                                                    color: Color(0xFF1B998B),
-                                                  ),
-                                                ),
-                                              ],
                                             ),
-                                            SizedBox(height: 12),
-                                            Row(
-                                              children: [
-                                                Expanded(
-                                                  child: Container(
-                                                    padding:
-                                                        const EdgeInsets.all(
-                                                            12),
-                                                    decoration: BoxDecoration(
-                                                      color: Colors.white
-                                                          .withOpacity(0.7),
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                              8),
-                                                    ),
-                                                    child: Column(
-                                                      crossAxisAlignment:
-                                                          CrossAxisAlignment
-                                                              .start,
-                                                      children: [
-                                                        Text(
-                                                          'Edad Actual',
-                                                          style: TextStyle(
-                                                            fontSize: 12,
-                                                            color: Colors
-                                                                .grey[600],
-                                                            fontWeight:
-                                                                FontWeight.w500,
-                                                          ),
-                                                        ),
-                                                        Text(
-                                                          '${_calcularEdad(fechaNacimiento!)} años',
-                                                          style: TextStyle(
-                                                            fontSize: 16,
-                                                            fontWeight:
-                                                                FontWeight.bold,
-                                                            color: Color(
-                                                                0xFF1B998B),
-                                                          ),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                  ),
+                                            SizedBox(width: 12),
+                                            Expanded(
+                                              flex: 2,
+                                              child: Container(
+                                                padding:
+                                                    const EdgeInsets.all(12),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.white
+                                                      .withOpacity(0.7),
+                                                  borderRadius:
+                                                      BorderRadius.circular(8),
                                                 ),
-                                                SizedBox(width: 12),
-                                                Expanded(
-                                                  flex: 2,
-                                                  child: Container(
-                                                    padding:
-                                                        const EdgeInsets.all(
-                                                            12),
-                                                    decoration: BoxDecoration(
-                                                      color: Colors.white
-                                                          .withOpacity(0.7),
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                              8),
+                                                child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(
+                                                      'Próximo Cumpleaños',
+                                                      style: TextStyle(
+                                                        fontSize: 12,
+                                                        color: Colors.grey[600],
+                                                        fontWeight:
+                                                            FontWeight.w500,
+                                                      ),
                                                     ),
-                                                    child: Column(
-                                                      crossAxisAlignment:
-                                                          CrossAxisAlignment
-                                                              .start,
-                                                      children: [
-                                                        Text(
-                                                          'Próximo Cumpleaños',
-                                                          style: TextStyle(
-                                                            fontSize: 12,
-                                                            color: Colors
-                                                                .grey[600],
-                                                            fontWeight:
-                                                                FontWeight.w500,
-                                                          ),
-                                                        ),
-                                                        Text(
-                                                          _calcularProximoCumpleanos(
-                                                              fechaNacimiento!),
-                                                          style: TextStyle(
-                                                            fontSize: 14,
-                                                            fontWeight:
-                                                                FontWeight.bold,
-                                                            color: Color(
-                                                                0xFFFF7E00),
-                                                          ),
-                                                        ),
-                                                      ],
+                                                    Text(
+                                                      _calcularProximoCumpleanos(
+                                                          fechaNacimiento!),
+                                                      style: TextStyle(
+                                                        fontSize: 14,
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                        color:
+                                                            Color(0xFFFF7E00),
+                                                      ),
                                                     ),
-                                                  ),
+                                                  ],
                                                 ),
-                                              ],
+                                              ),
                                             ),
                                           ],
                                         ),
-                                      ),
-                                  ],
-                                );
-                              } else if (fieldName == 'nombrePareja') {
-                                if (mostrarNombrePareja() &&
-                                    controller != null) {
-                                  return _buildAnimatedTextField(
-                                    label: 'Nombre de Pareja',
-                                    icon: fieldIcon,
-                                    controller: controller,
-                                    primaryColor: primaryTeal,
-                                    onChanged: (value) {
-                                      hayModificaciones = true;
-                                    },
-                                  );
-                                } else {
-                                  return SizedBox.shrink();
+                                      ],
+                                    ),
+                                  ),
+                              ],
+                            );
+                          } else if (fieldName == 'nombrePareja') {
+                            if (mostrarNombrePareja() && controller != null) {
+                              return _buildAnimatedTextField(
+                                label: 'Nombre de Pareja',
+                                icon: fieldIcon,
+                                controller: controller,
+                                primaryColor: primaryTeal,
+                                onChanged: (value) {
+                                  hayModificaciones = true;
+                                },
+                              );
+                            } else {
+                              return SizedBox.shrink();
+                            }
+                          } else if (fieldName == 'estadoProceso') {
+                            return _buildAnimatedTextFieldConOpciones(
+                              label: 'Estado en la Iglesia',
+                              icon: fieldIcon,
+                              controller: controller!,
+                              primaryColor: primaryTeal,
+                              opciones: [
+                                'Pendiente',
+                                'Discipulado 1',
+                                'Discipulado 2',
+                                'Discipulado 3',
+                                'Consolidación',
+                                'Estudio Bíblico',
+                                'Escuela de Líderes'
+                              ],
+                              onChanged: (value) {
+                                hayModificaciones = true;
+                              },
+                            );
+                          } else if (controller != null) {
+                            return _buildAnimatedTextField(
+                              label: _formatFieldName(fieldName),
+                              icon: fieldIcon,
+                              controller: controller,
+                              primaryColor: primaryTeal,
+                              onChanged: (value) {
+                                hayModificaciones = true;
+                              },
+                            );
+                          } else {
+                            return SizedBox.shrink();
+                          }
+                        }).toList(),
+
+                        const SizedBox(height: 24),
+
+                        // Botones de acción
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            TextButton.icon(
+                              onPressed: () async {
+                                bool confirmar = await confirmarSalida();
+                                if (confirmar && dialogContext.mounted) {
+                                  Navigator.pop(dialogContext);
                                 }
-                              } else if (fieldName == 'estadoProceso') {
-                                return _buildAnimatedTextFieldConOpciones(
-                                  label: 'Estado en la Iglesia',
-                                  icon: fieldIcon,
-                                  controller: controller!,
-                                  primaryColor: primaryTeal,
-                                  opciones: [
-                                    'Pendiente',
-                                    'Discipulado 1',
-                                    'Discipulado 2',
-                                    'Discipulado 3',
-                                    'Consolidación',
-                                    'Estudio Bíblico',
-                                    'Escuela de Líderes'
-                                  ],
-                                  onChanged: (value) {
-                                    hayModificaciones = true;
-                                  },
-                                );
-                              } else if (controller != null) {
-                                return _buildAnimatedTextField(
-                                  label: _formatFieldName(fieldName),
-                                  icon: fieldIcon,
-                                  controller: controller,
-                                  primaryColor: primaryTeal,
-                                  onChanged: (value) {
-                                    hayModificaciones = true;
-                                  },
-                                );
-                              } else {
-                                return SizedBox.shrink();
-                              }
-                            }).toList(),
-                          ],
-                        ),
-                      ),
-                    ),
-// Botones fijos
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade50,
-                        borderRadius: BorderRadius.only(
-                          bottomLeft: Radius.circular(20),
-                          bottomRight: Radius.circular(20),
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.05),
-                            blurRadius: 4,
-                            offset: Offset(0, -2),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          TextButton.icon(
-                            onPressed: () async {
-                              bool confirmar = await confirmarSalida();
-                              if (confirmar && dialogContext.mounted) {
-                                Navigator.pop(dialogContext);
-                              }
-                            },
-                            icon: Icon(Icons.cancel, color: Colors.grey[700]),
-                            label: Text('Cancelar',
-                                style: TextStyle(
-                                    color: Colors.grey[700], fontSize: 16)),
-                            style: TextButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 12),
+                              },
+                              icon: Icon(Icons.cancel, color: Colors.grey[700]),
+                              label: Text('Cancelar',
+                                  style: TextStyle(
+                                      color: Colors.grey[700], fontSize: 16)),
+                              style: TextButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 12),
+                              ),
                             ),
-                          ),
-                          ElevatedButton.icon(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: secondaryOrange,
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 24, vertical: 12),
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12)),
-                              elevation: 2,
-                            ),
-                            icon: const Icon(Icons.save, color: Colors.white),
-                            label: const Text('Guardar Cambios',
-                                style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold)),
-                            onPressed: () async {
-                              try {
-                                final Map<String, dynamic> updateData = {};
+                            ElevatedButton.icon(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: secondaryOrange,
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 24, vertical: 12),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12)),
+                                elevation: 2,
+                              ),
+                              icon: const Icon(Icons.save, color: Colors.white),
+                              label: const Text('Guardar Cambios',
+                                  style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold)),
+                              onPressed: () async {
+                                try {
+                                  final Map<String, dynamic> updateData = {};
 
-                                updateData['estadoCivil'] =
-                                    estadoCivilSeleccionado;
-                                updateData['sexo'] = sexoSeleccionado;
+                                  updateData['estadoCivil'] =
+                                      estadoCivilSeleccionado;
+                                  updateData['sexo'] = sexoSeleccionado;
 
-                                if (fechaNacimiento != null) {
-                                  updateData['fechaNacimiento'] =
-                                      Timestamp.fromDate(fechaNacimiento!);
-                                }
-
-                                updateData['activo'] = estadoActivo;
-                                if (!estadoActivo) {
-                                  updateData['coordinadorAsignado'] = null;
-                                  updateData['coordinadorNombre'] = null;
-                                  updateData['timoteoAsignado'] = null;
-                                  updateData['nombreTimoteo'] = null;
-                                }
-
-                                controllers.forEach((key, controller) {
-                                  if (controller != null) {
-                                    final fieldType =
-                                        camposDefinicion[key]?['type'];
-                                    if (fieldType == 'list') {
-                                      updateData[key] = controller.text.isEmpty
-                                          ? []
-                                          : controller.text
-                                              .split(',')
-                                              .map((e) => e.trim())
-                                              .toList();
-                                    } else if (fieldType == 'int') {
-                                      int? parsedValue =
-                                          int.tryParse(controller.text);
-                                      updateData[key] = parsedValue ?? 0;
-                                    } else {
-                                      updateData[key] = controller.text;
-                                    }
+                                  if (fechaNacimiento != null) {
+                                    updateData['fechaNacimiento'] =
+                                        Timestamp.fromDate(fechaNacimiento!);
                                   }
-                                });
 
-                                final data = registro.data();
-                                if (data != null &&
-                                    data is Map<String, dynamic>) {
-                                  if (data.containsKey(
-                                          'descripcionOcupaciones') &&
-                                      !data.containsKey(
+                                  updateData['activo'] = estadoActivo;
+                                  if (!estadoActivo) {
+                                    updateData['coordinadorAsignado'] = null;
+                                    updateData['coordinadorNombre'] = null;
+                                    updateData['timoteoAsignado'] = null;
+                                    updateData['nombreTimoteo'] = null;
+                                  }
+
+                                  controllers.forEach((key, controller) {
+                                    if (controller != null) {
+                                      final fieldType =
+                                          camposDefinicion[key]?['type'];
+                                      if (fieldType == 'list') {
+                                        updateData[key] =
+                                            controller.text.isEmpty
+                                                ? []
+                                                : controller.text
+                                                    .split(',')
+                                                    .map((e) => e.trim())
+                                                    .toList();
+                                      } else if (fieldType == 'int') {
+                                        int? parsedValue =
+                                            int.tryParse(controller.text);
+                                        updateData[key] = parsedValue ?? 0;
+                                      } else {
+                                        updateData[key] = controller.text;
+                                      }
+                                    }
+                                  });
+
+                                  final data = registro.data();
+                                  if (data != null &&
+                                      data is Map<String, dynamic>) {
+                                    if (data.containsKey(
+                                            'descripcionOcupaciones') &&
+                                        !data.containsKey(
+                                            'descripcionOcupacion')) {
+                                      if (updateData.containsKey(
                                           'descripcionOcupacion')) {
-                                    if (updateData
-                                        .containsKey('descripcionOcupacion')) {
-                                      updateData['descripcionOcupaciones'] =
-                                          updateData['descripcionOcupacion'];
-                                      updateData.remove('descripcionOcupacion');
+                                        updateData['descripcionOcupaciones'] =
+                                            updateData['descripcionOcupacion'];
+                                        updateData
+                                            .remove('descripcionOcupacion');
+                                      }
                                     }
                                   }
-                                }
 
-                                if (FirebaseFirestore.instance != null) {
-                                  await FirebaseFirestore.instance
-                                      .collection('registros')
-                                      .doc(registro.id)
-                                      .update(updateData);
+                                  if (FirebaseFirestore.instance != null) {
+                                    await FirebaseFirestore.instance
+                                        .collection('registros')
+                                        .doc(registro.id)
+                                        .update(updateData);
 
+                                    if (dialogContext.mounted) {
+                                      Navigator.pop(dialogContext);
+                                    }
+
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        SnackBar(
+                                          content: Row(
+                                            children: const [
+                                              Icon(Icons.check_circle,
+                                                  color: Colors.white),
+                                              SizedBox(width: 12),
+                                              Text(
+                                                'Registro actualizado correctamente',
+                                                style: TextStyle(fontSize: 16),
+                                              ),
+                                            ],
+                                          ),
+                                          backgroundColor: Colors.green,
+                                          behavior: SnackBarBehavior.floating,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(10),
+                                          ),
+                                          margin: const EdgeInsets.all(12),
+                                          padding: const EdgeInsets.symmetric(
+                                              vertical: 14, horizontal: 20),
+                                          duration: const Duration(seconds: 3),
+                                        ),
+                                      );
+                                    }
+                                  } else {
+                                    throw Exception(
+                                        "No se pudo conectar con Firestore");
+                                  }
+                                } catch (e) {
                                   if (dialogContext.mounted) {
                                     Navigator.pop(dialogContext);
                                   }
-
                                   if (context.mounted) {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
                                         content: Row(
-                                          children: const [
-                                            Icon(Icons.check_circle,
+                                          children: [
+                                            const Icon(Icons.error,
                                                 color: Colors.white),
-                                            SizedBox(width: 12),
-                                            Text(
-                                              'Registro actualizado correctamente',
-                                              style: TextStyle(fontSize: 16),
+                                            const SizedBox(width: 12),
+                                            Expanded(
+                                              child: Text(
+                                                'Error al actualizar: ${e.toString()}',
+                                                style: const TextStyle(
+                                                    fontSize: 16),
+                                              ),
                                             ),
                                           ],
                                         ),
-                                        backgroundColor: Colors.green,
+                                        backgroundColor: Colors.red,
                                         behavior: SnackBarBehavior.floating,
                                         shape: RoundedRectangleBorder(
                                           borderRadius:
@@ -6942,54 +6921,18 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
                                         margin: const EdgeInsets.all(12),
                                         padding: const EdgeInsets.symmetric(
                                             vertical: 14, horizontal: 20),
-                                        duration: const Duration(seconds: 3),
+                                        duration: const Duration(seconds: 5),
                                       ),
                                     );
                                   }
-                                } else {
-                                  throw Exception(
-                                      "No se pudo conectar con Firestore");
                                 }
-                              } catch (e) {
-                                if (dialogContext.mounted) {
-                                  Navigator.pop(dialogContext);
-                                }
-                                if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Row(
-                                        children: [
-                                          const Icon(Icons.error,
-                                              color: Colors.white),
-                                          const SizedBox(width: 12),
-                                          Expanded(
-                                            child: Text(
-                                              'Error al actualizar: ${e.toString()}',
-                                              style:
-                                                  const TextStyle(fontSize: 16),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      backgroundColor: Colors.red,
-                                      behavior: SnackBarBehavior.floating,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                      margin: const EdgeInsets.all(12),
-                                      padding: const EdgeInsets.symmetric(
-                                          vertical: 14, horizontal: 20),
-                                      duration: const Duration(seconds: 5),
-                                    ),
-                                  );
-                                }
-                              }
-                            },
-                          ),
-                        ],
-                      ),
+                              },
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
             ),
@@ -7010,7 +6953,6 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
     return GestureDetector(
       onTap: () {
         _searchFocusNode.unfocus();
-        _searchEstadoFocusNode.unfocus();
       },
       behavior: HitTestBehavior.opaque,
       child: Stack(
@@ -7463,9 +7405,7 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
                                                       ? _searchFocusNode
                                                       : _searchEstadoFocusNode,
                                               textInputAction:
-                                                  TextInputAction.done,
-                                              scrollPadding:
-                                                  EdgeInsets.only(bottom: 200),
+                                                  TextInputAction.search,
                                               enableInteractiveSelection: true,
                                               style: TextStyle(
                                                 fontSize: 15,
@@ -11538,6 +11478,7 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
 }
 
 //----------------------------------------------------------------------------------------------
+
 
 // la clase InscripcionesTab existente
 
