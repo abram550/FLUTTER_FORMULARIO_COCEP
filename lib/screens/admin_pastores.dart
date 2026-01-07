@@ -4378,9 +4378,11 @@ class _AdminPastoresState extends State<AdminPastores>
 
   Future<void> _unirTribus(String tribu1Id, String tribu2Id) async {
     try {
-      final batch = _firestore.batch();
+      print('🔄 Iniciando unión de tribus...');
+      print('   Tribu destino (1): $tribu1Id');
+      print('   Tribu origen (2): $tribu2Id');
 
-      // Obtener datos de ambas tribus
+      // Verificar que ambas tribus existan
       final tribu1Doc =
           await _firestore.collection('tribus').doc(tribu1Id).get();
       final tribu2Doc =
@@ -4390,38 +4392,195 @@ class _AdminPastoresState extends State<AdminPastores>
         throw Exception('Una o ambas tribus no existen');
       }
 
-      // Actualizar todas las colecciones relacionadas
-      final colecciones = ['coordinadores', 'timoteos', 'registros'];
+      print('✅ Tribus verificadas');
 
-      for (var coleccion in colecciones) {
-        final snapshot = await _firestore
-            .collection(coleccion)
-            .where('tribuId', isEqualTo: tribu2Id)
-            .get();
+      // =========================================================================
+      // TRANSFERIR EVENTOS (con logs detallados)
+      // =========================================================================
+      print('\n📅 Buscando eventos de tribu2...');
 
-        for (var doc in snapshot.docs) {
-          batch.update(doc.reference, {'tribuId': tribu1Id});
+      final eventosSnapshot = await _firestore
+          .collection('eventos')
+          .where('tribuId', isEqualTo: tribu2Id)
+          .get();
+
+      print('   Eventos encontrados: ${eventosSnapshot.docs.length}');
+
+      if (eventosSnapshot.docs.isNotEmpty) {
+        print('   Transfiriendo eventos...');
+
+        for (var eventoDoc in eventosSnapshot.docs) {
+          try {
+            final eventoData = eventoDoc.data();
+            print('   - Evento: ${eventoData['nombre']} (ID: ${eventoDoc.id})');
+
+            await eventoDoc.reference.update({
+              'tribuId': tribu1Id,
+              'tribuOriginal': tribu2Id,
+              'fechaTransferencia': FieldValue.serverTimestamp(),
+            });
+
+            print('     ✅ Transferido correctamente');
+          } catch (e) {
+            print('     ❌ Error al transferir evento ${eventoDoc.id}: $e');
+            // Continuar con los demás eventos
+          }
+        }
+      } else {
+        print('   ℹ️ No hay eventos para transferir');
+      }
+
+      // =========================================================================
+      // TRANSFERIR COORDINADORES
+      // =========================================================================
+      print('\n👥 Buscando coordinadores de tribu2...');
+
+      final coordinadoresSnapshot = await _firestore
+          .collection('coordinadores')
+          .where('tribuId', isEqualTo: tribu2Id)
+          .get();
+
+      print(
+          '   Coordinadores encontrados: ${coordinadoresSnapshot.docs.length}');
+
+      for (var doc in coordinadoresSnapshot.docs) {
+        try {
+          await doc.reference.update({
+            'tribuId': tribu1Id,
+            'tribuOriginal': tribu2Id,
+            'fechaTransferencia': FieldValue.serverTimestamp(),
+          });
+          print('   ✅ Coordinador ${doc.id} transferido');
+        } catch (e) {
+          print('   ❌ Error al transferir coordinador ${doc.id}: $e');
         }
       }
 
-      // Actualizar usuario de la tribu
+      // =========================================================================
+      // TRANSFERIR TIMOTEOS
+      // =========================================================================
+      print('\n🎓 Buscando timoteos de tribu2...');
+
+      final timoteosSnapshot = await _firestore
+          .collection('timoteos')
+          .where('tribuId', isEqualTo: tribu2Id)
+          .get();
+
+      print('   Timoteos encontrados: ${timoteosSnapshot.docs.length}');
+
+      for (var doc in timoteosSnapshot.docs) {
+        try {
+          await doc.reference.update({
+            'tribuId': tribu1Id,
+            'tribuOriginal': tribu2Id,
+            'fechaTransferencia': FieldValue.serverTimestamp(),
+          });
+          print('   ✅ Timoteo ${doc.id} transferido');
+        } catch (e) {
+          print('   ❌ Error al transferir timoteo ${doc.id}: $e');
+        }
+      }
+
+      // =========================================================================
+      // TRANSFERIR ASISTENCIAS
+      // =========================================================================
+      print('\n📋 Buscando asistencias de tribu2...');
+
+      final asistenciasSnapshot = await _firestore
+          .collection('asistencias')
+          .where('tribuId', isEqualTo: tribu2Id)
+          .get();
+
+      print('   Asistencias encontradas: ${asistenciasSnapshot.docs.length}');
+
+      for (var doc in asistenciasSnapshot.docs) {
+        try {
+          await doc.reference.update({
+            'tribuId': tribu1Id,
+            'tribuOriginal': tribu2Id,
+            'fechaTransferencia': FieldValue.serverTimestamp(),
+          });
+          print('   ✅ Asistencia ${doc.id} transferida');
+        } catch (e) {
+          print('   ❌ Error al transferir asistencia ${doc.id}: $e');
+        }
+      }
+
+      // =========================================================================
+      // TRANSFERIR REGISTROS (campo: tribuAsignada)
+      // =========================================================================
+      print('\n📝 Buscando registros de tribu2...');
+
+      final registrosSnapshot = await _firestore
+          .collection('registros')
+          .where('tribuAsignada', isEqualTo: tribu2Id)
+          .get();
+
+      print('   Registros encontrados: ${registrosSnapshot.docs.length}');
+
+      for (var doc in registrosSnapshot.docs) {
+        try {
+          await doc.reference.update({
+            'tribuAsignada': tribu1Id,
+            'tribuOriginal': tribu2Id,
+            'fechaTransferencia': FieldValue.serverTimestamp(),
+          });
+          print('   ✅ Registro ${doc.id} transferido');
+        } catch (e) {
+          print('   ❌ Error al transferir registro ${doc.id}: $e');
+        }
+      }
+
+      // =========================================================================
+      // ELIMINAR USUARIO DE TRIBU2
+      // =========================================================================
+      print('\n🗑️ Eliminando usuario de tribu2...');
+
       final usuarioTribu2Snapshot = await _firestore
           .collection('usuarios')
-          .where('tribuId', isEqualTo: tribu2Doc.data()!['nombre'])
+          .where('tribuId', isEqualTo: tribu2Id)
+          .limit(1)
           .get();
 
       if (usuarioTribu2Snapshot.docs.isNotEmpty) {
-        batch.delete(usuarioTribu2Snapshot.docs.first.reference);
+        await usuarioTribu2Snapshot.docs.first.reference.delete();
+        print('   ✅ Usuario eliminado');
+      } else {
+        print('   ℹ️ No se encontró usuario para eliminar');
       }
 
-      // Eliminar la tribu2
-      batch.delete(tribu2Doc.reference);
+      // =========================================================================
+      // ELIMINAR TRIBU2
+      // =========================================================================
+      print('\n🗑️ Eliminando tribu2...');
+      await tribu2Doc.reference.delete();
+      print('   ✅ Tribu eliminada');
 
-      // Ejecutar todas las operaciones
-      await batch.commit();
+      // =========================================================================
+      // CREAR HISTORIAL (OPCIONAL)
+      // =========================================================================
+      try {
+        await _firestore.collection('historialUnionTribus').add({
+          'tribu1Id': tribu1Id,
+          'tribu2Id': tribu2Id,
+          'fechaUnion': FieldValue.serverTimestamp(),
+          'eventosTransferidos': eventosSnapshot.docs.length,
+          'registrosTransferidos': registrosSnapshot.docs.length,
+          'asistenciasTransferidas': asistenciasSnapshot.docs.length,
+        });
+        print('\n📊 Historial creado');
+      } catch (e) {
+        print('\n⚠️ Error al crear historial (no crítico): $e');
+      }
+
+      print('\n✅ ¡UNIÓN COMPLETADA EXITOSAMENTE!');
+      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
       _mostrarSnackBar('Las tribus se han unido exitosamente');
-    } catch (e) {
+    } catch (e, stackTrace) {
+      print('\n❌ ERROR CRÍTICO EN UNIÓN DE TRIBUS');
+      print('Error: $e');
+      print('Stack trace: $stackTrace');
       _mostrarSnackBar('Error al unir las tribus: $e');
     }
   }

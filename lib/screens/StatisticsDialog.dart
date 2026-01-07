@@ -1146,9 +1146,8 @@ class _StatisticsDialogState extends State<StatisticsDialog>
             if (ministerio == null || ministerio != selectedMinistry) continue;
           }
 
-          // Aplicar filtro de tribu con validaciones
           // Aplicar filtro de tribu con validaciones (null-safe)
-// Nota: selectedTribe llega como "Nombre (ID)" desde el dropdown
+          // Nota: selectedTribe llega como "Nombre (ID)" desde el dropdown
           if (selectedTribe != null) {
             final tribuAsignada = data['tribuAsignada'] as String?;
             if (tribuAsignada == null || tribuAsignada.isEmpty) continue;

@@ -406,8 +406,6 @@ class _TribusScreenState extends State<TribusScreen>
     }
   }
 
-  
-
   void _showRegistroDialog(BuildContext context) {
     _resetInactivityTimer();
 
@@ -1212,8 +1210,6 @@ class _TribusScreenState extends State<TribusScreen>
       }),
     );
   }
-
-
 
 // Widget para headers de sección
   Widget _buildSectionHeader(String title, IconData icon, bool isSmallScreen) {
@@ -2316,8 +2312,6 @@ class MiembroCard extends StatelessWidget {
     );
   }
 }
-
-
 
 //--------------------------PESTAÑA DE ASISTENCIA
 class AsistenciasTab extends StatefulWidget {
@@ -5384,9 +5378,6 @@ Widget _buildInfoRow(IconData icon, String label, String value) {
     ],
   );
 }
-
-
-
 
 //--Clase de la pestaña de Personas
 class RegistrosAsignadosTab extends StatefulWidget {
@@ -11578,8 +11569,6 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
   }
 }
 
-
-
 //----------------------------------------------------------------------------------------------
 
 // la clase InscripcionesTab existente
@@ -15328,3 +15317,4 @@ class _ReorderableWrapState extends State<ReorderableWrap>
   }
 }
 //--------------------------------------------------------------------------------------------------------
+
