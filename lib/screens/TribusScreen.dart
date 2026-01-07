@@ -4441,7 +4441,8 @@ class CoordinadoresTab extends StatelessWidget {
         TextEditingController(text: coordinador['apellido']);
     final usuarioController =
         TextEditingController(text: coordinador['usuario']);
-    final contrasenaController = TextEditingController();
+    final contrasenaController =
+        TextEditingController(text: coordinador['contrasena']);
 
     bool _isProcessing = false;
     bool _passwordVisible = false;
@@ -4569,10 +4570,10 @@ class CoordinadoresTab extends StatelessWidget {
                             builder: (context, setPassState) {
                               return _buildTextField(
                                 controller: contrasenaController,
-                                label: 'Nueva Contraseña (opcional)',
+                                label: 'Contraseña',
                                 icon: Icons.lock_outline,
                                 isPassword: !_passwordVisible,
-                                hint: 'Dejar vacío para mantener la actual',
+                                hint: 'Modifica la contraseña si lo deseas',
                                 suffixIcon: IconButton(
                                   icon: Icon(
                                     _passwordVisible
@@ -4657,12 +4658,9 @@ class CoordinadoresTab extends StatelessWidget {
                                             usuarioController.text.trim(),
                                       };
 
-                                      if (contrasenaController.text
-                                          .trim()
-                                          .isNotEmpty) {
-                                        datosActualizados['contrasena'] =
-                                            contrasenaController.text.trim();
-                                      }
+                                      // Siempre actualizar contraseña (ya viene pre-cargada)
+                                      datosActualizados['contrasena'] =
+                                          contrasenaController.text.trim();
 
                                       await FirebaseFirestore.instance
                                           .collection('coordinadores')
@@ -5244,64 +5242,74 @@ class CoordinadoresTab extends StatelessWidget {
       ),
       child: Column(
         children: [
-          // Botón de crear coordinador mejorado
+          // Botón de crear coordinador mejorado (compacto)
           Container(
-            width: double.infinity,
-            margin: EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  ThemeConstants.secondaryOrange,
-                  ThemeConstants.secondaryOrange.withOpacity(0.8),
-                ],
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: ThemeConstants.secondaryOrange.withOpacity(0.3),
-                  blurRadius: 12,
-                  offset: Offset(0, 6),
-                ),
-              ],
-            ),
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: () => _crearCoordinador(context),
-                borderRadius: BorderRadius.circular(16),
-                child: Padding(
-                  padding: EdgeInsets.symmetric(vertical: 18, horizontal: 20),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Container(
-                        padding: EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(12),
+            margin: EdgeInsets.fromLTRB(16, 12, 16, 8),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          ThemeConstants.secondaryOrange,
+                          ThemeConstants.secondaryOrange.withOpacity(0.85),
+                        ],
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color:
+                              ThemeConstants.secondaryOrange.withOpacity(0.25),
+                          blurRadius: 8,
+                          offset: Offset(0, 4),
                         ),
-                        child: Icon(
-                          Icons.group_add,
-                          size: 26,
-                          color: Colors.white,
+                      ],
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () => _crearCoordinador(context),
+                        borderRadius: BorderRadius.circular(12),
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(
+                              vertical: 14, horizontal: 16),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                padding: EdgeInsets.all(6),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Icon(
+                                  Icons.group_add,
+                                  size: 20,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              SizedBox(width: 10),
+                              Text(
+                                'Crear Coordinador',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                  letterSpacing: 0.3,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                      SizedBox(width: 12),
-                      Text(
-                        'Crear Coordinador',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
-              ),
+              ],
             ),
           ),
 
@@ -5625,13 +5633,13 @@ class CoordinadoresTab extends StatelessWidget {
     required Color color,
     required VoidCallback onPressed,
     EdgeInsets padding =
-        const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-    double fontSize = 14,
-    double iconSize = 20,
+        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+    double fontSize = 13,
+    double iconSize = 18,
   }) {
     return Container(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(10),
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -5642,9 +5650,9 @@ class CoordinadoresTab extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: color.withOpacity(0.3),
-            blurRadius: 8,
-            offset: Offset(0, 4),
+            color: color.withOpacity(0.25),
+            blurRadius: 6,
+            offset: Offset(0, 3),
           ),
         ],
       ),
@@ -5652,7 +5660,7 @@ class CoordinadoresTab extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           onTap: onPressed,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(10),
           child: Padding(
             padding: padding,
             child: Row(
@@ -5664,7 +5672,7 @@ class CoordinadoresTab extends StatelessWidget {
                   size: iconSize,
                 ),
                 if (label.isNotEmpty) ...[
-                  SizedBox(width: 8),
+                  SizedBox(width: 6),
                   Text(
                     label,
                     style: TextStyle(
@@ -5829,8 +5837,8 @@ class TimoteosTab extends StatelessWidget {
     final nombreController = TextEditingController(text: timoteo['nombre']);
     final apellidoController = TextEditingController(text: timoteo['apellido']);
     final usuarioController = TextEditingController(text: timoteo['usuario']);
-    final contrasenaController = TextEditingController();
-
+    final contrasenaController =
+        TextEditingController(text: timoteo['contrasena']);
     bool _isProcessing = false;
     bool _passwordVisible = false;
 
@@ -5995,10 +6003,10 @@ class TimoteosTab extends StatelessWidget {
                           SizedBox(height: isSmallScreen ? 12 : 16),
                           _buildResponsiveTextField(
                             controller: contrasenaController,
-                            label: 'Nueva Contraseña (opcional)',
+                            label: 'Contraseña',
                             icon: Icons.lock_outline,
                             isPassword: !_passwordVisible,
-                            hint: 'Dejar vacío para mantener la actual',
+                            hint: 'Modifica la contraseña si lo deseas',
                             isSmallScreen: isSmallScreen,
                             suffixIcon: IconButton(
                               icon: Icon(
@@ -6060,13 +6068,10 @@ class TimoteosTab extends StatelessWidget {
                                                   usuarioController.text.trim(),
                                             };
 
-                                            if (contrasenaController.text
-                                                .trim()
-                                                .isNotEmpty) {
-                                              datosActualizados['contrasena'] =
-                                                  contrasenaController.text
-                                                      .trim();
-                                            }
+                                            // Siempre actualizar contraseña (ya viene pre-cargada)
+                                            datosActualizados['contrasena'] =
+                                                contrasenaController.text
+                                                    .trim();
 
                                             await FirebaseFirestore.instance
                                                 .collection('timoteos')
@@ -6614,23 +6619,64 @@ class TimoteosTab extends StatelessWidget {
       child: Column(
         children: [
           Container(
-            width: double.infinity,
-            margin: EdgeInsets.only(bottom: 20),
-            child: ElevatedButton.icon(
-              icon: Icon(Icons.add_circle_outline, size: 24),
-              label: Text(
-                'Crear Timoteo',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: ThemeConstants.secondaryOrange,
-                padding: EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+            margin: EdgeInsets.fromLTRB(0, 0, 0, 12),
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    ThemeConstants.secondaryOrange,
+                    ThemeConstants.secondaryOrange.withOpacity(0.85),
+                  ],
                 ),
-                elevation: 4,
+                boxShadow: [
+                  BoxShadow(
+                    color: ThemeConstants.secondaryOrange.withOpacity(0.25),
+                    blurRadius: 8,
+                    offset: Offset(0, 4),
+                  ),
+                ],
               ),
-              onPressed: () => _createTimoteo(context),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () => _createTimoteo(context),
+                  borderRadius: BorderRadius.circular(12),
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          padding: EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(
+                            Icons.person_add,
+                            size: 20,
+                            color: Colors.white,
+                          ),
+                        ),
+                        SizedBox(width: 10),
+                        Text(
+                          'Crear Timoteo',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                            letterSpacing: 0.3,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
             ),
           ),
           Expanded(
