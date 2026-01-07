@@ -1151,9 +1151,15 @@ class _StatisticsDialogState extends State<StatisticsDialog>
             final nombreTribu = data['nombreTribu'] as String?;
             final tribuAsignada = data['tribuAsignada'] as String?;
 
-            if (nombreTribu == null || tribuAsignada == null) continue;
+            if (nombreTribu == null || nombreTribu.isEmpty) continue;
 
-            String tribuDisplay = "$nombreTribu ($tribuAsignada)";
+            // Si tribuAsignada existe, respeta el formato original "Nombre (ID)"
+            // Si NO existe, compara solo por nombreTribu para no excluir registros válidos
+            final String tribuDisplay =
+                (tribuAsignada != null && tribuAsignada.isNotEmpty)
+                    ? "$nombreTribu ($tribuAsignada)"
+                    : nombreTribu;
+
             if (tribuDisplay != selectedTribe) continue;
           }
 
