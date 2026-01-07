@@ -2975,6 +2975,8 @@ class _AdminPastoresState extends State<AdminPastores>
     );
   }
 
+/*
+
   Future<void> _unirTribusConNuevosDatos(
     String tribu1Id,
     String tribu2Id,
@@ -3340,6 +3342,464 @@ class _AdminPastoresState extends State<AdminPastores>
       print('Stack trace: $stackTrace');
 
       // Mostrar error específico al usuario
+      String mensajeError = 'Error desconocido';
+      if (e.toString().contains('Tiempo')) {
+        mensajeError =
+            'La operación tardó demasiado tiempo. Intenta nuevamente.';
+      } else if (e.toString().contains('network')) {
+        mensajeError =
+            'Error de conexión. Verifica tu internet e intenta nuevamente.';
+      } else if (e.toString().contains('permission')) {
+        mensajeError = 'No tienes permisos para realizar esta operación.';
+      } else {
+        mensajeError = e.toString().replaceFirst('Exception: ', '');
+      }
+
+      _mostrarDialogoError(mensajeError);
+    }
+  }
+
+*/
+
+  Future<void> _unirTribusConNuevosDatos(
+    String tribu1Id,
+    String tribu2Id,
+    bool mantenerDatos,
+    String? nuevoNombre,
+    String? nuevoNombreLider,
+    String? nuevoApellidoLider,
+    String? nuevoUsuario,
+    String? nuevaContrasena,
+  ) async {
+    // Mostrar loading overlay
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return WillPopScope(
+          onWillPop: () async => false,
+          child: AlertDialog(
+            backgroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(15),
+            ),
+            content: Container(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 60,
+                    height: 60,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          const Color(0xFF1B998B),
+                          const Color(0xFF159B8C),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                    child: const Icon(
+                      Icons.merge_type,
+                      color: Colors.white,
+                      size: 30,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  const Text(
+                    'Uniendo Tribus',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF2C3E50),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Por favor espera mientras se procesan los datos...',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Color(0xFF7F8C8D),
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  LinearProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      const Color(0xFF1B998B),
+                    ),
+                    backgroundColor: const Color(0xFF1B998B).withOpacity(0.2),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+
+    try {
+      print(
+          '\n🔄 ════════════════════════════════════════════════════════════');
+      print('   INICIANDO UNIÓN DE TRIBUS CON NUEVOS DATOS');
+      print('════════════════════════════════════════════════════════════\n');
+      print('📍 Tribu DESTINO (1): $tribu1Id');
+      print('📍 Tribu ORIGEN (2): $tribu2Id');
+      print('📝 Mantener datos: $mantenerDatos\n');
+
+      // Validaciones iniciales
+      if (tribu1Id.isEmpty || tribu2Id.isEmpty) {
+        throw Exception('IDs de tribus no válidos');
+      }
+
+      if (tribu1Id == tribu2Id) {
+        throw Exception('No se puede unir una tribu consigo misma');
+      }
+
+      // =========================================================================
+      // PASO 1: Obtener datos de ambas tribus
+      // =========================================================================
+      print('🔍 Obteniendo datos de las tribus...');
+
+      final futures = await Future.wait([
+        _firestore.collection('tribus').doc(tribu1Id).get(),
+        _firestore.collection('tribus').doc(tribu2Id).get(),
+      ]).timeout(
+        const Duration(seconds: 10),
+        onTimeout: () =>
+            throw Exception('Tiempo de espera agotado al obtener las tribus'),
+      );
+
+      final tribu1Doc = futures[0];
+      final tribu2Doc = futures[1];
+
+      if (!tribu1Doc.exists) {
+        throw Exception('La primera tribu no existe o fue eliminada');
+      }
+
+      if (!tribu2Doc.exists) {
+        throw Exception('La segunda tribu no existe o fue eliminada');
+      }
+
+      final tribu1Data = tribu1Doc.data()!;
+      final tribu2Data = tribu2Doc.data()!;
+
+      print('✅ Tribu 1: ${tribu1Data['nombre']}');
+      print('✅ Tribu 2: ${tribu2Data['nombre']}');
+
+      // Validar que ambas tribus pertenezcan al mismo ministerio
+      if (tribu1Data['categoria'] != tribu2Data['categoria']) {
+        throw Exception('Las tribus deben pertenecer al mismo ministerio');
+      }
+
+      print(
+          '✅ Ambas tribus del mismo ministerio: ${tribu1Data['categoria']}\n');
+
+      // Obtener nombres para el historial
+      final nombreTribu2Original = tribu2Data['nombre'] ?? 'Sin nombre';
+      final nombreTribu1Original = tribu1Data['nombre'] ?? 'Sin nombre';
+
+      // =========================================================================
+      // PASO 2: Actualizar datos de tribu1 si es necesario
+      // =========================================================================
+      if (!mantenerDatos) {
+        print('📝 Actualizando datos de la tribu destino...');
+
+        if (nuevoNombre?.trim().isEmpty ?? true) {
+          throw Exception('El nuevo nombre de tribu es requerido');
+        }
+        if (nuevoNombreLider?.trim().isEmpty ?? true) {
+          throw Exception('El nuevo nombre del líder es requerido');
+        }
+        if (nuevoApellidoLider?.trim().isEmpty ?? true) {
+          throw Exception('El nuevo apellido del líder es requerido');
+        }
+        if (nuevoUsuario?.trim().isEmpty ?? true) {
+          throw Exception('El nuevo usuario es requerido');
+        }
+        if (nuevaContrasena?.trim().isEmpty ?? true) {
+          throw Exception('La nueva contraseña es requerida');
+        }
+
+        await _firestore.collection('tribus').doc(tribu1Id).update({
+          'nombre': nuevoNombre!.trim(),
+          'nombreLider': nuevoNombreLider!.trim(),
+          'apellidoLider': nuevoApellidoLider!.trim(),
+          'usuario': nuevoUsuario!.trim(),
+          'contrasena': nuevaContrasena!.trim(),
+          'fechaActualizacion': FieldValue.serverTimestamp(),
+        });
+
+        print('✅ Datos de tribu1 actualizados');
+
+        // Actualizar usuario
+        final usuarioTribu1Snapshot = await _firestore
+            .collection('usuarios')
+            .where('tribuId', isEqualTo: tribu1Id)
+            .limit(1)
+            .get()
+            .timeout(
+              const Duration(seconds: 5),
+              onTimeout: () =>
+                  throw Exception('Tiempo agotado al buscar usuario'),
+            );
+
+        if (usuarioTribu1Snapshot.docs.isNotEmpty) {
+          await usuarioTribu1Snapshot.docs.first.reference.update({
+            'usuario': nuevoUsuario!.trim(),
+            'contrasena': nuevaContrasena!.trim(),
+            'nombre': nuevoNombre!.trim(),
+            'fechaActualizacion': FieldValue.serverTimestamp(),
+          });
+          print('✅ Usuario de tribu1 actualizado\n');
+        }
+      }
+
+      // =========================================================================
+      // PASO 3: Obtener TODOS los documentos a transferir
+      // =========================================================================
+      print('📊 Obteniendo documentos a transferir...\n');
+
+      final results = await Future.wait([
+        _firestore
+            .collection('eventos')
+            .where('tribuId', isEqualTo: tribu2Id)
+            .get(),
+        _firestore
+            .collection('coordinadores')
+            .where('tribuId', isEqualTo: tribu2Id)
+            .get(),
+        _firestore
+            .collection('timoteos')
+            .where('tribuId', isEqualTo: tribu2Id)
+            .get(),
+        _firestore
+            .collection('asistencias')
+            .where('tribuId', isEqualTo: tribu2Id)
+            .get(),
+        _firestore
+            .collection('registros')
+            .where('tribuAsignada', isEqualTo: tribu2Id)
+            .get(),
+      ]).timeout(
+        const Duration(seconds: 15),
+        onTimeout: () =>
+            throw Exception('Tiempo agotado al obtener documentos'),
+      );
+
+      final eventosSnapshot = results[0];
+      final coordinadoresSnapshot = results[1];
+      final timoteosSnapshot = results[2];
+      final asistenciasSnapshot = results[3];
+      final registrosSnapshot = results[4];
+
+      print('📅 Eventos encontrados: ${eventosSnapshot.docs.length}');
+      print(
+          '👥 Coordinadores encontrados: ${coordinadoresSnapshot.docs.length}');
+      print('🎓 Timoteos encontrados: ${timoteosSnapshot.docs.length}');
+      print('📋 Asistencias encontradas: ${asistenciasSnapshot.docs.length}');
+      print('📝 Registros encontrados: ${registrosSnapshot.docs.length}\n');
+
+      // =========================================================================
+      // PASO 4: TRANSFERIR EVENTOS (CRÍTICO - CON LOGS DETALLADOS)
+      // =========================================================================
+      if (eventosSnapshot.docs.isNotEmpty) {
+        print('📅 ══════════════════════════════════════════════════════');
+        print('   TRANSFIRIENDO EVENTOS (PROCESO CRÍTICO)');
+        print('══════════════════════════════════════════════════════\n');
+
+        const batchSize = 400;
+        int eventosTransferidos = 0;
+
+        for (int i = 0; i < eventosSnapshot.docs.length; i += batchSize) {
+          final batch = _firestore.batch();
+          final end = (i + batchSize < eventosSnapshot.docs.length)
+              ? i + batchSize
+              : eventosSnapshot.docs.length;
+          final lote = eventosSnapshot.docs.sublist(i, end);
+
+          print(
+              '📦 Procesando lote ${(i ~/ batchSize) + 1} (${lote.length} eventos):\n');
+
+          for (var eventoDoc in lote) {
+            final eventoData = eventoDoc.data() as Map<String, dynamic>;
+
+            print('   📅 Evento: ${eventoData['nombre']}');
+            print('      ID: ${eventoDoc.id}');
+            print('      TribuId actual: ${eventoData['tribuId']}');
+            print('      → Cambiando a: $tribu1Id');
+
+            batch.update(eventoDoc.reference, {
+              'tribuId': tribu1Id,
+              'tribuOriginal': tribu2Id,
+              'nombreTribuOriginal': nombreTribu2Original,
+              'fechaTransferencia': FieldValue.serverTimestamp(),
+            });
+
+            eventosTransferidos++;
+            print('      ✅ Marcado para transferencia\n');
+          }
+
+          print('💾 Ejecutando batch commit...');
+          await batch.commit();
+          print('✅ Lote ${(i ~/ batchSize) + 1} completado\n');
+        }
+
+        print('═══════════════════════════════════════════════════════');
+        print('✅ EVENTOS TRANSFERIDOS: $eventosTransferidos');
+        print('═══════════════════════════════════════════════════════\n');
+      } else {
+        print('ℹ️ No hay eventos para transferir\n');
+      }
+
+      // =========================================================================
+      // PASO 5: Transferir otras colecciones
+      // =========================================================================
+      Future<void> transferirColeccion(
+        List<QueryDocumentSnapshot> docs,
+        String nombre,
+        String campo,
+        String emoji,
+      ) async {
+        if (docs.isEmpty) {
+          print('$emoji $nombre: No hay documentos\n');
+          return;
+        }
+
+        print('$emoji Transfiriendo ${docs.length} $nombre...');
+
+        const batchSize = 400;
+        for (int i = 0; i < docs.length; i += batchSize) {
+          final batch = _firestore.batch();
+          final end =
+              (i + batchSize < docs.length) ? i + batchSize : docs.length;
+          final lote = docs.sublist(i, end);
+
+          for (var doc in lote) {
+            batch.update(doc.reference, {
+              campo: tribu1Id,
+              'tribuOriginal': tribu2Id,
+              'fechaTransferencia': FieldValue.serverTimestamp(),
+            });
+          }
+
+          await batch.commit();
+        }
+
+        print('   ✅ $nombre transferidos correctamente\n');
+      }
+
+      await transferirColeccion(
+          coordinadoresSnapshot.docs, 'coordinadores', 'tribuId', '👥');
+      await transferirColeccion(
+          timoteosSnapshot.docs, 'timoteos', 'tribuId', '🎓');
+      await transferirColeccion(
+          asistenciasSnapshot.docs, 'asistencias', 'tribuId', '📋');
+      await transferirColeccion(
+          registrosSnapshot.docs, 'registros', 'tribuAsignada', '📝');
+
+      // =========================================================================
+      // PASO 6: Eliminar usuario de tribu2
+      // =========================================================================
+      print('🗑️ Eliminando usuario de tribu2...');
+
+      final usuarioTribu2Snapshot = await _firestore
+          .collection('usuarios')
+          .where('tribuId', isEqualTo: tribu2Id)
+          .limit(1)
+          .get()
+          .timeout(
+            const Duration(seconds: 5),
+            onTimeout: () =>
+                throw Exception('Tiempo agotado al buscar usuario de tribu2'),
+          );
+
+      final batchFinal = _firestore.batch();
+
+      if (usuarioTribu2Snapshot.docs.isNotEmpty) {
+        batchFinal.delete(usuarioTribu2Snapshot.docs.first.reference);
+        print('   ✅ Usuario marcado para eliminación');
+      }
+
+      // =========================================================================
+      // PASO 7: Crear historial
+      // =========================================================================
+      final historialRef = _firestore.collection('historialUnionTribus').doc();
+      batchFinal.set(historialRef, {
+        'tribuDestinoId': tribu1Id,
+        'tribuDestinoNombre': mantenerDatos
+            ? nombreTribu1Original
+            : (nuevoNombre?.trim() ?? nombreTribu1Original),
+        'tribuOrigenId': tribu2Id,
+        'tribuOrigenNombre': nombreTribu2Original,
+        'ministerio': tribu1Data['categoria'] ?? 'Sin categoría',
+        'fechaUnion': FieldValue.serverTimestamp(),
+        'mantuvoDatos': mantenerDatos,
+        'cantidadEventosTransferidos': eventosSnapshot.docs.length,
+        'cantidadRegistrosTransferidos': registrosSnapshot.docs.length,
+        'cantidadAsistenciasTransferidas': asistenciasSnapshot.docs.length,
+        'cantidadCoordinadoresTransferidos': coordinadoresSnapshot.docs.length,
+        'cantidadTimoteosTransferidos': timoteosSnapshot.docs.length,
+        'procesadoPor': 'Sistema',
+        'estado': 'Completado',
+      });
+
+      // =========================================================================
+      // PASO 8: Eliminar la tribu2
+      // =========================================================================
+      print('🗑️ Eliminando tribu2...');
+      batchFinal.delete(tribu2Doc.reference);
+
+      await batchFinal.commit().timeout(
+            const Duration(seconds: 30),
+            onTimeout: () =>
+                throw Exception('Tiempo agotado al guardar los cambios'),
+          );
+
+      print('   ✅ Tribu eliminada\n');
+
+      // =========================================================================
+      // RESUMEN FINAL
+      // =========================================================================
+      print('╔════════════════════════════════════════════════════════╗');
+      print('║         ✅ UNIÓN COMPLETADA EXITOSAMENTE               ║');
+      print('╚════════════════════════════════════════════════════════╝\n');
+      print('📊 Resumen de transferencias:');
+      print('   • Eventos: ${eventosSnapshot.docs.length}');
+      print('   • Coordinadores: ${coordinadoresSnapshot.docs.length}');
+      print('   • Timoteos: ${timoteosSnapshot.docs.length}');
+      print('   • Asistencias: ${asistenciasSnapshot.docs.length}');
+      print('   • Registros: ${registrosSnapshot.docs.length}');
+      print('\n════════════════════════════════════════════════════════\n');
+
+      // Cerrar loading dialog
+      Navigator.of(context, rootNavigator: true).pop();
+
+      // Mostrar mensaje de éxito con detalles
+      _mostrarDialogoExito(
+        nombreTribu1Original,
+        nombreTribu2Original,
+        registrosSnapshot.docs.length,
+        asistenciasSnapshot.docs.length,
+        mantenerDatos
+            ? nombreTribu1Original
+            : (nuevoNombre?.trim() ?? nombreTribu1Original),
+      );
+    } catch (e, stackTrace) {
+      // Cerrar loading dialog si está abierto
+      try {
+        Navigator.of(context, rootNavigator: true).pop();
+      } catch (_) {}
+
+      print('\n╔════════════════════════════════════════════════════════╗');
+      print('║            ❌ ERROR EN UNIÓN DE TRIBUS                 ║');
+      print('╚════════════════════════════════════════════════════════╝\n');
+      print('Error detallado: $e');
+      print('\nStack trace:');
+      print(stackTrace);
+      print('\n════════════════════════════════════════════════════════\n');
+
       String mensajeError = 'Error desconocido';
       if (e.toString().contains('Tiempo')) {
         mensajeError =
