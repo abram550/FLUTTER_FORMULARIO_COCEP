@@ -4376,197 +4376,220 @@ class _AdminPastoresState extends State<AdminPastores>
     );
   }
 
+  Future<void> _unirTribus(String tribu1Id, String tribu2Id) async {
+    try {
+      print('\n🔄 ═══════════════════════════════════════════════════════');
+      print('   INICIANDO UNIÓN DE TRIBUS');
+      print('═══════════════════════════════════════════════════════\n');
+      print('📍 Tribu DESTINO (1): $tribu1Id');
+      print('📍 Tribu ORIGEN (2): $tribu2Id\n');
 
+      // =========================================================================
+      // PASO 1: Verificar que ambas tribus existan
+      // =========================================================================
+      print('🔍 Verificando existencia de tribus...');
 
-Future<void> _unirTribus(String tribu1Id, String tribu2Id) async {
-  try {
-    print('\n🔄 ═══════════════════════════════════════════════════════');
-    print('   INICIANDO UNIÓN DE TRIBUS');
-    print('═══════════════════════════════════════════════════════\n');
-    print('📍 Tribu DESTINO (1): $tribu1Id');
-    print('📍 Tribu ORIGEN (2): $tribu2Id\n');
+      final tribu1Doc =
+          await _firestore.collection('tribus').doc(tribu1Id).get();
+      final tribu2Doc =
+          await _firestore.collection('tribus').doc(tribu2Id).get();
 
-    // =========================================================================
-    // PASO 1: Verificar que ambas tribus existan
-    // =========================================================================
-    print('🔍 Verificando existencia de tribus...');
-    
-    final tribu1Doc = await _firestore.collection('tribus').doc(tribu1Id).get();
-    final tribu2Doc = await _firestore.collection('tribus').doc(tribu2Id).get();
-
-    if (!tribu1Doc.exists) {
-      throw Exception('La tribu destino (ID: $tribu1Id) no existe');
-    }
-    if (!tribu2Doc.exists) {
-      throw Exception('La tribu origen (ID: $tribu2Id) no existe');
-    }
-
-    final tribu1Data = tribu1Doc.data()!;
-    final tribu2Data = tribu2Doc.data()!;
-
-    print('✅ Tribu 1: ${tribu1Data['nombre']}');
-    print('✅ Tribu 2: ${tribu2Data['nombre']}\n');
-
-    // =========================================================================
-    // PASO 2: Obtener TODOS los documentos a transferir
-    // =========================================================================
-    print('📊 Obteniendo documentos a transferir...\n');
-
-    final results = await Future.wait([
-      _firestore.collection('eventos').where('tribuId', isEqualTo: tribu2Id).get(),
-      _firestore.collection('coordinadores').where('tribuId', isEqualTo: tribu2Id).get(),
-      _firestore.collection('timoteos').where('tribuId', isEqualTo: tribu2Id).get(),
-      _firestore.collection('asistencias').where('tribuId', isEqualTo: tribu2Id).get(),
-      _firestore.collection('registros').where('tribuAsignada', isEqualTo: tribu2Id).get(),
-      _firestore.collection('usuarios').where('tribuId', isEqualTo: tribu2Id).limit(1).get(),
-    ]);
-
-    final eventosSnapshot = results[0];
-    final coordinadoresSnapshot = results[1];
-    final timoteosSnapshot = results[2];
-    final asistenciasSnapshot = results[3];
-    final registrosSnapshot = results[4];
-    final usuarioTribu2Snapshot = results[5];
-
-    print('📅 Eventos encontrados: ${eventosSnapshot.docs.length}');
-    print('👥 Coordinadores encontrados: ${coordinadoresSnapshot.docs.length}');
-    print('🎓 Timoteos encontrados: ${timoteosSnapshot.docs.length}');
-    print('📋 Asistencias encontradas: ${asistenciasSnapshot.docs.length}');
-    print('📝 Registros encontrados: ${registrosSnapshot.docs.length}');
-    print('👤 Usuario encontrado: ${usuarioTribu2Snapshot.docs.isEmpty ? "No" : "Sí"}\n');
-
-    // =========================================================================
-    // PASO 3: Transferir por lotes (máximo 500 operaciones por batch)
-    // =========================================================================
-    int totalOperaciones = 0;
-
-    // Helper para procesar en lotes
-    Future<void> procesarEnLotes(
-      List<QueryDocumentSnapshot> docs,
-      String coleccion,
-      String campoId,
-      String emoji,
-    ) async {
-      if (docs.isEmpty) {
-        print('$emoji $coleccion: No hay documentos para transferir');
-        return;
+      if (!tribu1Doc.exists) {
+        throw Exception('La tribu destino (ID: $tribu1Id) no existe');
+      }
+      if (!tribu2Doc.exists) {
+        throw Exception('La tribu origen (ID: $tribu2Id) no existe');
       }
 
-      print('$emoji Transfiriendo ${docs.length} documento(s) de $coleccion...');
+      final tribu1Data = tribu1Doc.data()!;
+      final tribu2Data = tribu2Doc.data()!;
 
-      // Procesar en lotes de 400 (margen de seguridad vs límite de 500)
-      const batchSize = 400;
-      
-      for (int i = 0; i < docs.length; i += batchSize) {
-        final batch = _firestore.batch();
-        final end = (i + batchSize < docs.length) ? i + batchSize : docs.length;
-        final lote = docs.sublist(i, end);
+      print('✅ Tribu 1: ${tribu1Data['nombre']}');
+      print('✅ Tribu 2: ${tribu2Data['nombre']}\n');
 
-        for (var doc in lote) {
-          batch.update(doc.reference, {
-            campoId: tribu1Id,
-            'tribuOriginal': tribu2Id,
-            'fechaTransferencia': FieldValue.serverTimestamp(),
-          });
-          totalOperaciones++;
+      // =========================================================================
+      // PASO 2: Obtener TODOS los documentos a transferir
+      // =========================================================================
+      print('📊 Obteniendo documentos a transferir...\n');
+
+      final results = await Future.wait([
+        _firestore
+            .collection('eventos')
+            .where('tribuId', isEqualTo: tribu2Id)
+            .get(),
+        _firestore
+            .collection('coordinadores')
+            .where('tribuId', isEqualTo: tribu2Id)
+            .get(),
+        _firestore
+            .collection('timoteos')
+            .where('tribuId', isEqualTo: tribu2Id)
+            .get(),
+        _firestore
+            .collection('asistencias')
+            .where('tribuId', isEqualTo: tribu2Id)
+            .get(),
+        _firestore
+            .collection('registros')
+            .where('tribuAsignada', isEqualTo: tribu2Id)
+            .get(),
+        _firestore
+            .collection('usuarios')
+            .where('tribuId', isEqualTo: tribu2Id)
+            .limit(1)
+            .get(),
+      ]);
+
+      final eventosSnapshot = results[0];
+      final coordinadoresSnapshot = results[1];
+      final timoteosSnapshot = results[2];
+      final asistenciasSnapshot = results[3];
+      final registrosSnapshot = results[4];
+      final usuarioTribu2Snapshot = results[5];
+
+      print('📅 Eventos encontrados: ${eventosSnapshot.docs.length}');
+      print(
+          '👥 Coordinadores encontrados: ${coordinadoresSnapshot.docs.length}');
+      print('🎓 Timoteos encontrados: ${timoteosSnapshot.docs.length}');
+      print('📋 Asistencias encontradas: ${asistenciasSnapshot.docs.length}');
+      print('📝 Registros encontrados: ${registrosSnapshot.docs.length}');
+      print(
+          '👤 Usuario encontrado: ${usuarioTribu2Snapshot.docs.isEmpty ? "No" : "Sí"}\n');
+
+      // =========================================================================
+      // PASO 3: Transferir por lotes (máximo 500 operaciones por batch)
+      // =========================================================================
+      int totalOperaciones = 0;
+
+      // Helper para procesar en lotes
+      Future<void> procesarEnLotes(
+        List<QueryDocumentSnapshot> docs,
+        String coleccion,
+        String campoId,
+        String emoji,
+      ) async {
+        if (docs.isEmpty) {
+          print('$emoji $coleccion: No hay documentos para transferir');
+          return;
         }
 
-        await batch.commit();
-        print('   ✅ Lote ${(i ~/ batchSize) + 1} completado (${lote.length} docs)');
+        print(
+            '$emoji Transfiriendo ${docs.length} documento(s) de $coleccion...');
+
+        // Procesar en lotes de 400 (margen de seguridad vs límite de 500)
+        const batchSize = 400;
+
+        for (int i = 0; i < docs.length; i += batchSize) {
+          final batch = _firestore.batch();
+          final end =
+              (i + batchSize < docs.length) ? i + batchSize : docs.length;
+          final lote = docs.sublist(i, end);
+
+          for (var doc in lote) {
+            batch.update(doc.reference, {
+              campoId: tribu1Id,
+              'tribuOriginal': tribu2Id,
+              'fechaTransferencia': FieldValue.serverTimestamp(),
+            });
+            totalOperaciones++;
+          }
+
+          await batch.commit();
+          print(
+              '   ✅ Lote ${(i ~/ batchSize) + 1} completado (${lote.length} docs)');
+        }
       }
+
+      // Transferir cada colección
+      await procesarEnLotes(eventosSnapshot.docs, 'eventos', 'tribuId', '📅');
+      await procesarEnLotes(
+          coordinadoresSnapshot.docs, 'coordinadores', 'tribuId', '👥');
+      await procesarEnLotes(timoteosSnapshot.docs, 'timoteos', 'tribuId', '🎓');
+      await procesarEnLotes(
+          asistenciasSnapshot.docs, 'asistencias', 'tribuId', '📋');
+      await procesarEnLotes(
+          registrosSnapshot.docs, 'registros', 'tribuAsignada', '📝');
+
+      print('');
+
+      // =========================================================================
+      // PASO 4: Eliminar usuario de tribu2 y la tribu misma
+      // =========================================================================
+      final batchFinal = _firestore.batch();
+
+      if (usuarioTribu2Snapshot.docs.isNotEmpty) {
+        print('🗑️ Eliminando usuario de tribu2...');
+        batchFinal.delete(usuarioTribu2Snapshot.docs.first.reference);
+        print('   ✅ Usuario marcado para eliminación');
+      }
+
+      print('🗑️ Eliminando tribu2...');
+      batchFinal.delete(tribu2Doc.reference);
+      print('   ✅ Tribu marcada para eliminación\n');
+
+      await batchFinal.commit();
+      print('✅ Eliminaciones completadas\n');
+
+      // =========================================================================
+      // PASO 5: Crear historial (opcional, no crítico)
+      // =========================================================================
+      try {
+        await _firestore.collection('historialUnionTribus').add({
+          'tribu1Id': tribu1Id,
+          'tribu1Nombre': tribu1Data['nombre'],
+          'tribu2Id': tribu2Id,
+          'tribu2Nombre': tribu2Data['nombre'],
+          'fechaUnion': FieldValue.serverTimestamp(),
+          'eventosTransferidos': eventosSnapshot.docs.length,
+          'coordinadoresTransferidos': coordinadoresSnapshot.docs.length,
+          'timoteosTransferidos': timoteosSnapshot.docs.length,
+          'asistenciasTransferidas': asistenciasSnapshot.docs.length,
+          'registrosTransferidos': registrosSnapshot.docs.length,
+          'totalOperaciones': totalOperaciones,
+        });
+        print('📊 Historial de unión creado\n');
+      } catch (e) {
+        print('⚠️ No se pudo crear historial (no crítico): $e\n');
+      }
+
+      // =========================================================================
+      // RESUMEN FINAL
+      // =========================================================================
+      print('╔═══════════════════════════════════════════════════════╗');
+      print('║           ✅ UNIÓN COMPLETADA EXITOSAMENTE            ║');
+      print('╚═══════════════════════════════════════════════════════╝');
+      print('');
+      print('📊 Resumen de transferencias:');
+      print('   • Eventos: ${eventosSnapshot.docs.length}');
+      print('   • Coordinadores: ${coordinadoresSnapshot.docs.length}');
+      print('   • Timoteos: ${timoteosSnapshot.docs.length}');
+      print('   • Asistencias: ${asistenciasSnapshot.docs.length}');
+      print('   • Registros: ${registrosSnapshot.docs.length}');
+      print('   • Total operaciones: $totalOperaciones');
+      print('');
+      print(
+          '🎯 Tribu "${tribu2Data['nombre']}" fusionada con "${tribu1Data['nombre']}"');
+      print('═══════════════════════════════════════════════════════\n');
+
+      _mostrarSnackBar(
+        'Tribus unidas exitosamente. ${eventosSnapshot.docs.length} eventos transferidos.',
+        isSuccess: true,
+      );
+    } catch (e, stackTrace) {
+      print('\n╔═══════════════════════════════════════════════════════╗');
+      print('║              ❌ ERROR EN UNIÓN DE TRIBUS              ║');
+      print('╚═══════════════════════════════════════════════════════╝\n');
+      print('Error: $e');
+      print('\nStack trace:');
+      print(stackTrace);
+      print('\n═══════════════════════════════════════════════════════\n');
+
+      _mostrarSnackBar(
+        'Error al unir las tribus: ${e.toString()}',
+        isSuccess: false,
+      );
     }
-
-    // Transferir cada colección
-    await procesarEnLotes(eventosSnapshot.docs, 'eventos', 'tribuId', '📅');
-    await procesarEnLotes(coordinadoresSnapshot.docs, 'coordinadores', 'tribuId', '👥');
-    await procesarEnLotes(timoteosSnapshot.docs, 'timoteos', 'tribuId', '🎓');
-    await procesarEnLotes(asistenciasSnapshot.docs, 'asistencias', 'tribuId', '📋');
-    await procesarEnLotes(registrosSnapshot.docs, 'registros', 'tribuAsignada', '📝');
-
-    print('');
-
-    // =========================================================================
-    // PASO 4: Eliminar usuario de tribu2 y la tribu misma
-    // =========================================================================
-    final batchFinal = _firestore.batch();
-
-    if (usuarioTribu2Snapshot.docs.isNotEmpty) {
-      print('🗑️ Eliminando usuario de tribu2...');
-      batchFinal.delete(usuarioTribu2Snapshot.docs.first.reference);
-      print('   ✅ Usuario marcado para eliminación');
-    }
-
-    print('🗑️ Eliminando tribu2...');
-    batchFinal.delete(tribu2Doc.reference);
-    print('   ✅ Tribu marcada para eliminación\n');
-
-    await batchFinal.commit();
-    print('✅ Eliminaciones completadas\n');
-
-    // =========================================================================
-    // PASO 5: Crear historial (opcional, no crítico)
-    // =========================================================================
-    try {
-      await _firestore.collection('historialUnionTribus').add({
-        'tribu1Id': tribu1Id,
-        'tribu1Nombre': tribu1Data['nombre'],
-        'tribu2Id': tribu2Id,
-        'tribu2Nombre': tribu2Data['nombre'],
-        'fechaUnion': FieldValue.serverTimestamp(),
-        'eventosTransferidos': eventosSnapshot.docs.length,
-        'coordinadoresTransferidos': coordinadoresSnapshot.docs.length,
-        'timoteosTransferidos': timoteosSnapshot.docs.length,
-        'asistenciasTransferidas': asistenciasSnapshot.docs.length,
-        'registrosTransferidos': registrosSnapshot.docs.length,
-        'totalOperaciones': totalOperaciones,
-      });
-      print('📊 Historial de unión creado\n');
-    } catch (e) {
-      print('⚠️ No se pudo crear historial (no crítico): $e\n');
-    }
-
-    // =========================================================================
-    // RESUMEN FINAL
-    // =========================================================================
-    print('╔═══════════════════════════════════════════════════════╗');
-    print('║           ✅ UNIÓN COMPLETADA EXITOSAMENTE            ║');
-    print('╚═══════════════════════════════════════════════════════╝');
-    print('');
-    print('📊 Resumen de transferencias:');
-    print('   • Eventos: ${eventosSnapshot.docs.length}');
-    print('   • Coordinadores: ${coordinadoresSnapshot.docs.length}');
-    print('   • Timoteos: ${timoteosSnapshot.docs.length}');
-    print('   • Asistencias: ${asistenciasSnapshot.docs.length}');
-    print('   • Registros: ${registrosSnapshot.docs.length}');
-    print('   • Total operaciones: $totalOperaciones');
-    print('');
-    print('🎯 Tribu "${tribu2Data['nombre']}" fusionada con "${tribu1Data['nombre']}"');
-    print('═══════════════════════════════════════════════════════\n');
-
-    _mostrarSnackBar(
-      'Tribus unidas exitosamente. ${eventosSnapshot.docs.length} eventos transferidos.',
-      isSuccess: true,
-    );
-
-  } catch (e, stackTrace) {
-    print('\n╔═══════════════════════════════════════════════════════╗');
-    print('║              ❌ ERROR EN UNIÓN DE TRIBUS              ║');
-    print('╚═══════════════════════════════════════════════════════╝\n');
-    print('Error: $e');
-    print('\nStack trace:');
-    print(stackTrace);
-    print('\n═══════════════════════════════════════════════════════\n');
-    
-    _mostrarSnackBar(
-      'Error al unir las tribus: ${e.toString()}',
-      isSuccess: false,
-    );
   }
-}
-
-
-
-
 
   Widget _buildListaLideresConsolidacion() {
     return StreamBuilder<QuerySnapshot>(
