@@ -560,6 +560,9 @@ class _TribusScreenState extends State<TribusScreen>
                 // Formulario con scroll
                 Expanded(
                   child: SingleChildScrollView(
+                    keyboardDismissBehavior:
+                        ScrollViewKeyboardDismissBehavior.manual,
+                    physics: ClampingScrollPhysics(),
                     padding: EdgeInsets.all(isSmallScreen ? 16 : 24),
                     child: Form(
                       key: _formKey,
@@ -976,207 +979,221 @@ class _TribusScreenState extends State<TribusScreen>
                 ),
 
                 // Botones de acción con diseño mejorado
-                Container(
-                  padding: EdgeInsets.all(isSmallScreen ? 16 : 24),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade50,
-                    borderRadius: BorderRadius.only(
-                      bottomLeft: Radius.circular(isSmallScreen ? 16 : 24),
-                      bottomRight: Radius.circular(isSmallScreen ? 16 : 24),
+                SafeArea(
+                  child: Container(
+                    padding: EdgeInsets.only(
+                      left: isSmallScreen ? 16 : 24,
+                      right: isSmallScreen ? 16 : 24,
+                      top: isSmallScreen ? 12 : 16,
+                      bottom: isSmallScreen ? 12 : 16,
                     ),
-                  ),
-                  child: isSmallScreen
-                      ? Column(
-                          children: [
-                            SizedBox(
-                              width: double.infinity,
-                              child: ElevatedButton(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Color(0xFFFF7E00),
-                                  foregroundColor: Colors.white,
-                                  padding: EdgeInsets.symmetric(vertical: 14),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  elevation: 2,
-                                  shadowColor:
-                                      Color(0xFFFF7E00).withOpacity(0.3),
-                                ),
-                                onPressed: () {
-                                  if (_formKey.currentState!.validate()) {
-                                    final registro = {
-                                      'fechaAsignacionTribu':
-                                          fechaAsignacionTribu != null
-                                              ? Timestamp.fromDate(
-                                                  fechaAsignacionTribu!)
-                                              : null,
-                                      'nombre': nombre,
-                                      'apellido': apellido,
-                                      'telefono': telefono,
-                                      'sexo': sexo,
-                                      'edad': edad,
-                                      'direccion': direccion,
-                                      'barrio': barrio,
-                                      'estadoCivil': estadoCivil,
-                                      'nombrePareja': nombrePareja,
-                                      'ocupaciones': ocupacionesSeleccionadas,
-                                      'descripcionOcupaciones':
-                                          descripcionOcupaciones,
-                                      'tieneHijos': tieneHijos,
-                                      'referenciaInvitacion':
-                                          referenciaInvitacion,
-                                      'observaciones': observaciones,
-                                      'tribuAsignada': widget.tribuNombre,
-                                      'ministerioAsignado':
-                                          _determinarMinisterio(
-                                              widget.tribuNombre),
-                                      'coordinadorAsignado': null,
-                                      'fechaRegistro':
-                                          FieldValue.serverTimestamp(),
-                                      'activo': true,
-                                      'estadoProceso': estadoProceso,
-                                    };
-
-                                    _guardarRegistroEnFirebase(
-                                        context, registro, widget.tribuId);
-                                  }
-                                },
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(Icons.save_outlined, size: 18),
-                                    SizedBox(width: 8),
-                                    Text(
-                                      'Guardar Registro',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 15,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            SizedBox(height: 12),
-                            SizedBox(
-                              width: double.infinity,
-                              child: TextButton(
-                                onPressed: () => Navigator.pop(context),
-                                style: TextButton.styleFrom(
-                                  padding: EdgeInsets.symmetric(vertical: 14),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                    side:
-                                        BorderSide(color: Colors.grey.shade300),
-                                  ),
-                                ),
-                                child: Text(
-                                  'Cancelar',
-                                  style: TextStyle(
-                                    color: Colors.grey.shade700,
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 15,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        )
-                      : Row(
-                          children: [
-                            Expanded(
-                              child: TextButton(
-                                onPressed: () => Navigator.pop(context),
-                                style: TextButton.styleFrom(
-                                  padding: EdgeInsets.symmetric(vertical: 16),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                    side:
-                                        BorderSide(color: Colors.grey.shade300),
-                                  ),
-                                ),
-                                child: Text(
-                                  'Cancelar',
-                                  style: TextStyle(
-                                    color: Colors.grey.shade700,
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            SizedBox(width: 16),
-                            Expanded(
-                              flex: 2,
-                              child: ElevatedButton(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Color(0xFFFF7E00),
-                                  foregroundColor: Colors.white,
-                                  padding: EdgeInsets.symmetric(vertical: 16),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  elevation: 2,
-                                  shadowColor:
-                                      Color(0xFFFF7E00).withOpacity(0.3),
-                                ),
-                                onPressed: () {
-                                  if (_formKey.currentState!.validate()) {
-                                    final registro = {
-                                      'fechaAsignacionTribu':
-                                          fechaAsignacionTribu != null
-                                              ? Timestamp.fromDate(
-                                                  fechaAsignacionTribu!)
-                                              : null,
-                                      'nombre': nombre,
-                                      'apellido': apellido,
-                                      'telefono': telefono,
-                                      'sexo': sexo,
-                                      'edad': edad,
-                                      'direccion': direccion,
-                                      'barrio': barrio,
-                                      'estadoCivil': estadoCivil,
-                                      'nombrePareja': nombrePareja,
-                                      'ocupaciones': ocupacionesSeleccionadas,
-                                      'descripcionOcupaciones':
-                                          descripcionOcupaciones,
-                                      'tieneHijos': tieneHijos,
-                                      'referenciaInvitacion':
-                                          referenciaInvitacion,
-                                      'observaciones': observaciones,
-                                      'tribuAsignada': widget.tribuNombre,
-                                      'ministerioAsignado':
-                                          _determinarMinisterio(
-                                              widget.tribuNombre),
-                                      'coordinadorAsignado': null,
-                                      'fechaRegistro':
-                                          FieldValue.serverTimestamp(),
-                                      'activo': true,
-                                      'estadoProceso': estadoProceso,
-                                    };
-
-                                    _guardarRegistroEnFirebase(
-                                        context, registro, widget.tribuId);
-                                  }
-                                },
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(Icons.save_outlined, size: 20),
-                                    SizedBox(width: 8),
-                                    Text(
-                                      'Guardar Registro',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 16,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade50,
+                      borderRadius: BorderRadius.only(
+                        bottomLeft: Radius.circular(isSmallScreen ? 16 : 24),
+                        bottomRight: Radius.circular(isSmallScreen ? 16 : 24),
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          offset: Offset(0, -2),
+                          blurRadius: 4,
                         ),
+                      ],
+                    ),
+                    child: isSmallScreen
+                        ? Column(
+                            children: [
+                              SizedBox(
+                                width: double.infinity,
+                                child: ElevatedButton(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Color(0xFFFF7E00),
+                                    foregroundColor: Colors.white,
+                                    padding: EdgeInsets.symmetric(vertical: 14),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    elevation: 2,
+                                    shadowColor:
+                                        Color(0xFFFF7E00).withOpacity(0.3),
+                                  ),
+                                  onPressed: () {
+                                    if (_formKey.currentState!.validate()) {
+                                      final registro = {
+                                        'fechaAsignacionTribu':
+                                            fechaAsignacionTribu != null
+                                                ? Timestamp.fromDate(
+                                                    fechaAsignacionTribu!)
+                                                : null,
+                                        'nombre': nombre,
+                                        'apellido': apellido,
+                                        'telefono': telefono,
+                                        'sexo': sexo,
+                                        'edad': edad,
+                                        'direccion': direccion,
+                                        'barrio': barrio,
+                                        'estadoCivil': estadoCivil,
+                                        'nombrePareja': nombrePareja,
+                                        'ocupaciones': ocupacionesSeleccionadas,
+                                        'descripcionOcupaciones':
+                                            descripcionOcupaciones,
+                                        'tieneHijos': tieneHijos,
+                                        'referenciaInvitacion':
+                                            referenciaInvitacion,
+                                        'observaciones': observaciones,
+                                        'tribuAsignada': widget.tribuNombre,
+                                        'ministerioAsignado':
+                                            _determinarMinisterio(
+                                                widget.tribuNombre),
+                                        'coordinadorAsignado': null,
+                                        'fechaRegistro':
+                                            FieldValue.serverTimestamp(),
+                                        'activo': true,
+                                        'estadoProceso': estadoProceso,
+                                      };
+
+                                      _guardarRegistroEnFirebase(
+                                          context, registro, widget.tribuId);
+                                    }
+                                  },
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.save_outlined, size: 18),
+                                      SizedBox(width: 8),
+                                      Text(
+                                        'Guardar Registro',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 15,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              SizedBox(height: 12),
+                              SizedBox(
+                                width: double.infinity,
+                                child: TextButton(
+                                  onPressed: () => Navigator.pop(context),
+                                  style: TextButton.styleFrom(
+                                    padding: EdgeInsets.symmetric(vertical: 14),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      side: BorderSide(
+                                          color: Colors.grey.shade300),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    'Cancelar',
+                                    style: TextStyle(
+                                      color: Colors.grey.shade700,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 15,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          )
+                        : Row(
+                            children: [
+                              Expanded(
+                                child: TextButton(
+                                  onPressed: () => Navigator.pop(context),
+                                  style: TextButton.styleFrom(
+                                    padding: EdgeInsets.symmetric(vertical: 16),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      side: BorderSide(
+                                          color: Colors.grey.shade300),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    'Cancelar',
+                                    style: TextStyle(
+                                      color: Colors.grey.shade700,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              SizedBox(width: 16),
+                              Expanded(
+                                flex: 2,
+                                child: ElevatedButton(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Color(0xFFFF7E00),
+                                    foregroundColor: Colors.white,
+                                    padding: EdgeInsets.symmetric(vertical: 16),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    elevation: 2,
+                                    shadowColor:
+                                        Color(0xFFFF7E00).withOpacity(0.3),
+                                  ),
+                                  onPressed: () {
+                                    if (_formKey.currentState!.validate()) {
+                                      final registro = {
+                                        'fechaAsignacionTribu':
+                                            fechaAsignacionTribu != null
+                                                ? Timestamp.fromDate(
+                                                    fechaAsignacionTribu!)
+                                                : null,
+                                        'nombre': nombre,
+                                        'apellido': apellido,
+                                        'telefono': telefono,
+                                        'sexo': sexo,
+                                        'edad': edad,
+                                        'direccion': direccion,
+                                        'barrio': barrio,
+                                        'estadoCivil': estadoCivil,
+                                        'nombrePareja': nombrePareja,
+                                        'ocupaciones': ocupacionesSeleccionadas,
+                                        'descripcionOcupaciones':
+                                            descripcionOcupaciones,
+                                        'tieneHijos': tieneHijos,
+                                        'referenciaInvitacion':
+                                            referenciaInvitacion,
+                                        'observaciones': observaciones,
+                                        'tribuAsignada': widget.tribuNombre,
+                                        'ministerioAsignado':
+                                            _determinarMinisterio(
+                                                widget.tribuNombre),
+                                        'coordinadorAsignado': null,
+                                        'fechaRegistro':
+                                            FieldValue.serverTimestamp(),
+                                        'activo': true,
+                                        'estadoProceso': estadoProceso,
+                                      };
+
+                                      _guardarRegistroEnFirebase(
+                                          context, registro, widget.tribuId);
+                                    }
+                                  },
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.save_outlined, size: 20),
+                                      SizedBox(width: 8),
+                                      Text(
+                                        'Guardar Registro',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 16,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                  ),
                 ),
               ],
             ),
@@ -5391,7 +5408,7 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
   final FocusNode _searchEstadoFocusNode = FocusNode();
 
 // 🆕 NUEVA VARIABLE: Control de expansión del panel de filtros
-  bool _filtrosExpandidos = true;
+  bool _filtrosExpandidos = false;
 
   @override
   void initState() {
@@ -6249,9 +6266,12 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
               child: Container(
                 constraints: BoxConstraints(
                   maxWidth: 500,
-                  maxHeight: MediaQuery.of(dialogContext).size.height * 0.8,
+                  maxHeight: MediaQuery.of(dialogContext).size.height * 0.85,
                 ),
                 child: SingleChildScrollView(
+                  keyboardDismissBehavior:
+                      ScrollViewKeyboardDismissBehavior.manual,
+                  physics: ClampingScrollPhysics(),
                   child: Padding(
                     padding: const EdgeInsets.all(24.0),
                     child: Column(
@@ -6752,126 +6772,171 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
                         const SizedBox(height: 24),
 
                         // Botones de acción
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            TextButton.icon(
-                              onPressed: () async {
-                                bool confirmar = await confirmarSalida();
-                                if (confirmar && dialogContext.mounted) {
-                                  Navigator.pop(dialogContext);
-                                }
-                              },
-                              icon: Icon(Icons.cancel, color: Colors.grey[700]),
-                              label: Text('Cancelar',
-                                  style: TextStyle(
-                                      color: Colors.grey[700], fontSize: 16)),
-                              style: TextButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 16, vertical: 12),
-                              ),
-                            ),
-                            ElevatedButton.icon(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: secondaryOrange,
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 24, vertical: 12),
-                                shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12)),
-                                elevation: 2,
-                              ),
-                              icon: const Icon(Icons.save, color: Colors.white),
-                              label: const Text('Guardar Cambios',
-                                  style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold)),
-                              onPressed: () async {
-                                try {
-                                  final Map<String, dynamic> updateData = {};
-
-                                  updateData['estadoCivil'] =
-                                      estadoCivilSeleccionado;
-                                  updateData['sexo'] = sexoSeleccionado;
-
-                                  if (fechaNacimiento != null) {
-                                    updateData['fechaNacimiento'] =
-                                        Timestamp.fromDate(fechaNacimiento!);
+                        SafeArea(
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              TextButton.icon(
+                                onPressed: () async {
+                                  bool confirmar = await confirmarSalida();
+                                  if (confirmar && dialogContext.mounted) {
+                                    Navigator.pop(dialogContext);
                                   }
+                                },
+                                icon:
+                                    Icon(Icons.cancel, color: Colors.grey[700]),
+                                label: Text('Cancelar',
+                                    style: TextStyle(
+                                        color: Colors.grey[700], fontSize: 16)),
+                                style: TextButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 16, vertical: 12),
+                                ),
+                              ),
+                              ElevatedButton.icon(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: secondaryOrange,
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 24, vertical: 12),
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12)),
+                                  elevation: 2,
+                                ),
+                                icon:
+                                    const Icon(Icons.save, color: Colors.white),
+                                label: const Text('Guardar Cambios',
+                                    style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold)),
+                                onPressed: () async {
+                                  try {
+                                    final Map<String, dynamic> updateData = {};
 
-                                  updateData['activo'] = estadoActivo;
-                                  if (!estadoActivo) {
-                                    updateData['coordinadorAsignado'] = null;
-                                    updateData['coordinadorNombre'] = null;
-                                    updateData['timoteoAsignado'] = null;
-                                    updateData['nombreTimoteo'] = null;
-                                  }
+                                    updateData['estadoCivil'] =
+                                        estadoCivilSeleccionado;
+                                    updateData['sexo'] = sexoSeleccionado;
 
-                                  controllers.forEach((key, controller) {
-                                    if (controller != null) {
-                                      final fieldType =
-                                          camposDefinicion[key]?['type'];
-                                      if (fieldType == 'list') {
-                                        updateData[key] =
-                                            controller.text.isEmpty
-                                                ? []
-                                                : controller.text
-                                                    .split(',')
-                                                    .map((e) => e.trim())
-                                                    .toList();
-                                      } else if (fieldType == 'int') {
-                                        int? parsedValue =
-                                            int.tryParse(controller.text);
-                                        updateData[key] = parsedValue ?? 0;
-                                      } else {
-                                        updateData[key] = controller.text;
-                                      }
+                                    if (fechaNacimiento != null) {
+                                      updateData['fechaNacimiento'] =
+                                          Timestamp.fromDate(fechaNacimiento!);
                                     }
-                                  });
 
-                                  final data = registro.data();
-                                  if (data != null &&
-                                      data is Map<String, dynamic>) {
-                                    if (data.containsKey(
-                                            'descripcionOcupaciones') &&
-                                        !data.containsKey(
+                                    updateData['activo'] = estadoActivo;
+                                    if (!estadoActivo) {
+                                      updateData['coordinadorAsignado'] = null;
+                                      updateData['coordinadorNombre'] = null;
+                                      updateData['timoteoAsignado'] = null;
+                                      updateData['nombreTimoteo'] = null;
+                                    }
+
+                                    controllers.forEach((key, controller) {
+                                      if (controller != null) {
+                                        final fieldType =
+                                            camposDefinicion[key]?['type'];
+                                        if (fieldType == 'list') {
+                                          updateData[key] =
+                                              controller.text.isEmpty
+                                                  ? []
+                                                  : controller.text
+                                                      .split(',')
+                                                      .map((e) => e.trim())
+                                                      .toList();
+                                        } else if (fieldType == 'int') {
+                                          int? parsedValue =
+                                              int.tryParse(controller.text);
+                                          updateData[key] = parsedValue ?? 0;
+                                        } else {
+                                          updateData[key] = controller.text;
+                                        }
+                                      }
+                                    });
+
+                                    final data = registro.data();
+                                    if (data != null &&
+                                        data is Map<String, dynamic>) {
+                                      if (data.containsKey(
+                                              'descripcionOcupaciones') &&
+                                          !data.containsKey(
+                                              'descripcionOcupacion')) {
+                                        if (updateData.containsKey(
                                             'descripcionOcupacion')) {
-                                      if (updateData.containsKey(
-                                          'descripcionOcupacion')) {
-                                        updateData['descripcionOcupaciones'] =
-                                            updateData['descripcionOcupacion'];
-                                        updateData
-                                            .remove('descripcionOcupacion');
+                                          updateData['descripcionOcupaciones'] =
+                                              updateData[
+                                                  'descripcionOcupacion'];
+                                          updateData
+                                              .remove('descripcionOcupacion');
+                                        }
                                       }
                                     }
-                                  }
 
-                                  if (FirebaseFirestore.instance != null) {
-                                    await FirebaseFirestore.instance
-                                        .collection('registros')
-                                        .doc(registro.id)
-                                        .update(updateData);
+                                    if (FirebaseFirestore.instance != null) {
+                                      await FirebaseFirestore.instance
+                                          .collection('registros')
+                                          .doc(registro.id)
+                                          .update(updateData);
 
+                                      if (dialogContext.mounted) {
+                                        Navigator.pop(dialogContext);
+                                      }
+
+                                      if (context.mounted) {
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          SnackBar(
+                                            content: Row(
+                                              children: const [
+                                                Icon(Icons.check_circle,
+                                                    color: Colors.white),
+                                                SizedBox(width: 12),
+                                                Text(
+                                                  'Registro actualizado correctamente',
+                                                  style:
+                                                      TextStyle(fontSize: 16),
+                                                ),
+                                              ],
+                                            ),
+                                            backgroundColor: Colors.green,
+                                            behavior: SnackBarBehavior.floating,
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(10),
+                                            ),
+                                            margin: const EdgeInsets.all(12),
+                                            padding: const EdgeInsets.symmetric(
+                                                vertical: 14, horizontal: 20),
+                                            duration:
+                                                const Duration(seconds: 3),
+                                          ),
+                                        );
+                                      }
+                                    } else {
+                                      throw Exception(
+                                          "No se pudo conectar con Firestore");
+                                    }
+                                  } catch (e) {
                                     if (dialogContext.mounted) {
                                       Navigator.pop(dialogContext);
                                     }
-
                                     if (context.mounted) {
                                       ScaffoldMessenger.of(context)
                                           .showSnackBar(
                                         SnackBar(
                                           content: Row(
-                                            children: const [
-                                              Icon(Icons.check_circle,
+                                            children: [
+                                              const Icon(Icons.error,
                                                   color: Colors.white),
-                                              SizedBox(width: 12),
-                                              Text(
-                                                'Registro actualizado correctamente',
-                                                style: TextStyle(fontSize: 16),
+                                              const SizedBox(width: 12),
+                                              Expanded(
+                                                child: Text(
+                                                  'Error al actualizar: ${e.toString()}',
+                                                  style: const TextStyle(
+                                                      fontSize: 16),
+                                                ),
                                               ),
                                             ],
                                           ),
-                                          backgroundColor: Colors.green,
+                                          backgroundColor: Colors.red,
                                           behavior: SnackBarBehavior.floating,
                                           shape: RoundedRectangleBorder(
                                             borderRadius:
@@ -6880,52 +6945,15 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
                                           margin: const EdgeInsets.all(12),
                                           padding: const EdgeInsets.symmetric(
                                               vertical: 14, horizontal: 20),
-                                          duration: const Duration(seconds: 3),
+                                          duration: const Duration(seconds: 5),
                                         ),
                                       );
                                     }
-                                  } else {
-                                    throw Exception(
-                                        "No se pudo conectar con Firestore");
                                   }
-                                } catch (e) {
-                                  if (dialogContext.mounted) {
-                                    Navigator.pop(dialogContext);
-                                  }
-                                  if (context.mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Row(
-                                          children: [
-                                            const Icon(Icons.error,
-                                                color: Colors.white),
-                                            const SizedBox(width: 12),
-                                            Expanded(
-                                              child: Text(
-                                                'Error al actualizar: ${e.toString()}',
-                                                style: const TextStyle(
-                                                    fontSize: 16),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        backgroundColor: Colors.red,
-                                        behavior: SnackBarBehavior.floating,
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(10),
-                                        ),
-                                        margin: const EdgeInsets.all(12),
-                                        padding: const EdgeInsets.symmetric(
-                                            vertical: 14, horizontal: 20),
-                                        duration: const Duration(seconds: 5),
-                                      ),
-                                    );
-                                  }
-                                }
-                              },
-                            ),
-                          ],
+                                },
+                              ),
+                            ],
+                          ),
                         ),
                       ],
                     ),
@@ -6949,10 +6977,10 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
 
     return GestureDetector(
       onTap: () {
-        _searchFocusNode.unfocus();
-        _searchEstadoFocusNode.unfocus();
+        // Solo desfocus si no estamos scrolleando
+        FocusScope.of(context).requestFocus(FocusNode());
       },
-      behavior: HitTestBehavior.opaque,
+      behavior: HitTestBehavior.translucent,
       child: Scaffold(
         resizeToAvoidBottomInset: true,
         backgroundColor: Colors.transparent,
