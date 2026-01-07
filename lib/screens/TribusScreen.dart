@@ -1798,15 +1798,7 @@ class _TribusScreenState extends State<TribusScreen>
               ],
             ),
           ),
-          floatingActionButton: FloatingActionButton(
-            backgroundColor: secondaryOrange,
-            child: Icon(Icons.add, color: Colors.white),
-            onPressed: () {
-              _resetInactivityTimer();
-              _showAddOptions(context, primaryTeal, secondaryOrange);
-            },
-            elevation: 4,
-          ),
+          // FloatingActionButton eliminado - Botón movido a pestaña Personas
         ),
       ),
     );
@@ -6957,869 +6949,986 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
         _searchFocusNode.unfocus();
       },
       behavior: HitTestBehavior.opaque,
-      child: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              primaryTeal.withOpacity(0.05),
-              backgroundGrey,
-            ],
-          ),
-        ),
-        child: Column(
-          children: [
-            // 🎯 SECCIÓN DE CONTROLES SUPERIORES
-            Container(
-              margin: EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: primaryTeal.withOpacity(0.15),
-                    blurRadius: 12,
-                    offset: Offset(0, 4),
-                  ),
+      child: Stack(
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  primaryTeal.withOpacity(0.05),
+                  backgroundGrey,
                 ],
               ),
-              child: Column(
-                children: [
-                  // 🔍 BARRA DE BÚSQUEDA
-                  // 🔍 BARRA DE BÚSQUEDA MEJORADA CON SELECTOR DE TIPO
-                  Padding(
-                    padding: EdgeInsets.fromLTRB(12, 12, 12, 8),
-                    child: Column(
-                      children: [
-                        // Selector de tipo de búsqueda
-                        Container(
-                          padding:
-                              EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: primaryTeal.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(
-                              color: primaryTeal.withOpacity(0.3),
-                              width: 1,
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.filter_list_rounded,
-                                color: primaryTeal,
-                                size: 18,
-                              ),
-                              SizedBox(width: 8),
-                              Text(
-                                'Buscar por:',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                  color: primaryTeal,
+            ),
+            child: Column(
+              children: [
+                // 🎯 SECCIÓN DE CONTROLES SUPERIORES
+                Container(
+                  margin: EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: primaryTeal.withOpacity(0.15),
+                        blurRadius: 12,
+                        offset: Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      // 🔍 BARRA DE BÚSQUEDA
+                      // 🔍 BARRA DE BÚSQUEDA MEJORADA CON SELECTOR DE TIPO
+                      Padding(
+                        padding: EdgeInsets.fromLTRB(12, 12, 12, 8),
+                        child: Column(
+                          children: [
+                            // Selector de tipo de búsqueda
+                            Container(
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: primaryTeal.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: primaryTeal.withOpacity(0.3),
+                                  width: 1,
                                 ),
                               ),
-                              SizedBox(width: 12),
-                              Expanded(
-                                child: Row(
-                                  children: [
-                                    Expanded(
-                                      child: InkWell(
-                                        onTap: () {
-                                          setState(() {
-                                            _tipoBusqueda = 'nombre';
-                                            _searchEstadoController.clear();
-                                            _searchEstadoTerm = '';
-                                          });
-                                        },
-                                        borderRadius: BorderRadius.circular(8),
-                                        child: Container(
-                                          padding: EdgeInsets.symmetric(
-                                            horizontal: 12,
-                                            vertical: 8,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: _tipoBusqueda == 'nombre'
-                                                ? primaryTeal
-                                                : Colors.transparent,
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.filter_list_rounded,
+                                    color: primaryTeal,
+                                    size: 18,
+                                  ),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    'Buscar por:',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: primaryTeal,
+                                    ),
+                                  ),
+                                  SizedBox(width: 12),
+                                  Expanded(
+                                    child: Row(
+                                      children: [
+                                        Expanded(
+                                          child: InkWell(
+                                            onTap: () {
+                                              setState(() {
+                                                _tipoBusqueda = 'nombre';
+                                                _searchEstadoController.clear();
+                                                _searchEstadoTerm = '';
+                                              });
+                                            },
                                             borderRadius:
                                                 BorderRadius.circular(8),
-                                            border: Border.all(
-                                              color: _tipoBusqueda == 'nombre'
-                                                  ? primaryTeal
-                                                  : primaryTeal
-                                                      .withOpacity(0.3),
-                                              width: 1.5,
-                                            ),
-                                          ),
-                                          child: Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.center,
-                                            children: [
-                                              Icon(
-                                                Icons.person_search_rounded,
-                                                color: _tipoBusqueda == 'nombre'
-                                                    ? Colors.white
-                                                    : primaryTeal,
-                                                size: 16,
+                                            child: Container(
+                                              padding: EdgeInsets.symmetric(
+                                                horizontal: 12,
+                                                vertical: 8,
                                               ),
-                                              SizedBox(width: 6),
-                                              Flexible(
-                                                child: Text(
-                                                  'Nombre',
-                                                  style: TextStyle(
-                                                    fontSize: 12,
-                                                    fontWeight: FontWeight.w600,
+                                              decoration: BoxDecoration(
+                                                color: _tipoBusqueda == 'nombre'
+                                                    ? primaryTeal
+                                                    : Colors.transparent,
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                                border: Border.all(
+                                                  color:
+                                                      _tipoBusqueda == 'nombre'
+                                                          ? primaryTeal
+                                                          : primaryTeal
+                                                              .withOpacity(0.3),
+                                                  width: 1.5,
+                                                ),
+                                              ),
+                                              child: Row(
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment.center,
+                                                children: [
+                                                  Icon(
+                                                    Icons.person_search_rounded,
                                                     color: _tipoBusqueda ==
                                                             'nombre'
                                                         ? Colors.white
                                                         : primaryTeal,
+                                                    size: 16,
                                                   ),
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                ),
+                                                  SizedBox(width: 6),
+                                                  Flexible(
+                                                    child: Text(
+                                                      'Nombre',
+                                                      style: TextStyle(
+                                                        fontSize: 12,
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                        color: _tipoBusqueda ==
+                                                                'nombre'
+                                                            ? Colors.white
+                                                            : primaryTeal,
+                                                      ),
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
+                                                    ),
+                                                  ),
+                                                ],
                                               ),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    SizedBox(width: 8),
-                                    Expanded(
-                                      child: InkWell(
-                                        onTap: () {
-                                          setState(() {
-                                            _tipoBusqueda = 'estado';
-                                            _searchController.clear();
-                                            _searchTerm = '';
-                                          });
-                                        },
-                                        borderRadius: BorderRadius.circular(8),
-                                        child: Container(
-                                          padding: EdgeInsets.symmetric(
-                                            horizontal: 12,
-                                            vertical: 8,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: _tipoBusqueda == 'estado'
-                                                ? secondaryOrange
-                                                : Colors.transparent,
-                                            borderRadius:
-                                                BorderRadius.circular(8),
-                                            border: Border.all(
-                                              color: _tipoBusqueda == 'estado'
-                                                  ? secondaryOrange
-                                                  : secondaryOrange
-                                                      .withOpacity(0.3),
-                                              width: 1.5,
                                             ),
                                           ),
-                                          child: Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.center,
-                                            children: [
-                                              Icon(
-                                                Icons.track_changes_rounded,
-                                                color: _tipoBusqueda == 'estado'
-                                                    ? Colors.white
-                                                    : secondaryOrange,
-                                                size: 16,
+                                        ),
+                                        SizedBox(width: 8),
+                                        Expanded(
+                                          child: InkWell(
+                                            onTap: () {
+                                              setState(() {
+                                                _tipoBusqueda = 'estado';
+                                                _searchController.clear();
+                                                _searchTerm = '';
+                                              });
+                                            },
+                                            borderRadius:
+                                                BorderRadius.circular(8),
+                                            child: Container(
+                                              padding: EdgeInsets.symmetric(
+                                                horizontal: 12,
+                                                vertical: 8,
                                               ),
-                                              SizedBox(width: 6),
-                                              Flexible(
-                                                child: Text(
-                                                  'Estado',
-                                                  style: TextStyle(
-                                                    fontSize: 12,
-                                                    fontWeight: FontWeight.w600,
+                                              decoration: BoxDecoration(
+                                                color: _tipoBusqueda == 'estado'
+                                                    ? secondaryOrange
+                                                    : Colors.transparent,
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                                border: Border.all(
+                                                  color:
+                                                      _tipoBusqueda == 'estado'
+                                                          ? secondaryOrange
+                                                          : secondaryOrange
+                                                              .withOpacity(0.3),
+                                                  width: 1.5,
+                                                ),
+                                              ),
+                                              child: Row(
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment.center,
+                                                children: [
+                                                  Icon(
+                                                    Icons.track_changes_rounded,
                                                     color: _tipoBusqueda ==
                                                             'estado'
                                                         ? Colors.white
                                                         : secondaryOrange,
+                                                    size: 16,
                                                   ),
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
+                                                  SizedBox(width: 6),
+                                                  Flexible(
+                                                    child: Text(
+                                                      'Estado',
+                                                      style: TextStyle(
+                                                        fontSize: 12,
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                        color: _tipoBusqueda ==
+                                                                'estado'
+                                                            ? Colors.white
+                                                            : secondaryOrange,
+                                                      ),
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            SizedBox(height: 8),
+
+                            // Campo de búsqueda (cambia según el tipo seleccionado)
+                            AnimatedSwitcher(
+                              duration: Duration(milliseconds: 300),
+                              transitionBuilder:
+                                  (Widget child, Animation<double> animation) {
+                                return FadeTransition(
+                                  opacity: animation,
+                                  child: SlideTransition(
+                                    position: Tween<Offset>(
+                                      begin: Offset(0.0, 0.2),
+                                      end: Offset.zero,
+                                    ).animate(animation),
+                                    child: child,
+                                  ),
+                                );
+                              },
+                              child: Container(
+                                key: ValueKey<String>(_tipoBusqueda),
+                                decoration: BoxDecoration(
+                                  color: backgroundGrey.withOpacity(0.5),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: (_tipoBusqueda == 'nombre'
+                                            ? primaryTeal
+                                            : secondaryOrange)
+                                        .withOpacity(0.3),
+                                    width: 1.5,
+                                  ),
+                                ),
+                                child: TextField(
+                                  controller: _tipoBusqueda == 'nombre'
+                                      ? _searchController
+                                      : _searchEstadoController,
+                                  focusNode: _tipoBusqueda == 'nombre'
+                                      ? _searchFocusNode
+                                      : _searchEstadoFocusNode,
+                                  textInputAction: TextInputAction.search,
+                                  enableInteractiveSelection: true,
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    color: Colors.black87,
+                                  ),
+                                  decoration: InputDecoration(
+                                    hintText: _tipoBusqueda == 'nombre'
+                                        ? 'Buscar por nombre o apellido...'
+                                        : 'Buscar por estado (ej: Discipulado 1)...',
+                                    hintStyle: TextStyle(
+                                      color: Colors.grey[400],
+                                      fontSize: 14,
+                                    ),
+                                    prefixIcon: Container(
+                                      margin: EdgeInsets.all(8),
+                                      padding: EdgeInsets.all(6),
+                                      decoration: BoxDecoration(
+                                        color: (_tipoBusqueda == 'nombre'
+                                                ? primaryTeal
+                                                : secondaryOrange)
+                                            .withOpacity(0.1),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Icon(
+                                        _tipoBusqueda == 'nombre'
+                                            ? Icons.search_rounded
+                                            : Icons.track_changes_rounded,
+                                        color: _tipoBusqueda == 'nombre'
+                                            ? primaryTeal
+                                            : secondaryOrange,
+                                        size: 20,
+                                      ),
+                                    ),
+                                    suffixIcon: (_tipoBusqueda == 'nombre'
+                                            ? _searchController.text.isNotEmpty
+                                            : _searchEstadoController
+                                                .text.isNotEmpty)
+                                        ? IconButton(
+                                            icon: Icon(
+                                              Icons.close_rounded,
+                                              color: accentGrey,
+                                              size: 20,
+                                            ),
+                                            onPressed: () {
+                                              setState(() {
+                                                if (_tipoBusqueda == 'nombre') {
+                                                  _searchController.clear();
+                                                  _searchTerm = '';
+                                                  _searchFocusNode
+                                                      .requestFocus();
+                                                } else {
+                                                  _searchEstadoController
+                                                      .clear();
+                                                  _searchEstadoTerm = '';
+                                                  _searchEstadoFocusNode
+                                                      .requestFocus();
+                                                }
+                                              });
+                                            },
+                                          )
+                                        : null,
+                                    border: InputBorder.none,
+                                    contentPadding: EdgeInsets.symmetric(
+                                      vertical: 12,
+                                      horizontal: 4,
+                                    ),
+                                    isDense: true,
+                                  ),
+                                  onSubmitted: (value) {
+                                    if (_tipoBusqueda == 'nombre') {
+                                      _searchFocusNode.unfocus();
+                                    } else {
+                                      _searchEstadoFocusNode.unfocus();
+                                    }
+                                  },
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // 📅 FILTROS DE FECHA
+                      Padding(
+                        padding: EdgeInsets.fromLTRB(12, 0, 12, 8),
+                        child: LayoutBuilder(
+                          builder: (context, constraints) {
+                            final isSmallScreen = constraints.maxWidth < 600;
+
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Encabezado de filtros
+                                Row(
+                                  children: [
+                                    Icon(
+                                      Icons.filter_list_rounded,
+                                      color: primaryTeal,
+                                      size: 18,
+                                    ),
+                                    SizedBox(width: 6),
+                                    Text(
+                                      'Filtrar por fecha de asignación',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        color: primaryTeal,
+                                        fontSize: 13,
+                                        letterSpacing: 0.2,
+                                      ),
+                                    ),
+                                    Spacer(),
+                                    if (_anioSeleccionado != null ||
+                                        _mesSeleccionado != null)
+                                      InkWell(
+                                        onTap: _limpiarFiltros,
+                                        borderRadius: BorderRadius.circular(6),
+                                        child: Container(
+                                          padding: EdgeInsets.symmetric(
+                                            horizontal: 8,
+                                            vertical: 4,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: secondaryOrange
+                                                .withOpacity(0.1),
+                                            borderRadius:
+                                                BorderRadius.circular(6),
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(
+                                                Icons.clear_rounded,
+                                                color: secondaryOrange,
+                                                size: 14,
+                                              ),
+                                              SizedBox(width: 4),
+                                              Text(
+                                                'Limpiar',
+                                                style: TextStyle(
+                                                  color: secondaryOrange,
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.w600,
                                                 ),
                                               ),
                                             ],
                                           ),
                                         ),
                                       ),
-                                    ),
                                   ],
                                 ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        SizedBox(height: 8),
+                                SizedBox(height: 10),
 
-                        // Campo de búsqueda (cambia según el tipo seleccionado)
-                        AnimatedSwitcher(
-                          duration: Duration(milliseconds: 300),
-                          transitionBuilder:
-                              (Widget child, Animation<double> animation) {
-                            return FadeTransition(
-                              opacity: animation,
-                              child: SlideTransition(
-                                position: Tween<Offset>(
-                                  begin: Offset(0.0, 0.2),
-                                  end: Offset.zero,
-                                ).animate(animation),
-                                child: child,
-                              ),
-                            );
-                          },
-                          child: Container(
-                            key: ValueKey<String>(_tipoBusqueda),
-                            decoration: BoxDecoration(
-                              color: backgroundGrey.withOpacity(0.5),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: (_tipoBusqueda == 'nombre'
-                                        ? primaryTeal
-                                        : secondaryOrange)
-                                    .withOpacity(0.3),
-                                width: 1.5,
-                              ),
-                            ),
-                            child: TextField(
-                              controller: _tipoBusqueda == 'nombre'
-                                  ? _searchController
-                                  : _searchEstadoController,
-                              focusNode: _tipoBusqueda == 'nombre'
-                                  ? _searchFocusNode
-                                  : _searchEstadoFocusNode,
-                              textInputAction: TextInputAction.search,
-                              enableInteractiveSelection: true,
-                              style: TextStyle(
-                                fontSize: 15,
-                                color: Colors.black87,
-                              ),
-                              decoration: InputDecoration(
-                                hintText: _tipoBusqueda == 'nombre'
-                                    ? 'Buscar por nombre o apellido...'
-                                    : 'Buscar por estado (ej: Discipulado 1)...',
-                                hintStyle: TextStyle(
-                                  color: Colors.grey[400],
-                                  fontSize: 14,
-                                ),
-                                prefixIcon: Container(
-                                  margin: EdgeInsets.all(8),
-                                  padding: EdgeInsets.all(6),
-                                  decoration: BoxDecoration(
-                                    color: (_tipoBusqueda == 'nombre'
-                                            ? primaryTeal
-                                            : secondaryOrange)
-                                        .withOpacity(0.1),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Icon(
-                                    _tipoBusqueda == 'nombre'
-                                        ? Icons.search_rounded
-                                        : Icons.track_changes_rounded,
-                                    color: _tipoBusqueda == 'nombre'
-                                        ? primaryTeal
-                                        : secondaryOrange,
-                                    size: 20,
-                                  ),
-                                ),
-                                suffixIcon: (_tipoBusqueda == 'nombre'
-                                        ? _searchController.text.isNotEmpty
-                                        : _searchEstadoController
-                                            .text.isNotEmpty)
-                                    ? IconButton(
-                                        icon: Icon(
-                                          Icons.close_rounded,
-                                          color: accentGrey,
-                                          size: 20,
-                                        ),
-                                        onPressed: () {
-                                          setState(() {
-                                            if (_tipoBusqueda == 'nombre') {
-                                              _searchController.clear();
-                                              _searchTerm = '';
-                                              _searchFocusNode.requestFocus();
-                                            } else {
-                                              _searchEstadoController.clear();
-                                              _searchEstadoTerm = '';
-                                              _searchEstadoFocusNode
-                                                  .requestFocus();
-                                            }
-                                          });
-                                        },
-                                      )
-                                    : null,
-                                border: InputBorder.none,
-                                contentPadding: EdgeInsets.symmetric(
-                                  vertical: 12,
-                                  horizontal: 4,
-                                ),
-                                isDense: true,
-                              ),
-                              onSubmitted: (value) {
-                                if (_tipoBusqueda == 'nombre') {
-                                  _searchFocusNode.unfocus();
-                                } else {
-                                  _searchEstadoFocusNode.unfocus();
-                                }
-                              },
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  // 📅 FILTROS DE FECHA
-                  Padding(
-                    padding: EdgeInsets.fromLTRB(12, 0, 12, 8),
-                    child: LayoutBuilder(
-                      builder: (context, constraints) {
-                        final isSmallScreen = constraints.maxWidth < 600;
-
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Encabezado de filtros
-                            Row(
-                              children: [
-                                Icon(
-                                  Icons.filter_list_rounded,
-                                  color: primaryTeal,
-                                  size: 18,
-                                ),
-                                SizedBox(width: 6),
-                                Text(
-                                  'Filtrar por fecha de asignación',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                    color: primaryTeal,
-                                    fontSize: 13,
-                                    letterSpacing: 0.2,
-                                  ),
-                                ),
-                                Spacer(),
-                                if (_anioSeleccionado != null ||
-                                    _mesSeleccionado != null)
-                                  InkWell(
-                                    onTap: _limpiarFiltros,
-                                    borderRadius: BorderRadius.circular(6),
-                                    child: Container(
-                                      padding: EdgeInsets.symmetric(
-                                        horizontal: 8,
-                                        vertical: 4,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: secondaryOrange.withOpacity(0.1),
-                                        borderRadius: BorderRadius.circular(6),
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
+                                // Selectores de filtro
+                                isSmallScreen
+                                    ? Column(
                                         children: [
-                                          Icon(
-                                            Icons.clear_rounded,
-                                            color: secondaryOrange,
-                                            size: 14,
+                                          _buildDropdownFiltroCompacto(
+                                            label: 'Año',
+                                            icon: Icons.calendar_today_rounded,
+                                            value: _anioSeleccionado,
+                                            items: [
+                                              'Todos',
+                                              ..._aniosDisponibles
+                                            ],
+                                            onChanged: (value) {
+                                              setState(() {
+                                                _anioSeleccionado = value;
+                                              });
+                                            },
+                                            primaryTeal: primaryTeal,
+                                            accentGrey: accentGrey,
+                                            backgroundGrey: backgroundGrey,
                                           ),
-                                          SizedBox(width: 4),
-                                          Text(
-                                            'Limpiar',
-                                            style: TextStyle(
-                                              color: secondaryOrange,
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.w600,
+                                          SizedBox(height: 8),
+                                          _buildDropdownFiltroCompacto(
+                                            label: 'Mes',
+                                            icon: Icons.event_rounded,
+                                            value: _mesSeleccionado,
+                                            items: [
+                                              'Todos',
+                                              '1',
+                                              '2',
+                                              '3',
+                                              '4',
+                                              '5',
+                                              '6',
+                                              '7',
+                                              '8',
+                                              '9',
+                                              '10',
+                                              '11',
+                                              '12'
+                                            ],
+                                            itemBuilder: (value) {
+                                              if (value == 'Todos')
+                                                return 'Todos';
+                                              return _obtenerNombreMes(
+                                                  int.parse(value));
+                                            },
+                                            onChanged: (value) {
+                                              setState(() {
+                                                _mesSeleccionado = value;
+                                              });
+                                            },
+                                            primaryTeal: primaryTeal,
+                                            accentGrey: accentGrey,
+                                            backgroundGrey: backgroundGrey,
+                                          ),
+                                        ],
+                                      )
+                                    : Row(
+                                        children: [
+                                          Expanded(
+                                            child: _buildDropdownFiltroCompacto(
+                                              label: 'Año',
+                                              icon:
+                                                  Icons.calendar_today_rounded,
+                                              value: _anioSeleccionado,
+                                              items: [
+                                                'Todos',
+                                                ..._aniosDisponibles
+                                              ],
+                                              onChanged: (value) {
+                                                setState(() {
+                                                  _anioSeleccionado = value;
+                                                });
+                                              },
+                                              primaryTeal: primaryTeal,
+                                              accentGrey: accentGrey,
+                                              backgroundGrey: backgroundGrey,
+                                            ),
+                                          ),
+                                          SizedBox(width: 10),
+                                          Expanded(
+                                            child: _buildDropdownFiltroCompacto(
+                                              label: 'Mes',
+                                              icon: Icons.event_rounded,
+                                              value: _mesSeleccionado,
+                                              items: [
+                                                'Todos',
+                                                '1',
+                                                '2',
+                                                '3',
+                                                '4',
+                                                '5',
+                                                '6',
+                                                '7',
+                                                '8',
+                                                '9',
+                                                '10',
+                                                '11',
+                                                '12'
+                                              ],
+                                              itemBuilder: (value) {
+                                                if (value == 'Todos')
+                                                  return 'Todos';
+                                                return _obtenerNombreMes(
+                                                    int.parse(value));
+                                              },
+                                              onChanged: (value) {
+                                                setState(() {
+                                                  _mesSeleccionado = value;
+                                                });
+                                              },
+                                              primaryTeal: primaryTeal,
+                                              accentGrey: accentGrey,
+                                              backgroundGrey: backgroundGrey,
                                             ),
                                           ),
                                         ],
                                       ),
+                              ],
+                            );
+                          },
+                        ),
+                      ),
+
+                      // 📥 BOTÓN DE DESCARGAR EXCEL
+                      Padding(
+                        padding: EdgeInsets.fromLTRB(12, 4, 12, 12),
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: secondaryOrange,
+                              foregroundColor: Colors.white,
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 14,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              elevation: 2,
+                            ),
+                            icon: Icon(Icons.download_rounded, size: 20),
+                            label: Text(
+                              'Descargar Excel',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 0.3,
+                              ),
+                            ),
+                            onPressed: () {
+                              final tribusState =
+                                  context.findAncestorStateOfType<
+                                      _TribusScreenState>();
+                              if (tribusState != null) {
+                                // ✅ MODIFICADO: Pasar el filtro de estado activo
+                                String? estadoActivo;
+                                if (_tipoBusqueda == 'estado' &&
+                                    _searchEstadoTerm.isNotEmpty) {
+                                  estadoActivo = _searchEstadoTerm;
+                                }
+
+                                tribusState.descargarExcel(
+                                  context,
+                                  widget.tribuId,
+                                  widget.tribuNombre,
+                                  anioFiltro: _anioSeleccionado,
+                                  mesFiltro: _mesSeleccionado,
+                                  estadoFiltro:
+                                      estadoActivo, // ✅ NUEVO PARÁMETRO
+                                );
+                              } else {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      'Error: No se pudo acceder al contexto de descarga',
                                     ),
+                                    backgroundColor: Colors.red,
+                                  ),
+                                );
+                              }
+                            },
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // 📋 CONTENIDO PRINCIPAL - LISTA DE REGISTROS
+                Expanded(
+                  child: StreamBuilder<QuerySnapshot>(
+                    stream: FirebaseFirestore.instance
+                        .collection('registros')
+                        .where('tribuAsignada', isEqualTo: widget.tribuId)
+                        .snapshots(),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting &&
+                          !snapshot.hasData) {
+                        return Container();
+                      }
+
+                      if (!snapshot.hasData ||
+                          snapshot.data?.docs.isEmpty == true) {
+                        return Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.group_off_outlined,
+                                size: 64,
+                                color: accentGrey,
+                              ),
+                              SizedBox(height: 16),
+                              Text(
+                                'No hay jóvenes asignados a esta tribu',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  color: accentGrey,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+
+                      final allDocs = snapshot.data?.docs ?? [];
+                      var filteredDocs = allDocs;
+
+                      // ✅ MODIFICADO: Aplicar filtro de búsqueda según tipo
+                      if (_tipoBusqueda == 'nombre' && _searchTerm.isNotEmpty) {
+                        filteredDocs = filteredDocs.where((doc) {
+                          final data = doc.data() as Map<String, dynamic>;
+                          final nombre =
+                              (data['nombre'] as String? ?? '').toLowerCase();
+                          final apellido =
+                              (data['apellido'] as String? ?? '').toLowerCase();
+                          final nombreCompleto =
+                              '$nombre $apellido'.toLowerCase();
+
+                          return nombre.contains(_searchTerm) ||
+                              apellido.contains(_searchTerm) ||
+                              nombreCompleto.contains(_searchTerm);
+                        }).toList();
+                      } else if (_tipoBusqueda == 'estado' &&
+                          _searchEstadoTerm.isNotEmpty) {
+                        // ✅ AGREGADO: Filtro por estado en la iglesia
+                        filteredDocs = filteredDocs
+                            .where((doc) => _cumpleFiltroEstado(doc))
+                            .toList();
+                      }
+
+                      // Aplicar filtro de fecha
+                      if (_anioSeleccionado != null ||
+                          _mesSeleccionado != null) {
+                        filteredDocs = filteredDocs
+                            .where((doc) => _cumpleFiltroFecha(doc))
+                            .toList();
+                      }
+
+                      filteredDocs.sort((a, b) {
+                        final dataA = a.data() as Map<String, dynamic>;
+                        final dataB = b.data() as Map<String, dynamic>;
+
+                        bool esRegistroNuevo(Map<String, dynamic> data) {
+                          DateTime? fechaTribu = (data['fechaAsignacionTribu']
+                                      as Timestamp?)
+                                  ?.toDate() ??
+                              (data['fechaAsignacion'] as Timestamp?)?.toDate();
+                          DateTime? fechaCoord =
+                              (data['fechaAsignacionCoordinador'] as Timestamp?)
+                                  ?.toDate();
+                          DateTime? fechaTimoteo =
+                              (data['fechaAsignacionTimoteo'] as Timestamp?)
+                                  ?.toDate();
+
+                          DateTime? fechaMasReciente = [
+                            fechaTribu,
+                            fechaCoord,
+                            fechaTimoteo
+                          ].whereType<DateTime>().fold<DateTime?>(
+                              null,
+                              (prev, curr) => prev == null || curr.isAfter(prev)
+                                  ? curr
+                                  : prev);
+
+                          return fechaMasReciente != null &&
+                              DateTime.now()
+                                      .difference(fechaMasReciente)
+                                      .inDays <=
+                                  14;
+                        }
+
+                        bool nuevoA = esRegistroNuevo(dataA);
+                        bool nuevoB = esRegistroNuevo(dataB);
+
+                        if (nuevoA && !nuevoB) return -1;
+                        if (!nuevoA && nuevoB) return 1;
+
+                        final nombreA =
+                            '${dataA['nombre'] ?? ''} ${dataA['apellido'] ?? ''}'
+                                .toLowerCase();
+                        final nombreB =
+                            '${dataB['nombre'] ?? ''} ${dataB['apellido'] ?? ''}'
+                                .toLowerCase();
+                        return nombreA.compareTo(nombreB);
+                      });
+
+                      // Mensaje cuando no hay resultados
+                      if (filteredDocs.isEmpty) {
+                        String mensaje;
+                        if (_tipoBusqueda == 'nombre' &&
+                            _searchTerm.isNotEmpty) {
+                          mensaje =
+                              'No se encontraron resultados para "$_searchTerm"';
+                        } else if (_tipoBusqueda == 'estado' &&
+                            _searchEstadoTerm.isNotEmpty) {
+                          mensaje =
+                              'No hay registros con estado "$_searchEstadoTerm"';
+                        } else {
+                          mensaje =
+                              'No hay registros con los filtros aplicados';
+                        }
+
+                        return Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                _searchTerm.isNotEmpty
+                                    ? Icons.search_off_rounded
+                                    : Icons.filter_list_off_rounded,
+                                size: 64,
+                                color: accentGrey,
+                              ),
+                              SizedBox(height: 16),
+                              Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 32),
+                                child: Text(
+                                  mensaje,
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    color: accentGrey,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                              SizedBox(height: 16),
+                              ElevatedButton.icon(
+                                onPressed: () {
+                                  setState(() {
+                                    _searchController.clear();
+                                    _searchEstadoController.clear();
+                                    _searchTerm = '';
+                                    _searchEstadoTerm = '';
+                                    _limpiarFiltros();
+                                  });
+                                },
+                                icon: Icon(Icons.refresh_rounded, size: 20),
+                                label: Text('Limpiar todo'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: primaryTeal,
+                                  foregroundColor: Colors.white,
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 20,
+                                    vertical: 12,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+
+                      // Agrupar registros
+                      List<DocumentSnapshot> registrosActivos = [];
+                      List<DocumentSnapshot> registrosInactivos = [];
+                      List<DocumentSnapshot> sinCoordinador = [];
+                      Map<String, List<DocumentSnapshot>> porCoordinador = {};
+                      List<String> idsCoordinadores = [];
+
+                      for (var doc in filteredDocs) {
+                        var data = doc.data() as Map<String, dynamic>;
+                        bool activo = data['activo'] ?? true;
+
+                        if (activo) {
+                          registrosActivos.add(doc);
+                        } else {
+                          registrosInactivos.add(doc);
+                        }
+                      }
+
+                      for (var doc in registrosActivos) {
+                        var data = doc.data() as Map<String, dynamic>;
+                        if (data['coordinadorAsignado'] == null) {
+                          sinCoordinador.add(doc);
+                        } else {
+                          String coordinadorId = data['coordinadorAsignado'];
+                          if (!porCoordinador.containsKey(coordinadorId)) {
+                            porCoordinador[coordinadorId] = [];
+                            idsCoordinadores.add(coordinadorId);
+                          }
+                          porCoordinador[coordinadorId]!.add(doc);
+                        }
+                      }
+
+                      return FutureBuilder<Map<String, String>>(
+                        future: obtenerNombresCoordinadores(idsCoordinadores),
+                        builder: (context, futureSnapshot) {
+                          Map<String, String> nombresCoordinadores =
+                              futureSnapshot.data ?? {};
+
+                          Map<String, bool> groupExpandedStates = {};
+                          Map<String, bool> expandedStates = {};
+
+                          // Expandir grupos cuando hay búsqueda activa
+                          if (_searchTerm.isNotEmpty) {
+                            if (sinCoordinador.isNotEmpty) {
+                              groupExpandedStates['Sin_Coordinador'] = true;
+                            }
+
+                            porCoordinador.keys.forEach((key) {
+                              groupExpandedStates['Coordinador_${key}'] = true;
+                            });
+
+                            if (registrosInactivos.isNotEmpty) {
+                              groupExpandedStates['Registros_No_Activos'] =
+                                  true;
+                            }
+
+                            for (var doc in filteredDocs) {
+                              expandedStates[doc.id] = true;
+                            }
+                          }
+
+                          return Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 12),
+                            child: ListView(
+                              keyboardDismissBehavior:
+                                  ScrollViewKeyboardDismissBehavior.onDrag,
+                              children: [
+                                if (sinCoordinador.isNotEmpty)
+                                  _buildGrupo(
+                                    context,
+                                    'Sin Coordinador',
+                                    sinCoordinador,
+                                    primaryTeal,
+                                    secondaryOrange,
+                                    accentGrey,
+                                    backgroundGrey,
+                                    expandedStates,
+                                    groupExpandedStates,
+                                  ),
+                                ...porCoordinador.entries.map(
+                                  (entry) => _buildGrupo(
+                                    context,
+                                    'Coordinador: ${nombresCoordinadores[entry.key] ?? "Desconocido"}',
+                                    entry.value,
+                                    primaryTeal,
+                                    secondaryOrange,
+                                    accentGrey,
+                                    backgroundGrey,
+                                    expandedStates,
+                                    groupExpandedStates,
+                                  ),
+                                ),
+                                if (registrosInactivos.isNotEmpty)
+                                  _buildGrupoInactivos(
+                                    context,
+                                    'Registros No Activos',
+                                    registrosInactivos,
+                                    primaryTeal,
+                                    secondaryOrange,
+                                    accentGrey,
+                                    backgroundGrey,
+                                    expandedStates,
+                                    groupExpandedStates,
                                   ),
                               ],
                             ),
-                            SizedBox(height: 10),
-
-                            // Selectores de filtro
-                            isSmallScreen
-                                ? Column(
-                                    children: [
-                                      _buildDropdownFiltroCompacto(
-                                        label: 'Año',
-                                        icon: Icons.calendar_today_rounded,
-                                        value: _anioSeleccionado,
-                                        items: ['Todos', ..._aniosDisponibles],
-                                        onChanged: (value) {
-                                          setState(() {
-                                            _anioSeleccionado = value;
-                                          });
-                                        },
-                                        primaryTeal: primaryTeal,
-                                        accentGrey: accentGrey,
-                                        backgroundGrey: backgroundGrey,
-                                      ),
-                                      SizedBox(height: 8),
-                                      _buildDropdownFiltroCompacto(
-                                        label: 'Mes',
-                                        icon: Icons.event_rounded,
-                                        value: _mesSeleccionado,
-                                        items: [
-                                          'Todos',
-                                          '1',
-                                          '2',
-                                          '3',
-                                          '4',
-                                          '5',
-                                          '6',
-                                          '7',
-                                          '8',
-                                          '9',
-                                          '10',
-                                          '11',
-                                          '12'
-                                        ],
-                                        itemBuilder: (value) {
-                                          if (value == 'Todos') return 'Todos';
-                                          return _obtenerNombreMes(
-                                              int.parse(value));
-                                        },
-                                        onChanged: (value) {
-                                          setState(() {
-                                            _mesSeleccionado = value;
-                                          });
-                                        },
-                                        primaryTeal: primaryTeal,
-                                        accentGrey: accentGrey,
-                                        backgroundGrey: backgroundGrey,
-                                      ),
-                                    ],
-                                  )
-                                : Row(
-                                    children: [
-                                      Expanded(
-                                        child: _buildDropdownFiltroCompacto(
-                                          label: 'Año',
-                                          icon: Icons.calendar_today_rounded,
-                                          value: _anioSeleccionado,
-                                          items: [
-                                            'Todos',
-                                            ..._aniosDisponibles
-                                          ],
-                                          onChanged: (value) {
-                                            setState(() {
-                                              _anioSeleccionado = value;
-                                            });
-                                          },
-                                          primaryTeal: primaryTeal,
-                                          accentGrey: accentGrey,
-                                          backgroundGrey: backgroundGrey,
-                                        ),
-                                      ),
-                                      SizedBox(width: 10),
-                                      Expanded(
-                                        child: _buildDropdownFiltroCompacto(
-                                          label: 'Mes',
-                                          icon: Icons.event_rounded,
-                                          value: _mesSeleccionado,
-                                          items: [
-                                            'Todos',
-                                            '1',
-                                            '2',
-                                            '3',
-                                            '4',
-                                            '5',
-                                            '6',
-                                            '7',
-                                            '8',
-                                            '9',
-                                            '10',
-                                            '11',
-                                            '12'
-                                          ],
-                                          itemBuilder: (value) {
-                                            if (value == 'Todos')
-                                              return 'Todos';
-                                            return _obtenerNombreMes(
-                                                int.parse(value));
-                                          },
-                                          onChanged: (value) {
-                                            setState(() {
-                                              _mesSeleccionado = value;
-                                            });
-                                          },
-                                          primaryTeal: primaryTeal,
-                                          accentGrey: accentGrey,
-                                          backgroundGrey: backgroundGrey,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                          ],
-                        );
-                      },
-                    ),
-                  ),
-
-                  // 📥 BOTÓN DE DESCARGAR EXCEL
-                  Padding(
-                    padding: EdgeInsets.fromLTRB(12, 4, 12, 12),
-                    child: SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: secondaryOrange,
-                          foregroundColor: Colors.white,
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 14,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          elevation: 2,
-                        ),
-                        icon: Icon(Icons.download_rounded, size: 20),
-                        label: Text(
-                          'Descargar Excel',
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: 0.3,
-                          ),
-                        ),
-                        onPressed: () {
-                          final tribusState = context
-                              .findAncestorStateOfType<_TribusScreenState>();
-                          if (tribusState != null) {
-                            // ✅ MODIFICADO: Pasar el filtro de estado activo
-                            String? estadoActivo;
-                            if (_tipoBusqueda == 'estado' &&
-                                _searchEstadoTerm.isNotEmpty) {
-                              estadoActivo = _searchEstadoTerm;
-                            }
-
-                            tribusState.descargarExcel(
-                              context,
-                              widget.tribuId,
-                              widget.tribuNombre,
-                              anioFiltro: _anioSeleccionado,
-                              mesFiltro: _mesSeleccionado,
-                              estadoFiltro: estadoActivo, // ✅ NUEVO PARÁMETRO
-                            );
-                          } else {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  'Error: No se pudo acceder al contexto de descarga',
-                                ),
-                                backgroundColor: Colors.red,
-                              ),
-                            );
-                          }
+                          );
                         },
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // 📋 CONTENIDO PRINCIPAL - LISTA DE REGISTROS
-            Expanded(
-              child: StreamBuilder<QuerySnapshot>(
-                stream: FirebaseFirestore.instance
-                    .collection('registros')
-                    .where('tribuAsignada', isEqualTo: widget.tribuId)
-                    .snapshots(),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting &&
-                      !snapshot.hasData) {
-                    return Container();
-                  }
-
-                  if (!snapshot.hasData ||
-                      snapshot.data?.docs.isEmpty == true) {
-                    return Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.group_off_outlined,
-                            size: 64,
-                            color: accentGrey,
-                          ),
-                          SizedBox(height: 16),
-                          Text(
-                            'No hay jóvenes asignados a esta tribu',
-                            style: TextStyle(
-                              fontSize: 18,
-                              color: accentGrey,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  }
-
-                  final allDocs = snapshot.data?.docs ?? [];
-                  var filteredDocs = allDocs;
-
-                  // ✅ MODIFICADO: Aplicar filtro de búsqueda según tipo
-                  if (_tipoBusqueda == 'nombre' && _searchTerm.isNotEmpty) {
-                    filteredDocs = filteredDocs.where((doc) {
-                      final data = doc.data() as Map<String, dynamic>;
-                      final nombre =
-                          (data['nombre'] as String? ?? '').toLowerCase();
-                      final apellido =
-                          (data['apellido'] as String? ?? '').toLowerCase();
-                      final nombreCompleto = '$nombre $apellido'.toLowerCase();
-
-                      return nombre.contains(_searchTerm) ||
-                          apellido.contains(_searchTerm) ||
-                          nombreCompleto.contains(_searchTerm);
-                    }).toList();
-                  } else if (_tipoBusqueda == 'estado' &&
-                      _searchEstadoTerm.isNotEmpty) {
-                    // ✅ AGREGADO: Filtro por estado en la iglesia
-                    filteredDocs = filteredDocs
-                        .where((doc) => _cumpleFiltroEstado(doc))
-                        .toList();
-                  }
-
-                  // Aplicar filtro de fecha
-                  if (_anioSeleccionado != null || _mesSeleccionado != null) {
-                    filteredDocs = filteredDocs
-                        .where((doc) => _cumpleFiltroFecha(doc))
-                        .toList();
-                  }
-
-                  filteredDocs.sort((a, b) {
-                    final dataA = a.data() as Map<String, dynamic>;
-                    final dataB = b.data() as Map<String, dynamic>;
-
-                    bool esRegistroNuevo(Map<String, dynamic> data) {
-                      DateTime? fechaTribu =
-                          (data['fechaAsignacionTribu'] as Timestamp?)
-                                  ?.toDate() ??
-                              (data['fechaAsignacion'] as Timestamp?)?.toDate();
-                      DateTime? fechaCoord =
-                          (data['fechaAsignacionCoordinador'] as Timestamp?)
-                              ?.toDate();
-                      DateTime? fechaTimoteo =
-                          (data['fechaAsignacionTimoteo'] as Timestamp?)
-                              ?.toDate();
-
-                      DateTime? fechaMasReciente = [
-                        fechaTribu,
-                        fechaCoord,
-                        fechaTimoteo
-                      ].whereType<DateTime>().fold<DateTime?>(
-                          null,
-                          (prev, curr) =>
-                              prev == null || curr.isAfter(prev) ? curr : prev);
-
-                      return fechaMasReciente != null &&
-                          DateTime.now().difference(fechaMasReciente).inDays <=
-                              14;
-                    }
-
-                    bool nuevoA = esRegistroNuevo(dataA);
-                    bool nuevoB = esRegistroNuevo(dataB);
-
-                    if (nuevoA && !nuevoB) return -1;
-                    if (!nuevoA && nuevoB) return 1;
-
-                    final nombreA =
-                        '${dataA['nombre'] ?? ''} ${dataA['apellido'] ?? ''}'
-                            .toLowerCase();
-                    final nombreB =
-                        '${dataB['nombre'] ?? ''} ${dataB['apellido'] ?? ''}'
-                            .toLowerCase();
-                    return nombreA.compareTo(nombreB);
-                  });
-
-                  // Mensaje cuando no hay resultados
-                  if (filteredDocs.isEmpty) {
-                    String mensaje;
-                    if (_tipoBusqueda == 'nombre' && _searchTerm.isNotEmpty) {
-                      mensaje =
-                          'No se encontraron resultados para "$_searchTerm"';
-                    } else if (_tipoBusqueda == 'estado' &&
-                        _searchEstadoTerm.isNotEmpty) {
-                      mensaje =
-                          'No hay registros con estado "$_searchEstadoTerm"';
-                    } else {
-                      mensaje = 'No hay registros con los filtros aplicados';
-                    }
-
-                    return Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            _searchTerm.isNotEmpty
-                                ? Icons.search_off_rounded
-                                : Icons.filter_list_off_rounded,
-                            size: 64,
-                            color: accentGrey,
-                          ),
-                          SizedBox(height: 16),
-                          Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 32),
-                            child: Text(
-                              mensaje,
-                              style: TextStyle(
-                                fontSize: 16,
-                                color: accentGrey,
-                                fontWeight: FontWeight.w500,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ),
-                          SizedBox(height: 16),
-                          ElevatedButton.icon(
-                            onPressed: () {
-                              setState(() {
-                                _searchController.clear();
-                                _searchEstadoController.clear();
-                                _searchTerm = '';
-                                _searchEstadoTerm = '';
-                                _limpiarFiltros();
-                              });
-                            },
-                            icon: Icon(Icons.refresh_rounded, size: 20),
-                            label: Text('Limpiar todo'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: primaryTeal,
-                              foregroundColor: Colors.white,
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 20,
-                                vertical: 12,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  }
-
-                  // Agrupar registros
-                  List<DocumentSnapshot> registrosActivos = [];
-                  List<DocumentSnapshot> registrosInactivos = [];
-                  List<DocumentSnapshot> sinCoordinador = [];
-                  Map<String, List<DocumentSnapshot>> porCoordinador = {};
-                  List<String> idsCoordinadores = [];
-
-                  for (var doc in filteredDocs) {
-                    var data = doc.data() as Map<String, dynamic>;
-                    bool activo = data['activo'] ?? true;
-
-                    if (activo) {
-                      registrosActivos.add(doc);
-                    } else {
-                      registrosInactivos.add(doc);
-                    }
-                  }
-
-                  for (var doc in registrosActivos) {
-                    var data = doc.data() as Map<String, dynamic>;
-                    if (data['coordinadorAsignado'] == null) {
-                      sinCoordinador.add(doc);
-                    } else {
-                      String coordinadorId = data['coordinadorAsignado'];
-                      if (!porCoordinador.containsKey(coordinadorId)) {
-                        porCoordinador[coordinadorId] = [];
-                        idsCoordinadores.add(coordinadorId);
-                      }
-                      porCoordinador[coordinadorId]!.add(doc);
-                    }
-                  }
-
-                  return FutureBuilder<Map<String, String>>(
-                    future: obtenerNombresCoordinadores(idsCoordinadores),
-                    builder: (context, futureSnapshot) {
-                      Map<String, String> nombresCoordinadores =
-                          futureSnapshot.data ?? {};
-
-                      Map<String, bool> groupExpandedStates = {};
-                      Map<String, bool> expandedStates = {};
-
-                      // Expandir grupos cuando hay búsqueda activa
-                      if (_searchTerm.isNotEmpty) {
-                        if (sinCoordinador.isNotEmpty) {
-                          groupExpandedStates['Sin_Coordinador'] = true;
-                        }
-
-                        porCoordinador.keys.forEach((key) {
-                          groupExpandedStates['Coordinador_${key}'] = true;
-                        });
-
-                        if (registrosInactivos.isNotEmpty) {
-                          groupExpandedStates['Registros_No_Activos'] = true;
-                        }
-
-                        for (var doc in filteredDocs) {
-                          expandedStates[doc.id] = true;
-                        }
-                      }
-
-                      return Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 12),
-                        child: ListView(
-                          keyboardDismissBehavior:
-                              ScrollViewKeyboardDismissBehavior.onDrag,
-                          children: [
-                            if (sinCoordinador.isNotEmpty)
-                              _buildGrupo(
-                                context,
-                                'Sin Coordinador',
-                                sinCoordinador,
-                                primaryTeal,
-                                secondaryOrange,
-                                accentGrey,
-                                backgroundGrey,
-                                expandedStates,
-                                groupExpandedStates,
-                              ),
-                            ...porCoordinador.entries.map(
-                              (entry) => _buildGrupo(
-                                context,
-                                'Coordinador: ${nombresCoordinadores[entry.key] ?? "Desconocido"}',
-                                entry.value,
-                                primaryTeal,
-                                secondaryOrange,
-                                accentGrey,
-                                backgroundGrey,
-                                expandedStates,
-                                groupExpandedStates,
-                              ),
-                            ),
-                            if (registrosInactivos.isNotEmpty)
-                              _buildGrupoInactivos(
-                                context,
-                                'Registros No Activos',
-                                registrosInactivos,
-                                primaryTeal,
-                                secondaryOrange,
-                                accentGrey,
-                                backgroundGrey,
-                                expandedStates,
-                                groupExpandedStates,
-                              ),
-                          ],
-                        ),
                       );
                     },
-                  );
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // 🎯 BOTÓN FLOTANTE PARA REGISTRAR MIEMBRO
+          Positioned(
+            right: 16,
+            bottom: 16,
+            child: Material(
+              elevation: 8,
+              shadowColor: secondaryOrange.withOpacity(0.4),
+              borderRadius: BorderRadius.circular(16),
+              child: InkWell(
+                onTap: () {
+                  // Obtener el contexto del TribusScreen para llamar _showRegistroDialog
+                  final tribusState =
+                      context.findAncestorStateOfType<_TribusScreenState>();
+                  if (tribusState != null) {
+                    tribusState._showRegistroDialog(context);
+                  }
                 },
+                borderRadius: BorderRadius.circular(16),
+                child: Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal:
+                        MediaQuery.of(context).size.width < 360 ? 16 : 20,
+                    vertical: 14,
+                  ),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        secondaryOrange,
+                        secondaryOrange.withOpacity(0.85),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: secondaryOrange.withOpacity(0.3),
+                        blurRadius: 12,
+                        offset: Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        padding: EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.25),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Icon(
+                          Icons.person_add_alt_1_rounded,
+                          color: Colors.white,
+                          size:
+                              MediaQuery.of(context).size.width < 360 ? 20 : 24,
+                        ),
+                      ),
+                      if (MediaQuery.of(context).size.width >= 360) ...[
+                        SizedBox(width: 12),
+                        Text(
+                          'Registrar Miembro',
+                          style: GoogleFonts.poppins(
+                            color: Colors.white,
+                            fontSize: MediaQuery.of(context).size.width < 400
+                                ? 14
+                                : 16,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.5,
+                            shadows: [
+                              Shadow(
+                                offset: Offset(0, 1),
+                                blurRadius: 2,
+                                color: Colors.black.withOpacity(0.25),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
