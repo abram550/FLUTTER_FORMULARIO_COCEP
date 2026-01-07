@@ -173,6 +173,7 @@ class _StatisticsDialogState extends State<StatisticsDialog>
           await FirebaseFirestore.instance.collection('registros').get();
 
       Set<int> years = {};
+      Set<String> tribuIdsConDatos = {};
 
       for (var doc in registrosSnapshot.docs) {
         var data = doc.data() as Map<String, dynamic>;
@@ -186,6 +187,16 @@ class _StatisticsDialogState extends State<StatisticsDialog>
 
         if (date != null) {
           years.add(date.year);
+        }
+
+        // Guardar tribus que realmente tienen registros
+        final tribuAsignada = data['tribuAsignada'] as String?;
+        final tribuId = data['tribuId'] as String?;
+        if (tribuAsignada != null && tribuAsignada.isNotEmpty) {
+          tribuIdsConDatos.add(tribuAsignada);
+        }
+        if (tribuId != null && tribuId.isNotEmpty) {
+          tribuIdsConDatos.add(tribuId);
         }
       }
 
@@ -205,6 +216,8 @@ class _StatisticsDialogState extends State<StatisticsDialog>
         final tribuId = doc.id; // Usar el ID del documento
         final categoria =
             data['categoria'] as String?; // Ministerio al que pertenece
+// Solo incluir tribus que tengan registros
+        if (!tribuIdsConDatos.contains(tribuId)) continue;
 
         if (tribuNombre != null && categoria != null) {
           // Mapear las categorías a los nombres de ministerio usados en el filtro
@@ -1079,14 +1092,31 @@ class _StatisticsDialogState extends State<StatisticsDialog>
 
           DateTime? date;
 
-          // Intentar obtener fecha de asignación con validación
+          // Intentar obtener fecha de asignación con validación (null-safe + fallback)
           try {
-            if (data.containsKey('fechaAsignacion') &&
-                data['fechaAsignacion'] != null) {
-              date = (data['fechaAsignacion'] as Timestamp).toDate();
-            } else if (data.containsKey('fechaAsignacionTribu') &&
-                data['fechaAsignacionTribu'] != null) {
-              date = (data['fechaAsignacionTribu'] as Timestamp).toDate();
+            Timestamp? ts;
+
+            if (selectedTribe != null) {
+              // Preferir fechaAsignacionTribu cuando filtras por tribu, si no existe usar fechaAsignacion
+              ts = (data['fechaAsignacionTribu'] is Timestamp)
+                  ? data['fechaAsignacionTribu'] as Timestamp
+                  : (data['fechaAsignacion'] is Timestamp)
+                      ? data['fechaAsignacion'] as Timestamp
+                      : null;
+            } else {
+              // Cuando NO filtras por tribu, mantener preferencia original (fechaAsignacion) pero con fallback
+              ts = (data['fechaAsignacion'] is Timestamp)
+                  ? data['fechaAsignacion'] as Timestamp
+                  : (data['fechaAsignacionTribu'] is Timestamp)
+                      ? data['fechaAsignacionTribu'] as Timestamp
+                      : null;
+            }
+
+            if (ts != null) {
+              date = ts.toDate();
+            } else {
+              // Si no hay ninguna de las dos fechas, no se puede graficar ese registro
+              continue;
             }
           } catch (dateError) {
             print(
