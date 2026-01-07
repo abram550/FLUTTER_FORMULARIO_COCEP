@@ -1830,52 +1830,167 @@ class _AdminPastoresState extends State<AdminPastores>
     }
   }
 
-  Widget _buildTribusTab() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (!_mostrarFormularioTribu)
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    const Color(0xFF1B998B).withOpacity(0.1),
-                    const Color(0xFF1B998B).withOpacity(0.05),
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(15),
-                border: Border.all(
-                  color: const Color(0xFF1B998B).withOpacity(0.2),
-                  width: 1,
-                ),
-              ),
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  bool isSmallScreen = constraints.maxWidth < 600;
 
-                  return isSmallScreen
-                      ? Column(
-                          children: [
-                            _buildActionButton(
+Widget _buildTribusTab() {
+  return SingleChildScrollView(
+    padding: const EdgeInsets.all(16.0),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (!_mostrarFormularioTribu)
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  const Color(0xFF1B998B).withOpacity(0.1),
+                  const Color(0xFF1B998B).withOpacity(0.05),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(15),
+              border: Border.all(
+                color: const Color(0xFF1B998B).withOpacity(0.2),
+                width: 1,
+              ),
+            ),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                bool isSmallScreen = constraints.maxWidth < 600;
+
+                return isSmallScreen
+                    ? Column(
+                        children: [
+                          _buildActionButton(
+                            onPressed: () =>
+                                setState(() => _mostrarFormularioTribu = true),
+                            icon: Icons.add_circle_outline,
+                            label: 'Crear Nueva Tribu',
+                            color: const Color(0xFF1B998B),
+                            isFullWidth: true,
+                          ),
+                          const SizedBox(height: 12),
+
+                          // ⚠️ BOTÓN TEMPORAL DE DIAGNÓSTICO - BORRAR DESPUÉS
+                          Container(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              onPressed: () async {
+                                // Obtener ID de cualquier tribu para diagnosticar
+                                final tribusSnapshot = await _firestore
+                                    .collection('tribus')
+                                    .limit(1)
+                                    .get();
+                                if (tribusSnapshot.docs.isNotEmpty) {
+                                  await _diagnosticarEventos(
+                                      tribusSnapshot.docs.first.id);
+                                  _mostrarSnackBar(
+                                      'Revisa la consola del navegador (F12)',
+                                      isSuccess: true);
+                                } else {
+                                  _mostrarSnackBar(
+                                      'No hay tribus para diagnosticar',
+                                      isSuccess: false);
+                                }
+                              },
+                              icon: Icon(Icons.bug_report,
+                                  color: Colors.white),
+                              label: Text(
+                                '🔍 DIAGNÓSTICO DE EVENTOS',
+                                style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.purple,
+                                padding: EdgeInsets.symmetric(vertical: 16),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                            ),
+                          ),
+
+                          const SizedBox(height: 12),
+                          _buildActionButton(
+                            onPressed: _mostrarDialogoSeleccionTribus,
+                            icon: Icons.merge_type,
+                            label: 'Unir Tribus',
+                            color: const Color(0xFF1B998B),
+                            isFullWidth: true,
+                            gradient: LinearGradient(
+                              colors: [
+                                const Color(0xFF1B998B),
+                                const Color(0xFF159B8C),
+                              ],
+                            ),
+                          ),
+                        ],
+                      )
+                    : Row(
+                        children: [
+                          Expanded(
+                            child: _buildActionButton(
                               onPressed: () => setState(
                                   () => _mostrarFormularioTribu = true),
                               icon: Icons.add_circle_outline,
                               label: 'Crear Nueva Tribu',
                               color: const Color(0xFF1B998B),
-                              isFullWidth: true,
                             ),
-                            const SizedBox(height: 12),
-                            _buildActionButton(
+                          ),
+
+                          const SizedBox(width: 16),
+
+                          // ⚠️ BOTÓN TEMPORAL DE DIAGNÓSTICO - BORRAR DESPUÉS
+                          Expanded(
+                            child: Container(
+                              width: double.infinity,
+                              child: ElevatedButton.icon(
+                                onPressed: () async {
+                                  // Obtener ID de cualquier tribu para diagnosticar
+                                  final tribusSnapshot = await _firestore
+                                      .collection('tribus')
+                                      .limit(1)
+                                      .get();
+                                  if (tribusSnapshot.docs.isNotEmpty) {
+                                    await _diagnosticarEventos(
+                                        tribusSnapshot.docs.first.id);
+                                    _mostrarSnackBar(
+                                        'Revisa la consola del navegador (F12)',
+                                        isSuccess: true);
+                                  } else {
+                                    _mostrarSnackBar(
+                                        'No hay tribus para diagnosticar',
+                                        isSuccess: false);
+                                  }
+                                },
+                                icon: Icon(Icons.bug_report,
+                                    color: Colors.white),
+                                label: Text(
+                                  '🔍 DIAGNÓSTICO DE EVENTOS',
+                                  style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold),
+                                ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.purple,
+                                  padding: EdgeInsets.symmetric(vertical: 16),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: _buildActionButton(
                               onPressed: _mostrarDialogoSeleccionTribus,
                               icon: Icons.merge_type,
                               label: 'Unir Tribus',
                               color: const Color(0xFF1B998B),
-                              isFullWidth: true,
                               gradient: LinearGradient(
                                 colors: [
                                   const Color(0xFF1B998B),
@@ -1883,80 +1998,23 @@ class _AdminPastoresState extends State<AdminPastores>
                                 ],
                               ),
                             ),
-                          ],
-                        )
-                      : Row(
-                          children: [
-                            Expanded(
-                              child: _buildActionButton(
-                                onPressed: () => setState(
-                                    () => _mostrarFormularioTribu = true),
-                                icon: Icons.add_circle_outline,
-                                label: 'Crear Nueva Tribu',
-                                color: const Color(0xFF1B998B),
-                              ),
-                            ),
-
-const SizedBox(height: 12),
-// ⚠️ BOTÓN TEMPORAL DE DIAGNÓSTICO - BORRAR DESPUÉS
-Container(
-  width: double.infinity,
-  child: ElevatedButton.icon(
-    onPressed: () async {
-      // Obtener ID de cualquier tribu para diagnosticar
-      final tribusSnapshot = await _firestore.collection('tribus').limit(1).get();
-      if (tribusSnapshot.docs.isNotEmpty) {
-        await _diagnosticarEventos(tribusSnapshot.docs.first.id);
-        _mostrarSnackBar('Revisa la consola del navegador (F12)', isSuccess: true);
-      } else {
-        _mostrarSnackBar('No hay tribus para diagnosticar', isSuccess: false);
-      }
-    },
-    icon: Icon(Icons.bug_report, color: Colors.white),
-    label: Text(
-      '🔍 DIAGNÓSTICO DE EVENTOS',
-      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-    ),
-    style: ElevatedButton.styleFrom(
-      backgroundColor: Colors.purple,
-      padding: EdgeInsets.symmetric(vertical: 16),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-    ),
-  ),
-),
-                            
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: _buildActionButton(
-                                onPressed: _mostrarDialogoSeleccionTribus,
-                                icon: Icons.merge_type,
-                                label: 'Unir Tribus',
-                                color: const Color(0xFF1B998B),
-                                gradient: LinearGradient(
-                                  colors: [
-                                    const Color(0xFF1B998B),
-                                    const Color(0xFF159B8C),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        );
-                },
-              ),
+                          ),
+                        ],
+                      );
+              },
             ),
-          if (_mostrarFormularioTribu) ...[
-            _buildFormularioTribu(),
-            const SizedBox(height: 20),
-          ],
+          ),
+        if (_mostrarFormularioTribu) ...[
+          _buildFormularioTribu(),
           const SizedBox(height: 20),
-          _buildListaTribus(),
         ],
-      ),
-    );
-  }
+        const SizedBox(height: 20),
+        _buildListaTribus(),
+      ],
+    ),
+  );
+}
+
 
   Widget _buildActionButton({
     required VoidCallback onPressed,
