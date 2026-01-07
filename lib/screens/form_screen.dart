@@ -1203,27 +1203,64 @@ class _FormularioPageState extends State<FormularioPage> {
       appBar: AppBar(
         elevation: 0,
         backgroundColor: Colors.teal.shade700,
-        title: Row(
-          children: [
-            const Icon(
-              Icons.article_rounded,
-              color: Colors.white,
-              size: 28,
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                'TOMA DE DATOS CONSOLIDACIÓN ${DateTime.now().year}',
-                style: GoogleFonts.poppins(
+        toolbarHeight: MediaQuery.of(context).size.width < 360 ? 70 : 56,
+        title: LayoutBuilder(
+          builder: (context, constraints) {
+            // Calcular tamaño de fuente basado en el ancho disponible
+            double fontSize;
+            if (constraints.maxWidth < 300) {
+              fontSize = 11;
+            } else if (constraints.maxWidth < 350) {
+              fontSize = 12.5;
+            } else if (constraints.maxWidth < 400) {
+              fontSize = 14;
+            } else {
+              fontSize = 16.5;
+            }
+
+            // Calcular tamaño del ícono
+            double iconSize = constraints.maxWidth < 350 ? 22 : 28;
+
+            return Row(
+              children: [
+                Icon(
+                  Icons.article_rounded,
                   color: Colors.white,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 16.5,
+                  size: iconSize,
                 ),
-                overflow: TextOverflow.ellipsis,
-                maxLines: 1,
-              ),
+                SizedBox(width: constraints.maxWidth < 350 ? 6 : 8),
+                Expanded(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'TOMA DE DATOS CONSOLIDACIÓN ${DateTime.now().year}',
+                      style: GoogleFonts.poppins(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                        fontSize: fontSize,
+                        letterSpacing: 0.5,
+                      ),
+                      maxLines: constraints.maxWidth < 360 ? 2 : 1,
+                      textAlign: TextAlign.left,
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Colors.teal.shade700,
+                Colors.teal.shade600,
+              ],
             ),
-          ],
+          ),
         ),
       ),
       body: SafeArea(

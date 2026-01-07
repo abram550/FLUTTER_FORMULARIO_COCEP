@@ -3850,292 +3850,436 @@ class CoordinadoresTab extends StatelessWidget {
     final _userController = TextEditingController();
     final _passwordController = TextEditingController();
     final _phoneController = TextEditingController();
-    //final _emailController = TextEditingController();
 
-    // Variable para controlar si ya se está procesando
     bool _isProcessing = false;
+    bool _passwordVisible = false;
 
     await showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setState) {
             return Dialog(
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(24),
               ),
-              child: SingleChildScrollView(
-                child: Container(
-                  padding: EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
+              elevation: 10,
+              child: Container(
+                constraints: BoxConstraints(maxWidth: 500, maxHeight: 680),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(24),
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Colors.white,
+                      ThemeConstants.primaryTeal.withOpacity(0.02),
+                    ],
                   ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.supervisor_account,
-                            color: ThemeConstants.secondaryOrange,
-                            size: 32,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Header con degradado
+                    Container(
+                      padding: EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            ThemeConstants.primaryTeal,
+                            ThemeConstants.primaryTeal.withOpacity(0.8),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.only(
+                          topLeft: Radius.circular(24),
+                          topRight: Radius.circular(24),
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: ThemeConstants.primaryTeal.withOpacity(0.3),
+                            blurRadius: 8,
+                            offset: Offset(0, 4),
                           ),
-                          SizedBox(width: 12),
-                          Text(
-                            'Nuevo Coordinador',
-                            style: TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                              color: ThemeConstants.primaryTeal,
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Icon(
+                              Icons.supervisor_account,
+                              color: Colors.white,
+                              size: 32,
+                            ),
+                          ),
+                          SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Nuevo Coordinador',
+                                  style: TextStyle(
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                Text(
+                                  'Completa los datos del coordinador',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: Colors.white.withOpacity(0.9),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ],
                       ),
-                      SizedBox(height: 24),
-                      _buildTextField(
-                        controller: _nameController,
-                        label: 'Nombre',
-                        icon: Icons.person_outline,
-                      ),
-                      SizedBox(height: 16),
-                      _buildTextField(
-                        controller: _lastNameController,
-                        label: 'Apellido',
-                        icon: Icons.person,
-                      ),
-                      SizedBox(height: 16),
-                      _buildTextField(
-                        controller: _ageController,
-                        label: 'Edad',
-                        icon: Icons.cake,
-                        keyboardType: TextInputType.number,
-                      ),
-                      SizedBox(height: 16),
-                      _buildTextField(
-                        controller: _phoneController,
-                        label: 'Teléfono',
-                        icon: Icons.phone,
-                        keyboardType: TextInputType.phone,
-                        formatters: [
-                          FilteringTextInputFormatter.allow(
-                              RegExp(r'^\+?[0-9]*$')),
-                        ],
-                        onChanged: (value) {
-                          if (!value.startsWith('+57') && value.isNotEmpty) {
-                            // Evitar bucle infinito
-                            String newValue =
-                                '+57${value.replaceAll('+57', '')}';
-                            _phoneController.value = TextEditingValue(
-                              text: newValue,
-                              selection: TextSelection.collapsed(
-                                  offset: newValue.length),
-                            );
-                          }
-                        },
-                      ),
-                      SizedBox(height: 16),
-                      /*_buildTextField(
-                      controller: _emailController,
-                      label: 'Correo Electrónico',
-                      icon: Icons.email,
-                      keyboardType: TextInputType.emailAddress,
                     ),
-                    SizedBox(height: 16),*/
-                      _buildTextField(
-                        controller: _userController,
-                        label: 'Usuario',
-                        icon: Icons.account_circle,
+
+                    // Contenido con scroll
+                    Expanded(
+                      child: SingleChildScrollView(
+                        padding: EdgeInsets.all(24),
+                        child: Column(
+                          children: [
+                            _buildTextField(
+                              controller: _nameController,
+                              label: 'Nombre',
+                              icon: Icons.person_outline,
+                              hint: 'Ingresa el nombre',
+                            ),
+                            SizedBox(height: 16),
+                            _buildTextField(
+                              controller: _lastNameController,
+                              label: 'Apellido',
+                              icon: Icons.person,
+                              hint: 'Ingresa el apellido',
+                            ),
+                            SizedBox(height: 16),
+                            _buildTextField(
+                              controller: _ageController,
+                              label: 'Edad',
+                              icon: Icons.cake,
+                              keyboardType: TextInputType.number,
+                              hint: 'Ej: 25',
+                            ),
+                            SizedBox(height: 16),
+                            _buildTextField(
+                              controller: _phoneController,
+                              label: 'Teléfono',
+                              icon: Icons.phone,
+                              keyboardType: TextInputType.phone,
+                              hint: '+57 300 123 4567',
+                              formatters: [
+                                FilteringTextInputFormatter.allow(
+                                    RegExp(r'^\+?[0-9]*$')),
+                              ],
+                              onChanged: (value) {
+                                if (!value.startsWith('+57') &&
+                                    value.isNotEmpty) {
+                                  String newValue =
+                                      '+57${value.replaceAll('+57', '')}';
+                                  _phoneController.value = TextEditingValue(
+                                    text: newValue,
+                                    selection: TextSelection.collapsed(
+                                        offset: newValue.length),
+                                  );
+                                }
+                              },
+                            ),
+                            SizedBox(height: 16),
+                            _buildTextField(
+                              controller: _userController,
+                              label: 'Usuario',
+                              icon: Icons.account_circle,
+                              hint: 'Nombre de usuario',
+                            ),
+                            SizedBox(height: 16),
+                            StatefulBuilder(
+                              builder: (context, setPassState) {
+                                return _buildTextField(
+                                  controller: _passwordController,
+                                  label: 'Contraseña',
+                                  icon: Icons.lock_outline,
+                                  isPassword: !_passwordVisible,
+                                  hint: 'Mínimo 6 caracteres',
+                                  suffixIcon: IconButton(
+                                    icon: Icon(
+                                      _passwordVisible
+                                          ? Icons.visibility_off
+                                          : Icons.visibility,
+                                      color: ThemeConstants.primaryTeal,
+                                    ),
+                                    onPressed: () {
+                                      setPassState(() {
+                                        _passwordVisible = !_passwordVisible;
+                                      });
+                                    },
+                                  ),
+                                );
+                              },
+                            ),
+                          ],
+                        ),
                       ),
-                      SizedBox(height: 16),
-                      _buildTextField(
-                        controller: _passwordController,
-                        label: 'Contraseña',
-                        icon: Icons.lock_outline,
-                        isPassword: true,
+                    ),
+
+                    // Footer con botones
+                    Container(
+                      padding: EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade50,
+                        borderRadius: BorderRadius.only(
+                          bottomLeft: Radius.circular(24),
+                          bottomRight: Radius.circular(24),
+                        ),
+                        border: Border(
+                          top: BorderSide(color: Colors.grey.shade200),
+                        ),
                       ),
-                      SizedBox(height: 24),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
+                      child: Row(
                         children: [
-                          TextButton(
-                            onPressed: _isProcessing
-                                ? null
-                                : () => Navigator.pop(context),
-                            child: Text('Cancelar'),
-                            style: TextButton.styleFrom(
-                              padding: EdgeInsets.symmetric(
-                                  horizontal: 20, vertical: 12),
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: _isProcessing
+                                  ? null
+                                  : () => Navigator.pop(context),
+                              style: OutlinedButton.styleFrom(
+                                padding: EdgeInsets.symmetric(vertical: 16),
+                                side: BorderSide(
+                                  color: ThemeConstants.accentGrey,
+                                  width: 2,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              child: Text(
+                                'Cancelar',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: ThemeConstants.accentGrey,
+                                ),
+                              ),
                             ),
                           ),
                           SizedBox(width: 12),
-                          ElevatedButton.icon(
-                            icon: _isProcessing
-                                ? SizedBox(
-                                    width: 16,
-                                    height: 16,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      valueColor: AlwaysStoppedAnimation<Color>(
-                                          Colors.white),
-                                    ),
-                                  )
-                                : Icon(Icons.save),
-                            label: Text(
-                                _isProcessing ? 'Guardando...' : 'Guardar'),
-                            onPressed: _isProcessing
-                                ? null
-                                : () async {
-                                    // Evitar múltiples ejecuciones
-                                    if (_isProcessing) return;
+                          Expanded(
+                            flex: 2,
+                            child: ElevatedButton(
+                              onPressed: _isProcessing
+                                  ? null
+                                  : () async {
+                                      if (_isProcessing) return;
 
-                                    setState(() {
-                                      _isProcessing = true;
-                                    });
+                                      setState(() {
+                                        _isProcessing = true;
+                                      });
 
-                                    try {
-                                      if (_validateFields(
-                                          _nameController.text,
-                                          _lastNameController.text,
-                                          _ageController.text,
-                                          _phoneController.text,
-                                          _userController.text,
-                                          _passwordController.text)) {
-                                        await FirebaseFirestore.instance
-                                            .collection('coordinadores')
-                                            .add({
-                                          'nombre': _nameController.text.trim(),
-                                          'apellido':
-                                              _lastNameController.text.trim(),
-                                          'edad': int.tryParse(
-                                                  _ageController.text) ??
-                                              0,
-                                          'telefono':
-                                              _phoneController.text.trim(),
-                                          'usuario':
-                                              _userController.text.trim(),
-                                          'contrasena':
-                                              _passwordController.text,
-                                          'tribuId': tribuId,
-                                        });
+                                      try {
+                                        if (_validateFields(
+                                            _nameController.text,
+                                            _lastNameController.text,
+                                            _ageController.text,
+                                            _phoneController.text,
+                                            _userController.text,
+                                            _passwordController.text)) {
+                                          await FirebaseFirestore.instance
+                                              .collection('coordinadores')
+                                              .add({
+                                            'nombre':
+                                                _nameController.text.trim(),
+                                            'apellido':
+                                                _lastNameController.text.trim(),
+                                            'edad': int.tryParse(
+                                                    _ageController.text) ??
+                                                0,
+                                            'telefono':
+                                                _phoneController.text.trim(),
+                                            'usuario':
+                                                _userController.text.trim(),
+                                            'contrasena':
+                                                _passwordController.text,
+                                            'tribuId': tribuId,
+                                          });
 
-                                        Navigator.pop(context);
+                                          Navigator.pop(context);
 
+                                          if (context.mounted) {
+                                            ScaffoldMessenger.of(context)
+                                                .showSnackBar(
+                                              SnackBar(
+                                                content: Row(
+                                                  children: [
+                                                    Icon(Icons.check_circle,
+                                                        color: Colors.white),
+                                                    SizedBox(width: 12),
+                                                    Text(
+                                                        'Coordinador creado exitosamente'),
+                                                  ],
+                                                ),
+                                                backgroundColor: Colors.green,
+                                                behavior:
+                                                    SnackBarBehavior.floating,
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(10),
+                                                ),
+                                              ),
+                                            );
+                                          }
+                                        } else {
+                                          if (context.mounted) {
+                                            String errorMessage =
+                                                'Error de validación:\n';
+
+                                            if (_nameController.text
+                                                .trim()
+                                                .isEmpty)
+                                              errorMessage +=
+                                                  '• Nombre es requerido\n';
+                                            if (_lastNameController.text
+                                                .trim()
+                                                .isEmpty)
+                                              errorMessage +=
+                                                  '• Apellido es requerido\n';
+                                            if (_ageController.text
+                                                .trim()
+                                                .isEmpty)
+                                              errorMessage +=
+                                                  '• Edad es requerida\n';
+                                            else {
+                                              final ageInt = int.tryParse(
+                                                  _ageController.text.trim());
+                                              if (ageInt == null ||
+                                                  ageInt <= 0 ||
+                                                  ageInt > 120) {
+                                                errorMessage +=
+                                                    '• Edad debe ser un número entre 1 y 120\n';
+                                              }
+                                            }
+                                            if (_phoneController.text
+                                                .trim()
+                                                .isEmpty)
+                                              errorMessage +=
+                                                  '• Teléfono es requerido\n';
+                                            else if (!RegExp(r'^\+57[0-9]{10}$')
+                                                .hasMatch(_phoneController.text
+                                                    .trim())) {
+                                              errorMessage +=
+                                                  '• Teléfono debe tener formato +57XXXXXXXXXX\n';
+                                            }
+                                            if (_userController.text
+                                                .trim()
+                                                .isEmpty)
+                                              errorMessage +=
+                                                  '• Usuario es requerido\n';
+                                            else if (_userController.text
+                                                    .trim()
+                                                    .length <
+                                                3) {
+                                              errorMessage +=
+                                                  '• Usuario debe tener al menos 3 caracteres\n';
+                                            }
+                                            if (_passwordController.text
+                                                .trim()
+                                                .isEmpty)
+                                              errorMessage +=
+                                                  '• Contraseña es requerida\n';
+                                            else if (_passwordController.text
+                                                    .trim()
+                                                    .length <
+                                                6) {
+                                              errorMessage +=
+                                                  '• Contraseña debe tener al menos 6 caracteres\n';
+                                            }
+
+                                            ScaffoldMessenger.of(context)
+                                                .showSnackBar(
+                                              SnackBar(
+                                                content:
+                                                    Text(errorMessage.trim()),
+                                                backgroundColor: Colors.red,
+                                                duration: Duration(seconds: 4),
+                                                behavior:
+                                                    SnackBarBehavior.floating,
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(10),
+                                                ),
+                                              ),
+                                            );
+                                          }
+                                        }
+                                      } catch (e) {
+                                        print('Error al crear coordinador: $e');
                                         if (context.mounted) {
                                           ScaffoldMessenger.of(context)
                                               .showSnackBar(
                                             SnackBar(
                                               content: Text(
-                                                  'Coordinador creado exitosamente'),
-                                              backgroundColor: Colors.green,
-                                            ),
-                                          );
-                                        }
-                                      } else {
-                                        if (context.mounted) {
-                                          String errorMessage =
-                                              'Error de validación:\n';
-
-                                          if (_nameController.text
-                                              .trim()
-                                              .isEmpty)
-                                            errorMessage +=
-                                                '• Nombre es requerido\n';
-                                          if (_lastNameController.text
-                                              .trim()
-                                              .isEmpty)
-                                            errorMessage +=
-                                                '• Apellido es requerido\n';
-                                          if (_ageController.text
-                                              .trim()
-                                              .isEmpty)
-                                            errorMessage +=
-                                                '• Edad es requerida\n';
-                                          else {
-                                            final ageInt = int.tryParse(
-                                                _ageController.text.trim());
-                                            if (ageInt == null ||
-                                                ageInt <= 0 ||
-                                                ageInt > 120) {
-                                              errorMessage +=
-                                                  '• Edad debe ser un número entre 1 y 120\n';
-                                            }
-                                          }
-                                          if (_phoneController.text
-                                              .trim()
-                                              .isEmpty)
-                                            errorMessage +=
-                                                '• Teléfono es requerido\n';
-                                          else if (!RegExp(r'^\+57[0-9]{10}$')
-                                              .hasMatch(_phoneController.text
-                                                  .trim())) {
-                                            errorMessage +=
-                                                '• Teléfono debe tener formato +57XXXXXXXXXX\n';
-                                          }
-                                          if (_userController.text
-                                              .trim()
-                                              .isEmpty)
-                                            errorMessage +=
-                                                '• Usuario es requerido\n';
-                                          else if (_userController.text
-                                                  .trim()
-                                                  .length <
-                                              3) {
-                                            errorMessage +=
-                                                '• Usuario debe tener al menos 3 caracteres\n';
-                                          }
-                                          if (_passwordController.text
-                                              .trim()
-                                              .isEmpty)
-                                            errorMessage +=
-                                                '• Contraseña es requerida\n';
-                                          else if (_passwordController.text
-                                                  .trim()
-                                                  .length <
-                                              6) {
-                                            errorMessage +=
-                                                '• Contraseña debe tener al menos 6 caracteres\n';
-                                          }
-
-                                          ScaffoldMessenger.of(context)
-                                              .showSnackBar(
-                                            SnackBar(
-                                              content:
-                                                  Text(errorMessage.trim()),
+                                                  'Error al crear coordinador: $e'),
                                               backgroundColor: Colors.red,
-                                              duration: Duration(seconds: 4),
                                             ),
                                           );
                                         }
+                                      } finally {
+                                        setState(() {
+                                          _isProcessing = false;
+                                        });
                                       }
-                                    } catch (e) {
-                                      print('Error al crear coordinador: $e');
-                                      if (context.mounted) {
-                                        ScaffoldMessenger.of(context)
-                                            .showSnackBar(
-                                          SnackBar(
-                                            content: Text(
-                                                'Error al crear coordinador: $e'),
-                                            backgroundColor: Colors.red,
+                                    },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: ThemeConstants.secondaryOrange,
+                                padding: EdgeInsets.symmetric(vertical: 16),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                elevation: 2,
+                              ),
+                              child: _isProcessing
+                                  ? SizedBox(
+                                      height: 20,
+                                      width: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(
+                                                Colors.white),
+                                      ),
+                                    )
+                                  : Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Icon(Icons.save, size: 20),
+                                        SizedBox(width: 8),
+                                        Text(
+                                          'Guardar',
+                                          style: TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w600,
                                           ),
-                                        );
-                                      }
-                                    } finally {
-                                      setState(() {
-                                        _isProcessing = false;
-                                      });
-                                    }
-                                  },
-                            style: ElevatedButton.styleFrom(
-                              padding: EdgeInsets.symmetric(
-                                  horizontal: 20, vertical: 12),
+                                        ),
+                                      ],
+                                    ),
                             ),
                           ),
                         ],
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
             );
@@ -4153,30 +4297,103 @@ class CoordinadoresTab extends StatelessWidget {
     TextInputType? keyboardType,
     List<TextInputFormatter>? formatters,
     Function(String)? onChanged,
+    String? hint,
+    Widget? suffixIcon,
   }) {
-    return TextField(
-      controller: controller,
-      decoration: InputDecoration(
-        labelText: label,
-        prefixIcon: Icon(icon, color: ThemeConstants.primaryTeal),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: ThemeConstants.primaryTeal),
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 8,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: TextField(
+        controller: controller,
+        decoration: InputDecoration(
+          labelText: label,
+          hintText: hint,
+          hintStyle: TextStyle(
+            color: Colors.grey.shade400,
+            fontSize: 14,
+          ),
+          labelStyle: TextStyle(
+            color: ThemeConstants.primaryTeal,
+            fontWeight: FontWeight.w500,
+          ),
+          prefixIcon: Container(
+            margin: EdgeInsets.all(12),
+            padding: EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  ThemeConstants.primaryTeal.withOpacity(0.1),
+                  ThemeConstants.primaryTeal.withOpacity(0.05),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(
+              icon,
+              color: ThemeConstants.primaryTeal,
+              size: 20,
+            ),
+          ),
+          suffixIcon: suffixIcon,
+          filled: true,
+          fillColor: Colors.white,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(
+              color: Colors.grey.shade300,
+              width: 1.5,
+            ),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(
+              color: Colors.grey.shade300,
+              width: 1.5,
+            ),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(
+              color: ThemeConstants.primaryTeal,
+              width: 2,
+            ),
+          ),
+          errorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(
+              color: Colors.red.shade400,
+              width: 2,
+            ),
+          ),
+          focusedErrorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(
+              color: Colors.red.shade400,
+              width: 2,
+            ),
+          ),
+          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide:
-              BorderSide(color: ThemeConstants.primaryTeal.withOpacity(0.5)),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: ThemeConstants.primaryTeal, width: 2),
+        obscureText: isPassword,
+        keyboardType: keyboardType,
+        inputFormatters: formatters,
+        onChanged: onChanged,
+        style: TextStyle(
+          fontSize: 15,
+          color: Colors.grey.shade800,
+          fontWeight: FontWeight.w500,
         ),
       ),
-      obscureText: isPassword,
-      keyboardType: keyboardType,
-      inputFormatters: formatters,
-      onChanged: onChanged,
     );
   }
 
@@ -4227,102 +4444,314 @@ class CoordinadoresTab extends StatelessWidget {
     final contrasenaController = TextEditingController();
 
     bool _isProcessing = false;
+    bool _passwordVisible = false;
 
     await showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) {
-          return AlertDialog(
-            title: const Text('Editar Coordinador'),
-            content: SingleChildScrollView(
+          return Dialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24),
+            ),
+            elevation: 10,
+            child: Container(
+              constraints: BoxConstraints(maxWidth: 500, maxHeight: 580),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(24),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Colors.white,
+                    ThemeConstants.secondaryOrange.withOpacity(0.02),
+                  ],
+                ),
+              ),
               child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  TextField(
-                    controller: nombreController,
-                    decoration: const InputDecoration(labelText: 'Nombre'),
+                  // Header con gradiente
+                  Container(
+                    padding: EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          ThemeConstants.secondaryOrange,
+                          ThemeConstants.secondaryOrange.withOpacity(0.8),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.only(
+                        topLeft: Radius.circular(24),
+                        topRight: Radius.circular(24),
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color:
+                              ThemeConstants.secondaryOrange.withOpacity(0.3),
+                          blurRadius: 8,
+                          offset: Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Icon(
+                            Icons.edit,
+                            color: Colors.white,
+                            size: 28,
+                          ),
+                        ),
+                        SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Editar Coordinador',
+                                style: TextStyle(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              Text(
+                                'Actualiza los datos del coordinador',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.white.withOpacity(0.9),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                  TextField(
-                    controller: apellidoController,
-                    decoration: const InputDecoration(labelText: 'Apellido'),
+
+                  // Contenido con scroll
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: EdgeInsets.all(24),
+                      child: Column(
+                        children: [
+                          _buildTextField(
+                            controller: nombreController,
+                            label: 'Nombre',
+                            icon: Icons.person_outline,
+                            hint: 'Ingresa el nombre',
+                          ),
+                          SizedBox(height: 16),
+                          _buildTextField(
+                            controller: apellidoController,
+                            label: 'Apellido',
+                            icon: Icons.person,
+                            hint: 'Ingresa el apellido',
+                          ),
+                          SizedBox(height: 16),
+                          _buildTextField(
+                            controller: usuarioController,
+                            label: 'Usuario',
+                            icon: Icons.account_circle,
+                            hint: 'Nombre de usuario',
+                          ),
+                          SizedBox(height: 16),
+                          StatefulBuilder(
+                            builder: (context, setPassState) {
+                              return _buildTextField(
+                                controller: contrasenaController,
+                                label: 'Nueva Contraseña (opcional)',
+                                icon: Icons.lock_outline,
+                                isPassword: !_passwordVisible,
+                                hint: 'Dejar vacío para mantener la actual',
+                                suffixIcon: IconButton(
+                                  icon: Icon(
+                                    _passwordVisible
+                                        ? Icons.visibility_off
+                                        : Icons.visibility,
+                                    color: ThemeConstants.secondaryOrange,
+                                  ),
+                                  onPressed: () {
+                                    setPassState(() {
+                                      _passwordVisible = !_passwordVisible;
+                                    });
+                                  },
+                                ),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
-                  TextField(
-                    controller: usuarioController,
-                    decoration: const InputDecoration(labelText: 'Usuario'),
-                  ),
-                  TextField(
-                    controller: contrasenaController,
-                    decoration: const InputDecoration(
-                        labelText: 'Nueva Contraseña (opcional)'),
-                    obscureText: true,
+
+                  // Footer con botones
+                  Container(
+                    padding: EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade50,
+                      borderRadius: BorderRadius.only(
+                        bottomLeft: Radius.circular(24),
+                        bottomRight: Radius.circular(24),
+                      ),
+                      border: Border(
+                        top: BorderSide(color: Colors.grey.shade200),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: _isProcessing
+                                ? null
+                                : () => Navigator.pop(context),
+                            style: OutlinedButton.styleFrom(
+                              padding: EdgeInsets.symmetric(vertical: 16),
+                              side: BorderSide(
+                                color: ThemeConstants.accentGrey,
+                                width: 2,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            child: Text(
+                              'Cancelar',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: ThemeConstants.accentGrey,
+                              ),
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 12),
+                        Expanded(
+                          flex: 2,
+                          child: ElevatedButton(
+                            onPressed: _isProcessing
+                                ? null
+                                : () async {
+                                    if (_isProcessing) return;
+
+                                    setState(() {
+                                      _isProcessing = true;
+                                    });
+
+                                    try {
+                                      final Map<String, dynamic>
+                                          datosActualizados = {
+                                        'nombre': nombreController.text.trim(),
+                                        'apellido':
+                                            apellidoController.text.trim(),
+                                        'usuario':
+                                            usuarioController.text.trim(),
+                                      };
+
+                                      if (contrasenaController.text
+                                          .trim()
+                                          .isNotEmpty) {
+                                        datosActualizados['contrasena'] =
+                                            contrasenaController.text.trim();
+                                      }
+
+                                      await FirebaseFirestore.instance
+                                          .collection('coordinadores')
+                                          .doc(coordinador.id)
+                                          .update(datosActualizados);
+
+                                      Navigator.pop(context);
+
+                                      if (context.mounted) {
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          SnackBar(
+                                            content: Row(
+                                              children: [
+                                                Icon(Icons.check_circle,
+                                                    color: Colors.white),
+                                                SizedBox(width: 12),
+                                                Text(
+                                                    'Coordinador actualizado exitosamente'),
+                                              ],
+                                            ),
+                                            backgroundColor: Colors.green,
+                                            behavior: SnackBarBehavior.floating,
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(10),
+                                            ),
+                                          ),
+                                        );
+                                      }
+                                    } catch (e) {
+                                      print(
+                                          'Error al actualizar coordinador: $e');
+                                      if (context.mounted) {
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          SnackBar(
+                                            content: Text(
+                                                'Error al actualizar coordinador: $e'),
+                                            backgroundColor: Colors.red,
+                                          ),
+                                        );
+                                      }
+                                    } finally {
+                                      setState(() {
+                                        _isProcessing = false;
+                                      });
+                                    }
+                                  },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: ThemeConstants.secondaryOrange,
+                              padding: EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              elevation: 2,
+                            ),
+                            child: _isProcessing
+                                ? SizedBox(
+                                    height: 20,
+                                    width: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                          Colors.white),
+                                    ),
+                                  )
+                                : Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.save, size: 20),
+                                      SizedBox(width: 8),
+                                      Text(
+                                        'Guardar Cambios',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
             ),
-            actions: [
-              TextButton(
-                onPressed: _isProcessing ? null : () => Navigator.pop(context),
-                child: const Text('Cancelar'),
-              ),
-              ElevatedButton(
-                onPressed: _isProcessing
-                    ? null
-                    : () async {
-                        if (_isProcessing) return;
-
-                        setState(() {
-                          _isProcessing = true;
-                        });
-
-                        try {
-                          final Map<String, dynamic> datosActualizados = {
-                            'nombre': nombreController.text.trim(),
-                            'apellido': apellidoController.text.trim(),
-                            'usuario': usuarioController.text.trim(),
-                          };
-
-                          if (contrasenaController.text.trim().isNotEmpty) {
-                            datosActualizados['contrasena'] =
-                                contrasenaController.text.trim();
-                          }
-
-                          await FirebaseFirestore.instance
-                              .collection('coordinadores')
-                              .doc(coordinador.id)
-                              .update(datosActualizados);
-
-                          Navigator.pop(context);
-
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                  content: Text(
-                                      'Coordinador actualizado exitosamente')),
-                            );
-                          }
-                        } catch (e) {
-                          print('Error al actualizar coordinador: $e');
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                  content: Text(
-                                      'Error al actualizar coordinador: $e')),
-                            );
-                          }
-                        } finally {
-                          setState(() {
-                            _isProcessing = false;
-                          });
-                        }
-                      },
-                child: _isProcessing
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Text('Guardar'),
-              ),
-            ],
           );
         },
       ),
@@ -4416,66 +4845,383 @@ class CoordinadoresTab extends StatelessWidget {
       context: context,
       builder: (context) {
         return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+          elevation: 10,
           child: Container(
             width: MediaQuery.of(context).size.width * 0.9,
             height: MediaQuery.of(context).size.height * 0.8,
-            child: Scaffold(
-              appBar: AppBar(
-                title: Text(
-                    'Timoteos de ${coordinador['nombre']} ${coordinador['apellido']}'),
-                actions: [
-                  IconButton(
-                    icon: Icon(Icons.close),
-                    onPressed: () => Navigator.pop(context),
-                  ),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(24),
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.white,
+                  ThemeConstants.primaryTeal.withOpacity(0.02),
                 ],
               ),
-              body: StreamBuilder(
-                stream: FirebaseFirestore.instance
-                    .collection('timoteos')
-                    .where('coordinadorId', isEqualTo: coordinador.id)
-                    .snapshots(),
-                builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return Center(child: CircularProgressIndicator());
-                  }
-
-                  if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                    return Center(child: Text('No hay timoteos asignados'));
-                  }
-
-                  return ListView.builder(
-                    itemCount: snapshot.data!.docs.length,
-                    itemBuilder: (context, index) {
-                      final timoteo = snapshot.data!.docs[index];
-                      return Card(
-                        margin:
-                            EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-                        child: ListTile(
-                          title: Text(
-                              '${timoteo['nombre']} ${timoteo['apellido']}'),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('Usuario: ${timoteo['usuario']}'),
-                              Text('Contraseña: ${timoteo['contrasena']}'),
-                            ],
-                          ),
-                          trailing: IconButton(
-                            icon: Icon(Icons.remove_circle_outline),
-                            onPressed: () async {
-                              await FirebaseFirestore.instance
-                                  .collection('timoteos')
-                                  .doc(timoteo.id)
-                                  .update({'coordinadorId': null});
-                            },
+            ),
+            child: Column(
+              children: [
+                // Header personalizado
+                Container(
+                  padding: EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        ThemeConstants.primaryTeal,
+                        ThemeConstants.primaryTeal.withOpacity(0.8),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(24),
+                      topRight: Radius.circular(24),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: ThemeConstants.primaryTeal.withOpacity(0.3),
+                        blurRadius: 8,
+                        offset: Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Icon(
+                          Icons.groups,
+                          color: Colors.white,
+                          size: 28,
+                        ),
+                      ),
+                      SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Timoteos Asignados',
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                            Text(
+                              '${coordinador['nombre']} ${coordinador['apellido']}',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.white.withOpacity(0.9),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: () => Navigator.pop(context),
+                          borderRadius: BorderRadius.circular(12),
+                          child: Container(
+                            padding: EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Icon(
+                              Icons.close,
+                              color: Colors.white,
+                              size: 24,
+                            ),
                           ),
                         ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Contenido con lista de timoteos
+                Expanded(
+                  child: StreamBuilder(
+                    stream: FirebaseFirestore.instance
+                        .collection('timoteos')
+                        .where('coordinadorId', isEqualTo: coordinador.id)
+                        .snapshots(),
+                    builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              CircularProgressIndicator(
+                                color: ThemeConstants.primaryTeal,
+                              ),
+                              SizedBox(height: 16),
+                              Text(
+                                'Cargando timoteos...',
+                                style: TextStyle(
+                                  color: ThemeConstants.accentGrey,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+
+                      if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                        return Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Container(
+                                padding: EdgeInsets.all(24),
+                                decoration: BoxDecoration(
+                                  color: ThemeConstants.primaryTeal
+                                      .withOpacity(0.1),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  Icons.person_off,
+                                  size: 64,
+                                  color: ThemeConstants.primaryTeal
+                                      .withOpacity(0.5),
+                                ),
+                              ),
+                              SizedBox(height: 16),
+                              Text(
+                                'No hay timoteos asignados',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w600,
+                                  color: ThemeConstants.accentGrey,
+                                ),
+                              ),
+                              SizedBox(height: 8),
+                              Text(
+                                'Este coordinador no tiene timoteos',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: ThemeConstants.accentGrey
+                                      .withOpacity(0.7),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+
+                      return ListView.builder(
+                        padding: EdgeInsets.all(16),
+                        itemCount: snapshot.data!.docs.length,
+                        itemBuilder: (context, index) {
+                          final timoteo = snapshot.data!.docs[index];
+                          return Container(
+                            margin: EdgeInsets.only(bottom: 12),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(16),
+                              gradient: LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [
+                                  Colors.white,
+                                  ThemeConstants.primaryTeal.withOpacity(0.03),
+                                ],
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.05),
+                                  blurRadius: 8,
+                                  offset: Offset(0, 2),
+                                ),
+                              ],
+                              border: Border.all(
+                                color:
+                                    ThemeConstants.primaryTeal.withOpacity(0.2),
+                                width: 1,
+                              ),
+                            ),
+                            child: ListTile(
+                              contentPadding: EdgeInsets.all(16),
+                              leading: Container(
+                                width: 50,
+                                height: 50,
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                    colors: [
+                                      ThemeConstants.primaryTeal,
+                                      ThemeConstants.primaryTeal
+                                          .withOpacity(0.7),
+                                    ],
+                                  ),
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: ThemeConstants.primaryTeal
+                                          .withOpacity(0.3),
+                                      blurRadius: 8,
+                                      offset: Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    '${timoteo['nombre'][0]}${timoteo['apellido'][0]}'
+                                        .toUpperCase(),
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 18,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              title: Text(
+                                '${timoteo['nombre']} ${timoteo['apellido']}',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                  color: Colors.grey.shade800,
+                                ),
+                              ),
+                              subtitle: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  SizedBox(height: 8),
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        Icons.account_circle,
+                                        size: 16,
+                                        color: ThemeConstants.accentGrey,
+                                      ),
+                                      SizedBox(width: 6),
+                                      Text(
+                                        'Usuario: ${timoteo['usuario']}',
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          color: ThemeConstants.accentGrey,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  SizedBox(height: 4),
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        Icons.lock_outline,
+                                        size: 16,
+                                        color: ThemeConstants.accentGrey,
+                                      ),
+                                      SizedBox(width: 6),
+                                      Text(
+                                        'Contraseña: ${timoteo['contrasena']}',
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          color: ThemeConstants.accentGrey,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                              trailing: Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  onTap: () async {
+                                    final confirm = await showDialog<bool>(
+                                      context: context,
+                                      builder: (context) => AlertDialog(
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(16),
+                                        ),
+                                        title: Row(
+                                          children: [
+                                            Icon(
+                                              Icons.warning_amber_rounded,
+                                              color: Colors.orange,
+                                            ),
+                                            SizedBox(width: 12),
+                                            Text('Confirmar'),
+                                          ],
+                                        ),
+                                        content: Text(
+                                          '¿Desasignar este timoteo del coordinador?',
+                                        ),
+                                        actions: [
+                                          TextButton(
+                                            onPressed: () =>
+                                                Navigator.pop(context, false),
+                                            child: Text('Cancelar'),
+                                          ),
+                                          ElevatedButton(
+                                            onPressed: () =>
+                                                Navigator.pop(context, true),
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: Colors.red,
+                                            ),
+                                            child: Text('Desasignar'),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+
+                                    if (confirm == true) {
+                                      await FirebaseFirestore.instance
+                                          .collection('timoteos')
+                                          .doc(timoteo.id)
+                                          .update({
+                                        'coordinadorId': null,
+                                        'nombreCoordinador': null,
+                                      });
+
+                                      if (context.mounted) {
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          SnackBar(
+                                            content: Text(
+                                                'Timoteo desasignado correctamente'),
+                                            backgroundColor: Colors.green,
+                                          ),
+                                        );
+                                      }
+                                    }
+                                  },
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Container(
+                                    padding: EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: Colors.red.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Icon(
+                                      Icons.person_remove,
+                                      color: Colors.red,
+                                      size: 24,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        },
                       );
                     },
-                  );
-                },
-              ),
+                  ),
+                ),
+              ],
             ),
           ),
         );
@@ -4486,29 +5232,80 @@ class CoordinadoresTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Colors.white,
+            ThemeConstants.primaryTeal.withOpacity(0.03),
+          ],
+        ),
+      ),
       child: Column(
         children: [
+          // Botón de crear coordinador mejorado
           Container(
             width: double.infinity,
-            margin: EdgeInsets.only(bottom: 20),
-            child: ElevatedButton.icon(
-              icon: Icon(Icons.group_add, size: 24),
-              label: Text(
-                'Crear Coordinador',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            margin: EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  ThemeConstants.secondaryOrange,
+                  ThemeConstants.secondaryOrange.withOpacity(0.8),
+                ],
               ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: ThemeConstants.secondaryOrange,
-                padding: EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: ThemeConstants.secondaryOrange.withOpacity(0.3),
+                  blurRadius: 12,
+                  offset: Offset(0, 6),
                 ),
-                elevation: 4,
+              ],
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () => _crearCoordinador(context),
+                borderRadius: BorderRadius.circular(16),
+                child: Padding(
+                  padding: EdgeInsets.symmetric(vertical: 18, horizontal: 20),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        padding: EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(
+                          Icons.group_add,
+                          size: 26,
+                          color: Colors.white,
+                        ),
+                      ),
+                      SizedBox(width: 12),
+                      Text(
+                        'Crear Coordinador',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-              onPressed: () => _crearCoordinador(context),
             ),
           ),
+
+          // Lista de coordinadores
           Expanded(
             child: StreamBuilder(
               stream: FirebaseFirestore.instance
@@ -4518,8 +5315,30 @@ class CoordinadoresTab extends StatelessWidget {
               builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return Center(
-                    child: CircularProgressIndicator(
-                      color: ThemeConstants.primaryTeal,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          padding: EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: ThemeConstants.primaryTeal.withOpacity(0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: CircularProgressIndicator(
+                            color: ThemeConstants.primaryTeal,
+                            strokeWidth: 3,
+                          ),
+                        ),
+                        SizedBox(height: 20),
+                        Text(
+                          'Cargando coordinadores...',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: ThemeConstants.primaryTeal,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
                     ),
                   );
                 }
@@ -4529,18 +5348,33 @@ class CoordinadoresTab extends StatelessWidget {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(
-                          Icons.groups,
-                          size: 64,
-                          color: ThemeConstants.accentGrey,
+                        Container(
+                          padding: EdgeInsets.all(24),
+                          decoration: BoxDecoration(
+                            color: ThemeConstants.accentGrey.withOpacity(0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            Icons.groups,
+                            size: 80,
+                            color: ThemeConstants.accentGrey.withOpacity(0.5),
+                          ),
                         ),
-                        SizedBox(height: 16),
+                        SizedBox(height: 24),
                         Text(
                           'No hay coordinadores registrados',
                           style: TextStyle(
-                            fontSize: 18,
+                            fontSize: 20,
                             color: ThemeConstants.accentGrey,
-                            fontWeight: FontWeight.w500,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        SizedBox(height: 8),
+                        Text(
+                          'Presiona el botón superior para crear uno',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: ThemeConstants.accentGrey.withOpacity(0.7),
                           ),
                         ),
                       ],
@@ -4549,123 +5383,192 @@ class CoordinadoresTab extends StatelessWidget {
                 }
 
                 return ListView.builder(
+                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   itemCount: snapshot.data!.docs.length,
                   itemBuilder: (context, index) {
                     final coordinador = snapshot.data!.docs[index];
-                    return Card(
-                      elevation: 3,
-                      margin: EdgeInsets.symmetric(vertical: 8),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                    final iniciales =
+                        '${coordinador['nombre'][0]}${coordinador['apellido'][0]}'
+                            .toUpperCase();
+
+                    return Container(
+                      margin: EdgeInsets.only(bottom: 16),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(20),
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            Colors.white,
+                            ThemeConstants.primaryTeal.withOpacity(0.03),
+                          ],
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.06),
+                            blurRadius: 12,
+                            offset: Offset(0, 4),
+                          ),
+                        ],
+                        border: Border.all(
+                          color: ThemeConstants.primaryTeal.withOpacity(0.15),
+                          width: 1,
+                        ),
                       ),
-                      child: ExpansionTile(
-                        leading: CircleAvatar(
-                          backgroundColor: ThemeConstants.primaryTeal,
-                          child: Text(
-                            '${coordinador['nombre'][0]}${coordinador['apellido'][0]}',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
+                      child: Theme(
+                        data: Theme.of(context).copyWith(
+                          dividerColor: Colors.transparent,
+                        ),
+                        child: ExpansionTile(
+                          tilePadding: EdgeInsets.symmetric(
+                              horizontal: 20, vertical: 12),
+                          childrenPadding: EdgeInsets.all(0),
+                          leading: Hero(
+                            tag: 'coordinador_${coordinador.id}',
+                            child: Container(
+                              width: 56,
+                              height: 56,
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [
+                                    ThemeConstants.primaryTeal,
+                                    ThemeConstants.primaryTeal.withOpacity(0.7),
+                                  ],
+                                ),
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: ThemeConstants.primaryTeal
+                                        .withOpacity(0.3),
+                                    blurRadius: 8,
+                                    offset: Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: Center(
+                                child: Text(
+                                  iniciales,
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 20,
+                                    letterSpacing: 1,
+                                  ),
+                                ),
+                              ),
                             ),
                           ),
-                        ),
-                        title: Text(
-                          '${coordinador['nombre']} ${coordinador['apellido']}',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: ThemeConstants.primaryTeal,
-                            fontSize: 16,
+                          title: Text(
+                            '${coordinador['nombre']} ${coordinador['apellido']}',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: ThemeConstants.primaryTeal,
+                              fontSize: 17,
+                            ),
                           ),
-                        ),
-                        subtitle: Text(
-                          'Edad: ${coordinador['edad']} años',
-                          style: TextStyle(color: ThemeConstants.accentGrey),
-                        ),
-                        children: [
-                          Container(
-                            padding: EdgeInsets.all(16),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                          subtitle: Padding(
+                            padding: EdgeInsets.only(top: 4),
+                            child: Row(
                               children: [
-                                _buildInfoRow(Icons.phone, 'Teléfono',
-                                    coordinador['telefono']),
-                                SizedBox(height: 8),
-                                /* _buildInfoRow(
-                                    Icons.email, 'Email', coordinador['email']),
-                                SizedBox(height: 8),*/
-                                _buildInfoRow(Icons.person, 'Usuario',
-                                    coordinador['usuario']),
-                                SizedBox(height: 8),
-                                _buildInfoRow(Icons.lock, 'Contraseña',
-                                    coordinador['contrasena']),
-                                Divider(height: 24),
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceEvenly,
-                                  children: [
-                                    _buildActionButton(
-                                      icon: Icons.edit,
-                                      label: '',
-                                      color: ThemeConstants.primaryTeal,
-                                      padding: EdgeInsets.symmetric(
-                                          horizontal: 16, vertical: 12),
-                                      iconSize: 30, // Ajuste del tamaño
-                                      onPressed: () => _editarCoordinador(
-                                          context, coordinador),
-                                    ),
-                                    _buildActionButton(
-                                      icon: Icons.group,
-                                      label: '',
-                                      color: ThemeConstants.secondaryOrange,
-                                      onPressed: () => _verTimoteosAsignados(
-                                          context, coordinador),
-                                      padding: EdgeInsets.symmetric(
-                                          horizontal: 16, vertical: 12),
-                                      iconSize:
-                                          30, // Cambiar el tamaño del ícono (aumentado)
-                                      // Ajuste del tamaño
-                                    ),
-                                    _buildActionButton(
-                                      icon: Icons.delete,
-                                      label:
-                                          '', // Mantener sin texto si no necesitas un label
-                                      color: Colors.red,
-                                      onPressed: () => _eliminarCoordinador(
-                                          context, coordinador),
-                                      padding: EdgeInsets.symmetric(
-                                        horizontal: 16,
-                                        vertical: 12,
-                                      ), // Ajuste del tamaño
-                                      iconSize:
-                                          30, // Cambiar el tamaño del ícono (aumentado)
-                                    ),
-                                    _buildActionButton(
-                                      icon: Icons.arrow_forward,
-                                      label: '',
-                                      color: Colors.blue,
-                                      padding: EdgeInsets.symmetric(
-                                          horizontal: 16, vertical: 12),
-                                      iconSize: 30, // Ajuste del tamaño
-                                      onPressed: () {
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (context) =>
-                                                CoordinadorScreen(
-                                              coordinadorId: coordinador.id,
-                                              coordinadorNombre:
-                                                  '${coordinador['nombre']} ${coordinador['apellido']}',
-                                            ),
-                                          ),
-                                        );
-                                      },
-                                    ),
-                                  ],
+                                Icon(
+                                  Icons.cake,
+                                  size: 14,
+                                  color: ThemeConstants.accentGrey,
+                                ),
+                                SizedBox(width: 4),
+                                Text(
+                                  '${coordinador['edad']} años',
+                                  style: TextStyle(
+                                    color: ThemeConstants.accentGrey,
+                                    fontSize: 13,
+                                  ),
                                 ),
                               ],
                             ),
                           ),
-                        ],
+                          trailing: Icon(
+                            Icons.expand_more,
+                            color: ThemeConstants.primaryTeal,
+                          ),
+                          children: [
+                            Container(
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade50,
+                                borderRadius: BorderRadius.only(
+                                  bottomLeft: Radius.circular(20),
+                                  bottomRight: Radius.circular(20),
+                                ),
+                              ),
+                              padding: EdgeInsets.all(20),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _buildInfoRow(Icons.phone, 'Teléfono',
+                                      coordinador['telefono']),
+                                  SizedBox(height: 12),
+                                  _buildInfoRow(Icons.person, 'Usuario',
+                                      coordinador['usuario']),
+                                  SizedBox(height: 12),
+                                  _buildInfoRow(Icons.lock, 'Contraseña',
+                                      coordinador['contrasena']),
+                                  SizedBox(height: 20),
+                                  Divider(
+                                      height: 1, color: Colors.grey.shade300),
+                                  SizedBox(height: 16),
+                                  // Botones de acción mejorados
+                                  Wrap(
+                                    spacing: 8,
+                                    runSpacing: 8,
+                                    alignment: WrapAlignment.center,
+                                    children: [
+                                      _buildActionButton(
+                                        icon: Icons.edit,
+                                        label: 'Editar',
+                                        color: ThemeConstants.primaryTeal,
+                                        onPressed: () => _editarCoordinador(
+                                            context, coordinador),
+                                      ),
+                                      _buildActionButton(
+                                        icon: Icons.group,
+                                        label: 'Timoteos',
+                                        color: ThemeConstants.secondaryOrange,
+                                        onPressed: () => _verTimoteosAsignados(
+                                            context, coordinador),
+                                      ),
+                                      _buildActionButton(
+                                        icon: Icons.arrow_forward,
+                                        label: 'Ver más',
+                                        color: Colors.blue,
+                                        onPressed: () {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) =>
+                                                  CoordinadorScreen(
+                                                coordinadorId: coordinador.id,
+                                                coordinadorNombre:
+                                                    '${coordinador['nombre']} ${coordinador['apellido']}',
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                      _buildActionButton(
+                                        icon: Icons.delete,
+                                        label: 'Eliminar',
+                                        color: Colors.red,
+                                        onPressed: () => _eliminarCoordinador(
+                                            context, coordinador),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     );
                   },
@@ -4722,22 +5625,58 @@ class CoordinadoresTab extends StatelessWidget {
     required Color color,
     required VoidCallback onPressed,
     EdgeInsets padding =
-        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-    double fontSize = 14, // Tamaño por defecto del texto
-    double iconSize = 24, // Tamaño por defecto del ícono
+        const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+    double fontSize = 14,
+    double iconSize = 20,
   }) {
-    return TextButton.icon(
-      icon: Icon(icon,
-          color: color, size: iconSize), // Aquí se ajusta el tamaño del ícono
-      label: Text(
-        label,
-        style: TextStyle(color: color, fontSize: fontSize),
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            color,
+            color.withOpacity(0.8),
+          ],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: color.withOpacity(0.3),
+            blurRadius: 8,
+            offset: Offset(0, 4),
+          ),
+        ],
       ),
-      onPressed: onPressed,
-      style: TextButton.styleFrom(
-        padding: padding,
-        shape: RoundedRectangleBorder(
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onPressed,
           borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: padding,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  icon,
+                  color: Colors.white,
+                  size: iconSize,
+                ),
+                if (label.isNotEmpty) ...[
+                  SizedBox(width: 8),
+                  Text(
+                    label,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: fontSize,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -4892,65 +5831,629 @@ class TimoteosTab extends StatelessWidget {
     final usuarioController = TextEditingController(text: timoteo['usuario']);
     final contrasenaController = TextEditingController();
 
+    bool _isProcessing = false;
+    bool _passwordVisible = false;
+
     await showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Editar Timoteo'),
-        content: SingleChildScrollView(
-          child: Column(
-            children: [
-              TextField(
-                controller: nombreController,
-                decoration: const InputDecoration(labelText: 'Nombre'),
-              ),
-              TextField(
-                controller: apellidoController,
-                decoration: const InputDecoration(labelText: 'Apellido'),
-              ),
-              TextField(
-                controller: usuarioController,
-                decoration: const InputDecoration(labelText: 'Usuario'),
-              ),
-              TextField(
-                controller: contrasenaController,
-                decoration: const InputDecoration(
-                    labelText: 'Nueva Contraseña (opcional)'),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              final Map<String, dynamic> datosActualizados = {
-                'nombre': nombreController.text,
-                'apellido': apellidoController.text,
-                'usuario': usuarioController.text,
-              };
+      barrierDismissible: false,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) {
+          // Responsive measurements
+          final screenWidth = MediaQuery.of(context).size.width;
+          final screenHeight = MediaQuery.of(context).size.height;
+          final isSmallScreen = screenWidth < 600;
+          final isMediumScreen = screenWidth >= 600 && screenWidth < 900;
 
-              if (contrasenaController.text.isNotEmpty) {
-                datosActualizados['contrasena'] =
-                    contrasenaController.text; // Guardar nueva contraseña
-              }
+          final dialogWidth = isSmallScreen
+              ? screenWidth * 0.9
+              : (isMediumScreen ? 500.0 : 550.0);
+          final dialogMaxHeight = screenHeight * 0.85;
 
-              await FirebaseFirestore.instance
-                  .collection('timoteos')
-                  .doc(timoteo.id)
-                  .update(datosActualizados);
+          return Dialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(isSmallScreen ? 20 : 24),
+            ),
+            elevation: 10,
+            child: Container(
+              width: dialogWidth,
+              constraints: BoxConstraints(
+                maxHeight: dialogMaxHeight,
+                maxWidth: dialogWidth,
+              ),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(isSmallScreen ? 20 : 24),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Colors.white,
+                    ThemeConstants.primaryTeal.withOpacity(0.02),
+                  ],
+                ),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Header con gradiente
+                  Container(
+                    padding: EdgeInsets.all(isSmallScreen ? 16 : 24),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          ThemeConstants.primaryTeal,
+                          ThemeConstants.primaryTeal.withOpacity(0.8),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.only(
+                        topLeft: Radius.circular(isSmallScreen ? 20 : 24),
+                        topRight: Radius.circular(isSmallScreen ? 20 : 24),
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: ThemeConstants.primaryTeal.withOpacity(0.3),
+                          blurRadius: 8,
+                          offset: Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: EdgeInsets.all(isSmallScreen ? 10 : 12),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.2),
+                            borderRadius:
+                                BorderRadius.circular(isSmallScreen ? 12 : 16),
+                          ),
+                          child: Icon(
+                            Icons.edit_note,
+                            color: Colors.white,
+                            size: isSmallScreen ? 24 : 28,
+                          ),
+                        ),
+                        SizedBox(width: isSmallScreen ? 12 : 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Editar Timoteo',
+                                style: TextStyle(
+                                  fontSize: isSmallScreen ? 18 : 22,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              if (!isSmallScreen)
+                                Text(
+                                  'Actualiza la información del timoteo',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: Colors.white.withOpacity(0.9),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                        Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: _isProcessing
+                                ? null
+                                : () => Navigator.pop(context),
+                            borderRadius: BorderRadius.circular(10),
+                            child: Container(
+                              padding: EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Icon(
+                                Icons.close,
+                                color: Colors.white,
+                                size: isSmallScreen ? 20 : 22,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
 
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                    content: Text('Timoteo actualizado exitosamente')),
-              );
-            },
-            child: const Text('Guardar'),
+                  // Contenido con scroll
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: EdgeInsets.all(isSmallScreen ? 16 : 24),
+                      child: Column(
+                        children: [
+                          _buildResponsiveTextField(
+                            controller: nombreController,
+                            label: 'Nombre',
+                            icon: Icons.person_outline,
+                            hint: 'Ingresa el nombre',
+                            isSmallScreen: isSmallScreen,
+                          ),
+                          SizedBox(height: isSmallScreen ? 12 : 16),
+                          _buildResponsiveTextField(
+                            controller: apellidoController,
+                            label: 'Apellido',
+                            icon: Icons.person,
+                            hint: 'Ingresa el apellido',
+                            isSmallScreen: isSmallScreen,
+                          ),
+                          SizedBox(height: isSmallScreen ? 12 : 16),
+                          _buildResponsiveTextField(
+                            controller: usuarioController,
+                            label: 'Usuario',
+                            icon: Icons.account_circle,
+                            hint: 'Nombre de usuario',
+                            isSmallScreen: isSmallScreen,
+                          ),
+                          SizedBox(height: isSmallScreen ? 12 : 16),
+                          _buildResponsiveTextField(
+                            controller: contrasenaController,
+                            label: 'Nueva Contraseña (opcional)',
+                            icon: Icons.lock_outline,
+                            isPassword: !_passwordVisible,
+                            hint: 'Dejar vacío para mantener la actual',
+                            isSmallScreen: isSmallScreen,
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                _passwordVisible
+                                    ? Icons.visibility_off
+                                    : Icons.visibility,
+                                color: ThemeConstants.primaryTeal,
+                                size: isSmallScreen ? 20 : 22,
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  _passwordVisible = !_passwordVisible;
+                                });
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  // Footer con botones
+                  Container(
+                    padding: EdgeInsets.all(isSmallScreen ? 16 : 20),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade50,
+                      borderRadius: BorderRadius.only(
+                        bottomLeft: Radius.circular(isSmallScreen ? 20 : 24),
+                        bottomRight: Radius.circular(isSmallScreen ? 20 : 24),
+                      ),
+                      border: Border(
+                        top: BorderSide(color: Colors.grey.shade200),
+                      ),
+                    ),
+                    child: isSmallScreen
+                        ? Column(
+                            children: [
+                              SizedBox(
+                                width: double.infinity,
+                                child: ElevatedButton(
+                                  onPressed: _isProcessing
+                                      ? null
+                                      : () async {
+                                          if (_isProcessing) return;
+
+                                          setState(() {
+                                            _isProcessing = true;
+                                          });
+
+                                          try {
+                                            final Map<String, dynamic>
+                                                datosActualizados = {
+                                              'nombre':
+                                                  nombreController.text.trim(),
+                                              'apellido': apellidoController
+                                                  .text
+                                                  .trim(),
+                                              'usuario':
+                                                  usuarioController.text.trim(),
+                                            };
+
+                                            if (contrasenaController.text
+                                                .trim()
+                                                .isNotEmpty) {
+                                              datosActualizados['contrasena'] =
+                                                  contrasenaController.text
+                                                      .trim();
+                                            }
+
+                                            await FirebaseFirestore.instance
+                                                .collection('timoteos')
+                                                .doc(timoteo.id)
+                                                .update(datosActualizados);
+
+                                            Navigator.pop(context);
+
+                                            if (context.mounted) {
+                                              ScaffoldMessenger.of(context)
+                                                  .showSnackBar(
+                                                SnackBar(
+                                                  content: Row(
+                                                    children: [
+                                                      Icon(Icons.check_circle,
+                                                          color: Colors.white),
+                                                      SizedBox(width: 12),
+                                                      Expanded(
+                                                        child: Text(
+                                                          'Timoteo actualizado exitosamente',
+                                                          style: TextStyle(
+                                                              fontSize: 14),
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                  backgroundColor: Colors.green,
+                                                  behavior:
+                                                      SnackBarBehavior.floating,
+                                                  shape: RoundedRectangleBorder(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            10),
+                                                  ),
+                                                ),
+                                              );
+                                            }
+                                          } catch (e) {
+                                            print(
+                                                'Error al actualizar timoteo: $e');
+                                            if (context.mounted) {
+                                              ScaffoldMessenger.of(context)
+                                                  .showSnackBar(
+                                                SnackBar(
+                                                  content: Text(
+                                                      'Error al actualizar: $e'),
+                                                  backgroundColor: Colors.red,
+                                                ),
+                                              );
+                                            }
+                                          } finally {
+                                            setState(() {
+                                              _isProcessing = false;
+                                            });
+                                          }
+                                        },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: ThemeConstants.primaryTeal,
+                                    padding: EdgeInsets.symmetric(vertical: 14),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    elevation: 2,
+                                  ),
+                                  child: _isProcessing
+                                      ? SizedBox(
+                                          height: 18,
+                                          width: 18,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            valueColor:
+                                                AlwaysStoppedAnimation<Color>(
+                                                    Colors.white),
+                                          ),
+                                        )
+                                      : Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            Icon(Icons.save, size: 18),
+                                            SizedBox(width: 8),
+                                            Text(
+                                              'Guardar Cambios',
+                                              style: TextStyle(
+                                                fontSize: 15,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                ),
+                              ),
+                              SizedBox(height: 10),
+                              SizedBox(
+                                width: double.infinity,
+                                child: OutlinedButton(
+                                  onPressed: _isProcessing
+                                      ? null
+                                      : () => Navigator.pop(context),
+                                  style: OutlinedButton.styleFrom(
+                                    padding: EdgeInsets.symmetric(vertical: 14),
+                                    side: BorderSide(
+                                      color: ThemeConstants.accentGrey,
+                                      width: 2,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    'Cancelar',
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w600,
+                                      color: ThemeConstants.accentGrey,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          )
+                        : Row(
+                            children: [
+                              Expanded(
+                                child: OutlinedButton(
+                                  onPressed: _isProcessing
+                                      ? null
+                                      : () => Navigator.pop(context),
+                                  style: OutlinedButton.styleFrom(
+                                    padding: EdgeInsets.symmetric(vertical: 16),
+                                    side: BorderSide(
+                                      color: ThemeConstants.accentGrey,
+                                      width: 2,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    'Cancelar',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: ThemeConstants.accentGrey,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              SizedBox(width: 12),
+                              Expanded(
+                                flex: 2,
+                                child: ElevatedButton(
+                                  onPressed: _isProcessing
+                                      ? null
+                                      : () async {
+                                          if (_isProcessing) return;
+
+                                          setState(() {
+                                            _isProcessing = true;
+                                          });
+
+                                          try {
+                                            final Map<String, dynamic>
+                                                datosActualizados = {
+                                              'nombre':
+                                                  nombreController.text.trim(),
+                                              'apellido': apellidoController
+                                                  .text
+                                                  .trim(),
+                                              'usuario':
+                                                  usuarioController.text.trim(),
+                                            };
+
+                                            if (contrasenaController.text
+                                                .trim()
+                                                .isNotEmpty) {
+                                              datosActualizados['contrasena'] =
+                                                  contrasenaController.text
+                                                      .trim();
+                                            }
+
+                                            await FirebaseFirestore.instance
+                                                .collection('timoteos')
+                                                .doc(timoteo.id)
+                                                .update(datosActualizados);
+
+                                            Navigator.pop(context);
+
+                                            if (context.mounted) {
+                                              ScaffoldMessenger.of(context)
+                                                  .showSnackBar(
+                                                SnackBar(
+                                                  content: Row(
+                                                    children: [
+                                                      Icon(Icons.check_circle,
+                                                          color: Colors.white),
+                                                      SizedBox(width: 12),
+                                                      Text(
+                                                          'Timoteo actualizado exitosamente'),
+                                                    ],
+                                                  ),
+                                                  backgroundColor: Colors.green,
+                                                  behavior:
+                                                      SnackBarBehavior.floating,
+                                                  shape: RoundedRectangleBorder(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            10),
+                                                  ),
+                                                ),
+                                              );
+                                            }
+                                          } catch (e) {
+                                            print(
+                                                'Error al actualizar timoteo: $e');
+                                            if (context.mounted) {
+                                              ScaffoldMessenger.of(context)
+                                                  .showSnackBar(
+                                                SnackBar(
+                                                  content: Text(
+                                                      'Error al actualizar timoteo: $e'),
+                                                  backgroundColor: Colors.red,
+                                                ),
+                                              );
+                                            }
+                                          } finally {
+                                            setState(() {
+                                              _isProcessing = false;
+                                            });
+                                          }
+                                        },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: ThemeConstants.primaryTeal,
+                                    padding: EdgeInsets.symmetric(vertical: 16),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    elevation: 2,
+                                  ),
+                                  child: _isProcessing
+                                      ? SizedBox(
+                                          height: 20,
+                                          width: 20,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            valueColor:
+                                                AlwaysStoppedAnimation<Color>(
+                                                    Colors.white),
+                                          ),
+                                        )
+                                      : Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            Icon(Icons.save, size: 20),
+                                            SizedBox(width: 8),
+                                            Text(
+                                              'Guardar Cambios',
+                                              style: TextStyle(
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                ),
+                              ),
+                            ],
+                          ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  // Widget helper para campos de texto responsive
+  Widget _buildResponsiveTextField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    bool isPassword = false,
+    String? hint,
+    Widget? suffixIcon,
+    required bool isSmallScreen,
+  }) {
+    final iconSize = isSmallScreen ? 18.0 : 20.0;
+    final fontSize = isSmallScreen ? 14.0 : 15.0;
+    final labelSize = isSmallScreen ? 13.0 : 14.0;
+
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 8,
+            offset: Offset(0, 2),
           ),
         ],
+      ),
+      child: TextField(
+        controller: controller,
+        obscureText: isPassword,
+        style: TextStyle(
+          fontSize: fontSize,
+          color: Colors.grey.shade800,
+          fontWeight: FontWeight.w500,
+        ),
+        decoration: InputDecoration(
+          labelText: label,
+          hintText: hint,
+          hintStyle: TextStyle(
+            color: Colors.grey.shade400,
+            fontSize: labelSize,
+          ),
+          labelStyle: TextStyle(
+            color: ThemeConstants.primaryTeal,
+            fontWeight: FontWeight.w500,
+            fontSize: labelSize,
+          ),
+          prefixIcon: Container(
+            margin: EdgeInsets.all(isSmallScreen ? 10 : 12),
+            padding: EdgeInsets.all(isSmallScreen ? 6 : 8),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  ThemeConstants.primaryTeal.withOpacity(0.1),
+                  ThemeConstants.primaryTeal.withOpacity(0.05),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(
+              icon,
+              color: ThemeConstants.primaryTeal,
+              size: iconSize,
+            ),
+          ),
+          suffixIcon: suffixIcon,
+          filled: true,
+          fillColor: Colors.white,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(
+              color: Colors.grey.shade300,
+              width: 1.5,
+            ),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(
+              color: Colors.grey.shade300,
+              width: 1.5,
+            ),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(
+              color: ThemeConstants.primaryTeal,
+              width: 2,
+            ),
+          ),
+          errorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(
+              color: Colors.red.shade400,
+              width: 2,
+            ),
+          ),
+          focusedErrorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(
+              color: Colors.red.shade400,
+              width: 2,
+            ),
+          ),
+          contentPadding: EdgeInsets.symmetric(
+            horizontal: isSmallScreen ? 12 : 16,
+            vertical: isSmallScreen ? 14 : 16,
+          ),
+        ),
       ),
     );
   }
