@@ -168,20 +168,13 @@ class _StatisticsDialogState extends State<StatisticsDialog>
     });
 
     try {
-      QuerySnapshot snapshot =
+      // Cargar registros para obtener los años
+      QuerySnapshot registrosSnapshot =
           await FirebaseFirestore.instance.collection('registros').get();
 
       Set<int> years = {};
-      Map<String, List<String>> ministerioTribusMap = {
-        "Todos": [],
-      };
 
-      // 🆕 MEJORA: Usar un Set para evitar duplicados basados en el ID de la tribu
-      Map<String, Set<String>> ministerioTribusSet = {
-        "Todos": {},
-      };
-
-      for (var doc in snapshot.docs) {
+      for (var doc in registrosSnapshot.docs) {
         var data = doc.data() as Map<String, dynamic>;
         DateTime? date;
 
@@ -194,67 +187,49 @@ class _StatisticsDialogState extends State<StatisticsDialog>
         if (date != null) {
           years.add(date.year);
         }
+      }
 
-        // Organizar tribus por ministerio
-        final ministerio = data['ministerioAsignado'] as String?;
-        final tribuNombre = data['nombreTribu'] as String?;
-        final tribuId = data['tribuAsignada'] as String?;
+      // CAMBIO PRINCIPAL: Cargar TODAS las tribus desde la colección 'tribus'
+      QuerySnapshot tribusSnapshot =
+          await FirebaseFirestore.instance.collection('tribus').get();
 
-        // 🆕 VALIDACIÓN MEJORADA: Verificar que los datos no sean nulos ni vacíos
-        if (ministerio != null &&
-            ministerio.trim().isNotEmpty &&
-            tribuNombre != null &&
-            tribuNombre.trim().isNotEmpty &&
-            tribuId != null &&
-            tribuId.trim().isNotEmpty) {
-          // 🆕 NORMALIZACIÓN: Limpiar espacios en blanco
-          final ministerioLimpio = ministerio.trim();
-          final tribuNombreLimpio = tribuNombre.trim();
-          final tribuIdLimpio = tribuId.trim();
+      Map<String, List<String>> ministerioTribusMap = {
+        "Todos": [],
+      };
 
-          // Inicializar el ministerio si no existe
-          if (!ministerioTribusSet.containsKey(ministerioLimpio)) {
-            ministerioTribusSet[ministerioLimpio] = {};
+      for (var doc in tribusSnapshot.docs) {
+        var data = doc.data() as Map<String, dynamic>;
+
+        // Obtener datos de la tribu
+        final tribuNombre = data['nombre'] as String?;
+        final tribuId = doc.id; // Usar el ID del documento
+        final categoria =
+            data['categoria'] as String?; // Ministerio al que pertenece
+
+        if (tribuNombre != null && categoria != null) {
+          // Mapear las categorías a los nombres de ministerio usados en el filtro
+          String ministerio = categoria;
+
+          if (!ministerioTribusMap.containsKey(ministerio)) {
+            ministerioTribusMap[ministerio] = [];
           }
 
-          // 🆕 MEJORA CLAVE: Usar el ID de la tribu como clave única en el Set
-          // Esto garantiza que no haya duplicados aunque el nombre varíe ligeramente
-          String tribuDisplay = "$tribuNombreLimpio ($tribuIdLimpio)";
-
-          // Agregar al ministerio específico
-          ministerioTribusSet[ministerioLimpio]!.add(tribuDisplay);
+          // Agregar tribu al ministerio correspondiente
+          String tribuDisplay = "$tribuNombre ($tribuId)";
+          if (!ministerioTribusMap[ministerio]!.contains(tribuDisplay)) {
+            ministerioTribusMap[ministerio]!.add(tribuDisplay);
+          }
 
           // También agregar a "Todos"
-          ministerioTribusSet["Todos"]!.add(tribuDisplay);
-
-          // 🆕 DEBUG: Imprimir para verificar que se están cargando todas las tribus
-          print('📊 Tribu cargada: $tribuDisplay en $ministerioLimpio');
-        } else {
-          // 🆕 DEBUG: Identificar registros con datos faltantes
-          print('⚠️ Registro con datos incompletos: Doc ID: ${doc.id}');
-          print('   - Ministerio: $ministerio');
-          print('   - Tribu Nombre: $tribuNombre');
-          print('   - Tribu ID: $tribuId');
+          if (!ministerioTribusMap["Todos"]!.contains(tribuDisplay)) {
+            ministerioTribusMap["Todos"]!.add(tribuDisplay);
+          }
         }
       }
 
-      // 🆕 CONVERSIÓN: Convertir Sets a Listas y ordenar alfabéticamente
-      ministerioTribusMap.clear();
-      ministerioTribusSet.forEach((ministerio, tribusSet) {
-        ministerioTribusMap[ministerio] = tribusSet.toList()
-          ..sort((a, b) {
-            // Ordenar por nombre de tribu (parte antes del paréntesis)
-            String nombreA = a.split('(')[0].trim();
-            String nombreB = b.split('(')[0].trim();
-            return nombreA.compareTo(nombreB);
-          });
-      });
-
-      // 🆕 DEBUG: Imprimir resumen de tribus cargadas
-      print(
-          '✅ Total de tribus cargadas: ${ministerioTribusMap["Todos"]!.length}');
-      ministerioTribusMap.forEach((ministerio, tribus) {
-        print('   $ministerio: ${tribus.length} tribus');
+      // Ordenar las tribus alfabéticamente dentro de cada ministerio
+      ministerioTribusMap.forEach((key, value) {
+        value.sort((a, b) => a.compareTo(b));
       });
 
       setState(() {
@@ -270,7 +245,6 @@ class _StatisticsDialogState extends State<StatisticsDialog>
         isLoading = false;
       });
     } catch (e) {
-      print('❌ Error en _loadAvailableData: $e');
       setState(() {
         isLoading = false;
         hasError = true;
