@@ -2313,6 +2313,8 @@ class MiembroCard extends StatelessWidget {
   }
 }
 
+
+
 //--------------------------PESTAÑA DE ASISTENCIA
 class AsistenciasTab extends StatefulWidget {
   final String tribuId;
@@ -5378,6 +5380,9 @@ Widget _buildInfoRow(IconData icon, String label, String value) {
     ],
   );
 }
+
+
+
 
 //--Clase de la pestaña de Personas
 class RegistrosAsignadosTab extends StatefulWidget {
@@ -11568,6 +11573,8 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
     return filtros.join(' • ');
   }
 }
+
+
 
 //----------------------------------------------------------------------------------------------
 

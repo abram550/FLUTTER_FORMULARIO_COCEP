@@ -160,6 +160,7 @@ class _StatisticsDialogState extends State<StatisticsDialog>
   }
 
   // Carga los datos disponibles desde Firestore
+
   Future<void> _loadAvailableData() async {
     setState(() {
       isLoading = true;
@@ -173,6 +174,11 @@ class _StatisticsDialogState extends State<StatisticsDialog>
       Set<int> years = {};
       Map<String, List<String>> ministerioTribusMap = {
         "Todos": [],
+      };
+
+      // 🆕 MEJORA: Usar un Set para evitar duplicados basados en el ID de la tribu
+      Map<String, Set<String>> ministerioTribusSet = {
+        "Todos": {},
       };
 
       for (var doc in snapshot.docs) {
@@ -194,23 +200,62 @@ class _StatisticsDialogState extends State<StatisticsDialog>
         final tribuNombre = data['nombreTribu'] as String?;
         final tribuId = data['tribuAsignada'] as String?;
 
-        if (ministerio != null && tribuNombre != null && tribuId != null) {
-          if (!ministerioTribusMap.containsKey(ministerio)) {
-            ministerioTribusMap[ministerio] = [];
+        // 🆕 VALIDACIÓN MEJORADA: Verificar que los datos no sean nulos ni vacíos
+        if (ministerio != null &&
+            ministerio.trim().isNotEmpty &&
+            tribuNombre != null &&
+            tribuNombre.trim().isNotEmpty &&
+            tribuId != null &&
+            tribuId.trim().isNotEmpty) {
+          // 🆕 NORMALIZACIÓN: Limpiar espacios en blanco
+          final ministerioLimpio = ministerio.trim();
+          final tribuNombreLimpio = tribuNombre.trim();
+          final tribuIdLimpio = tribuId.trim();
+
+          // Inicializar el ministerio si no existe
+          if (!ministerioTribusSet.containsKey(ministerioLimpio)) {
+            ministerioTribusSet[ministerioLimpio] = {};
           }
 
-          // Agregar solo si no existe ya
-          String tribuDisplay = "$tribuNombre ($tribuId)";
-          if (!ministerioTribusMap[ministerio]!.contains(tribuDisplay)) {
-            ministerioTribusMap[ministerio]!.add(tribuDisplay);
-          }
+          // 🆕 MEJORA CLAVE: Usar el ID de la tribu como clave única en el Set
+          // Esto garantiza que no haya duplicados aunque el nombre varíe ligeramente
+          String tribuDisplay = "$tribuNombreLimpio ($tribuIdLimpio)";
+
+          // Agregar al ministerio específico
+          ministerioTribusSet[ministerioLimpio]!.add(tribuDisplay);
 
           // También agregar a "Todos"
-          if (!ministerioTribusMap["Todos"]!.contains(tribuDisplay)) {
-            ministerioTribusMap["Todos"]!.add(tribuDisplay);
-          }
+          ministerioTribusSet["Todos"]!.add(tribuDisplay);
+
+          // 🆕 DEBUG: Imprimir para verificar que se están cargando todas las tribus
+          print('📊 Tribu cargada: $tribuDisplay en $ministerioLimpio');
+        } else {
+          // 🆕 DEBUG: Identificar registros con datos faltantes
+          print('⚠️ Registro con datos incompletos: Doc ID: ${doc.id}');
+          print('   - Ministerio: $ministerio');
+          print('   - Tribu Nombre: $tribuNombre');
+          print('   - Tribu ID: $tribuId');
         }
       }
+
+      // 🆕 CONVERSIÓN: Convertir Sets a Listas y ordenar alfabéticamente
+      ministerioTribusMap.clear();
+      ministerioTribusSet.forEach((ministerio, tribusSet) {
+        ministerioTribusMap[ministerio] = tribusSet.toList()
+          ..sort((a, b) {
+            // Ordenar por nombre de tribu (parte antes del paréntesis)
+            String nombreA = a.split('(')[0].trim();
+            String nombreB = b.split('(')[0].trim();
+            return nombreA.compareTo(nombreB);
+          });
+      });
+
+      // 🆕 DEBUG: Imprimir resumen de tribus cargadas
+      print(
+          '✅ Total de tribus cargadas: ${ministerioTribusMap["Todos"]!.length}');
+      ministerioTribusMap.forEach((ministerio, tribus) {
+        print('   $ministerio: ${tribus.length} tribus');
+      });
 
       setState(() {
         availableYears = years.toList()
@@ -225,6 +270,7 @@ class _StatisticsDialogState extends State<StatisticsDialog>
         isLoading = false;
       });
     } catch (e) {
+      print('❌ Error en _loadAvailableData: $e');
       setState(() {
         isLoading = false;
         hasError = true;
