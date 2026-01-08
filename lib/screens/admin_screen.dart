@@ -97,7 +97,7 @@ class _AdminPanelState extends State<AdminPanel>
     super.initState();
     _setupAnimations();
     _cargando = true;
-    // ✅ NO inicializar _anioSeleccionado aquí, se hará en _loadData()
+    // ✅ Mantener _anioSeleccionado en -1 hasta que se carguen los datos
     final now = DateTime.now();
     _mesSeleccionado = _getMesNombre(now.month);
     _loadData(); // ✅ Llamar al final
@@ -338,11 +338,14 @@ class _AdminPanelState extends State<AdminPanel>
       // Obtener los años desde los registros
       final registros = await _firestoreService.obtenerTodosLosRegistros();
 
-      // ✅ Filtrar solo registros con fecha válida
-      Set<int> aniosDisponibles = registros
-          .where((r) => r.fecha != null)
-          .map((r) => r.fecha.year)
-          .toSet();
+      // ✅ Filtrar solo registros con fecha válida y extraer años
+      Set<int> aniosDisponibles = {};
+
+      for (var registro in registros) {
+        if (registro.fecha != null) {
+          aniosDisponibles.add(registro.fecha.year);
+        }
+      }
 
       print('📅 Años encontrados en BD: $aniosDisponibles'); // ✅ Debug
 
@@ -350,29 +353,28 @@ class _AdminPanelState extends State<AdminPanel>
         setState(() {
           _aniosDisponibles = aniosDisponibles.toList()..sort();
 
-          // ✅ SOLO establecer año si no está inicializado o no existe
+          // ✅ CORRECCIÓN CRÍTICA: Si _anioSeleccionado es -1, dejarlo así
+          // Si tiene un valor pero no está disponible, usar el año más reciente
           if (_anioSeleccionado != -1 &&
               !_aniosDisponibles.contains(_anioSeleccionado)) {
             _anioSeleccionado = _aniosDisponibles.last;
-          } else if (_anioSeleccionado == 0) {
-            // Por si acaso viene como 0
-            _anioSeleccionado = -1;
           }
-          // Si es -1, dejarlo así para "Todos los años"
 
-          print('✅ Año seleccionado final: $_anioSeleccionado'); // ✅ Debug
+          print('✅ Años disponibles: $_aniosDisponibles');
+          print('✅ Año seleccionado actual: $_anioSeleccionado');
         });
       } else {
         print('⚠️ No se encontraron registros con fecha válida');
+        // Si no hay datos, usar año actual como fallback
         setState(() {
           _aniosDisponibles = [DateTime.now().year];
-          _anioSeleccionado = DateTime.now().year;
+          _anioSeleccionado = -1; // Mantener en -1 para "Todos los años"
         });
       }
 
       _inicializarStreams();
     } catch (e) {
-      print('❌ Error cargando datos: $e'); // ✅ Debug
+      print('❌ Error cargando datos: $e');
       _mostrarError('Error cargando datos: $e');
     } finally {
       setState(() => _isLoading = false);
