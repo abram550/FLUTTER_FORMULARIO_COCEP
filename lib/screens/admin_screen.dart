@@ -348,9 +348,16 @@ class _AdminPanelState extends State<AdminPanel>
       if (aniosDisponibles.isNotEmpty) {
         setState(() {
           _aniosDisponibles = aniosDisponibles.toList()..sort();
-          _anioSeleccionado = _aniosDisponibles.isNotEmpty
-              ? _aniosDisponibles.last // Seleccionar el año más reciente
-              : DateTime.now().year;
+
+          // Si el seleccionado no existe en los años con datos, seleccionar el más reciente con datos
+          if (_anioSeleccionado != -1 &&
+              !_aniosDisponibles.contains(_anioSeleccionado)) {
+            _anioSeleccionado = _aniosDisponibles.last;
+          } else if (_anioSeleccionado == -1 && _aniosDisponibles.isEmpty) {
+            _anioSeleccionado = DateTime.now().year;
+          } else if (_anioSeleccionado != -1 && _aniosDisponibles.isNotEmpty) {
+            _anioSeleccionado = _aniosDisponibles.last;
+          }
         });
       } else {
         print('⚠️ No se encontraron registros con fecha válida');
@@ -3448,9 +3455,8 @@ class _AdminPanelState extends State<AdminPanel>
               isExpanded: true,
               icon: Icon(Icons.arrow_drop_down, color: primaryTeal),
               items: [
-                // Solo incluir "Todos los años" si hay múltiples años
-                if (_aniosDisponibles.length > 1)
-                  DropdownMenuItem<dynamic>(
+                if (anios.length > 1)
+                  const DropdownMenuItem<dynamic>(
                     value: -1,
                     child: Text(
                       "Todos los años disponibles",
@@ -3461,8 +3467,7 @@ class _AdminPanelState extends State<AdminPanel>
                       ),
                     ),
                   ),
-                // Mostrar solo los años que tienen registros
-                ..._aniosDisponibles.map((year) => DropdownMenuItem<dynamic>(
+                ...anios.map((year) => DropdownMenuItem<dynamic>(
                       value: year,
                       child: Text(
                         year.toString(),
