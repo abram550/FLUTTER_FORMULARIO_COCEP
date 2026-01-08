@@ -337,7 +337,11 @@ class _AdminPanelState extends State<AdminPanel>
     setState(() => _isLoading = true);
 
     try {
-      final registros = await _firestoreService.obtenerTodosLosRegistros();
+      // ✅ CAMBIO CRÍTICO: Obtener registros directamente desde Firestore
+      final snapshot = await _firestore.collection('registros').get();
+      final registros =
+          snapshot.docs.map((doc) => Registro.fromFirestore(doc)).toList();
+
       print('📊 Total registros obtenidos: ${registros.length}');
 
       Set<int> aniosDisponibles = {};
@@ -358,15 +362,12 @@ class _AdminPanelState extends State<AdminPanel>
         setState(() {
           _aniosDisponibles = aniosDisponibles.toList()..sort();
 
-          // ✅ CORRECCIÓN: Inicializar con el año más reciente en lugar de -1
-          // Solo mantener -1 si ya estaba seleccionado explícitamente
+          // ✅ Inicializar con el año más reciente
           if (_anioSeleccionado == -1 && mounted) {
-            // Primera carga: seleccionar automáticamente el año más reciente
             _anioSeleccionado = _aniosDisponibles.last;
             print('✅ Inicializando con año más reciente: $_anioSeleccionado');
           } else if (!_aniosDisponibles.contains(_anioSeleccionado) &&
               _anioSeleccionado != -1) {
-            // Si el año seleccionado ya no existe, cambiar al más reciente
             _anioSeleccionado = _aniosDisponibles.last;
             print('✅ Ajustando a año más reciente: $_anioSeleccionado');
           }
@@ -378,7 +379,7 @@ class _AdminPanelState extends State<AdminPanel>
         print('⚠️ No se encontraron registros con fecha válida');
         setState(() {
           _aniosDisponibles = [DateTime.now().year];
-          _anioSeleccionado = DateTime.now().year; // ✅ Año actual como fallback
+          _anioSeleccionado = DateTime.now().year;
         });
       }
 
@@ -3473,7 +3474,7 @@ class _AdminPanelState extends State<AdminPanel>
         ),
         const SizedBox(height: 10),
 
-        // Selector de Año
+// Selector de Año
         Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(10),
@@ -3482,7 +3483,12 @@ class _AdminPanelState extends State<AdminPanel>
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<int>(
-              value: _anioSeleccionado,
+              value: _aniosDisponibles.contains(_anioSeleccionado) ||
+                      _anioSeleccionado == -1
+                  ? _anioSeleccionado
+                  : (_aniosDisponibles.isNotEmpty
+                      ? _aniosDisponibles.last
+                      : DateTime.now().year),
               isExpanded: true,
               icon: Icon(Icons.arrow_drop_down, color: primaryTeal),
               items: [
@@ -3499,20 +3505,21 @@ class _AdminPanelState extends State<AdminPanel>
                       ),
                     ),
                   ),
-                // ✅ Lista de años disponibles
-                ..._aniosDisponibles.map((year) => DropdownMenuItem<int>(
-                      value: year,
-                      child: Text(
-                        year.toString(),
-                        style: TextStyle(
-                          fontSize: 15,
-                          color: Colors.black87,
-                          fontWeight: _anioSeleccionado == year
-                              ? FontWeight.bold
-                              : FontWeight.normal,
-                        ),
-                      ),
-                    )),
+                // ✅ Lista de años disponibles en orden descendente
+                ...(_aniosDisponibles.toList()..sort((a, b) => b.compareTo(a)))
+                    .map((year) => DropdownMenuItem<int>(
+                          value: year,
+                          child: Text(
+                            year.toString(),
+                            style: TextStyle(
+                              fontSize: 15,
+                              color: Colors.black87,
+                              fontWeight: _anioSeleccionado == year
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
+                            ),
+                          ),
+                        )),
               ],
               onChanged: (value) {
                 setState(() {
