@@ -358,10 +358,15 @@ class _AdminPanelState extends State<AdminPanel>
         setState(() {
           _aniosDisponibles = aniosDisponibles.toList()..sort();
 
-          // ✅ MANTENER -1 si no hay selección previa
-          if (_anioSeleccionado == -1) {
-            print('✅ Manteniendo "Todos los años" (_anioSeleccionado = -1)');
-          } else if (!_aniosDisponibles.contains(_anioSeleccionado)) {
+          // ✅ CORRECCIÓN: Inicializar con el año más reciente en lugar de -1
+          // Solo mantener -1 si ya estaba seleccionado explícitamente
+          if (_anioSeleccionado == -1 && mounted) {
+            // Primera carga: seleccionar automáticamente el año más reciente
+            _anioSeleccionado = _aniosDisponibles.last;
+            print('✅ Inicializando con año más reciente: $_anioSeleccionado');
+          } else if (!_aniosDisponibles.contains(_anioSeleccionado) &&
+              _anioSeleccionado != -1) {
+            // Si el año seleccionado ya no existe, cambiar al más reciente
             _anioSeleccionado = _aniosDisponibles.last;
             print('✅ Ajustando a año más reciente: $_anioSeleccionado');
           }
@@ -373,7 +378,7 @@ class _AdminPanelState extends State<AdminPanel>
         print('⚠️ No se encontraron registros con fecha válida');
         setState(() {
           _aniosDisponibles = [DateTime.now().year];
-          _anioSeleccionado = -1;
+          _anioSeleccionado = DateTime.now().year; // ✅ Año actual como fallback
         });
       }
 
@@ -3113,50 +3118,60 @@ class _AdminPanelState extends State<AdminPanel>
       final snapshot = await _firestore.collection(coleccion).get();
       final int mesIndex = _getMonthIndex(mesFiltro);
 
-      // DEBUG: Imprimir total de documentos obtenidos
       print('📊 Total documentos en "$coleccion": ${snapshot.docs.length}');
 
       List<QueryDocumentSnapshot> resultados = snapshot.docs.where((doc) {
         final data = doc.data() as Map<String, dynamic>?;
-
-        // Usar el método _convertirFecha que ahora puede retornar null
         final fecha = _convertirFecha(data);
 
-        // ✅ IGNORAR registros sin campo 'fecha'
         if (fecha == null) {
           print('  ❌ Doc ID: ${doc.id} - Sin campo "fecha" válido, ignorado');
           return false;
         }
 
-        // DEBUG: Imprimir cada documento procesado
         print('  - Doc ID: ${doc.id}');
         print('    Fecha procesada: ${DateFormat('dd/MM/yyyy').format(fecha)}');
         print('    Año: ${fecha.year}, Mes: ${fecha.month}');
 
+        // ✅ CORRECCIÓN PRINCIPAL: Lógica de filtrado por año
         if (_filtroSeleccionado == "anual") {
+          // Para vista anual: si es -1, incluir TODOS los años
           if (anioFiltro == -1) {
-            print('    ✅ Incluido (Todos los años)');
+            print('    ✅ Incluido (Todos los años - Vista anual)');
             return true;
           } else {
             bool incluir = fecha.year == anioFiltro;
             print(
-                '    ${incluir ? "✅" : "❌"} ${incluir ? "Incluido" : "Excluido"} (año: $anioFiltro)');
+                '    ${incluir ? "✅" : "❌"} ${incluir ? "Incluido" : "Excluido"} (año específico: $anioFiltro)');
             return incluir;
           }
         } else if (mesFiltro == "Todos los meses") {
-          bool incluir = fecha.year == anioFiltro;
-          print(
-              '    ${incluir ? "✅" : "❌"} ${incluir ? "Incluido" : "Excluido"} (año: $anioFiltro, todos los meses)');
-          return incluir;
+          // Para "Todos los meses": si anioFiltro es -1, incluir todos
+          if (anioFiltro == -1) {
+            print('    ✅ Incluido (Todos los años - Todos los meses)');
+            return true;
+          } else {
+            bool incluir = fecha.year == anioFiltro;
+            print(
+                '    ${incluir ? "✅" : "❌"} ${incluir ? "Incluido" : "Excluido"} (año: $anioFiltro, todos los meses)');
+            return incluir;
+          }
         } else {
-          bool incluir = fecha.year == anioFiltro && fecha.month == mesIndex;
-          print(
-              '    ${incluir ? "✅" : "❌"} ${incluir ? "Incluido" : "Excluido"} (año: $anioFiltro, mes: $mesFiltro)');
-          return incluir;
+          // Para mes específico: si anioFiltro es -1, incluir todos los años con ese mes
+          if (anioFiltro == -1) {
+            bool incluir = fecha.month == mesIndex;
+            print(
+                '    ${incluir ? "✅" : "❌"} ${incluir ? "Incluido" : "Excluido"} (Todos los años, mes: $mesFiltro)');
+            return incluir;
+          } else {
+            bool incluir = fecha.year == anioFiltro && fecha.month == mesIndex;
+            print(
+                '    ${incluir ? "✅" : "❌"} ${incluir ? "Incluido" : "Excluido"} (año: $anioFiltro, mes: $mesFiltro)');
+            return incluir;
+          }
         }
       }).toList();
 
-      // DEBUG: Total de documentos filtrados
       print('🎯 Total documentos filtrados: ${resultados.length}\n');
 
       return resultados;
@@ -3379,7 +3394,7 @@ class _AdminPanelState extends State<AdminPanel>
   DateTime? _convertirFecha(dynamic fecha) {
     // Si es un documento completo (Map), extraer el campo 'fecha'
     if (fecha is Map<String, dynamic>) {
-      // SOLO usar el campo 'fecha'
+      // Intentar con el campo 'fecha'
       if (fecha.containsKey('fecha') && fecha['fecha'] != null) {
         final fechaCampo = fecha['fecha'];
         if (fechaCampo is Timestamp) {
@@ -3389,12 +3404,13 @@ class _AdminPanelState extends State<AdminPanel>
             return DateTime.parse(fechaCampo);
           } catch (e) {
             print('Error al parsear fecha: $fechaCampo');
-            return null;
           }
         }
       }
 
-      // Si no existe el campo 'fecha', retornar null para ignorar este registro
+      // Si no existe el campo 'fecha', NO retornar null
+      // En su lugar, continuar intentando con createdAt u otros campos
+      // Esto es solo para debugging, no usamos otros campos
       print('⚠️ Registro sin campo "fecha" - será ignorado en las gráficas');
       return null;
     }
@@ -3415,7 +3431,6 @@ class _AdminPanelState extends State<AdminPanel>
     }
 
     // Si no se pudo obtener fecha, retornar null
-    print('⚠️ No se pudo convertir la fecha - registro será ignorado');
     return null;
   }
 
