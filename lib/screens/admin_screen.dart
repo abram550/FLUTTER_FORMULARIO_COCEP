@@ -337,55 +337,79 @@ class _AdminPanelState extends State<AdminPanel>
     setState(() => _isLoading = true);
 
     try {
-      // ✅ CAMBIO CRÍTICO: Obtener registros directamente desde Firestore
       final snapshot = await _firestore.collection('registros').get();
-      final registros =
-          snapshot.docs.map((doc) => Registro.fromFirestore(doc)).toList();
+      print('📊 Total documentos en "registros": ${snapshot.docs.length}');
 
-      print('📊 Total registros obtenidos: ${registros.length}');
+      final Set<int> anios = {};
 
-      Set<int> aniosDisponibles = {};
+      for (final doc in snapshot.docs) {
+        final data = doc.data() as Map<String, dynamic>?;
 
-      for (var registro in registros) {
-        if (registro.fecha != null) {
-          aniosDisponibles.add(registro.fecha.year);
-          print(
-              '  ✅ Registro: ${registro.nombre} - Fecha: ${registro.fecha} - Año: ${registro.fecha.year}');
-        } else {
-          print('  ⚠️ Registro sin fecha: ${registro.nombre}');
+        // ✅ MANEJO SEGURO: Verificar que exista el campo 'fecha' y sea un Timestamp
+        if (data == null ||
+            !data.containsKey('fecha') ||
+            data['fecha'] == null) {
+          print('  ⚠️ Doc ${doc.id}: Sin campo "fecha" válido - ignorado');
+          continue;
+        }
+
+        try {
+          // ✅ CONVERSIÓN SEGURA: Intentar convertir a DateTime
+          final fechaField = data['fecha'];
+          DateTime? fecha;
+
+          if (fechaField is Timestamp) {
+            fecha = fechaField.toDate();
+          } else if (fechaField is String) {
+            fecha = DateTime.tryParse(fechaField);
+          }
+
+          // ✅ Si se obtuvo una fecha válida, agregar el año
+          if (fecha != null) {
+            anios.add(fecha.year);
+            print('  ✅ Doc ${doc.id}: Año ${fecha.year} agregado');
+          } else {
+            print(
+                '  ⚠️ Doc ${doc.id}: Campo "fecha" no es Timestamp ni String válido');
+          }
+        } catch (e) {
+          print('  ❌ Doc ${doc.id}: Error al procesar fecha: $e');
         }
       }
 
-      print('📅 Años únicos encontrados: $aniosDisponibles');
+      if (anios.isNotEmpty) {
+        final lista = anios.toList()..sort();
 
-      if (aniosDisponibles.isNotEmpty) {
         setState(() {
-          _aniosDisponibles = aniosDisponibles.toList()..sort();
+          _aniosDisponibles = lista;
 
-          // ✅ Inicializar con el año más reciente
-          if (_anioSeleccionado == -1 && mounted) {
-            _anioSeleccionado = _aniosDisponibles.last;
-            print('✅ Inicializando con año más reciente: $_anioSeleccionado');
-          } else if (!_aniosDisponibles.contains(_anioSeleccionado) &&
-              _anioSeleccionado != -1) {
-            _anioSeleccionado = _aniosDisponibles.last;
-            print('✅ Ajustando a año más reciente: $_anioSeleccionado');
+          // ✅ CORRECCIÓN PRINCIPAL: Seleccionar el año MÁS RECIENTE con datos
+          _anioSeleccionado = _aniosDisponibles.last;
+
+          // ✅ Para vista mensual/semanal inicial, mostrar "Todos los meses"
+          if (_filtroSeleccionado == "mensual" ||
+              _filtroSeleccionado == "semanal") {
+            _mesSeleccionado = "Todos los meses";
           }
+        });
 
-          print('📋 Lista final _aniosDisponibles: $_aniosDisponibles');
-          print('🎯 Año seleccionado final: $_anioSeleccionado');
-        });
+        print('📅 Años disponibles (con datos): $_aniosDisponibles');
+        print('🎯 Año seleccionado automáticamente: $_anioSeleccionado');
       } else {
-        print('⚠️ No se encontraron registros con fecha válida');
+        print('⚠️ No se encontraron documentos con fecha válida');
+
+        // ✅ FALLBACK: Si no hay datos, usar año actual
+        final currentYear = DateTime.now().year;
         setState(() {
-          _aniosDisponibles = [DateTime.now().year];
-          _anioSeleccionado = DateTime.now().year;
+          _aniosDisponibles = [currentYear];
+          _anioSeleccionado = currentYear;
         });
+        print('ℹ️ Usando año actual como fallback: $currentYear');
       }
 
       _inicializarStreams();
     } catch (e, stackTrace) {
-      print('❌ ERROR en _loadData: $e');
+      print('❌ ERROR CRÍTICO en _loadData: $e');
       print('Stack trace: $stackTrace');
       _mostrarError('Error cargando datos: $e');
     } finally {
@@ -3393,46 +3417,49 @@ class _AdminPanelState extends State<AdminPanel>
   }
 
   DateTime? _convertirFecha(dynamic fecha) {
-    // Si es un documento completo (Map), extraer el campo 'fecha'
-    if (fecha is Map<String, dynamic>) {
-      // Intentar con el campo 'fecha'
-      if (fecha.containsKey('fecha') && fecha['fecha'] != null) {
+    try {
+      // Si es un documento completo (Map), extraer el campo 'fecha'
+      if (fecha is Map<String, dynamic>) {
+        // ✅ VERIFICAR QUE EXISTE EL CAMPO 'fecha'
+        if (!fecha.containsKey('fecha') || fecha['fecha'] == null) {
+          print('⚠️ Documento sin campo "fecha" válido');
+          return null;
+        }
+
         final fechaCampo = fecha['fecha'];
+
+        // ✅ INTENTAR CONVERSIÓN DESDE TIMESTAMP
         if (fechaCampo is Timestamp) {
           return fechaCampo.toDate();
-        } else if (fechaCampo is String) {
-          try {
-            return DateTime.parse(fechaCampo);
-          } catch (e) {
-            print('Error al parsear fecha: $fechaCampo');
-          }
         }
-      }
 
-      // Si no existe el campo 'fecha', NO retornar null
-      // En su lugar, continuar intentando con createdAt u otros campos
-      // Esto es solo para debugging, no usamos otros campos
-      print('⚠️ Registro sin campo "fecha" - será ignorado en las gráficas');
-      return null;
-    }
+        // ✅ INTENTAR CONVERSIÓN DESDE STRING
+        if (fechaCampo is String) {
+          return DateTime.tryParse(fechaCampo);
+        }
 
-    // Si es directamente un Timestamp
-    if (fecha is Timestamp) {
-      return fecha.toDate();
-    }
-
-    // Si es directamente un String
-    if (fecha is String) {
-      try {
-        return DateTime.parse(fecha);
-      } catch (e) {
-        print('Error al parsear fecha string: $fecha');
+        print(
+            '⚠️ Campo "fecha" no es Timestamp ni String válido: ${fechaCampo.runtimeType}');
         return null;
       }
-    }
 
-    // Si no se pudo obtener fecha, retornar null
-    return null;
+      // Si es directamente un Timestamp
+      if (fecha is Timestamp) {
+        return fecha.toDate();
+      }
+
+      // Si es directamente un String
+      if (fecha is String) {
+        return DateTime.tryParse(fecha);
+      }
+
+      // Si no se pudo obtener fecha, retornar null
+      print('⚠️ Tipo de fecha no reconocido: ${fecha.runtimeType}');
+      return null;
+    } catch (e) {
+      print('❌ Error en _convertirFecha: $e');
+      return null;
+    }
   }
 
   Widget _buildFiltroPorFecha(StateSetter setState) {
@@ -3474,7 +3501,8 @@ class _AdminPanelState extends State<AdminPanel>
         ),
         const SizedBox(height: 10),
 
-// Selector de Año
+        // Selector de Año
+
         Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(10),
@@ -3483,8 +3511,8 @@ class _AdminPanelState extends State<AdminPanel>
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<int>(
-              value: _aniosDisponibles.contains(_anioSeleccionado) ||
-                      _anioSeleccionado == -1
+              // ✅ VALIDACIÓN MEJORADA: Asegurar que el valor sea válido
+              value: _aniosDisponibles.contains(_anioSeleccionado)
                   ? _anioSeleccionado
                   : (_aniosDisponibles.isNotEmpty
                       ? _aniosDisponibles.last
@@ -3530,7 +3558,6 @@ class _AdminPanelState extends State<AdminPanel>
             ),
           ),
         ),
-
         const SizedBox(height: 10),
 
         // Selector de Mes (solo si es Semanal o Mensual)

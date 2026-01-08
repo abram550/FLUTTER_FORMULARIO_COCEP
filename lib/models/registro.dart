@@ -209,7 +209,7 @@ class Registro {
           : null,
     );
   }
-
+ 
   factory Registro.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
     return Registro(
