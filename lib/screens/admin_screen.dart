@@ -95,12 +95,12 @@ class _AdminPanelState extends State<AdminPanel>
   @override
   void initState() {
     super.initState();
-    _loadData();
     _setupAnimations();
+    _anioSeleccionado = -1; // ✅ Inicializar en -1 (Todos los años)
     final now = DateTime.now();
-    _anioSeleccionado = now.year;
     _mesSeleccionado = _getMesNombre(now.month);
     _cargando = true;
+    _loadData(); // ✅ Mover al final para que cargue después de inicializar
 
     // AGREGAR ESTAS LÍNEAS PARA EL MANEJO DE SESIÓN
     _resetInactivityTimer();
@@ -349,13 +349,12 @@ class _AdminPanelState extends State<AdminPanel>
         setState(() {
           _aniosDisponibles = aniosDisponibles.toList()..sort();
 
-          // Si el seleccionado no existe en los años con datos, seleccionar el más reciente con datos
-          if (_anioSeleccionado != -1 &&
-              !_aniosDisponibles.contains(_anioSeleccionado)) {
-            _anioSeleccionado = _aniosDisponibles.last;
-          } else if (_anioSeleccionado == -1 && _aniosDisponibles.isEmpty) {
-            _anioSeleccionado = DateTime.now().year;
-          } else if (_anioSeleccionado != -1 && _aniosDisponibles.isNotEmpty) {
+          // ✅ CORRECCIÓN: Si está en -1, mantenerlo. Si no, verificar que exista
+          if (_anioSeleccionado == -1) {
+            // Mantener "Todos los años"
+            _anioSeleccionado = -1;
+          } else if (!_aniosDisponibles.contains(_anioSeleccionado)) {
+            // Si el año seleccionado no existe en los datos, usar el más reciente
             _anioSeleccionado = _aniosDisponibles.last;
           }
         });
@@ -3451,14 +3450,16 @@ class _AdminPanelState extends State<AdminPanel>
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<dynamic>(
-              value:
-                  (anios.contains(_anioSeleccionado) || _anioSeleccionado == -1)
-                      ? _anioSeleccionado
-                      : anios.last,
+              value: _aniosDisponibles.contains(_anioSeleccionado) ||
+                      _anioSeleccionado == -1
+                  ? _anioSeleccionado
+                  : (_aniosDisponibles.isNotEmpty
+                      ? _aniosDisponibles.last
+                      : DateTime.now().year),
               isExpanded: true,
               icon: Icon(Icons.arrow_drop_down, color: primaryTeal),
               items: [
-                if (anios.length > 1)
+                if (_aniosDisponibles.length > 1)
                   const DropdownMenuItem<dynamic>(
                     value: -1,
                     child: Text(
@@ -3470,7 +3471,7 @@ class _AdminPanelState extends State<AdminPanel>
                       ),
                     ),
                   ),
-                ...anios.map((year) => DropdownMenuItem<dynamic>(
+                ..._aniosDisponibles.map((year) => DropdownMenuItem<dynamic>(
                       value: year,
                       child: Text(
                         year.toString(),
