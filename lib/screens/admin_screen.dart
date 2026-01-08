@@ -54,8 +54,8 @@ class _AdminPanelState extends State<AdminPanel>
   bool _cargando = false;
 
 // Variables para controlar la visibilidad de los filtros desplegables
-  bool _mostrarFiltroExportacion = true;
-  bool _mostrarFiltroTipo = true;
+  bool _mostrarFiltroExportacion = false;
+  bool _mostrarFiltroTipo = false;
 
   String _tipoAgrupacionMensual = "dias";
 
@@ -3451,7 +3451,10 @@ class _AdminPanelState extends State<AdminPanel>
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<dynamic>(
-              value: _anioSeleccionado,
+              value:
+                  (anios.contains(_anioSeleccionado) || _anioSeleccionado == -1)
+                      ? _anioSeleccionado
+                      : anios.last,
               isExpanded: true,
               icon: Icon(Icons.arrow_drop_down, color: primaryTeal),
               items: [
