@@ -1,6 +1,5 @@
 import 'dart:math';
 import 'dart:async';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:formulario_app/models/registro.dart';
@@ -53,6 +52,11 @@ class _AdminPanelState extends State<AdminPanel>
   List<int> _aniosDisponibles = [];
 
   bool _cargando = false;
+
+// Variables para controlar la visibilidad de los filtros desplegables
+  bool _mostrarFiltroExportacion = true;
+  bool _mostrarFiltroTipo = true;
+
   String _tipoAgrupacionMensual = "dias";
 
 // Variables para filtros por semana con controladores
@@ -3440,17 +3444,16 @@ class _AdminPanelState extends State<AdminPanel>
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<dynamic>(
-              value: _anioSeleccionado == -1
-                  ? "Todos los años"
-                  : _anioSeleccionado,
+              value: _anioSeleccionado,
               isExpanded: true,
               icon: Icon(Icons.arrow_drop_down, color: primaryTeal),
               items: [
-                if (_filtroSeleccionado == "anual") // Solo para Anual
+                // Solo incluir "Todos los años" si hay múltiples años
+                if (_aniosDisponibles.length > 1)
                   DropdownMenuItem<dynamic>(
-                    value: "Todos los años",
+                    value: -1,
                     child: Text(
-                      "Todos los años",
+                      "Todos los años disponibles",
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.bold,
@@ -3458,20 +3461,24 @@ class _AdminPanelState extends State<AdminPanel>
                       ),
                     ),
                   ),
-                ...anios.map((year) => DropdownMenuItem<dynamic>(
+                // Mostrar solo los años que tienen registros
+                ..._aniosDisponibles.map((year) => DropdownMenuItem<dynamic>(
                       value: year,
                       child: Text(
                         year.toString(),
                         style: TextStyle(
                           fontSize: 15,
                           color: Colors.black87,
+                          fontWeight: _anioSeleccionado == year
+                              ? FontWeight.bold
+                              : FontWeight.normal,
                         ),
                       ),
                     )),
               ],
               onChanged: (value) {
                 setState(() {
-                  _anioSeleccionado = (value == "Todos los años") ? -1 : value;
+                  _anioSeleccionado = value == -1 ? -1 : value as int;
                   _actualizarGrafica();
                 });
               },
@@ -3497,20 +3504,24 @@ class _AdminPanelState extends State<AdminPanel>
                 items: [
                   DropdownMenuItem<String>(
                     value: "Todos los meses",
-                    child: Text("Todos los meses",
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black87,
-                        )),
+                    child: Text(
+                      "Todos los meses",
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
                   ),
                   ...meses.map((mes) => DropdownMenuItem<String>(
                         value: mes,
-                        child: Text(mes,
-                            style: TextStyle(
-                              fontSize: 15,
-                              color: Colors.black87,
-                            )),
+                        child: Text(
+                          mes,
+                          style: TextStyle(
+                            fontSize: 15,
+                            color: Colors.black87,
+                          ),
+                        ),
                       )),
                 ],
                 onChanged: (value) {
@@ -4073,28 +4084,97 @@ class _AdminPanelState extends State<AdminPanel>
             colors: [Colors.white, primaryTeal.withOpacity(0.1)],
           ),
         ),
-        padding: const EdgeInsets.all(20),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Icon(Icons.file_download, size: 28, color: secondaryOrange),
-                const SizedBox(width: 12),
-                Text(
-                  'Exportar Registros',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: primaryTeal,
-                  ),
+            // Header siempre visible
+            InkWell(
+              onTap: () {
+                setState(() {
+                  _mostrarFiltroExportacion = !_mostrarFiltroExportacion;
+                });
+              },
+              borderRadius: BorderRadius.circular(20),
+              child: Container(
+                padding: const EdgeInsets.all(20),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: secondaryOrange.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(Icons.file_download,
+                          size: 28, color: secondaryOrange),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Exportar Registros',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: primaryTeal,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            _startDate != null && _endDate != null
+                                ? 'Rango: ${DateFormat('dd/MM/yyyy').format(_startDate!)} - ${DateFormat('dd/MM/yyyy').format(_endDate!)}'
+                                : 'Toca para configurar exportación',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.grey[600],
+                              fontStyle: FontStyle.italic,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    AnimatedRotation(
+                      turns: _mostrarFiltroExportacion ? 0.5 : 0,
+                      duration: const Duration(milliseconds: 300),
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: primaryTeal.withOpacity(0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.keyboard_arrow_down,
+                          color: primaryTeal,
+                          size: 24,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
-            const Divider(height: 30),
-            _buildDateRangeSelector(),
-            const SizedBox(height: 20),
-            _buildExportButtons(),
+
+            // Contenido desplegable
+            AnimatedCrossFade(
+              firstChild: const SizedBox(width: double.infinity),
+              secondChild: Container(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                child: Column(
+                  children: [
+                    const Divider(height: 1),
+                    const SizedBox(height: 20),
+                    _buildDateRangeSelector(),
+                    const SizedBox(height: 20),
+                    _buildExportButtons(),
+                  ],
+                ),
+              ),
+              crossFadeState: _mostrarFiltroExportacion
+                  ? CrossFadeState.showSecond
+                  : CrossFadeState.showFirst,
+              duration: const Duration(milliseconds: 300),
+            ),
           ],
         ),
       ),
@@ -4273,9 +4353,11 @@ class _AdminPanelState extends State<AdminPanel>
   }
 
   Widget _buildFiltroTipoRegistro() {
+    // Calcular registros según estado actual
+    int totalRegistros = _contarRegistrosFiltrados();
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
@@ -4299,191 +4381,232 @@ class _AdminPanelState extends State<AdminPanel>
         ],
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Encabezado con ícono
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: primaryTeal.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(
-                  Icons.filter_list_rounded,
-                  color: primaryTeal,
-                  size: 22,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Filtrar por Tipo',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: primaryTeal,
-                      ),
+          // Header siempre visible
+          InkWell(
+            onTap: () {
+              setState(() {
+                _mostrarFiltroTipo = !_mostrarFiltroTipo;
+              });
+            },
+            borderRadius: BorderRadius.circular(16),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: primaryTeal.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    Text(
-                      _filtroTipoRegistro == null
-                          ? 'Mostrando todos los registros'
-                          : _filtroTipoRegistro == 'nuevo'
-                              ? 'Mostrando solo Nuevos'
-                              : 'Mostrando solo Visitas',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[600],
-                        fontStyle: FontStyle.italic,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              // Contador de registros filtrados
-              if (_filtroTipoRegistro != null)
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: secondaryOrange.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: secondaryOrange.withOpacity(0.3),
-                      width: 1,
+                    child: Icon(
+                      Icons.filter_list_rounded,
+                      color: primaryTeal,
+                      size: 24,
                     ),
                   ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.check_circle,
-                        color: secondaryOrange,
-                        size: 16,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '${_contarRegistrosFiltrados()} reg.',
-                        style: TextStyle(
-                          color: secondaryOrange,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Filtrar por Tipo',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: primaryTeal,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          _filtroTipoRegistro == null
+                              ? 'Todos los registros ($totalRegistros)'
+                              : _filtroTipoRegistro == 'nuevo'
+                                  ? 'Solo Nuevos ($totalRegistros)'
+                                  : 'Solo Visitas ($totalRegistros)',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[600],
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (_filtroTipoRegistro != null)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: secondaryOrange.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: secondaryOrange.withOpacity(0.3),
+                          width: 1,
                         ),
                       ),
-                    ],
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          // Botones de filtro
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final isSmallScreen = constraints.maxWidth < 600;
-
-              if (isSmallScreen) {
-                // Layout vertical para pantallas pequeñas
-                return Column(
-                  children: [
-                    _buildBotonFiltroTipo(
-                      label: 'Todos',
-                      icon: Icons.all_inclusive,
-                      isSelected: _filtroTipoRegistro == null,
-                      onTap: () {
-                        setState(() {
-                          _filtroTipoRegistro = null;
-                          _aplicarFiltroTipo();
-                        });
-                      },
-                      color: Colors.blueGrey,
-                      width: double.infinity,
-                    ),
-                    const SizedBox(height: 8),
-                    _buildBotonFiltroTipo(
-                      label: 'Nuevos',
-                      icon: Icons.fiber_new_rounded,
-                      isSelected: _filtroTipoRegistro == 'nuevo',
-                      onTap: () {
-                        setState(() {
-                          _filtroTipoRegistro = 'nuevo';
-                          _aplicarFiltroTipo();
-                        });
-                      },
-                      color: primaryTeal,
-                      width: double.infinity,
-                    ),
-                    const SizedBox(height: 8),
-                    _buildBotonFiltroTipo(
-                      label: 'Visitas',
-                      icon: Icons.visibility_rounded,
-                      isSelected: _filtroTipoRegistro == 'visita',
-                      onTap: () {
-                        setState(() {
-                          _filtroTipoRegistro = 'visita';
-                          _aplicarFiltroTipo();
-                        });
-                      },
-                      color: secondaryOrange,
-                      width: double.infinity,
-                    ),
-                  ],
-                );
-              } else {
-                // Layout horizontal para pantallas grandes
-                return Row(
-                  children: [
-                    Expanded(
-                      child: _buildBotonFiltroTipo(
-                        label: 'Todos',
-                        icon: Icons.all_inclusive,
-                        isSelected: _filtroTipoRegistro == null,
-                        onTap: () {
-                          setState(() {
-                            _filtroTipoRegistro = null;
-                            _aplicarFiltroTipo();
-                          });
-                        },
-                        color: Colors.blueGrey,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.check_circle,
+                            color: secondaryOrange,
+                            size: 16,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '$totalRegistros',
+                            style: TextStyle(
+                              color: secondaryOrange,
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: _buildBotonFiltroTipo(
-                        label: 'Nuevos',
-                        icon: Icons.fiber_new_rounded,
-                        isSelected: _filtroTipoRegistro == 'nuevo',
-                        onTap: () {
-                          setState(() {
-                            _filtroTipoRegistro = 'nuevo';
-                            _aplicarFiltroTipo();
-                          });
-                        },
+                  const SizedBox(width: 8),
+                  AnimatedRotation(
+                    turns: _mostrarFiltroTipo ? 0.5 : 0,
+                    duration: const Duration(milliseconds: 300),
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: primaryTeal.withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.keyboard_arrow_down,
                         color: primaryTeal,
+                        size: 24,
                       ),
                     ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: _buildBotonFiltroTipo(
-                        label: 'Visitas',
-                        icon: Icons.visibility_rounded,
-                        isSelected: _filtroTipoRegistro == 'visita',
-                        onTap: () {
-                          setState(() {
-                            _filtroTipoRegistro = 'visita';
-                            _aplicarFiltroTipo();
-                          });
-                        },
-                        color: secondaryOrange,
-                      ),
-                    ),
-                  ],
-                );
-              }
-            },
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // Contenido desplegable con los botones de filtro
+          AnimatedCrossFade(
+            firstChild: const SizedBox(width: double.infinity),
+            secondChild: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: Column(
+                children: [
+                  const Divider(height: 1),
+                  const SizedBox(height: 16),
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final isSmallScreen = constraints.maxWidth < 600;
+
+                      if (isSmallScreen) {
+                        return Column(
+                          children: [
+                            _buildBotonFiltroTipo(
+                              label: 'Todos',
+                              icon: Icons.all_inclusive,
+                              isSelected: _filtroTipoRegistro == null,
+                              onTap: () {
+                                setState(() {
+                                  _filtroTipoRegistro = null;
+                                  _aplicarFiltroTipo();
+                                });
+                              },
+                              color: Colors.blueGrey,
+                              width: double.infinity,
+                            ),
+                            const SizedBox(height: 8),
+                            _buildBotonFiltroTipo(
+                              label: 'Nuevos',
+                              icon: Icons.fiber_new_rounded,
+                              isSelected: _filtroTipoRegistro == 'nuevo',
+                              onTap: () {
+                                setState(() {
+                                  _filtroTipoRegistro = 'nuevo';
+                                  _aplicarFiltroTipo();
+                                });
+                              },
+                              color: primaryTeal,
+                              width: double.infinity,
+                            ),
+                            const SizedBox(height: 8),
+                            _buildBotonFiltroTipo(
+                              label: 'Visitas',
+                              icon: Icons.visibility_rounded,
+                              isSelected: _filtroTipoRegistro == 'visita',
+                              onTap: () {
+                                setState(() {
+                                  _filtroTipoRegistro = 'visita';
+                                  _aplicarFiltroTipo();
+                                });
+                              },
+                              color: secondaryOrange,
+                              width: double.infinity,
+                            ),
+                          ],
+                        );
+                      } else {
+                        return Row(
+                          children: [
+                            Expanded(
+                              child: _buildBotonFiltroTipo(
+                                label: 'Todos',
+                                icon: Icons.all_inclusive,
+                                isSelected: _filtroTipoRegistro == null,
+                                onTap: () {
+                                  setState(() {
+                                    _filtroTipoRegistro = null;
+                                    _aplicarFiltroTipo();
+                                  });
+                                },
+                                color: Colors.blueGrey,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: _buildBotonFiltroTipo(
+                                label: 'Nuevos',
+                                icon: Icons.fiber_new_rounded,
+                                isSelected: _filtroTipoRegistro == 'nuevo',
+                                onTap: () {
+                                  setState(() {
+                                    _filtroTipoRegistro = 'nuevo';
+                                    _aplicarFiltroTipo();
+                                  });
+                                },
+                                color: primaryTeal,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: _buildBotonFiltroTipo(
+                                label: 'Visitas',
+                                icon: Icons.visibility_rounded,
+                                isSelected: _filtroTipoRegistro == 'visita',
+                                onTap: () {
+                                  setState(() {
+                                    _filtroTipoRegistro = 'visita';
+                                    _aplicarFiltroTipo();
+                                  });
+                                },
+                                color: secondaryOrange,
+                              ),
+                            ),
+                          ],
+                        );
+                      }
+                    },
+                  ),
+                ],
+              ),
+            ),
+            crossFadeState: _mostrarFiltroTipo
+                ? CrossFadeState.showSecond
+                : CrossFadeState.showFirst,
+            duration: const Duration(milliseconds: 300),
           ),
         ],
       ),
@@ -4586,19 +4709,48 @@ class _AdminPanelState extends State<AdminPanel>
   }
 
   void _aplicarFiltroTipo() {
+    // Si no hay filtro de tipo, verificar si hay filtro de fecha
     if (_filtroTipoRegistro == null) {
-      // Si no hay filtro, restaurar todos los registros
-      setState(() {
-        // No es necesario hacer nada, solo actualizar la UI
-      });
+      if (_startDate != null && _endDate != null) {
+        // Mantener solo el filtro de fecha
+        _filtrarRegistros();
+      } else {
+        // No hay filtros activos, mostrar todos
+        setState(() {
+          _mostrarFiltrados = false;
+        });
+      }
       return;
     }
 
-    // Aplicar filtro por tipo
+    // Determinar qué registros usar como base
+    Map<int, Map<int, Map<DateTime, List<Registro>>>> registrosBase;
+
+    if (_startDate != null && _endDate != null) {
+      // Si hay filtro de fecha, partir de registros filtrados por fecha
+      registrosBase = {};
+      _registrosPorAnioMesDia.forEach((anio, meses) {
+        meses.forEach((mes, dias) {
+          dias.forEach((dia, registros) {
+            if (dia.isAfter(_startDate!.subtract(const Duration(days: 1))) &&
+                dia.isBefore(_endDate!.add(const Duration(days: 1)))) {
+              registrosBase[anio] ??= {};
+              registrosBase[anio]![mes] ??= {};
+              registrosBase[anio]![mes]![dia] = registros;
+            }
+          });
+        });
+      });
+    } else {
+      // Si no hay filtro de fecha, usar todos los registros
+      registrosBase = _registrosPorAnioMesDia;
+    }
+
+    // Aplicar filtro por tipo sobre la base
     final registrosFiltrados =
         Map<int, Map<int, Map<DateTime, List<Registro>>>>.from({});
 
-    _registrosPorAnioMesDia.forEach((anio, meses) {
+    registrosBase.forEach((anio, meses) {
       meses.forEach((mes, dias) {
         dias.forEach((dia, registros) {
           final registrosFiltradosDia = registros.where((registro) {
@@ -4630,11 +4782,24 @@ class _AdminPanelState extends State<AdminPanel>
     _registrosPorAnioMesDia.forEach((anio, meses) {
       meses.forEach((mes, dias) {
         dias.forEach((dia, registros) {
+          // Filtrar por rango de fechas
           if (dia.isAfter(_startDate!.subtract(const Duration(days: 1))) &&
               dia.isBefore(_endDate!.add(const Duration(days: 1)))) {
-            registrosFiltrados[anio] ??= {};
-            registrosFiltrados[anio]![mes] ??= {};
-            registrosFiltrados[anio]![mes]![dia] = registros;
+            // Aplicar filtro por tipo si está activo
+            List<Registro> registrosFiltradosPorTipo = registros;
+            if (_filtroTipoRegistro != null) {
+              registrosFiltradosPorTipo = registros.where((registro) {
+                final tipoRegistro = registro.tipo?.toLowerCase();
+                return tipoRegistro == _filtroTipoRegistro;
+              }).toList();
+            }
+
+            // Solo agregar si hay registros después de aplicar filtros
+            if (registrosFiltradosPorTipo.isNotEmpty) {
+              registrosFiltrados[anio] ??= {};
+              registrosFiltrados[anio]![mes] ??= {};
+              registrosFiltrados[anio]![mes]![dia] = registrosFiltradosPorTipo;
+            }
           }
         });
       });
@@ -4675,7 +4840,9 @@ class _AdminPanelState extends State<AdminPanel>
       _mostrarFiltrados = false;
       _startDate = null;
       _endDate = null;
-      _filtroTipoRegistro = null; // ← NUEVO: También limpiar filtro de tipo
+      _filtroTipoRegistro = null;
+      _mostrarFiltroExportacion = true;
+      _mostrarFiltroTipo = true;
     });
   }
 
