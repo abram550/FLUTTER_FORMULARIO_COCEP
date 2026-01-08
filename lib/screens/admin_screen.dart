@@ -43,7 +43,7 @@ class _AdminPanelState extends State<AdminPanel>
   final Color secondaryOrange = const Color(0xFFFF6B35);
 
 // Variables de estado para el filtro
-  late int _anioSeleccionado;
+  int _anioSeleccionado = -1; // ✅ Inicializar directamente en -1
   late String _mesSeleccionado;
   bool _isSearching = false;
   String _searchQuery = "";
@@ -96,12 +96,11 @@ class _AdminPanelState extends State<AdminPanel>
   void initState() {
     super.initState();
     _setupAnimations();
-    _anioSeleccionado = -1; // ✅ Inicializar en -1 (Todos los años)
+    _cargando = true;
+    // ✅ NO inicializar _anioSeleccionado aquí, se hará en _loadData()
     final now = DateTime.now();
     _mesSeleccionado = _getMesNombre(now.month);
-    _cargando = true;
-    _loadData(); // ✅ Mover al final para que cargue después de inicializar
-
+    _loadData(); // ✅ Llamar al final
     // AGREGAR ESTAS LÍNEAS PARA EL MANEJO DE SESIÓN
     _resetInactivityTimer();
 
@@ -345,18 +344,23 @@ class _AdminPanelState extends State<AdminPanel>
           .map((r) => r.fecha.year)
           .toSet();
 
+      print('📅 Años encontrados en BD: $aniosDisponibles'); // ✅ Debug
+
       if (aniosDisponibles.isNotEmpty) {
         setState(() {
           _aniosDisponibles = aniosDisponibles.toList()..sort();
 
-          // ✅ CORRECCIÓN: Si está en -1, mantenerlo. Si no, verificar que exista
-          if (_anioSeleccionado == -1) {
-            // Mantener "Todos los años"
-            _anioSeleccionado = -1;
-          } else if (!_aniosDisponibles.contains(_anioSeleccionado)) {
-            // Si el año seleccionado no existe en los datos, usar el más reciente
+          // ✅ SOLO establecer año si no está inicializado o no existe
+          if (_anioSeleccionado != -1 &&
+              !_aniosDisponibles.contains(_anioSeleccionado)) {
             _anioSeleccionado = _aniosDisponibles.last;
+          } else if (_anioSeleccionado == 0) {
+            // Por si acaso viene como 0
+            _anioSeleccionado = -1;
           }
+          // Si es -1, dejarlo así para "Todos los años"
+
+          print('✅ Año seleccionado final: $_anioSeleccionado'); // ✅ Debug
         });
       } else {
         print('⚠️ No se encontraron registros con fecha válida');
@@ -368,6 +372,7 @@ class _AdminPanelState extends State<AdminPanel>
 
       _inicializarStreams();
     } catch (e) {
+      print('❌ Error cargando datos: $e'); // ✅ Debug
       _mostrarError('Error cargando datos: $e');
     } finally {
       setState(() => _isLoading = false);
