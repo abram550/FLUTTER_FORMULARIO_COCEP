@@ -333,51 +333,58 @@ class _AdminPanelState extends State<AdminPanel>
   }
 
   Future<void> _loadData() async {
+    print('🚀 === INICIANDO _loadData ===');
     setState(() => _isLoading = true);
-    try {
-      // Obtener los años desde los registros
-      final registros = await _firestoreService.obtenerTodosLosRegistros();
 
-      // ✅ Filtrar solo registros con fecha válida y extraer años
+    try {
+      final registros = await _firestoreService.obtenerTodosLosRegistros();
+      print('📊 Total registros obtenidos: ${registros.length}');
+
       Set<int> aniosDisponibles = {};
 
       for (var registro in registros) {
         if (registro.fecha != null) {
           aniosDisponibles.add(registro.fecha.year);
+          print(
+              '  ✅ Registro: ${registro.nombre} - Fecha: ${registro.fecha} - Año: ${registro.fecha.year}');
+        } else {
+          print('  ⚠️ Registro sin fecha: ${registro.nombre}');
         }
       }
 
-      print('📅 Años encontrados en BD: $aniosDisponibles'); // ✅ Debug
+      print('📅 Años únicos encontrados: $aniosDisponibles');
 
       if (aniosDisponibles.isNotEmpty) {
         setState(() {
           _aniosDisponibles = aniosDisponibles.toList()..sort();
 
-          // ✅ CORRECCIÓN CRÍTICA: Si _anioSeleccionado es -1, dejarlo así
-          // Si tiene un valor pero no está disponible, usar el año más reciente
-          if (_anioSeleccionado != -1 &&
-              !_aniosDisponibles.contains(_anioSeleccionado)) {
+          // ✅ MANTENER -1 si no hay selección previa
+          if (_anioSeleccionado == -1) {
+            print('✅ Manteniendo "Todos los años" (_anioSeleccionado = -1)');
+          } else if (!_aniosDisponibles.contains(_anioSeleccionado)) {
             _anioSeleccionado = _aniosDisponibles.last;
+            print('✅ Ajustando a año más reciente: $_anioSeleccionado');
           }
 
-          print('✅ Años disponibles: $_aniosDisponibles');
-          print('✅ Año seleccionado actual: $_anioSeleccionado');
+          print('📋 Lista final _aniosDisponibles: $_aniosDisponibles');
+          print('🎯 Año seleccionado final: $_anioSeleccionado');
         });
       } else {
         print('⚠️ No se encontraron registros con fecha válida');
-        // Si no hay datos, usar año actual como fallback
         setState(() {
           _aniosDisponibles = [DateTime.now().year];
-          _anioSeleccionado = -1; // Mantener en -1 para "Todos los años"
+          _anioSeleccionado = -1;
         });
       }
 
       _inicializarStreams();
-    } catch (e) {
-      print('❌ Error cargando datos: $e');
+    } catch (e, stackTrace) {
+      print('❌ ERROR en _loadData: $e');
+      print('Stack trace: $stackTrace');
       _mostrarError('Error cargando datos: $e');
     } finally {
       setState(() => _isLoading = false);
+      print('🏁 === FIN _loadData ===\n');
     }
   }
 
@@ -2936,6 +2943,14 @@ class _AdminPanelState extends State<AdminPanel>
   }
 
   Future<Map<String, List<ChartData>>> _obtenerDatosParaGrafica() async {
+    // ✅ AGREGAR ESTOS PRINTS AL INICIO
+    print('\n🔍 === DEBUG _obtenerDatosParaGrafica ===');
+    print('📅 _anioSeleccionado: $_anioSeleccionado');
+    print('📅 _aniosDisponibles: $_aniosDisponibles');
+    print('📅 _mesSeleccionado: $_mesSeleccionado');
+    print('📊 _filtroSeleccionado: $_filtroSeleccionado');
+    print('=====================================\n');
+
     Map<String, List<ChartData>> resultados = {};
 
     try {
@@ -3420,11 +3435,6 @@ class _AdminPanelState extends State<AdminPanel>
       'Diciembre'
     ];
 
-    // Filtrar años desde los registros almacenados
-    final List<int> anios = _aniosDisponibles.isNotEmpty
-        ? _aniosDisponibles
-        : [DateTime.now().year];
-
     // Lógica de selección de meses según el filtro
     bool mostrarMeses =
         _filtroSeleccionado == "mensual" || _filtroSeleccionado == "semanal";
@@ -3456,18 +3466,14 @@ class _AdminPanelState extends State<AdminPanel>
           ),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
           child: DropdownButtonHideUnderline(
-            child: DropdownButton<dynamic>(
-              value: _aniosDisponibles.contains(_anioSeleccionado) ||
-                      _anioSeleccionado == -1
-                  ? _anioSeleccionado
-                  : (_aniosDisponibles.isNotEmpty
-                      ? _aniosDisponibles.last
-                      : DateTime.now().year),
+            child: DropdownButton<int>(
+              value: _anioSeleccionado,
               isExpanded: true,
               icon: Icon(Icons.arrow_drop_down, color: primaryTeal),
               items: [
+                // ✅ Opción "Todos los años" solo si hay más de un año
                 if (_aniosDisponibles.length > 1)
-                  const DropdownMenuItem<dynamic>(
+                  DropdownMenuItem<int>(
                     value: -1,
                     child: Text(
                       "Todos los años disponibles",
@@ -3478,7 +3484,8 @@ class _AdminPanelState extends State<AdminPanel>
                       ),
                     ),
                   ),
-                ..._aniosDisponibles.map((year) => DropdownMenuItem<dynamic>(
+                // ✅ Lista de años disponibles
+                ..._aniosDisponibles.map((year) => DropdownMenuItem<int>(
                       value: year,
                       child: Text(
                         year.toString(),
@@ -3494,8 +3501,8 @@ class _AdminPanelState extends State<AdminPanel>
               ],
               onChanged: (value) {
                 setState(() {
-                  _anioSeleccionado = value == -1 ? -1 : value as int;
-                  _actualizarGrafica();
+                  _anioSeleccionado = value!;
+                  print('🔄 Año seleccionado cambiado a: $_anioSeleccionado');
                 });
               },
             ),
@@ -3543,7 +3550,7 @@ class _AdminPanelState extends State<AdminPanel>
                 onChanged: (value) {
                   setState(() {
                     _mesSeleccionado = value!;
-                    _actualizarGrafica();
+                    print('🔄 Mes seleccionado cambiado a: $_mesSeleccionado');
                   });
                 },
               ),
