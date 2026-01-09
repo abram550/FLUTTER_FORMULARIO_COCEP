@@ -56,6 +56,8 @@ class _AdminPanelState extends State<AdminPanel>
 // Variables para controlar la visibilidad de los filtros desplegables
   bool _mostrarFiltroExportacion = false;
   bool _mostrarFiltroTipo = false;
+  bool _detailsTableExpanded =
+      false; // Controla si la tabla de detalles está desplegada
 
   String _tipoAgrupacionMensual = "dias";
 
@@ -659,11 +661,11 @@ class _AdminPanelState extends State<AdminPanel>
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setState) {
-            // Obtener el tamaño de la pantalla
             final size = MediaQuery.of(context).size;
             final isSmallScreen = size.width < 600;
             final isMediumScreen = size.width >= 600 && size.width < 900;
             final isLargeScreen = size.width >= 900;
+            final isVerySmallScreen = size.width < 400;
 
             return Dialog(
               shape: RoundedRectangleBorder(
@@ -682,7 +684,7 @@ class _AdminPanelState extends State<AdminPanel>
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Cabecera fija con botón de descarga - RESPONSIVA
+                    // Header fijo
                     Padding(
                       padding: EdgeInsets.all(isSmallScreen ? 12 : 20),
                       child: isSmallScreen
@@ -713,7 +715,6 @@ class _AdminPanelState extends State<AdminPanel>
                                   ],
                                 ),
                                 SizedBox(height: 12),
-                                // Botón de descarga en pantallas pequeñas
                                 Container(
                                   width: double.infinity,
                                   decoration: BoxDecoration(
@@ -785,7 +786,6 @@ class _AdminPanelState extends State<AdminPanel>
                                     ],
                                   ),
                                 ),
-                                // Botón de descarga en pantallas medianas/grandes
                                 Container(
                                   margin: const EdgeInsets.only(right: 8),
                                   decoration: BoxDecoration(
@@ -843,7 +843,7 @@ class _AdminPanelState extends State<AdminPanel>
                     ),
                     const Divider(thickness: 1),
 
-                    // Contenido con scroll - RESPONSIVO
+                    // Contenido con scroll
                     Flexible(
                       child: SingleChildScrollView(
                         padding: EdgeInsets.symmetric(
@@ -857,7 +857,7 @@ class _AdminPanelState extends State<AdminPanel>
                             children: [
                               SizedBox(height: isSmallScreen ? 10 : 15),
 
-                              // Selección de tipo de datos - RESPONSIVA
+                              // Selección de tipo de datos
                               Card(
                                 elevation: 3,
                                 shape: RoundedRectangleBorder(
@@ -912,7 +912,7 @@ class _AdminPanelState extends State<AdminPanel>
 
                               SizedBox(height: isSmallScreen ? 12 : 15),
 
-                              // Selección de período - RESPONSIVA
+                              // Selección de período
                               Card(
                                 elevation: 3,
                                 shape: RoundedRectangleBorder(
@@ -986,7 +986,7 @@ class _AdminPanelState extends State<AdminPanel>
 
                               SizedBox(height: isSmallScreen ? 12 : 15),
 
-                              // Selección de tipo de visualización - RESPONSIVA
+                              // Selección de tipo de visualización
                               Card(
                                 elevation: 3,
                                 shape: RoundedRectangleBorder(
@@ -1063,25 +1063,9 @@ class _AdminPanelState extends State<AdminPanel>
 
                               SizedBox(height: isSmallScreen ? 15 : 20),
 
-                              // Gráfica con altura responsiva
-                              SizedBox(
-                                height: isSmallScreen
-                                    ? 300
-                                    : isMediumScreen
-                                        ? 380
-                                        : 450,
-                                child: Card(
-                                  elevation: 4,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(15),
-                                  ),
-                                  child: Padding(
-                                    padding:
-                                        EdgeInsets.all(isSmallScreen ? 10 : 15),
-                                    child: _buildGrafica(setState),
-                                  ),
-                                ),
-                              ),
+                              // Gráfica con tabla desplegable - AJUSTADA
+                              _buildGraficaConTabla(
+                                  setState, isSmallScreen, isVerySmallScreen),
                             ],
                           ),
                         ),
@@ -1367,6 +1351,220 @@ class _AdminPanelState extends State<AdminPanel>
     );
   }
 
+  /// ✅ NUEVO MÉTODO: Gráfica con tabla desplegable integrada
+
+  Widget _buildGraficaConTabla(
+      StateSetter setDialogState, bool isSmallScreen, bool isVerySmallScreen) {
+    return FutureBuilder<Map<String, List<ChartData>>>(
+      future: _obtenerDatosParaGrafica(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return SizedBox(
+            height: 300,
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(color: secondaryOrange),
+                  const SizedBox(height: 8),
+                  Text(
+                    "Cargando datos...",
+                    style: TextStyle(
+                      color: primaryTeal,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        if (snapshot.hasError) {
+          return SizedBox(
+            height: 300,
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.error_outline, color: Colors.red, size: 32),
+                  const SizedBox(height: 6),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Text(
+                      "Error al cargar datos: ${snapshot.error}",
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: Colors.red, fontSize: 13),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return SizedBox(
+            height: 300,
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.info_outline, color: primaryTeal, size: 32),
+                  const SizedBox(height: 6),
+                  Text(
+                    "No hay datos disponibles",
+                    style: TextStyle(
+                      color: primaryTeal,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        final datos = snapshot.data!;
+        final tipoActual = datos[_tipoGrafica] ?? [];
+
+        if (tipoActual.isEmpty) {
+          return SizedBox(
+            height: 300,
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.info_outline, color: primaryTeal, size: 32),
+                  const SizedBox(height: 6),
+                  Text(
+                    "No hay datos para mostrar",
+                    style: TextStyle(
+                      color: primaryTeal,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        // ✅ ALTURA DINÁMICA MEJORADA - MÁS ESPACIO PARA LA GRÁFICA
+        double chartHeight;
+        if (_tipoVisualizacion == "circular") {
+          chartHeight = isVerySmallScreen
+              ? 350 // Aumentado de 250 a 350
+              : isSmallScreen
+                  ? 400 // Aumentado de 280 a 400
+                  : 450; // Aumentado de 320 a 450
+        } else {
+          chartHeight = isVerySmallScreen
+              ? 380 // Aumentado de 280 a 380
+              : isSmallScreen
+                  ? 420 // Aumentado de 320 a 420
+                  : 480; // Aumentado de 360 a 480
+        }
+
+        return Column(
+          children: [
+            // ✅ Gráfica con altura mejorada
+            Card(
+              elevation: 4,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(15),
+              ),
+              child: Container(
+                height: chartHeight,
+                width: double.infinity,
+                padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
+                child: Screenshot(
+                  controller: _screenshotController,
+                  child: RepaintBoundary(
+                    key: _chartKey,
+                    child: Container(
+                      color: Colors.white,
+                      padding: EdgeInsets.all(isSmallScreen ? 8 : 12),
+                      child: Column(
+                        children: [
+                          // Título de la gráfica - MÁS COMPACTO
+                          Padding(
+                            padding: EdgeInsets.symmetric(
+                                vertical: isSmallScreen ? 2 : 4),
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text(
+                                "${_tipoGrafica == 'consolidacion' ? 'Consolidación' : 'Redes Sociales'} - ${_filtroSeleccionado.substring(0, 1).toUpperCase() + _filtroSeleccionado.substring(1)}",
+                                style: TextStyle(
+                                  fontSize: isSmallScreen ? 13 : 15,
+                                  fontWeight: FontWeight.bold,
+                                  color: primaryTeal,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          ),
+                          Divider(thickness: 1, height: isSmallScreen ? 6 : 8),
+                          SizedBox(height: isSmallScreen ? 2 : 4),
+
+                          // ✅ GRÁFICA PRINCIPAL - ESPACIO MÁXIMO
+                          Expanded(
+                            child: LayoutBuilder(
+                              builder: (context, constraints) {
+                                double availableHeight = constraints.maxHeight;
+                                double availableWidth = constraints.maxWidth;
+
+                                // ✅ AJUSTE PARA GRÁFICA CIRCULAR - MEJOR PROPORCIÓN
+                                if (_tipoVisualizacion == 'circular') {
+                                  double maxDimension = min(
+                                      availableHeight * 0.75,
+                                      availableWidth * 0.75);
+
+                                  return Center(
+                                    child: SizedBox(
+                                      height: maxDimension,
+                                      width: maxDimension,
+                                      child: _renderizarGrafica(tipoActual),
+                                    ),
+                                  );
+                                }
+
+                                // Para barras y líneas - USAR TODO EL ESPACIO
+                                return Padding(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: isSmallScreen ? 2 : 4,
+                                    vertical: isSmallScreen ? 2 : 4,
+                                  ),
+                                  child: _renderizarGrafica(tipoActual),
+                                );
+                              },
+                            ),
+                          ),
+
+                          // Leyenda compacta - MÁS PEQUEÑA
+                          _buildLeyendaUltraCompacta(tipoActual, isSmallScreen),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 15),
+
+            // ✅ Tabla desplegable de detalles
+            _buildExpandableDetailsTable(
+                tipoActual, isVerySmallScreen, setDialogState),
+          ],
+        );
+      },
+    );
+  }
+
   Future<void> _descargarGrafica(StateSetter setDialogState) async {
     OverlayEntry? overlayEntry;
 
@@ -1447,19 +1645,19 @@ class _AdminPanelState extends State<AdminPanel>
                         key: repaintKey,
                         child: Container(
                           width: 1600,
-                          height: 900,
+                          height: 1200, // ✅ Aumentado para incluir tabla
                           color: Colors.white,
                           padding: const EdgeInsets.all(32),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              // Encabezado de la gráfica
+                              // Encabezado
                               _buildExportHeader(tipoActual),
-
                               const SizedBox(height: 20),
 
-                              // Contenedor de la gráfica con tamaño fijo
+                              // Contenedor de la gráfica
                               Expanded(
+                                flex: 3,
                                 child: Container(
                                   padding: const EdgeInsets.all(20),
                                   decoration: BoxDecoration(
@@ -1473,15 +1671,17 @@ class _AdminPanelState extends State<AdminPanel>
                                   child: _buildExportChart(tipoActual),
                                 ),
                               ),
-
                               const SizedBox(height: 20),
 
-                              // Leyenda con mejor formato para exportación
-                              _buildExportLegend(tipoActual),
+                              // ✅ NUEVA TABLA PARA EXPORTACIÓN
+                              Expanded(
+                                flex: 2,
+                                child: _buildExportTable(tipoActual),
+                              ),
 
                               const SizedBox(height: 16),
 
-                              // Pie de página con información
+                              // Pie de página
                               _buildExportFooter(),
                             ],
                           ),
@@ -1868,10 +2068,10 @@ class _AdminPanelState extends State<AdminPanel>
   }
 
   /// Gráfica lineal optimizada para exportación
+
   Widget _buildExportLineChart(List<ChartData> datos) {
     return LineChart(
       LineChartData(
-        lineTouchData: LineTouchData(enabled: false),
         gridData: FlGridData(
           show: true,
           drawVerticalLine: false,
@@ -1889,22 +2089,25 @@ class _AdminPanelState extends State<AdminPanel>
           bottomTitles: AxisTitles(
             sideTitles: SideTitles(
               showTitles: true,
-              reservedSize: 50,
+              reservedSize: 60,
               interval: 1,
               getTitlesWidget: (value, meta) {
                 if (value < 0 || value >= datos.length) return const Text('');
                 return SideTitleWidget(
                   axisSide: meta.axisSide,
                   space: 8,
-                  child: Text(
-                    datos[value.toInt()].label,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                      color: Colors.black87,
+                  child: Transform.rotate(
+                    angle: -pi / 4,
+                    child: Text(
+                      datos[value.toInt()].label,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                        color: Colors.black87,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
                   ),
                 );
               },
@@ -1981,8 +2184,45 @@ class _AdminPanelState extends State<AdminPanel>
                 end: Alignment.bottomCenter,
               ),
             ),
+            // ✅ AGREGAR ETIQUETAS EN CADA PUNTO
+            showingIndicators: List.generate(datos.length, (index) => index),
           ),
         ],
+        showingTooltipIndicators: datos.asMap().entries.map((entry) {
+          return ShowingTooltipIndicators([
+            LineBarSpot(
+              LineChartBarData(
+                spots: datos.asMap().entries.map((e) {
+                  return FlSpot(e.key.toDouble(), e.value.value.toDouble());
+                }).toList(),
+              ),
+              entry.key,
+              FlSpot(entry.key.toDouble(), entry.value.value.toDouble()),
+            ),
+          ]);
+        }).toList(),
+        lineTouchData: LineTouchData(
+          enabled: false, // ✅ No interacción necesaria en el PNG
+          touchTooltipData: LineTouchTooltipData(
+            tooltipBgColor: Colors.transparent, // ✅ Sin “caja”
+            tooltipPadding: EdgeInsets.zero, // ✅ Sin padding
+            tooltipMargin: 10, // ✅ Queda encima del punto
+            fitInsideHorizontally: true,
+            fitInsideVertically: true,
+            getTooltipItems: (touchedSpots) {
+              return touchedSpots.map((spot) {
+                return LineTooltipItem(
+                  '${spot.y.toInt()}',
+                  const TextStyle(
+                    color: Colors.black87,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                );
+              }).toList();
+            },
+          ),
+        ),
       ),
     );
   }
@@ -2002,7 +2242,7 @@ class _AdminPanelState extends State<AdminPanel>
             color: data.color,
             value: data.value.toDouble(),
             title: '${porcentaje.toStringAsFixed(1)}%',
-            radius: 160, // ✅ Radio reducido para exportación
+            radius: 120, // ✅ Radio reducido para exportación
             titleStyle: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
@@ -2057,7 +2297,7 @@ class _AdminPanelState extends State<AdminPanel>
           );
         }).toList(),
         sectionsSpace: 2,
-        centerSpaceRadius: 50, // ✅ Radio central reducido
+        centerSpaceRadius: 40, // ✅ Radio central reducido
         centerSpaceColor: Colors.white,
       ),
     );
@@ -2237,6 +2477,146 @@ class _AdminPanelState extends State<AdminPanel>
     );
   }
 
+  /// Construye la tabla de datos para exportación
+  Widget _buildExportTable(List<ChartData> datos) {
+    if (datos.isEmpty) return const SizedBox();
+
+    final total = datos.fold(0, (sum, item) => sum + item.value);
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey[50],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade300),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Título
+          Row(
+            children: [
+              Icon(Icons.table_chart, color: primaryTeal, size: 24),
+              const SizedBox(width: 8),
+              Text(
+                'Detalle de Datos',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: primaryTeal,
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: secondaryOrange.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: secondaryOrange),
+                ),
+                child: Text(
+                  "Total: $total registros",
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: secondaryOrange,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Tabla
+          Expanded(
+            child: SingleChildScrollView(
+              child: Table(
+                border: TableBorder.all(
+                  color: primaryTeal.withOpacity(0.3),
+                  width: 1.5,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                columnWidths: const {
+                  0: FlexColumnWidth(3),
+                  1: FlexColumnWidth(2),
+                  2: FlexColumnWidth(2),
+                },
+                children: [
+                  // Encabezado
+                  TableRow(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [primaryTeal, primaryTeal.withOpacity(0.8)],
+                      ),
+                    ),
+                    children: [
+                      _buildExportTableCell("Período", isHeader: true),
+                      _buildExportTableCell("Cantidad", isHeader: true),
+                      _buildExportTableCell("Porcentaje", isHeader: true),
+                    ],
+                  ),
+                  // Datos
+                  ...datos.asMap().entries.map((entry) {
+                    final index = entry.key;
+                    final item = entry.value;
+                    final percentage =
+                        ((item.value / total) * 100).toStringAsFixed(1);
+                    final isEven = index % 2 == 0;
+
+                    return TableRow(
+                      decoration: BoxDecoration(
+                        color: isEven
+                            ? Colors.white
+                            : primaryTeal.withOpacity(0.05),
+                      ),
+                      children: [
+                        _buildExportTableCell(item.label),
+                        _buildExportTableCell(item.value.toString()),
+                        _buildExportTableCell("$percentage%"),
+                      ],
+                    );
+                  }).toList(),
+                  // Total
+                  TableRow(
+                    decoration: BoxDecoration(
+                      color: secondaryOrange.withOpacity(0.15),
+                    ),
+                    children: [
+                      _buildExportTableCell("TOTAL",
+                          isHeader: true, color: secondaryOrange),
+                      _buildExportTableCell(total.toString(),
+                          isHeader: true, color: secondaryOrange),
+                      _buildExportTableCell("100.0%",
+                          isHeader: true, color: secondaryOrange),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Construye una celda para la tabla de exportación
+  Widget _buildExportTableCell(String text,
+      {bool isHeader = false, Color? color}) {
+    return Padding(
+      padding: const EdgeInsets.all(12),
+      child: Text(
+        text,
+        textAlign: isHeader ? TextAlign.center : TextAlign.left,
+        style: TextStyle(
+          fontSize: isHeader ? 16 : 15,
+          fontWeight: isHeader ? FontWeight.bold : FontWeight.normal,
+          color: color ?? (isHeader ? Colors.white : Colors.black87),
+        ),
+      ),
+    );
+  }
+
 // Widget para cambiar tipo de visualización de forma interactiva
   Widget _buildVisualizationToggle(String tipo, IconData icono) {
     bool isSelected = _tipoVisualizacion == tipo;
@@ -2400,19 +2780,18 @@ class _AdminPanelState extends State<AdminPanel>
 // Variable para seguimiento de sección seleccionada en gráfica circular
 
   Widget _buildBarChart(List<ChartData> datos) {
-    // Obtener información del contexto
     final size = MediaQuery.of(context).size;
     final isSmallScreen = size.width < 600;
     final isMediumScreen = size.width >= 600 && size.width < 900;
 
-    // Calcular altura responsiva
+    // ✅ ALTURA RESPONSIVA MEJORADA
     double chartHeight;
     if (isSmallScreen) {
-      chartHeight = 280;
+      chartHeight = 320; // Aumentado de 280
     } else if (isMediumScreen) {
-      chartHeight = 320;
+      chartHeight = 360; // Aumentado de 320
     } else {
-      chartHeight = 350;
+      chartHeight = 400; // Aumentado de 350
     }
 
     return Container(
@@ -2431,7 +2810,7 @@ class _AdminPanelState extends State<AdminPanel>
                 BarChartRodData(
                   toY: data.value.toDouble(),
                   color: data.color,
-                  width: isSmallScreen ? 14 : 18,
+                  width: isSmallScreen ? 16 : 20, // Barras más anchas
                   borderRadius: BorderRadius.circular(8),
                   backDrawRodData: BackgroundBarChartRodData(
                     show: true,
@@ -2447,7 +2826,7 @@ class _AdminPanelState extends State<AdminPanel>
             leftTitles: AxisTitles(
               sideTitles: SideTitles(
                 showTitles: true,
-                reservedSize: isSmallScreen ? 35 : 40,
+                reservedSize: isSmallScreen ? 38 : 45,
                 interval: _calcularIntervaloY(datos),
                 getTitlesWidget: (value, meta) => Padding(
                   padding: EdgeInsets.only(right: isSmallScreen ? 4.0 : 6.0),
@@ -2465,16 +2844,16 @@ class _AdminPanelState extends State<AdminPanel>
             bottomTitles: AxisTitles(
               sideTitles: SideTitles(
                 showTitles: true,
-                reservedSize: isSmallScreen ? 40 : 50,
+                reservedSize: isSmallScreen ? 45 : 55,
                 getTitlesWidget: (value, meta) => Padding(
                   padding: EdgeInsets.only(top: isSmallScreen ? 6.0 : 8.0),
                   child: Transform.rotate(
                     angle: -pi / 4,
                     child: Text(
                       _acortarEtiqueta(
-                          datos[value.toInt()].label, isSmallScreen ? 8 : 12),
+                          datos[value.toInt()].label, isSmallScreen ? 7 : 10),
                       style: TextStyle(
-                        fontSize: isSmallScreen ? 8 : 10,
+                        fontSize: isSmallScreen ? 8 : 9,
                         fontWeight: FontWeight.bold,
                         color: Colors.black87,
                       ),
@@ -2558,19 +2937,18 @@ class _AdminPanelState extends State<AdminPanel>
   }
 
   Widget _buildLineChart(List<ChartData> datos) {
-    // Obtener información del contexto
     final size = MediaQuery.of(context).size;
     final isSmallScreen = size.width < 600;
     final isMediumScreen = size.width >= 600 && size.width < 900;
 
-    // Calcular altura responsiva
+    // ✅ ALTURA RESPONSIVA MEJORADA
     double chartHeight;
     if (isSmallScreen) {
-      chartHeight = 280;
+      chartHeight = 320; // Aumentado de 280
     } else if (isMediumScreen) {
-      chartHeight = 320;
+      chartHeight = 360; // Aumentado de 320
     } else {
-      chartHeight = 350;
+      chartHeight = 400; // Aumentado de 350
     }
 
     return Container(
@@ -2579,6 +2957,7 @@ class _AdminPanelState extends State<AdminPanel>
       child: LineChart(
         LineChartData(
           lineTouchData: LineTouchData(
+            enabled: true,
             touchTooltipData: LineTouchTooltipData(
               tooltipBgColor: Colors.blueGrey.shade800,
               tooltipPadding: EdgeInsets.all(isSmallScreen ? 6 : 8),
@@ -2643,20 +3022,23 @@ class _AdminPanelState extends State<AdminPanel>
             bottomTitles: AxisTitles(
               sideTitles: SideTitles(
                 showTitles: true,
-                reservedSize: isSmallScreen ? 20 : 25,
+                reservedSize: isSmallScreen ? 24 : 30,
                 interval: 1,
                 getTitlesWidget: (value, meta) {
                   if (value < 0 || value >= datos.length) return const Text('');
                   return SideTitleWidget(
                     axisSide: meta.axisSide,
                     space: isSmallScreen ? 4 : 6,
-                    child: Text(
-                      _acortarEtiqueta(
-                          datos[value.toInt()].label, isSmallScreen ? 6 : 8),
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: isSmallScreen ? 8 : 9,
-                        color: Colors.black87,
+                    child: Transform.rotate(
+                      angle: -pi / 4,
+                      child: Text(
+                        _acortarEtiqueta(
+                            datos[value.toInt()].label, isSmallScreen ? 5 : 7),
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: isSmallScreen ? 7 : 8,
+                          color: Colors.black87,
+                        ),
                       ),
                     ),
                   );
@@ -2666,7 +3048,7 @@ class _AdminPanelState extends State<AdminPanel>
             leftTitles: AxisTitles(
               sideTitles: SideTitles(
                 showTitles: true,
-                reservedSize: isSmallScreen ? 35 : 40,
+                reservedSize: isSmallScreen ? 32 : 38,
                 interval: _calcularIntervaloY(datos),
                 getTitlesWidget: (value, meta) {
                   if (value % 1 == 0) {
@@ -2676,7 +3058,7 @@ class _AdminPanelState extends State<AdminPanel>
                       child: Text(
                         value.toInt().toString(),
                         style: TextStyle(
-                          fontSize: isSmallScreen ? 9 : 10,
+                          fontSize: isSmallScreen ? 8 : 9,
                           fontWeight: FontWeight.bold,
                           color: Colors.grey,
                         ),
@@ -2751,12 +3133,11 @@ class _AdminPanelState extends State<AdminPanel>
   Widget _buildPieChart(List<ChartData> datos) {
     final total = _calcularTotal(datos);
 
-    // Obtener información del contexto
     final size = MediaQuery.of(context).size;
     final isSmallScreen = size.width < 600;
     final isMediumScreen = size.width >= 600 && size.width < 900;
 
-    // ✅ TAMAÑOS MÁS PEQUEÑOS Y RESPONSIVOS
+    // ✅ RADIOS MÁS APROPIADOS PARA MEJOR LEGIBILIDAD
     double centerSpaceRadius;
     double baseRadius;
     double selectedRadius;
@@ -2766,13 +3147,13 @@ class _AdminPanelState extends State<AdminPanel>
       baseRadius = 65;
       selectedRadius = 75;
     } else if (isMediumScreen) {
-      centerSpaceRadius = 22;
-      baseRadius = 75;
-      selectedRadius = 90;
-    } else {
       centerSpaceRadius = 25;
-      baseRadius = 85;
-      selectedRadius = 105;
+      baseRadius = 80;
+      selectedRadius = 95;
+    } else {
+      centerSpaceRadius = 30;
+      baseRadius = 95;
+      selectedRadius = 115;
     }
 
     return Container(
@@ -2809,8 +3190,8 @@ class _AdminPanelState extends State<AdminPanel>
               radius: isSelected ? selectedRadius : baseRadius,
               titleStyle: TextStyle(
                 fontSize: isSelected
-                    ? (isSmallScreen ? 11 : 14)
-                    : (isSmallScreen ? 9 : 11),
+                    ? (isSmallScreen ? 10 : 12)
+                    : (isSmallScreen ? 9 : 10),
                 fontWeight: FontWeight.bold,
                 color:
                     _esColorOscuro(data.color) ? Colors.white : Colors.black87,
@@ -2823,10 +3204,10 @@ class _AdminPanelState extends State<AdminPanel>
                 ],
               ),
               badgeWidget: isSelected ? _buildBadge(data, isSmallScreen) : null,
-              badgePositionPercentageOffset: isSmallScreen ? 1.2 : 1.1,
+              badgePositionPercentageOffset: isSmallScreen ? 1.2 : 1.15,
             );
           }).toList(),
-          sectionsSpace: 1.5,
+          sectionsSpace: 1,
           centerSpaceRadius: centerSpaceRadius,
           centerSpaceColor: Colors.white,
         ),
@@ -2905,35 +3286,120 @@ class _AdminPanelState extends State<AdminPanel>
                 ),
               ),
             ),
-          // Leyenda en forma de Wrap más compacta
-          Wrap(
-            spacing: 8, // Reducido de 12 a 8
-            runSpacing: 4, // Reducido de 8 a 4
-            children: datos.map((data) {
-              return Container(
-                margin: const EdgeInsets.only(right: 4, bottom: 4),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 10, // Reducido de 14 a 10
-                      height: 10, // Reducido de 14 a 10
-                      decoration: BoxDecoration(
-                        color: data.color,
-                        shape: BoxShape.circle,
+
+          // ✅ Mantiene el mismo tamaño, pero permite ver TODO con scroll interno
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxHeight: 70),
+            child: Scrollbar(
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                child: Wrap(
+                  spacing: 8, // Reducido de 12 a 8
+                  runSpacing: 4, // Reducido de 8 a 4
+                  children: datos.map((data) {
+                    return Container(
+                      margin: const EdgeInsets.only(right: 4, bottom: 4),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 10, // Reducido de 14 a 10
+                            height: 10, // Reducido de 14 a 10
+                            decoration: BoxDecoration(
+                              color: data.color,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 4), // Reducido de 6 a 4
+                          Text(
+                            data.label,
+                            style: const TextStyle(
+                              fontSize: 10, // Reducido de 12 a 10
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                    const SizedBox(width: 4), // Reducido de 6 a 4
-                    Text(
-                      data.label,
-                      style: const TextStyle(
-                        fontSize: 10, // Reducido de 12 a 10
-                      ),
-                    ),
-                  ],
+                    );
+                  }).toList(),
                 ),
-              );
-            }).toList(),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLeyendaUltraCompacta(List<ChartData> datos, bool isSmall) {
+    if (datos.isEmpty) return const SizedBox();
+
+    double total = 0;
+    if (_tipoVisualizacion == "circular") {
+      total = _calcularTotal(datos);
+    }
+
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: isSmall ? 4 : 6,
+        vertical: isSmall ? 2 : 3,
+      ),
+      width: double.infinity,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (_tipoVisualizacion == "circular")
+            Padding(
+              padding: EdgeInsets.only(bottom: isSmall ? 2 : 3),
+              child: Text(
+                "Total: ${total.toInt()}",
+                style: TextStyle(
+                  fontSize: isSmall ? 10 : 11,
+                  fontWeight: FontWeight.bold,
+                  color: primaryTeal,
+                ),
+              ),
+            ),
+
+          // ✅ Mismo tamaño (ultra compacto), pero ahora se puede ver TODO con scroll interno
+          ConstrainedBox(
+            constraints: BoxConstraints(maxHeight: isSmall ? 36 : 44),
+            child: Scrollbar(
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                child: Wrap(
+                  spacing: isSmall ? 4 : 6,
+                  runSpacing: isSmall ? 2 : 3,
+                  children: datos.map((data) {
+                    return Container(
+                      margin: EdgeInsets.only(right: isSmall ? 2 : 3),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: isSmall ? 6 : 8,
+                            height: isSmall ? 6 : 8,
+                            decoration: BoxDecoration(
+                              color: data.color,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          SizedBox(width: isSmall ? 2 : 3),
+                          Text(
+                            data.label.length > (isSmall ? 8 : 12)
+                                ? '${data.label.substring(0, isSmall ? 8 : 12)}...'
+                                : data.label,
+                            style: TextStyle(
+                              fontSize: isSmall ? 8 : 9,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ),
           ),
         ],
       ),
@@ -8843,6 +9309,282 @@ class _AdminPanelState extends State<AdminPanel>
           ),
         );
       },
+    );
+  }
+
+  /// ✅ NUEVO: Tabla desplegable de detalles para las gráficas
+
+  Widget _buildExpandableDetailsTable(List<ChartData> data,
+      bool isVerySmallScreen, StateSetter setDialogState) {
+    if (data.isEmpty) return const SizedBox.shrink();
+
+    final total = data.fold(0, (sum, item) => sum + item.value);
+
+    return StatefulBuilder(
+      builder: (BuildContext context, StateSetter setLocalState) {
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+          constraints: BoxConstraints(
+            maxWidth: double.infinity,
+          ),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: _detailsTableExpanded
+                  ? [Colors.white, primaryTeal.withOpacity(0.05)]
+                  : [Colors.white, Colors.white],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            ),
+            borderRadius: BorderRadius.circular(15),
+            boxShadow: [
+              BoxShadow(
+                color: primaryTeal
+                    .withOpacity(_detailsTableExpanded ? 0.15 : 0.08),
+                blurRadius: _detailsTableExpanded ? 12 : 6,
+                offset: Offset(0, _detailsTableExpanded ? 4 : 2),
+              ),
+            ],
+            border: Border.all(
+              color:
+                  primaryTeal.withOpacity(_detailsTableExpanded ? 0.3 : 0.15),
+              width: _detailsTableExpanded ? 2 : 1.5,
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // ✅ Header clickeable
+              InkWell(
+                onTap: () {
+                  setLocalState(() {
+                    _detailsTableExpanded = !_detailsTableExpanded;
+                  });
+                },
+                borderRadius: BorderRadius.circular(15),
+                child: Container(
+                  padding: EdgeInsets.all(isVerySmallScreen ? 12 : 16),
+                  child: Row(
+                    children: [
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 300),
+                        padding: EdgeInsets.all(isVerySmallScreen ? 8 : 10),
+                        decoration: BoxDecoration(
+                          color: primaryTeal
+                              .withOpacity(_detailsTableExpanded ? 0.2 : 0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(
+                          Icons.table_chart_rounded,
+                          color: primaryTeal,
+                          size: isVerySmallScreen ? 20 : 24,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "Detalle de Datos",
+                              style: TextStyle(
+                                fontSize: isVerySmallScreen ? 14 : 18,
+                                fontWeight: FontWeight.bold,
+                                color: primaryTeal,
+                              ),
+                            ),
+                            Text(
+                              "Total de registros: $total",
+                              style: TextStyle(
+                                fontSize: isVerySmallScreen ? 11 : 13,
+                                color: primaryTeal.withOpacity(0.7),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      AnimatedRotation(
+                        duration: const Duration(milliseconds: 300),
+                        turns: _detailsTableExpanded ? 0.5 : 0,
+                        child: Icon(
+                          Icons.keyboard_arrow_down_rounded,
+                          color: primaryTeal,
+                          size: isVerySmallScreen ? 24 : 28,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // ✅ Tabla expandible con animación suave
+              AnimatedSize(
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeInOut,
+                child: _detailsTableExpanded
+                    ? Container(
+                        constraints: BoxConstraints(
+                          maxHeight: isVerySmallScreen ? 250 : 300,
+                        ),
+                        width: double.infinity,
+                        padding: EdgeInsets.all(isVerySmallScreen ? 12 : 16),
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.vertical,
+                          child: SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: DataTable(
+                              headingRowColor: MaterialStateProperty.all(
+                                primaryTeal.withOpacity(0.1),
+                              ),
+                              border: TableBorder.all(
+                                color: primaryTeal.withOpacity(0.3),
+                                width: 1.5,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              columns: [
+                                DataColumn(
+                                  label: Text(
+                                    'Período',
+                                    style: TextStyle(
+                                      fontSize: isVerySmallScreen ? 11 : 14,
+                                      fontWeight: FontWeight.bold,
+                                      color: primaryTeal,
+                                    ),
+                                  ),
+                                ),
+                                DataColumn(
+                                  label: Text(
+                                    'Cantidad',
+                                    style: TextStyle(
+                                      fontSize: isVerySmallScreen ? 11 : 14,
+                                      fontWeight: FontWeight.bold,
+                                      color: primaryTeal,
+                                    ),
+                                  ),
+                                ),
+                                DataColumn(
+                                  label: Text(
+                                    '%',
+                                    style: TextStyle(
+                                      fontSize: isVerySmallScreen ? 11 : 14,
+                                      fontWeight: FontWeight.bold,
+                                      color: primaryTeal,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                              rows: [
+                                ...data.map((item) {
+                                  final percentage =
+                                      ((item.value / total) * 100)
+                                          .toStringAsFixed(1);
+                                  return DataRow(
+                                    cells: [
+                                      DataCell(
+                                        SizedBox(
+                                          width: isVerySmallScreen ? 100 : 150,
+                                          child: Text(
+                                            item.label,
+                                            style: TextStyle(
+                                              fontSize:
+                                                  isVerySmallScreen ? 10 : 13,
+                                            ),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                      ),
+                                      DataCell(
+                                        Text(
+                                          item.value.toString(),
+                                          style: TextStyle(
+                                            fontSize:
+                                                isVerySmallScreen ? 10 : 13,
+                                          ),
+                                        ),
+                                      ),
+                                      DataCell(
+                                        Text(
+                                          "$percentage%",
+                                          style: TextStyle(
+                                            fontSize:
+                                                isVerySmallScreen ? 10 : 13,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  );
+                                }).toList(),
+                                // Fila de total
+                                DataRow(
+                                  color: MaterialStateProperty.all(
+                                    secondaryOrange.withOpacity(0.15),
+                                  ),
+                                  cells: [
+                                    DataCell(
+                                      Text(
+                                        'TOTAL',
+                                        style: TextStyle(
+                                          fontSize: isVerySmallScreen ? 11 : 14,
+                                          fontWeight: FontWeight.bold,
+                                          color: secondaryOrange,
+                                        ),
+                                      ),
+                                    ),
+                                    DataCell(
+                                      Text(
+                                        total.toString(),
+                                        style: TextStyle(
+                                          fontSize: isVerySmallScreen ? 11 : 14,
+                                          fontWeight: FontWeight.bold,
+                                          color: secondaryOrange,
+                                        ),
+                                      ),
+                                    ),
+                                    DataCell(
+                                      Text(
+                                        '100.0%',
+                                        style: TextStyle(
+                                          fontSize: isVerySmallScreen ? 11 : 14,
+                                          fontWeight: FontWeight.bold,
+                                          color: secondaryOrange,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      )
+                    : const SizedBox.shrink(),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  /// ✅ Método auxiliar para celdas de tabla
+  Widget _buildTableCell(
+    String text, {
+    bool isHeader = false,
+    Color? color,
+    bool isVerySmallScreen = false,
+  }) {
+    return Padding(
+      padding: EdgeInsets.all(isVerySmallScreen ? 8 : 12),
+      child: Text(
+        text,
+        textAlign: isHeader ? TextAlign.center : TextAlign.left,
+        style: TextStyle(
+          fontSize:
+              isVerySmallScreen ? (isHeader ? 11 : 10) : (isHeader ? 14 : 13),
+          fontWeight: isHeader ? FontWeight.bold : FontWeight.normal,
+          color: color ?? (isHeader ? primaryTeal : Colors.black87),
+        ),
+      ),
     );
   }
 }
