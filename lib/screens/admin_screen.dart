@@ -676,7 +676,7 @@ class _AdminPanelState extends State<AdminPanel>
                         ? size.width * 0.85
                         : size.width * 0.75,
                 constraints: BoxConstraints(
-                  maxHeight: size.height * 0.92,
+                  maxHeight: size.height * 0.90,
                   maxWidth: isLargeScreen ? 1200 : double.infinity,
                 ),
                 child: Column(
@@ -1066,10 +1066,10 @@ class _AdminPanelState extends State<AdminPanel>
                               // Gráfica con altura responsiva
                               SizedBox(
                                 height: isSmallScreen
-                                    ? 280
+                                    ? 300
                                     : isMediumScreen
-                                        ? 350
-                                        : 400,
+                                        ? 380
+                                        : 450,
                                 child: Card(
                                   elevation: 4,
                                   shape: RoundedRectangleBorder(
@@ -1328,9 +1328,32 @@ class _AdminPanelState extends State<AdminPanel>
                     ),
                   if (!_isCapturing) const SizedBox(height: 5),
 
-                  // Gráfica principal
+                  // Gráfica principal - RESPONSIVA CON AJUSTE CIRCULAR
                   Expanded(
-                    child: _renderizarGrafica(tipoActual),
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        double availableHeight = constraints.maxHeight;
+                        double availableWidth = constraints.maxWidth;
+
+                        // ✅ AJUSTE ESPECÍFICO PARA GRÁFICA CIRCULAR
+                        if (_tipoVisualizacion == 'circular') {
+                          // Calcular tamaño máximo permitido (más pequeño)
+                          double maxDimension =
+                              min(availableHeight * 0.65, availableWidth * 0.7);
+
+                          return Center(
+                            child: SizedBox(
+                              height: maxDimension,
+                              width: maxDimension,
+                              child: _renderizarGrafica(tipoActual),
+                            ),
+                          );
+                        }
+
+                        // Para barras y líneas, usar todo el espacio
+                        return _renderizarGrafica(tipoActual);
+                      },
+                    ),
                   ),
 
                   // Leyenda
@@ -1343,10 +1366,6 @@ class _AdminPanelState extends State<AdminPanel>
       },
     );
   }
-
-  /// ========== MÉTODO MEJORADO PARA DESCARGAR GRÁFICA EN ALTA RESOLUCIÓN ==========
-  /// Este método crea una copia invisible de la gráfica en tamaño fijo (1600x900px)
-  /// y la captura, asegurando que siempre se vea bien sin importar el tamaño de pantalla
 
   Future<void> _descargarGrafica(StateSetter setDialogState) async {
     OverlayEntry? overlayEntry;
@@ -1968,7 +1987,6 @@ class _AdminPanelState extends State<AdminPanel>
     );
   }
 
-  /// Gráfica circular optimizada para exportación
   Widget _buildExportPieChart(List<ChartData> datos) {
     final total = _calcularTotal(datos);
 
@@ -1984,9 +2002,9 @@ class _AdminPanelState extends State<AdminPanel>
             color: data.color,
             value: data.value.toDouble(),
             title: '${porcentaje.toStringAsFixed(1)}%',
-            radius: 180, // Radio más grande para exportación
+            radius: 160, // ✅ Radio reducido para exportación
             titleStyle: TextStyle(
-              fontSize: 18, // Texto más grande
+              fontSize: 16,
               fontWeight: FontWeight.bold,
               color: _esColorOscuro(data.color) ? Colors.white : Colors.black87,
               shadows: [
@@ -1998,7 +2016,7 @@ class _AdminPanelState extends State<AdminPanel>
               ],
             ),
             badgeWidget: Container(
-              padding: const EdgeInsets.all(10),
+              padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(10),
@@ -2019,25 +2037,27 @@ class _AdminPanelState extends State<AdminPanel>
                     style: TextStyle(
                       color: data.color,
                       fontWeight: FontWeight.bold,
-                      fontSize: 16,
+                      fontSize: 14,
                     ),
                     textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   Text(
                     data.value.toString(),
                     style: TextStyle(
                       color: Colors.grey.shade800,
-                      fontSize: 14,
+                      fontSize: 12,
                     ),
                   ),
                 ],
               ),
             ),
-            badgePositionPercentageOffset: 1.3,
+            badgePositionPercentageOffset: 1.25,
           );
         }).toList(),
         sectionsSpace: 2,
-        centerSpaceRadius: 60,
+        centerSpaceRadius: 50, // ✅ Radio central reducido
         centerSpaceColor: Colors.white,
       ),
     );
@@ -2380,9 +2400,24 @@ class _AdminPanelState extends State<AdminPanel>
 // Variable para seguimiento de sección seleccionada en gráfica circular
 
   Widget _buildBarChart(List<ChartData> datos) {
+    // Obtener información del contexto
+    final size = MediaQuery.of(context).size;
+    final isSmallScreen = size.width < 600;
+    final isMediumScreen = size.width >= 600 && size.width < 900;
+
+    // Calcular altura responsiva
+    double chartHeight;
+    if (isSmallScreen) {
+      chartHeight = 280;
+    } else if (isMediumScreen) {
+      chartHeight = 320;
+    } else {
+      chartHeight = 350;
+    }
+
     return Container(
-      padding: const EdgeInsets.all(8),
-      height: 350,
+      padding: EdgeInsets.all(isSmallScreen ? 4 : 8),
+      height: chartHeight,
       child: BarChart(
         BarChartData(
           alignment: BarChartAlignment.spaceAround,
@@ -2396,7 +2431,7 @@ class _AdminPanelState extends State<AdminPanel>
                 BarChartRodData(
                   toY: data.value.toDouble(),
                   color: data.color,
-                  width: 18,
+                  width: isSmallScreen ? 14 : 18,
                   borderRadius: BorderRadius.circular(8),
                   backDrawRodData: BackgroundBarChartRodData(
                     show: true,
@@ -2412,14 +2447,14 @@ class _AdminPanelState extends State<AdminPanel>
             leftTitles: AxisTitles(
               sideTitles: SideTitles(
                 showTitles: true,
-                reservedSize: 40,
+                reservedSize: isSmallScreen ? 35 : 40,
                 interval: _calcularIntervaloY(datos),
                 getTitlesWidget: (value, meta) => Padding(
-                  padding: const EdgeInsets.only(right: 6.0),
+                  padding: EdgeInsets.only(right: isSmallScreen ? 4.0 : 6.0),
                   child: Text(
                     value.toInt().toString(),
-                    style: const TextStyle(
-                      fontSize: 10,
+                    style: TextStyle(
+                      fontSize: isSmallScreen ? 9 : 10,
                       color: Colors.grey,
                       fontWeight: FontWeight.bold,
                     ),
@@ -2430,15 +2465,16 @@ class _AdminPanelState extends State<AdminPanel>
             bottomTitles: AxisTitles(
               sideTitles: SideTitles(
                 showTitles: true,
-                reservedSize: 50,
+                reservedSize: isSmallScreen ? 40 : 50,
                 getTitlesWidget: (value, meta) => Padding(
-                  padding: const EdgeInsets.only(top: 8.0),
+                  padding: EdgeInsets.only(top: isSmallScreen ? 6.0 : 8.0),
                   child: Transform.rotate(
                     angle: -pi / 4,
                     child: Text(
-                      _acortarEtiqueta(datos[value.toInt()].label, 12),
-                      style: const TextStyle(
-                        fontSize: 10,
+                      _acortarEtiqueta(
+                          datos[value.toInt()].label, isSmallScreen ? 8 : 12),
+                      style: TextStyle(
+                        fontSize: isSmallScreen ? 8 : 10,
                         fontWeight: FontWeight.bold,
                         color: Colors.black87,
                       ),
@@ -2474,22 +2510,22 @@ class _AdminPanelState extends State<AdminPanel>
             enabled: true,
             touchTooltipData: BarTouchTooltipData(
               tooltipBgColor: Colors.blueGrey.shade800,
-              tooltipPadding: const EdgeInsets.all(8),
+              tooltipPadding: EdgeInsets.all(isSmallScreen ? 6 : 8),
               tooltipMargin: 6,
               getTooltipItem: (group, groupIndex, rod, rodIndex) {
                 return BarTooltipItem(
                   '${datos[group.x].label}\n',
-                  const TextStyle(
+                  TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
-                    fontSize: 13,
+                    fontSize: isSmallScreen ? 11 : 13,
                   ),
                   children: [
                     TextSpan(
                       text: '${rod.toY.toInt()} valores',
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: Colors.white,
-                        fontSize: 14,
+                        fontSize: isSmallScreen ? 12 : 14,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -2497,25 +2533,21 @@ class _AdminPanelState extends State<AdminPanel>
                 );
               },
             ),
-            // Efecto al tocar una barra con animación
             touchCallback: (FlTouchEvent event, barTouchResponse) {
               if (event is FlTapUpEvent &&
                   barTouchResponse != null &&
                   barTouchResponse.spot != null) {
                 final touchedIndex =
                     barTouchResponse.spot!.touchedBarGroupIndex;
-
-                // Animación al tocar
                 setState(() {
-                  // Activar efecto visual o mostrar información detallada
                   _barTouchedIndex = touchedIndex;
                 });
-
-                // Después de 1 segundo, resetear
                 Future.delayed(const Duration(seconds: 1), () {
-                  setState(() {
-                    _barTouchedIndex = -1;
-                  });
+                  if (mounted) {
+                    setState(() {
+                      _barTouchedIndex = -1;
+                    });
+                  }
                 });
               }
             },
@@ -2526,32 +2558,47 @@ class _AdminPanelState extends State<AdminPanel>
   }
 
   Widget _buildLineChart(List<ChartData> datos) {
+    // Obtener información del contexto
+    final size = MediaQuery.of(context).size;
+    final isSmallScreen = size.width < 600;
+    final isMediumScreen = size.width >= 600 && size.width < 900;
+
+    // Calcular altura responsiva
+    double chartHeight;
+    if (isSmallScreen) {
+      chartHeight = 280;
+    } else if (isMediumScreen) {
+      chartHeight = 320;
+    } else {
+      chartHeight = 350;
+    }
+
     return Container(
-      padding: const EdgeInsets.all(8),
-      height: 350,
+      padding: EdgeInsets.all(isSmallScreen ? 4 : 8),
+      height: chartHeight,
       child: LineChart(
         LineChartData(
           lineTouchData: LineTouchData(
             touchTooltipData: LineTouchTooltipData(
               tooltipBgColor: Colors.blueGrey.shade800,
-              tooltipPadding: const EdgeInsets.all(8),
+              tooltipPadding: EdgeInsets.all(isSmallScreen ? 6 : 8),
               tooltipMargin: 6,
               getTooltipItems: (touchedSpots) {
                 return touchedSpots.map((touchedSpot) {
                   final spotIndex = touchedSpot.spotIndex;
                   return LineTooltipItem(
                     '${datos[spotIndex].label}\n',
-                    const TextStyle(
+                    TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
-                      fontSize: 12,
+                      fontSize: isSmallScreen ? 10 : 12,
                     ),
                     children: [
                       TextSpan(
                         text: '${touchedSpot.y.toInt()} valores',
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: Colors.white,
-                          fontSize: 14,
+                          fontSize: isSmallScreen ? 12 : 14,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -2560,7 +2607,6 @@ class _AdminPanelState extends State<AdminPanel>
                 }).toList();
               },
             ),
-            // Añadir animación al tocar puntos
             touchCallback: (FlTouchEvent event, lineTouch) {
               if (event is FlTapUpEvent &&
                   lineTouch != null &&
@@ -2569,12 +2615,12 @@ class _AdminPanelState extends State<AdminPanel>
                 setState(() {
                   _lineSpotTouched = lineTouch.lineBarSpots![0].spotIndex;
                 });
-
-                // Después de 1 segundo, resetear
                 Future.delayed(const Duration(seconds: 1), () {
-                  setState(() {
-                    _lineSpotTouched = -1;
-                  });
+                  if (mounted) {
+                    setState(() {
+                      _lineSpotTouched = -1;
+                    });
+                  }
                 });
               }
             },
@@ -2597,18 +2643,19 @@ class _AdminPanelState extends State<AdminPanel>
             bottomTitles: AxisTitles(
               sideTitles: SideTitles(
                 showTitles: true,
-                reservedSize: 25,
+                reservedSize: isSmallScreen ? 20 : 25,
                 interval: 1,
                 getTitlesWidget: (value, meta) {
                   if (value < 0 || value >= datos.length) return const Text('');
                   return SideTitleWidget(
                     axisSide: meta.axisSide,
-                    space: 6,
+                    space: isSmallScreen ? 4 : 6,
                     child: Text(
-                      _acortarEtiqueta(datos[value.toInt()].label, 8),
-                      style: const TextStyle(
+                      _acortarEtiqueta(
+                          datos[value.toInt()].label, isSmallScreen ? 6 : 8),
+                      style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        fontSize: 9,
+                        fontSize: isSmallScreen ? 8 : 9,
                         color: Colors.black87,
                       ),
                     ),
@@ -2619,17 +2666,17 @@ class _AdminPanelState extends State<AdminPanel>
             leftTitles: AxisTitles(
               sideTitles: SideTitles(
                 showTitles: true,
-                reservedSize: 40,
+                reservedSize: isSmallScreen ? 35 : 40,
                 interval: _calcularIntervaloY(datos),
                 getTitlesWidget: (value, meta) {
                   if (value % 1 == 0) {
                     return SideTitleWidget(
                       axisSide: meta.axisSide,
-                      space: 6,
+                      space: isSmallScreen ? 4 : 6,
                       child: Text(
                         value.toInt().toString(),
-                        style: const TextStyle(
-                          fontSize: 10,
+                        style: TextStyle(
+                          fontSize: isSmallScreen ? 9 : 10,
                           fontWeight: FontWeight.bold,
                           color: Colors.grey,
                         ),
@@ -2663,19 +2710,20 @@ class _AdminPanelState extends State<AdminPanel>
               }).toList(),
               isCurved: true,
               color: primaryTeal,
-              barWidth: 3.5,
+              barWidth: isSmallScreen ? 2.5 : 3.5,
               isStrokeCapRound: true,
               dotData: FlDotData(
                 show: true,
                 getDotPainter: (spot, percent, barData, index) {
-                  // Puntos destacados cuando son tocados
                   final bool isSelected = index == _lineSpotTouched;
                   return FlDotCirclePainter(
-                    radius: isSelected ? 8 : 5,
+                    radius: isSelected
+                        ? (isSmallScreen ? 6 : 8)
+                        : (isSmallScreen ? 4 : 5),
                     color: isSelected
                         ? secondaryOrange.withOpacity(0.8)
                         : secondaryOrange,
-                    strokeWidth: isSelected ? 3.0 : 2.0,
+                    strokeWidth: isSelected ? (isSmallScreen ? 2.5 : 3.0) : 2.0,
                     strokeColor: Colors.white,
                   );
                 },
@@ -2701,12 +2749,34 @@ class _AdminPanelState extends State<AdminPanel>
   }
 
   Widget _buildPieChart(List<ChartData> datos) {
-    // Calcular el total para obtener porcentajes
     final total = _calcularTotal(datos);
 
+    // Obtener información del contexto
+    final size = MediaQuery.of(context).size;
+    final isSmallScreen = size.width < 600;
+    final isMediumScreen = size.width >= 600 && size.width < 900;
+
+    // ✅ TAMAÑOS MÁS PEQUEÑOS Y RESPONSIVOS
+    double centerSpaceRadius;
+    double baseRadius;
+    double selectedRadius;
+
+    if (isSmallScreen) {
+      centerSpaceRadius = 20;
+      baseRadius = 65;
+      selectedRadius = 75;
+    } else if (isMediumScreen) {
+      centerSpaceRadius = 22;
+      baseRadius = 75;
+      selectedRadius = 90;
+    } else {
+      centerSpaceRadius = 25;
+      baseRadius = 85;
+      selectedRadius = 105;
+    }
+
     return Container(
-      padding: const EdgeInsets.all(4),
-      height: 300,
+      padding: EdgeInsets.all(isSmallScreen ? 4 : 8),
       child: PieChart(
         PieChartData(
           pieTouchData: PieTouchData(
@@ -2716,13 +2786,11 @@ class _AdminPanelState extends State<AdminPanel>
                   pieTouchResponse.touchedSection != null) {
                 final index =
                     pieTouchResponse.touchedSection!.touchedSectionIndex;
-
-                // Actualizar el estado para mostrar la sección seleccionada con animación
                 setState(() {
                   if (_pieChartIndex == index) {
-                    _pieChartIndex = -1; // Desactivar si ya estaba seleccionado
+                    _pieChartIndex = -1;
                   } else {
-                    _pieChartIndex = index; // Activar
+                    _pieChartIndex = index;
                   }
                 });
               }
@@ -2738,9 +2806,11 @@ class _AdminPanelState extends State<AdminPanel>
               color: data.color,
               value: data.value.toDouble(),
               title: '${porcentaje.toStringAsFixed(1)}%',
-              radius: isSelected ? 130 : 110,
+              radius: isSelected ? selectedRadius : baseRadius,
               titleStyle: TextStyle(
-                fontSize: isSelected ? 16 : 12,
+                fontSize: isSelected
+                    ? (isSmallScreen ? 11 : 14)
+                    : (isSmallScreen ? 9 : 11),
                 fontWeight: FontWeight.bold,
                 color:
                     _esColorOscuro(data.color) ? Colors.white : Colors.black87,
@@ -2752,28 +2822,28 @@ class _AdminPanelState extends State<AdminPanel>
                   ),
                 ],
               ),
-              badgeWidget: isSelected ? _buildBadge(data) : null,
-              badgePositionPercentageOffset: 1.05,
+              badgeWidget: isSelected ? _buildBadge(data, isSmallScreen) : null,
+              badgePositionPercentageOffset: isSmallScreen ? 1.2 : 1.1,
             );
           }).toList(),
           sectionsSpace: 1.5,
-          centerSpaceRadius: 30,
+          centerSpaceRadius: centerSpaceRadius,
           centerSpaceColor: Colors.white,
         ),
       ),
     );
   }
 
-  Widget _buildBadge(ChartData data) {
+  Widget _buildBadge(ChartData data, [bool isSmall = false]) {
     return Container(
-      padding: const EdgeInsets.all(6), // Reducido de 8 a 6
+      padding: EdgeInsets.all(isSmall ? 4 : 6),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(6),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.2),
-            spreadRadius: 0.5, // Reducido
+            spreadRadius: 0.5,
             blurRadius: 2,
             offset: const Offset(0, 1),
           ),
@@ -2787,14 +2857,17 @@ class _AdminPanelState extends State<AdminPanel>
             style: TextStyle(
               color: data.color,
               fontWeight: FontWeight.bold,
-              fontSize: 12, // Reducido de 14 a 12
+              fontSize: isSmall ? 9 : 12,
             ),
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
           ),
           Text(
             data.value.toString(),
             style: TextStyle(
               color: Colors.grey.shade800,
-              fontSize: 11, // Tamaño pequeño
+              fontSize: isSmall ? 8 : 11,
             ),
           ),
         ],
@@ -3418,28 +3491,43 @@ class _AdminPanelState extends State<AdminPanel>
 
   DateTime? _convertirFecha(dynamic fecha) {
     try {
-      // Si es un documento completo (Map), extraer el campo 'fecha'
+      // Si es un documento completo (Map), extraer el campo de fecha apropiado
       if (fecha is Map<String, dynamic>) {
-        // ✅ VERIFICAR QUE EXISTE EL CAMPO 'fecha'
-        if (!fecha.containsKey('fecha') || fecha['fecha'] == null) {
-          print('⚠️ Documento sin campo "fecha" válido');
-          return null;
+        // ✅ PRIORIDAD 1: Intentar con 'createdAt' (para social_profiles)
+        if (fecha.containsKey('createdAt') && fecha['createdAt'] != null) {
+          final createdAtCampo = fecha['createdAt'];
+
+          // Si es String ISO8601 (formato de social_profiles)
+          if (createdAtCampo is String) {
+            try {
+              return DateTime.parse(createdAtCampo);
+            } catch (e) {
+              print('⚠️ Error parseando createdAt String: $e');
+            }
+          }
+
+          // Si es Timestamp
+          if (createdAtCampo is Timestamp) {
+            return createdAtCampo.toDate();
+          }
         }
 
-        final fechaCampo = fecha['fecha'];
+        // ✅ PRIORIDAD 2: Intentar con 'fecha' (para registros)
+        if (fecha.containsKey('fecha') && fecha['fecha'] != null) {
+          final fechaCampo = fecha['fecha'];
 
-        // ✅ INTENTAR CONVERSIÓN DESDE TIMESTAMP
-        if (fechaCampo is Timestamp) {
-          return fechaCampo.toDate();
+          // Si es Timestamp
+          if (fechaCampo is Timestamp) {
+            return fechaCampo.toDate();
+          }
+
+          // Si es String
+          if (fechaCampo is String) {
+            return DateTime.tryParse(fechaCampo);
+          }
         }
 
-        // ✅ INTENTAR CONVERSIÓN DESDE STRING
-        if (fechaCampo is String) {
-          return DateTime.tryParse(fechaCampo);
-        }
-
-        print(
-            '⚠️ Campo "fecha" no es Timestamp ni String válido: ${fechaCampo.runtimeType}');
+        print('⚠️ Documento sin campo "fecha" o "createdAt" válido');
         return null;
       }
 
