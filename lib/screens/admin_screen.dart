@@ -510,6 +510,9 @@ class _AdminPanelState extends State<AdminPanel>
               ),
             ),
           ),
+          // REEMPLAZA tu bloque completo de `title: _isSearching ...` (tal como lo tienes ahora)
+// POR ESTE BLOQUE EXACTO (va dentro del mismo AppBar, en el mismo lugar del `title:`):
+
           title: _isSearching
               ? TextField(
                   controller: _searchController,
@@ -518,6 +521,7 @@ class _AdminPanelState extends State<AdminPanel>
                     hintText: "Buscar por nombre o apellido...",
                     border: InputBorder.none,
                     hintStyle: TextStyle(color: Colors.white70),
+                    isCollapsed: true,
                   ),
                   style: const TextStyle(color: Colors.white),
                   onChanged: (value) {
@@ -526,14 +530,78 @@ class _AdminPanelState extends State<AdminPanel>
                     });
                   },
                 )
-              : const Text(
-                  'Panel de Administración',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                    fontSize: 20,
-                  ),
+              : LayoutBuilder(
+                  builder: (context, constraints) {
+                    const String text = 'Panel de Control de Consolidación';
+
+                    final double w = constraints.maxWidth;
+
+                    // En pantallas pequeñas permite 2 líneas para que no se vea diminuto ni cortado.
+                    final int maxLines = w < 420 ? 2 : 1;
+
+                    // En pantallas grandes permite crecer un poco más.
+                    final double maxFontSize = w >= 1200
+                        ? 28
+                        : w >= 900
+                            ? 26
+                            : w >= 600
+                                ? 24
+                                : 22;
+
+                    // Evita que se vaya demasiado abajo en móviles.
+                    final double minFontSize = w < 320 ? 12 : 13;
+
+                    const TextStyle baseStyle = TextStyle(
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.2,
+                      height: 1.12,
+                      color: Colors.white,
+                      shadows: [
+                        Shadow(
+                          offset: Offset(0, 1),
+                          blurRadius: 2,
+                          color: Colors.black26,
+                        ),
+                      ],
+                    );
+
+                    double low = minFontSize;
+                    double high = maxFontSize;
+                    double best = minFontSize;
+
+                    // Ajuste automático real: encuentra el mayor tamaño de fuente que quepa
+                    // en 1 o 2 líneas según el ancho disponible.
+                    while ((high - low) > 0.1) {
+                      final double mid = (low + high) / 2;
+
+                      final TextPainter painter = TextPainter(
+                        text: TextSpan(
+                          text: text,
+                          style: baseStyle.copyWith(fontSize: mid),
+                        ),
+                        maxLines: maxLines,
+                        textDirection: Directionality.of(context),
+                        ellipsis: '…',
+                      )..layout(maxWidth: w);
+
+                      if (!painter.didExceedMaxLines) {
+                        best = mid;
+                        low = mid;
+                      } else {
+                        high = mid;
+                      }
+                    }
+
+                    return Text(
+                      text,
+                      maxLines: maxLines,
+                      softWrap: true,
+                      overflow: TextOverflow.ellipsis,
+                      style: baseStyle.copyWith(fontSize: best),
+                    );
+                  },
                 ),
+
           actions: [
             IconButton(
               icon: Icon(_isSearching ? Icons.close : Icons.search,
@@ -550,8 +618,10 @@ class _AdminPanelState extends State<AdminPanel>
                   }
                 });
               },
+              tooltip: _isSearching ? 'Cerrar búsqueda' : 'Buscar',
             ),
-            // Botón de cerrar sesión mejorado
+
+            // Botón de cerrar sesión (se escala automáticamente si falta espacio)
             Padding(
               padding: const EdgeInsets.only(right: 8.0),
               child: Container(
@@ -571,24 +641,28 @@ class _AdminPanelState extends State<AdminPanel>
                     child: Padding(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 8, vertical: 6),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.logout_rounded,
-                            color: Colors.white,
-                            size: 16,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            'Salir',
-                            style: TextStyle(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.center,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: const [
+                            Icon(
+                              Icons.logout_rounded,
                               color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
+                              size: 16,
                             ),
-                          ),
-                        ],
+                            SizedBox(width: 4),
+                            Text(
+                              'Salir',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -596,6 +670,7 @@ class _AdminPanelState extends State<AdminPanel>
               ),
             ),
           ],
+
           bottom: TabBar(
             indicatorColor: secondaryOrange,
             indicatorWeight: 4,
@@ -2463,7 +2538,7 @@ class _AdminPanelState extends State<AdminPanel>
               Icon(Icons.church, color: primaryTeal, size: 20),
               const SizedBox(width: 8),
               Text(
-                'Panel de Administración',
+                'Panel de Control de Consolidación',
                 style: TextStyle(
                   fontSize: 14,
                   color: primaryTeal,
