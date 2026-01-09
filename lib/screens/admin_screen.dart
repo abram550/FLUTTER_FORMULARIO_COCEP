@@ -3636,41 +3636,50 @@ class _AdminPanelState extends State<AdminPanel>
               surface: Colors.white,
               onSurface: primaryTeal,
             ),
-          ),
-          child: child!,
-        );
-      },
-    );
-
-    if (picked != null) {
-      setState(() {
-        _startDate = picked.start;
-        _endDate = picked.end;
-      });
-    }
-  }
-
-  Future<void> _selectDateRangeWithMonth(BuildContext context) async {
-    final DateTimeRange? picked = await showDateRangePicker(
-      context: context,
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2101),
-      initialDateRange: _startDate != null && _endDate != null
-          ? DateTimeRange(start: _startDate!, end: _endDate!)
-          : null,
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: ColorScheme.light(
-              primary: primaryTeal,
-              onPrimary: Colors.white,
-              surface: Colors.white,
-              onSurface: primaryTeal,
+            dialogBackgroundColor: Colors.white,
+            textButtonTheme: TextButtonThemeData(
+              style: TextButton.styleFrom(
+                foregroundColor: primaryTeal,
+                textStyle: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                ),
+              ),
             ),
+            dividerColor: primaryTeal.withOpacity(0.2),
           ),
-          child: child!,
+          child: Column(
+            children: [
+              Expanded(
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        primaryTeal.withOpacity(0.05),
+                        Colors.white,
+                      ],
+                    ),
+                  ),
+                  child: child,
+                ),
+              ),
+            ],
+          ),
         );
       },
+      helpText: 'SELECCIONAR RANGO DE FECHAS',
+      cancelText: 'Cancelar',
+      confirmText: 'Aplicar',
+      saveText: 'Guardar',
+      errorFormatText: 'Formato inválido',
+      errorInvalidText: 'Fecha fuera de rango',
+      errorInvalidRangeText: 'Rango inválido',
+      fieldStartHintText: 'Fecha inicio',
+      fieldEndHintText: 'Fecha fin',
+      fieldStartLabelText: 'Desde',
+      fieldEndLabelText: 'Hasta',
     );
 
     if (picked != null) {
@@ -3678,6 +3687,48 @@ class _AdminPanelState extends State<AdminPanel>
         _startDate = picked.start;
         _endDate = picked.end;
       });
+
+      // Aplicar filtros automáticamente
+      _filtrarRegistros();
+
+      // Mostrar confirmación visual
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.check_circle,
+                  color: Colors.white,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Filtro aplicado: ${DateFormat('dd/MM/yyyy').format(picked.start)} - ${DateFormat('dd/MM/yyyy').format(picked.end)}',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: primaryTeal,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          margin: const EdgeInsets.all(16),
+          duration: const Duration(seconds: 3),
+        ),
+      );
     }
   }
 
@@ -3719,6 +3770,11 @@ class _AdminPanelState extends State<AdminPanel>
                 doc.data() as Map<String, dynamic>, doc.id))
             .toList();
       } else if (_startDate != null && _endDate != null) {
+        // Validación de seguridad adicional
+        if (_startDate == null || _endDate == null) {
+          throw Exception('Error interno: Fechas nulas inesperadas');
+        }
+
         // Definir las variables para el rango de fechas
         final fechaInicio =
             DateTime(_startDate!.year, _startDate!.month, _startDate!.day);
@@ -3740,7 +3796,7 @@ class _AdminPanelState extends State<AdminPanel>
         // ✅ APLICAR FILTRO POR TIPO SI ESTÁ ACTIVO
         if (_filtroTipoRegistro != null) {
           registrosParaExportar = registrosParaExportar.where((registro) {
-            final tipoRegistro = registro.tipo?.toLowerCase();
+            final tipoRegistro = registro.tipo?.toLowerCase() ?? '';
             return tipoRegistro == _filtroTipoRegistro;
           }).toList();
         }
@@ -4255,41 +4311,154 @@ class _AdminPanelState extends State<AdminPanel>
 
   Widget _buildDateRangeSelector() {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.grey[100],
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            primaryTeal.withOpacity(0.05),
+            secondaryOrange.withOpacity(0.05),
+          ],
+        ),
         borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: primaryTeal.withOpacity(0.3)),
+        border: Border.all(
+          color: _startDate != null && _endDate != null
+              ? primaryTeal
+              : primaryTeal.withOpacity(0.3),
+          width: _startDate != null && _endDate != null ? 2 : 1.5,
+        ),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Text(
-              _startDate != null && _endDate != null
-                  ? 'Del ${DateFormat('dd/MM/yyyy').format(_startDate!)} al ${DateFormat('dd/MM/yyyy').format(_endDate!)}'
-                  : 'Selecciona un rango de fechas',
-              style: TextStyle(
-                color: Colors.grey[800],
-                fontSize: 16,
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: primaryTeal.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  Icons.date_range,
+                  color: primaryTeal,
+                  size: 22,
+                ),
               ),
-            ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Rango de Fechas',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: primaryTeal,
+                      ),
+                    ),
+                    if (_startDate != null && _endDate != null)
+                      Text(
+                        'Del ${DateFormat('dd/MM/yyyy').format(_startDate!)} al ${DateFormat('dd/MM/yyyy').format(_endDate!)}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[600],
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              if (_startDate != null && _endDate != null)
+                Container(
+                  decoration: BoxDecoration(
+                    color: secondaryOrange.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: IconButton(
+                    icon: Icon(
+                      Icons.clear,
+                      color: secondaryOrange,
+                      size: 20,
+                    ),
+                    onPressed: _limpiarFiltro,
+                    tooltip: 'Limpiar filtro de fecha',
+                    padding: const EdgeInsets.all(8),
+                    constraints: const BoxConstraints(),
+                  ),
+                ),
+            ],
           ),
-          const SizedBox(width: 12),
-          ElevatedButton.icon(
-            onPressed: () => _selectDateRange(context),
-            icon: const Icon(Icons.date_range),
-            label: const Text('Seleccionar'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: primaryTeal,
-              padding: const EdgeInsets.symmetric(
-                horizontal: 20,
-                vertical: 12,
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () => _selectDateRange(context),
+                  icon: Icon(
+                    _startDate != null && _endDate != null
+                        ? Icons.edit_calendar
+                        : Icons.calendar_today,
+                    size: 20,
+                  ),
+                  label: Text(
+                    _startDate != null && _endDate != null
+                        ? 'Cambiar Fechas'
+                        : 'Seleccionar Fechas',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: primaryTeal,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 2,
+                  ),
+                ),
               ),
-              shape: RoundedRectangleBorder(
+            ],
+          ),
+          if (_startDate != null && _endDate != null) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.green.shade50,
                 borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: Colors.green.shade200,
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.check_circle,
+                    color: Colors.green.shade700,
+                    size: 18,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Filtro aplicado: Mostrando registros del rango seleccionado',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.green.shade900,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
-          ),
+          ],
         ],
       ),
     );
@@ -4351,8 +4520,8 @@ class _AdminPanelState extends State<AdminPanel>
         ),
         child: Column(
           children: [
-            _buildBuscadorFechas(),
-            _buildFiltroTipoRegistro(), // ← NUEVO: Filtro por tipo
+            // ELIMINADO: _buildBuscadorFechas() - Ya no se necesita aquí
+            _buildFiltroTipoRegistro(),
             StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance
                   .collection('registros')
@@ -4846,7 +5015,16 @@ class _AdminPanelState extends State<AdminPanel>
   }
 
   void _filtrarRegistros() {
-    if (_startDate == null || _endDate == null) return;
+    // Validación de seguridad
+    if (_startDate == null || _endDate == null) {
+      print('⚠️ No se puede filtrar: fechas nulas');
+      return;
+    }
+
+    print('\n🔍 === INICIANDO FILTRADO DE REGISTROS ===');
+    print('📅 Fecha inicio: ${DateFormat('dd/MM/yyyy').format(_startDate!)}');
+    print('📅 Fecha fin: ${DateFormat('dd/MM/yyyy').format(_endDate!)}');
+    print('🏷️ Filtro tipo: ${_filtroTipoRegistro ?? "ninguno"}');
 
     final registrosFiltrados =
         Map<int, Map<int, Map<DateTime, List<Registro>>>>.from({});
@@ -4861,7 +5039,8 @@ class _AdminPanelState extends State<AdminPanel>
             List<Registro> registrosFiltradosPorTipo = registros;
             if (_filtroTipoRegistro != null) {
               registrosFiltradosPorTipo = registros.where((registro) {
-                final tipoRegistro = registro.tipo?.toLowerCase();
+                // Manejo seguro del tipo
+                final tipoRegistro = registro.tipo?.toLowerCase() ?? '';
                 return tipoRegistro == _filtroTipoRegistro;
               }).toList();
             }
@@ -4876,6 +5055,9 @@ class _AdminPanelState extends State<AdminPanel>
         });
       });
     });
+
+    print('✅ Registros filtrados: ${registrosFiltrados.length} años');
+    print('🏁 === FIN FILTRADO ===\n');
 
     setState(() {
       _registrosFiltrados = registrosFiltrados;
@@ -4916,6 +5098,45 @@ class _AdminPanelState extends State<AdminPanel>
       _mostrarFiltroExportacion = true;
       _mostrarFiltroTipo = true;
     });
+
+    // Confirmación visual
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.refresh,
+                color: Colors.white,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text(
+                'Filtros eliminados - Mostrando todos los registros',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: secondaryOrange,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        margin: const EdgeInsets.all(16),
+        duration: const Duration(seconds: 2),
+      ),
+    );
   }
 
   Widget _buildAnioGroup(
