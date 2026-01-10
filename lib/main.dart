@@ -1,29 +1,42 @@
+// Dart SDK
 import 'dart:async';
+
+// Flutter
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+
+// Firebase
 import 'package:firebase_core/firebase_core.dart';
-import 'package:formulario_app/screens/ministerio_lider_screen.dart';
-import 'package:formulario_app/screens/splash_screen.dart';
-import 'package:formulario_app/utils/migrate_services.dart';
-import 'package:provider/provider.dart';
-import 'package:formulario_app/providers/app_provider.dart';
-import 'package:formulario_app/utils/error_handler.dart';
-import 'package:formulario_app/firebase_options.dart';
-import 'package:formulario_app/services/sync_service.dart';
-import 'package:formulario_app/services/database_service.dart';
-import 'package:formulario_app/services/auth_service.dart'; // 🆕 AGREGAR ESTA LÍNEA
-import 'package:formulario_app/screens/admin_pastores.dart';
-import 'package:formulario_app/screens/login_screen.dart';
-import 'package:formulario_app/screens/social_profile_screen.dart';
-import 'package:formulario_app/screens/TimoteosScreen.dart';
-import 'package:formulario_app/screens/form_screen.dart';
-import 'package:formulario_app/screens/CoordinadorScreen.dart';
-import 'package:formulario_app/screens/admin_screen.dart';
-import 'package:formulario_app/screens/TribusScreen.dart';
-import 'package:go_router/go_router.dart';
-import 'package:intl/date_symbol_data_local.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+
+// Paquetes externos
+import 'package:go_router/go_router.dart';
+import 'package:intl/date_symbol_data_local.dart';
+import 'package:provider/provider.dart';
+
+// Proyecto – configuración y utils
+import 'package:formulario_app/firebase_options.dart';
+import 'package:formulario_app/providers/app_provider.dart';
+import 'package:formulario_app/utils/error_handler.dart';
+import 'package:formulario_app/utils/migrate_services.dart';
+
+// Proyecto – servicios
+import 'package:formulario_app/services/auth_service.dart'; // 🆕 AGREGAR ESTA LÍNEA
+import 'package:formulario_app/services/database_service.dart';
+import 'package:formulario_app/services/sync_service.dart';
+
+// Proyecto – screens
+import 'package:formulario_app/screens/splash_screen.dart';
+import 'package:formulario_app/screens/login_screen.dart';
+import 'package:formulario_app/screens/form_screen.dart';
+import 'package:formulario_app/screens/social_profile_screen.dart';
+import 'package:formulario_app/screens/ministerio_lider_screen.dart';
+import 'package:formulario_app/screens/admin_screen.dart';
+import 'package:formulario_app/screens/admin_pastores.dart';
+import 'package:formulario_app/screens/TimoteosScreen.dart';
+import 'package:formulario_app/screens/CoordinadorScreen.dart';
+import 'package:formulario_app/screens/TribusScreen.dart';
 
 // =============================================================================
 // 🆕 NUEVA CLASE: Servicio de Limpieza Automática de Eventos

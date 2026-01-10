@@ -1,11 +1,18 @@
+// Flutter
 import 'package:flutter/material.dart';
-import 'package:formulario_app/screens/TimoteosScreen.dart';
-import 'package:formulario_app/screens/admin_screen.dart';
+
+// Paquetes externos
+import 'package:go_router/go_router.dart';
+
+// Proyecto
 import 'package:formulario_app/services/auth_service.dart';
 import 'package:formulario_app/utils/error_handler.dart';
-import 'package:go_router/go_router.dart';
-import 'TribusScreen.dart';
+import 'package:formulario_app/screens/TimoteosScreen.dart';
+import 'package:formulario_app/screens/admin_screen.dart';
+
+// Locales
 import 'CoordinadorScreen.dart';
+import 'TribusScreen.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});

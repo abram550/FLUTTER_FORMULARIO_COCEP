@@ -1,9 +1,16 @@
+// Dart SDK
 import 'dart:io';
+
+// Flutter
+import 'package:flutter/foundation.dart' show kIsWeb;
+
+// Paquetes externos
 import 'package:excel/excel.dart';
+import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:universal_html/html.dart' as html;
-import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:intl/intl.dart';
+
+// Proyecto / Locales
 import '../models/registro.dart';
 import '../models/social_profile.dart';
 

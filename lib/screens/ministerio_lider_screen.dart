@@ -1,8 +1,15 @@
+// Dart SDK
 import 'dart:async';
-import 'package:cloud_firestore/cloud_firestore.dart';
+
+// Flutter
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:flutter/gestures.dart';
+
+// Paquetes externos
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:go_router/go_router.dart';
+
+// Locales
 import 'TribusScreen.dart' hide showDialog;
 
 class MinisterioLiderScreen extends StatefulWidget {
@@ -2238,328 +2245,333 @@ class _MinisterioLiderScreenState extends State<MinisterioLiderScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: backgroundColor,
-appBar: AppBar(
-  elevation: 0,
-  backgroundColor: primaryColor,
-  automaticallyImplyLeading: true,
-  iconTheme: IconThemeData(color: Colors.white),
-  flexibleSpace: Container(
-    decoration: BoxDecoration(
-      gradient: LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [
-          primaryColor,
-          primaryColor.withOpacity(0.85),
-        ],
-      ),
-    ),
-  ),
-  toolbarHeight: MediaQuery.of(context).size.height * 0.08,
-  title: LayoutBuilder(
-    builder: (context, constraints) {
-      final screenWidth = MediaQuery.of(context).size.width;
-      final isSmallScreen = screenWidth < 400;
-      final isMediumScreen = screenWidth >= 400 && screenWidth < 600;
-      
-      // Dividir el nombre del ministerio en líneas si es necesario
-      final ministerioTexto = widget.ministerio;
-      final palabras = ministerioTexto.split(' ');
-      
-      // Determinar si necesitamos dividir en dos líneas
-      final necesitaDosLineas = palabras.length > 2 && isSmallScreen;
-      
-      return Row(
-        children: [
-          // Ícono animado del ministerio
-          Hero(
-            tag: 'ministerio_icon_${widget.ministerio}',
-            child: Container(
-              padding: EdgeInsets.all(isSmallScreen ? 8 : 10),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    secondaryColor,
-                    accentColor,
-                  ],
-                ),
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.2),
-                    blurRadius: 8,
-                    offset: Offset(0, 3),
-                  ),
-                ],
-              ),
-              child: Icon(
-                widget.ministerio.contains('Damas') 
-                    ? Icons.woman 
-                    : Icons.man,
-                color: Colors.white,
-                size: isSmallScreen ? 22 : 26,
-              ),
-            ),
-          ),
-          SizedBox(width: isSmallScreen ? 10 : 14),
-          
-          // Título del ministerio responsivo
-          Expanded(
-            child: necesitaDosLineas
-                ? Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        palabras.length >= 2 
-                            ? '${palabras[0]} ${palabras[1]}'
-                            : palabras[0],
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.95),
-                          fontWeight: FontWeight.w600,
-                          fontSize: 14,
-                          height: 1.1,
-                          letterSpacing: 0.3,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      SizedBox(height: 2),
-                      Text(
-                        palabras.length > 2
-                            ? palabras.sublist(2).join(' ')
-                            : '',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 15,
-                          height: 1.1,
-                          letterSpacing: 0.4,
-                          shadows: [
-                            Shadow(
-                              offset: Offset(0, 1),
-                              blurRadius: 3,
-                              color: Colors.black.withOpacity(0.2),
-                            ),
-                          ],
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  )
-                : Text(
-                    ministerioTexto,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: isSmallScreen ? 16 : (isMediumScreen ? 18 : 20),
-                      letterSpacing: 0.5,
-                      shadows: [
-                        Shadow(
-                          offset: Offset(0, 1),
-                          blurRadius: 3,
-                          color: Colors.black.withOpacity(0.3),
-                        ),
-                      ],
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-          ),
-          
-          SizedBox(width: isSmallScreen ? 6 : 8),
-          
-          // Botón de cerrar sesión mejorado
-          Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Colors.white.withOpacity(0.25),
-                  Colors.white.withOpacity(0.15),
-                ],
-              ),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: Colors.white.withOpacity(0.6),
-                width: 1.5,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.15),
-                  blurRadius: 6,
-                  offset: Offset(0, 3),
-                ),
-              ],
-            ),
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: _confirmarCerrarSesion,
-                borderRadius: BorderRadius.circular(12),
-                child: Padding(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: isSmallScreen ? 8 : 12,
-                    vertical: isSmallScreen ? 8 : 10,
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.logout_rounded,
-                        color: Colors.white,
-                        size: isSmallScreen ? 18 : 20,
-                      ),
-                      if (!isSmallScreen) ...[
-                        SizedBox(width: 6),
-                        Text(
-                          'Salir',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                            shadows: [
-                              Shadow(
-                                offset: Offset(0, 1),
-                                blurRadius: 2,
-                                color: Colors.black.withOpacity(0.3),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      );
-    },
-  ),
-  shape: RoundedRectangleBorder(
-    borderRadius: BorderRadius.vertical(
-      bottom: Radius.circular(20),
-    ),
-  ),
-  bottom: PreferredSize(
-    preferredSize: Size.fromHeight(60),
-    child: Container(
-      margin: EdgeInsets.fromLTRB(16, 0, 16, 12),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.15),
-        borderRadius: BorderRadius.circular(15),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.3),
-          width: 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 8,
-            offset: Offset(0, 3),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(15),
-        child: TabBar(
-          controller: _tabController,
-          indicator: BoxDecoration(
+      appBar: AppBar(
+        elevation: 0,
+        backgroundColor: primaryColor,
+        automaticallyImplyLeading: true,
+        iconTheme: IconThemeData(color: Colors.white),
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                Colors.white,
-                Colors.white.withOpacity(0.95),
+                primaryColor,
+                primaryColor.withOpacity(0.85),
               ],
             ),
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: secondaryColor.withOpacity(0.3),
-                blurRadius: 8,
-                offset: Offset(0, 2),
-              ),
-            ],
           ),
-          indicatorPadding: EdgeInsets.all(4),
-          labelColor: primaryColor,
-          unselectedLabelColor: Colors.white,
-          labelStyle: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: MediaQuery.of(context).size.width < 400 ? 13 : 15,
-            letterSpacing: 0.3,
-          ),
-          unselectedLabelStyle: TextStyle(
-            fontWeight: FontWeight.w500,
-            fontSize: MediaQuery.of(context).size.width < 400 ? 12 : 14,
-          ),
-          splashBorderRadius: BorderRadius.circular(12),
-          tabs: [
-            Tab(
-              height: 50,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    padding: EdgeInsets.all(6),
+        ),
+        toolbarHeight: MediaQuery.of(context).size.height * 0.08,
+        title: LayoutBuilder(
+          builder: (context, constraints) {
+            final screenWidth = MediaQuery.of(context).size.width;
+            final isSmallScreen = screenWidth < 400;
+            final isMediumScreen = screenWidth >= 400 && screenWidth < 600;
+
+            // Dividir el nombre del ministerio en líneas si es necesario
+            final ministerioTexto = widget.ministerio;
+            final palabras = ministerioTexto.split(' ');
+
+            // Determinar si necesitamos dividir en dos líneas
+            final necesitaDosLineas = palabras.length > 2 && isSmallScreen;
+
+            return Row(
+              children: [
+                // Ícono animado del ministerio
+                Hero(
+                  tag: 'ministerio_icon_${widget.ministerio}',
+                  child: Container(
+                    padding: EdgeInsets.all(isSmallScreen ? 8 : 10),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(8),
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          secondaryColor,
+                          accentColor,
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.2),
+                          blurRadius: 8,
+                          offset: Offset(0, 3),
+                        ),
+                      ],
                     ),
                     child: Icon(
-                      Icons.groups,
-                      size: MediaQuery.of(context).size.width < 400 ? 18 : 20,
+                      widget.ministerio.contains('Damas')
+                          ? Icons.woman
+                          : Icons.man,
+                      color: Colors.white,
+                      size: isSmallScreen ? 22 : 26,
                     ),
                   ),
-                  SizedBox(width: 8),
-                  Flexible(
-                    child: Text(
-                      'Tribus',
-                      overflow: TextOverflow.ellipsis,
+                ),
+                SizedBox(width: isSmallScreen ? 10 : 14),
+
+                // Título del ministerio responsivo
+                Expanded(
+                  child: necesitaDosLineas
+                      ? Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              palabras.length >= 2
+                                  ? '${palabras[0]} ${palabras[1]}'
+                                  : palabras[0],
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.95),
+                                fontWeight: FontWeight.w600,
+                                fontSize: 14,
+                                height: 1.1,
+                                letterSpacing: 0.3,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            SizedBox(height: 2),
+                            Text(
+                              palabras.length > 2
+                                  ? palabras.sublist(2).join(' ')
+                                  : '',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 15,
+                                height: 1.1,
+                                letterSpacing: 0.4,
+                                shadows: [
+                                  Shadow(
+                                    offset: Offset(0, 1),
+                                    blurRadius: 3,
+                                    color: Colors.black.withOpacity(0.2),
+                                  ),
+                                ],
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        )
+                      : Text(
+                          ministerioTexto,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize:
+                                isSmallScreen ? 16 : (isMediumScreen ? 18 : 20),
+                            letterSpacing: 0.5,
+                            shadows: [
+                              Shadow(
+                                offset: Offset(0, 1),
+                                blurRadius: 3,
+                                color: Colors.black.withOpacity(0.3),
+                              ),
+                            ],
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                ),
+
+                SizedBox(width: isSmallScreen ? 6 : 8),
+
+                // Botón de cerrar sesión mejorado
+                Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        Colors.white.withOpacity(0.25),
+                        Colors.white.withOpacity(0.15),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: Colors.white.withOpacity(0.6),
+                      width: 1.5,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.15),
+                        blurRadius: 6,
+                        offset: Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: _confirmarCerrarSesion,
+                      borderRadius: BorderRadius.circular(12),
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: isSmallScreen ? 8 : 12,
+                          vertical: isSmallScreen ? 8 : 10,
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.logout_rounded,
+                              color: Colors.white,
+                              size: isSmallScreen ? 18 : 20,
+                            ),
+                            if (!isSmallScreen) ...[
+                              SizedBox(width: 6),
+                              Text(
+                                'Salir',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  shadows: [
+                                    Shadow(
+                                      offset: Offset(0, 1),
+                                      blurRadius: 2,
+                                      color: Colors.black.withOpacity(0.3),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(
+            bottom: Radius.circular(20),
+          ),
+        ),
+        bottom: PreferredSize(
+          preferredSize: Size.fromHeight(60),
+          child: Container(
+            margin: EdgeInsets.fromLTRB(16, 0, 16, 12),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(15),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.3),
+                width: 1,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 8,
+                  offset: Offset(0, 3),
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(15),
+              child: TabBar(
+                controller: _tabController,
+                indicator: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Colors.white,
+                      Colors.white.withOpacity(0.95),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: secondaryColor.withOpacity(0.3),
+                      blurRadius: 8,
+                      offset: Offset(0, 2),
+                    ),
+                  ],
+                ),
+                indicatorPadding: EdgeInsets.all(4),
+                labelColor: primaryColor,
+                unselectedLabelColor: Colors.white,
+                labelStyle: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: MediaQuery.of(context).size.width < 400 ? 13 : 15,
+                  letterSpacing: 0.3,
+                ),
+                unselectedLabelStyle: TextStyle(
+                  fontWeight: FontWeight.w500,
+                  fontSize: MediaQuery.of(context).size.width < 400 ? 12 : 14,
+                ),
+                splashBorderRadius: BorderRadius.circular(12),
+                tabs: [
+                  Tab(
+                    height: 50,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          padding: EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(
+                            Icons.groups,
+                            size: MediaQuery.of(context).size.width < 400
+                                ? 18
+                                : 20,
+                          ),
+                        ),
+                        SizedBox(width: 8),
+                        Flexible(
+                          child: Text(
+                            'Tribus',
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Tab(
+                    height: 50,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          padding: EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(
+                            Icons.people,
+                            size: MediaQuery.of(context).size.width < 400
+                                ? 18
+                                : 20,
+                          ),
+                        ),
+                        SizedBox(width: 8),
+                        Flexible(
+                          child: Text(
+                            'Personas',
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
               ),
             ),
-            Tab(
-              height: 50,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    padding: EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(
-                      Icons.people,
-                      size: MediaQuery.of(context).size.width < 400 ? 18 : 20,
-                    ),
-                  ),
-                  SizedBox(width: 8),
-                  Flexible(
-                    child: Text(
-                      'Personas',
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
+          ),
         ),
       ),
-    ),
-  ),
-),
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(

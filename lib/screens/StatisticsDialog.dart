@@ -1,12 +1,19 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+// Dart SDK
+import 'dart:typed_data';
+import 'dart:ui' as ui;
+import 'dart:html' as html;
+
+// Flutter
 import 'package:flutter/material.dart';
+
+// Firebase
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+// Paquetes externos
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:screenshot/screenshot.dart';
-import 'dart:typed_data';
-import 'dart:html' as html;
-import 'dart:ui' as ui;
 
 class StatisticsDialog extends StatefulWidget {
   const StatisticsDialog({Key? key}) : super(key: key);

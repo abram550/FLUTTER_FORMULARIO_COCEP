@@ -1,9 +1,16 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:excel/excel.dart';
-import 'dart:html' as html;
-import 'dart:typed_data';
-import 'package:flutter/material.dart';
+// Dart SDK
 import 'dart:async';
+import 'dart:typed_data';
+import 'dart:html' as html;
+
+// Flutter
+import 'package:flutter/material.dart';
+
+// Firebase
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+// Paquetes externos
+import 'package:excel/excel.dart';
 
 class ExcelExporter {
   // Definición de los campos que queremos exportar

@@ -1,9 +1,16 @@
+// Dart SDK
 import 'dart:convert';
+
+// Firebase
 import 'package:cloud_firestore/cloud_firestore.dart';
+
+// Paquetes externos
 import 'package:crypto/crypto.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+// Proyecto
 import 'package:formulario_app/services/credentials_service.dart';
 import 'package:formulario_app/utils/error_handler.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthService {
   static final AuthService _instance = AuthService._internal();

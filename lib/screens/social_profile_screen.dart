@@ -1,6 +1,11 @@
+// Flutter
 import 'package:flutter/material.dart';
+
+// Paquetes externos
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+
+// Proyecto / Locales
 import '../models/social_profile.dart';
 
 class SocialProfileScreen extends StatefulWidget {

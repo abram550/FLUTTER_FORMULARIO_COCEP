@@ -1,14 +1,23 @@
-import 'dart:math';
+// Dart SDK
 import 'dart:async';
+import 'dart:math';
+
+// Flutter
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
-import 'package:formulario_app/utils/email_service.dart';
-import 'package:intl/intl.dart';
+
+// Firebase
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+// Paquetes externos
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
-import 'package:flutter/gestures.dart';
+import 'package:intl/intl.dart';
+
+// Proyecto
+import 'package:formulario_app/utils/email_service.dart';
 
 // Constantes de color basadas en el logo
 const Color kPrimaryColor = Color(0xFF148B8D); // Color turquesa del logo

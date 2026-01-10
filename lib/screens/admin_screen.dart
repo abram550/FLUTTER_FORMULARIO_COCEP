@@ -1,21 +1,31 @@
-import 'dart:math';
+// Dart SDK
 import 'dart:async';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:math';
+import 'dart:typed_data';
+import 'dart:ui' as ui;
+
+// Flutter
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
+
+// Firebase
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+// Paquetes externos
+import 'package:fl_chart/fl_chart.dart';
+import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
+import 'package:screenshot/screenshot.dart';
+import 'package:universal_html/html.dart' as html;
+
+// Proyecto
 import 'package:formulario_app/models/registro.dart';
 import 'package:formulario_app/models/social_profile.dart';
 import 'package:formulario_app/services/firestore_service.dart';
 import 'package:formulario_app/services/excel_service.dart';
-import 'package:intl/intl.dart';
+
+// Locales
 import 'TribusScreen.dart';
-import 'package:fl_chart/fl_chart.dart';
-import 'package:go_router/go_router.dart';
-import 'package:flutter/gestures.dart';
-// NUEVOS IMPORTS PARA DESCARGAR GRÁFICAS
-import 'package:screenshot/screenshot.dart';
-import 'package:universal_html/html.dart' as html;
-import 'dart:ui' as ui;
-import 'dart:typed_data';
 
 class AdminPanel extends StatefulWidget {
   const AdminPanel({super.key});

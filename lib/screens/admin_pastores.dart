@@ -1,18 +1,28 @@
-import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+// Dart SDK
+import 'dart:async';
 import 'dart:convert';
+
+// Flutter
+import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
+
+// Firebase
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+// Paquetes externos
 import 'package:crypto/crypto.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
+
+// Proyecto
 import 'package:formulario_app/services/auth_service.dart';
 import 'package:formulario_app/services/credentials_service.dart';
-import 'package:go_router/go_router.dart';
+import 'package:formulario_app/screens/StatisticsDialog.dart';
+
+// Locales
 import 'TribusScreen.dart' hide showDialog;
 import 'admin_screen.dart';
-import 'package:fl_chart/fl_chart.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:formulario_app/screens/StatisticsDialog.dart';
-import 'dart:async';
-import 'package:flutter/gestures.dart';
-import 'package:intl/intl.dart';
 
 // Colors based on the COCEP logo
 const Color kPrimaryColor = Color(0xFF1B998B); // Turquoise

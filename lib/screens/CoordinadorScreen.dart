@@ -1,18 +1,29 @@
+// Dart SDK
+import 'dart:async';
+import 'dart:math';
+
+// Flutter
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/services.dart';
-import 'package:intl/intl.dart';
-import 'package:url_launcher/url_launcher.dart';
-import 'TimoteosScreen.dart';
-import '../utils/email_service.dart';
-import 'package:table_calendar/table_calendar.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
-import 'dart:async';
-import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter/gestures.dart';
-import 'dart:math';
+import 'package:flutter/services.dart';
+
+// Firebase
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+
+// Paquetes externos
+import 'package:google_fonts/google_fonts.dart';
+import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
+import 'package:table_calendar/table_calendar.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+// Proyecto
+import '../utils/email_service.dart';
+
+// Locales
+import 'TimoteosScreen.dart';
 
 // Color scheme based on the COCEP logo
 const kPrimaryColor = Color(0xFF1B8C8C); // Turquesa
