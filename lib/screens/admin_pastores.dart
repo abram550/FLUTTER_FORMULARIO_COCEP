@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
+import 'package:formulario_app/services/auth_service.dart';
 import 'package:formulario_app/services/credentials_service.dart';
 import 'package:go_router/go_router.dart';
 import 'TribusScreen.dart' hide showDialog;
@@ -11,6 +12,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:formulario_app/screens/StatisticsDialog.dart';
 import 'dart:async';
 import 'package:flutter/gestures.dart';
+import 'package:intl/intl.dart';
 
 // Colors based on the COCEP logo
 const Color kPrimaryColor = Color(0xFF1B998B); // Turquoise
@@ -50,6 +52,14 @@ class _AdminPastoresState extends State<AdminPastores>
   bool _existeLiderConsolidacion = false;
   String? categoriaSeleccionada;
 
+// NUEVAS VARIABLES DE BLOQUEO
+  int _intentosFallidos = 0;
+  DateTime? _tiempoBloqueo;
+  String? _horaBloqueo;
+  static const int _maxIntentos = 3;
+  static const Duration _duracionBloqueo = Duration(hours: 12);
+  Timer? _contadorBloqueoTimer;
+
   Timer? _inactivityTimer;
   static const Duration _inactivityDuration =
       Duration(minutes: 15); // Cambia aquí el tiempo si necesitas
@@ -60,11 +70,10 @@ class _AdminPastoresState extends State<AdminPastores>
     _tabController = TabController(length: 4, vsync: this);
     _verificarLiderConsolidacion();
     _resetInactivityTimer();
+    _cargarEstadoBloqueo(); // ✅ NUEVA LÍNEA
 
-    // Detectar interacciones del usuario para resetear el timer
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        // Detectar toques y gestos para resetear inactividad
         GestureBinding.instance.pointerRouter.addGlobalRoute((event) {
           if (mounted) {
             _resetInactivityTimer();
@@ -77,6 +86,7 @@ class _AdminPastoresState extends State<AdminPastores>
   @override
   void dispose() {
     _inactivityTimer?.cancel();
+    _contadorBloqueoTimer?.cancel(); // ✅ NUEVA LÍNEA
     _tabController.dispose();
     _nombreTribuController.dispose();
     _nombreLiderController.dispose();
@@ -218,6 +228,514 @@ class _AdminPastoresState extends State<AdminPastores>
     setState(() {
       _existeLiderConsolidacion = snapshot.docs.isNotEmpty;
     });
+  }
+
+// ✅ MÉTODO 1: Verificar si usuario está bloqueado
+  bool _estaUsuarioBloqueado() {
+    if (_tiempoBloqueo == null) return false;
+
+    final ahora = DateTime.now();
+    if (ahora.isBefore(_tiempoBloqueo!)) {
+      return true;
+    } else {
+      _tiempoBloqueo = null;
+      _horaBloqueo = null;
+      _intentosFallidos = 0;
+      _guardarEstadoBloqueo();
+      return false;
+    }
+  }
+
+  // ✅ MÉTODO 2: Calcular tiempo restante de bloqueo
+  Duration _tiempoRestanteBloqueo() {
+    if (_tiempoBloqueo == null) return Duration.zero;
+    final ahora = DateTime.now();
+    return _tiempoBloqueo!.difference(ahora);
+  }
+
+  // ✅ MÉTODO 3: Cargar estado de bloqueo desde Firestore
+
+  Future<void> _cargarEstadoBloqueo() async {
+    try {
+      final authService = AuthService();
+      String userId = await authService.getUserId();
+
+      // ✅ NUEVO: Si userId está vacío, obtener el rol y asignar ID específico
+      if (userId.isEmpty) {
+        final userRole = await authService.getCurrentUserRole();
+        if (userRole == 'adminPastores') {
+          userId = 'admin_cocep_unique_id';
+          print('✅ Usando ID fijo para admin: $userId');
+        } else {
+          print('⚠️ No se pudo obtener userId para rol: $userRole');
+          return;
+        }
+      }
+
+      print('🔍 Cargando estado de bloqueo para userId: $userId');
+
+      final doc = await FirebaseFirestore.instance
+          .collection('bloqueos_usuarios')
+          .doc(userId)
+          .get();
+
+      if (doc.exists) {
+        final data = doc.data()!;
+        final tiempoBloqueoTimestamp = data['tiempoBloqueo'] as Timestamp?;
+
+        if (tiempoBloqueoTimestamp != null) {
+          final tiempoBloqueoRecuperado = tiempoBloqueoTimestamp.toDate();
+          final horaBloqueoRecuperada = data['horaBloqueo'] as String?;
+          final intentosFallidosRecuperados =
+              data['intentosFallidos'] as int? ?? 0;
+
+          print('🔍 Bloqueo encontrado en Firestore:');
+          print('   - Tiempo bloqueo: $tiempoBloqueoRecuperado');
+          print('   - Hora bloqueo: $horaBloqueoRecuperada');
+          print('   - Intentos fallidos: $intentosFallidosRecuperados');
+
+          final ahora = DateTime.now();
+          if (ahora.isBefore(tiempoBloqueoRecuperado)) {
+            if (mounted) {
+              setState(() {
+                _tiempoBloqueo = tiempoBloqueoRecuperado;
+                _horaBloqueo = horaBloqueoRecuperada;
+                _intentosFallidos = intentosFallidosRecuperados;
+              });
+            }
+            print('🔒 Usuario sigue bloqueado hasta: $tiempoBloqueoRecuperado');
+          } else {
+            print('✅ El bloqueo ya expiró, limpiando estado...');
+            if (mounted) {
+              setState(() {
+                _tiempoBloqueo = null;
+                _horaBloqueo = null;
+                _intentosFallidos = 0;
+              });
+            }
+            await _guardarEstadoBloqueo();
+          }
+        }
+      } else {
+        print('ℹ️ No existe documento de bloqueo para este usuario');
+      }
+    } catch (e) {
+      print('❌ Error al cargar estado de bloqueo: $e');
+    }
+  }
+
+  // ✅ MÉTODO 4: Guardar estado de bloqueo en Firestore
+
+  Future<void> _guardarEstadoBloqueo() async {
+    try {
+      print('💾 Guardando estado de bloqueo:');
+      print('   - Tiempo bloqueo: $_tiempoBloqueo');
+      print('   - Hora bloqueo: $_horaBloqueo');
+      print('   - Intentos fallidos: $_intentosFallidos');
+
+      final authService = AuthService();
+      String userId = await authService.getUserId();
+
+      // ✅ NUEVO: Si userId está vacío, obtener el rol y asignar ID específico
+      if (userId.isEmpty) {
+        final userRole = await authService.getCurrentUserRole();
+        if (userRole == 'adminPastores') {
+          userId = 'admin_cocep_unique_id';
+          print('✅ Usando ID fijo para admin: $userId');
+        } else {
+          print('⚠️ No se pudo obtener userId para rol: $userRole');
+          return;
+        }
+      }
+
+      if (_tiempoBloqueo == null) {
+        // Eliminar el documento si no hay bloqueo
+        await FirebaseFirestore.instance
+            .collection('bloqueos_usuarios')
+            .doc(userId)
+            .delete();
+        print('🗑️ Documento de bloqueo eliminado para userId: $userId');
+      } else {
+        // Guardar estado de bloqueo
+        await FirebaseFirestore.instance
+            .collection('bloqueos_usuarios')
+            .doc(userId)
+            .set({
+          'tiempoBloqueo': Timestamp.fromDate(_tiempoBloqueo!),
+          'horaBloqueo': _horaBloqueo,
+          'intentosFallidos': _intentosFallidos,
+          'userId': userId,
+          'ultimaActualizacion': FieldValue.serverTimestamp(),
+        });
+        print('✅ Estado de bloqueo guardado correctamente en Firestore');
+      }
+    } catch (e) {
+      print('❌ Error al guardar estado de bloqueo: $e');
+    }
+  }
+
+  // ✅ MÉTODO 5: Mostrar ventana de bloqueo
+  Future<void> _mostrarVentanaBloqueo(BuildContext context) async {
+    _contadorBloqueoTimer?.cancel();
+
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            _contadorBloqueoTimer?.cancel();
+            _contadorBloqueoTimer =
+                Timer.periodic(Duration(seconds: 1), (timer) {
+              if (!_estaUsuarioBloqueado()) {
+                timer.cancel();
+                Navigator.of(dialogContext).pop();
+                return;
+              }
+              if (mounted) {
+                setState(() {});
+              }
+            });
+
+            final tiempoRestante = _tiempoRestanteBloqueo();
+            final horas = tiempoRestante.inHours;
+            final minutos = tiempoRestante.inMinutes.remainder(60);
+            final segundos = tiempoRestante.inSeconds.remainder(60);
+
+            final horaDesbloqueo = _tiempoBloqueo?.toLocal();
+            final horaDesbloqueoStr = horaDesbloqueo != null
+                ? DateFormat('hh:mm a', 'es').format(horaDesbloqueo)
+                : 'Desconocida';
+
+            return Dialog(
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(28)),
+              elevation: 16,
+              child: Container(
+                constraints: BoxConstraints(maxWidth: 420, maxHeight: 600),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(28),
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [Colors.white, Colors.red.shade50.withOpacity(0.5)],
+                  ),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Header
+                    Container(
+                      padding: EdgeInsets.all(28),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [Colors.red.shade700, Colors.red.shade900],
+                        ),
+                        borderRadius: BorderRadius.only(
+                          topLeft: Radius.circular(28),
+                          topRight: Radius.circular(28),
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.red.withOpacity(0.4),
+                            blurRadius: 16,
+                            offset: Offset(0, 6),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        children: [
+                          TweenAnimationBuilder(
+                            tween: Tween<double>(begin: 0.0, end: 1.0),
+                            duration: Duration(milliseconds: 800),
+                            curve: Curves.elasticOut,
+                            builder: (context, double value, child) {
+                              return Transform.scale(
+                                scale: value,
+                                child: Container(
+                                  padding: EdgeInsets.all(20),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.25),
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: Colors.white.withOpacity(0.5),
+                                      width: 3,
+                                    ),
+                                  ),
+                                  child: Icon(Icons.lock_clock,
+                                      color: Colors.white, size: 56),
+                                ),
+                              );
+                            },
+                          ),
+                          SizedBox(height: 20),
+                          Text(
+                            '🔒 Usuario Bloqueado',
+                            style: GoogleFonts.poppins(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          SizedBox(height: 8),
+                          Text(
+                            'Seguridad activada',
+                            style: GoogleFonts.poppins(
+                              fontSize: 14,
+                              color: Colors.white.withOpacity(0.9),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // Contenido
+                    Expanded(
+                      child: SingleChildScrollView(
+                        padding: EdgeInsets.all(28),
+                        child: Column(
+                          children: [
+                            Container(
+                              padding: EdgeInsets.all(20),
+                              decoration: BoxDecoration(
+                                color: Colors.orange.shade50,
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                    color: Colors.orange.shade300, width: 2),
+                              ),
+                              child: Column(
+                                children: [
+                                  Icon(Icons.info_outline,
+                                      color: Colors.orange.shade700, size: 32),
+                                  SizedBox(height: 12),
+                                  Text(
+                                    'Has superado el límite de intentos fallidos',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.orange.shade900,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                  SizedBox(height: 8),
+                                  Text(
+                                    'Por seguridad, la función de eliminar está temporalmente bloqueada.',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 13,
+                                      color: Colors.orange.shade800,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            SizedBox(height: 24),
+                            if (_horaBloqueo != null)
+                              Container(
+                                padding: EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: Colors.blue.shade50,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                      color: Colors.blue.shade300, width: 1.5),
+                                ),
+                                child: Column(
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Icon(Icons.lock_clock,
+                                            color: Colors.blue.shade700,
+                                            size: 20),
+                                        SizedBox(width: 8),
+                                        Text(
+                                          'Bloqueado a las: $_horaBloqueo',
+                                          style: GoogleFonts.poppins(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w600,
+                                            color: Colors.blue.shade900,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    SizedBox(height: 8),
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Icon(Icons.lock_open,
+                                            color: Colors.green.shade700,
+                                            size: 20),
+                                        SizedBox(width: 8),
+                                        Text(
+                                          'Se desbloqueará a las: $horaDesbloqueoStr',
+                                          style: GoogleFonts.poppins(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w600,
+                                            color: Colors.green.shade900,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            SizedBox(height: 24),
+                            Container(
+                              padding: EdgeInsets.all(24),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    Colors.red.shade50,
+                                    Colors.red.shade100
+                                  ],
+                                ),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                    color: Colors.red.shade300, width: 2),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.red.withOpacity(0.1),
+                                    blurRadius: 10,
+                                    offset: Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: Column(
+                                children: [
+                                  Text(
+                                    'Tiempo restante de bloqueo:',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                      color: Colors.red.shade900,
+                                    ),
+                                  ),
+                                  SizedBox(height: 16),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      _buildTimeUnit(horas, 'Horas'),
+                                      SizedBox(width: 12),
+                                      Text(':',
+                                          style: TextStyle(
+                                              fontSize: 28,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.red.shade700)),
+                                      SizedBox(width: 12),
+                                      _buildTimeUnit(minutos, 'Minutos'),
+                                      SizedBox(width: 12),
+                                      Text(':',
+                                          style: TextStyle(
+                                              fontSize: 28,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.red.shade700)),
+                                      SizedBox(width: 12),
+                                      _buildTimeUnit(segundos, 'Segundos'),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    // Footer
+                    Container(
+                      padding: EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade50,
+                        borderRadius: BorderRadius.only(
+                          bottomLeft: Radius.circular(28),
+                          bottomRight: Radius.circular(28),
+                        ),
+                        border: Border(
+                            top: BorderSide(color: Colors.grey.shade300)),
+                      ),
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: () {
+                            _contadorBloqueoTimer?.cancel();
+                            Navigator.of(dialogContext).pop();
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red.shade600,
+                            foregroundColor: Colors.white,
+                            padding: EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
+                            elevation: 2,
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.check_circle_outline, size: 20),
+                              SizedBox(width: 8),
+                              Text('Entendido',
+                                  style: GoogleFonts.poppins(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600)),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    ).then((_) {
+      _contadorBloqueoTimer?.cancel();
+    });
+  }
+
+  // ✅ MÉTODO 6: Widget para unidades de tiempo
+  Widget _buildTimeUnit(int value, String label) {
+    return Column(
+      children: [
+        Container(
+          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.red.shade600, Colors.red.shade800],
+            ),
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.red.withOpacity(0.3),
+                blurRadius: 8,
+                offset: Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Text(
+            value.toString().padLeft(2, '0'),
+            style: GoogleFonts.poppins(
+              fontSize: 32,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+        ),
+        SizedBox(height: 6),
+        Text(
+          label,
+          style: GoogleFonts.poppins(
+            fontSize: 11,
+            fontWeight: FontWeight.w500,
+            color: Colors.red.shade700,
+          ),
+        ),
+      ],
+    );
   }
 
   String _hashPassword(String password) {
@@ -575,132 +1093,188 @@ class _AdminPastoresState extends State<AdminPastores>
     return Scaffold(
       backgroundColor: kBackgroundColor,
       appBar: AppBar(
-        elevation: 2,
+        elevation: 0,
         backgroundColor: kPrimaryColor,
         automaticallyImplyLeading: false,
-        titleSpacing: 12,
-        toolbarHeight: kToolbarHeight, // Altura estándar del AppBar
-        title: Row(
-          children: [
-            // Logo mejorado con mejor contraste y visibilidad
-            Container(
-              padding: EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.2),
-                    blurRadius: 6,
-                    offset: Offset(0, 3),
-                  ),
-                ],
-              ),
-              child: Container(
-                height: 40,
-                width: 40,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white,
-                ),
-                child: ClipOval(
-                  child: Image.asset(
-                    'assets/Cocep_.png',
-                    height: 40,
-                    width: 40,
-                    fit: BoxFit.contain,
-                  ),
-                ),
-              ),
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                kPrimaryColor,
+                kPrimaryColor.withOpacity(0.85),
+              ],
             ),
-            const SizedBox(width: 12),
-            // Título con mejor espacio
-            Expanded(
-              child: Text(
-                'Panel de Administración',
-                style: GoogleFonts.poppins(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: MediaQuery.of(context).size.width < 400 ? 15 : 18,
-                ),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            const SizedBox(width: 8),
-            // Botón de cerrar sesión más visible y accesible
-            Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    Colors.white.withOpacity(0.25),
-                    Colors.white.withOpacity(0.15),
-                  ],
-                ),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: Colors.white.withOpacity(0.6),
-                  width: 2,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.15),
-                    blurRadius: 6,
-                    offset: Offset(0, 3),
-                  ),
-                ],
-              ),
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: _confirmarCerrarSesion,
-                  borderRadius: BorderRadius.circular(12),
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 10,
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.logout_rounded,
-                          color: Colors.white,
-                          size: 20,
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          'Salir',
-                          style: GoogleFonts.poppins(
-                            color: Colors.white,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                            shadows: [
-                              Shadow(
-                                offset: Offset(0, 1),
-                                blurRadius: 2,
-                                color: Colors.black.withOpacity(0.3),
-                              ),
-                            ],
-                          ),
+          ),
+        ),
+        toolbarHeight:
+            MediaQuery.of(context).size.height * 0.10, // Altura dinámica
+        title: LayoutBuilder(
+          builder: (context, constraints) {
+            final screenWidth = MediaQuery.of(context).size.width;
+            final isSmallScreen = screenWidth < 400;
+            final isMediumScreen = screenWidth >= 400 && screenWidth < 600;
+
+            return Row(
+              children: [
+                // Logo con animación sutil
+                Hero(
+                  tag: 'logo_cocep',
+                  child: Container(
+                    padding: EdgeInsets.all(isSmallScreen ? 3 : 4),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.15),
+                          blurRadius: 8,
+                          offset: Offset(0, 3),
                         ),
                       ],
                     ),
+                    child: Container(
+                      height: isSmallScreen ? 36 : 42,
+                      width: isSmallScreen ? 36 : 42,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white,
+                      ),
+                      child: ClipOval(
+                        child: Image.asset(
+                          'assets/Cocep_.png',
+                          height: isSmallScreen ? 36 : 42,
+                          width: isSmallScreen ? 36 : 42,
+                          fit: BoxFit.contain,
+                        ),
+                      ),
+                    ),
                   ),
                 ),
-              ),
-            ),
-          ],
+                SizedBox(width: isSmallScreen ? 8 : 12),
+
+                // Título responsivo con múltiples líneas
+                Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Panel de',
+                        style: GoogleFonts.poppins(
+                          color: Colors.white.withOpacity(0.95),
+                          fontWeight: FontWeight.w600,
+                          fontSize:
+                              isSmallScreen ? 14 : (isMediumScreen ? 16 : 18),
+                          height: 1.1,
+                          letterSpacing: 0.3,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      SizedBox(height: 2),
+                      Text(
+                        'Administración',
+                        style: GoogleFonts.poppins(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize:
+                              isSmallScreen ? 16 : (isMediumScreen ? 18 : 22),
+                          height: 1.1,
+                          letterSpacing: 0.5,
+                          shadows: [
+                            Shadow(
+                              offset: Offset(0, 1),
+                              blurRadius: 3,
+                              color: Colors.black.withOpacity(0.2),
+                            ),
+                          ],
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+
+                SizedBox(width: isSmallScreen ? 6 : 8),
+
+                // Botón de cerrar sesión mejorado y responsivo
+                Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: _confirmarCerrarSesion,
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: isSmallScreen ? 8 : 12,
+                        vertical: isSmallScreen ? 8 : 10,
+                      ),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            Colors.white.withOpacity(0.25),
+                            Colors.white.withOpacity(0.15),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.6),
+                          width: 1.5,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 4,
+                            offset: Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.logout_rounded,
+                            color: Colors.white,
+                            size: isSmallScreen ? 18 : 20,
+                          ),
+                          if (!isSmallScreen) ...[
+                            SizedBox(width: 6),
+                            Text(
+                              'Salir',
+                              style: GoogleFonts.poppins(
+                                color: Colors.white,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                shadows: [
+                                  Shadow(
+                                    offset: Offset(0, 1),
+                                    blurRadius: 2,
+                                    color: Colors.black.withOpacity(0.3),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
         ),
         bottom: PreferredSize(
-          preferredSize: Size.fromHeight(55), // Reducido de 70 a 55
+          preferredSize: Size.fromHeight(55),
           child: Container(
-            margin: EdgeInsets.symmetric(
-                horizontal: 16, vertical: 6), // Reducido de 10 a 6
-            height: 45, // Altura fija más pequeña
+            margin: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            height: 45,
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12), // Reducido de 15 a 12
+              borderRadius: BorderRadius.circular(12),
               color: Colors.white.withOpacity(0.15),
               border: Border.all(
                 color: Colors.white.withOpacity(0.3),
@@ -711,7 +1285,7 @@ class _AdminPastoresState extends State<AdminPastores>
               controller: _tabController,
               indicator: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(12), // Reducido de 15 a 12
+                borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withOpacity(0.1),
@@ -723,25 +1297,20 @@ class _AdminPastoresState extends State<AdminPastores>
               labelColor: kPrimaryColor,
               unselectedLabelColor: Colors.white,
               labelStyle: GoogleFonts.poppins(
-                fontSize: MediaQuery.of(context).size.width < 400
-                    ? 11
-                    : 13, // Reducido
+                fontSize: MediaQuery.of(context).size.width < 400 ? 11 : 13,
                 fontWeight: FontWeight.w600,
               ),
               unselectedLabelStyle: GoogleFonts.poppins(
-                fontSize: MediaQuery.of(context).size.width < 400
-                    ? 10
-                    : 12, // Reducido
+                fontSize: MediaQuery.of(context).size.width < 400 ? 10 : 12,
                 fontWeight: FontWeight.w500,
               ),
               isScrollable: MediaQuery.of(context).size.width < 500,
-              labelPadding:
-                  EdgeInsets.symmetric(horizontal: 8), // Padding reducido
+              labelPadding: EdgeInsets.symmetric(horizontal: 8),
               tabs: [
                 Tab(
                   height: 35,
                   icon: Icon(
-                    Icons.emoji_people, // Icono juvenil
+                    Icons.emoji_people,
                     size: MediaQuery.of(context).size.width < 400 ? 18 : 20,
                   ),
                   text: 'Juvenil',
@@ -749,7 +1318,7 @@ class _AdminPastoresState extends State<AdminPastores>
                 Tab(
                   height: 35,
                   icon: Icon(
-                    Icons.handshake, // Icono para Líder de Consolidación
+                    Icons.handshake,
                     size: MediaQuery.of(context).size.width < 400 ? 18 : 20,
                   ),
                   text: 'Líder de Consolidación',
@@ -5431,6 +6000,14 @@ class _AdminPastoresState extends State<AdminPastores>
   }
 
   Future<void> _mostrarDialogoConfirmarEliminarTribu(String docId) async {
+    _resetInactivityTimer();
+    await _cargarEstadoBloqueo();
+
+    if (_estaUsuarioBloqueado()) {
+      await _mostrarVentanaBloqueo(context);
+      return;
+    }
+
     final TextEditingController claveController = TextEditingController();
     bool isDeleting = false;
     bool obscurePassword = true;
@@ -5441,9 +6018,8 @@ class _AdminPastoresState extends State<AdminPastores>
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
           backgroundColor: backgroundColor,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: Container(
             padding: EdgeInsets.symmetric(vertical: 10),
             child: Row(
@@ -5454,11 +6030,8 @@ class _AdminPastoresState extends State<AdminPastores>
                     color: Colors.red.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: Icon(
-                    Icons.warning_rounded,
-                    color: Colors.red,
-                    size: 24,
-                  ),
+                  child:
+                      Icon(Icons.warning_rounded, color: Colors.red, size: 24),
                 ),
                 SizedBox(width: 12),
                 Expanded(
@@ -5503,11 +6076,8 @@ class _AdminPastoresState extends State<AdminPastores>
                     ),
                     child: Row(
                       children: [
-                        Icon(
-                          Icons.info_outline_rounded,
-                          color: Colors.red[700],
-                          size: 20,
-                        ),
+                        Icon(Icons.info_outline_rounded,
+                            color: Colors.red[700], size: 20),
                         SizedBox(width: 12),
                         Expanded(
                           child: Text(
@@ -5562,9 +6132,7 @@ class _AdminPastoresState extends State<AdminPastores>
                         labelText: 'Clave de confirmación',
                         hintText: 'Ingrese la clave',
                         hintStyle: TextStyle(
-                          color: Colors.grey[400],
-                          letterSpacing: 0,
-                        ),
+                            color: Colors.grey[400], letterSpacing: 0),
                         prefixIcon: Container(
                           margin: EdgeInsets.all(8),
                           padding: EdgeInsets.all(6),
@@ -5614,7 +6182,6 @@ class _AdminPastoresState extends State<AdminPastores>
                         ),
                       ),
                       onChanged: (value) {
-                        // No mostrar el valor en consola ni logs
                         setDialogState(() {});
                       },
                     ),
@@ -5639,53 +6206,64 @@ class _AdminPastoresState extends State<AdminPastores>
                       style: TextButton.styleFrom(
                         padding: EdgeInsets.symmetric(vertical: 12),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
+                            borderRadius: BorderRadius.circular(10)),
                       ),
-                      child: Text(
-                        'Cancelar',
-                        style: TextStyle(
-                          color: Colors.grey[600],
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
+                      child: Text('Cancelar',
+                          style: TextStyle(
+                              color: Colors.grey[600],
+                              fontWeight: FontWeight.w600)),
                     ),
                   ),
                   SizedBox(width: 12),
                   Expanded(
                     child: ElevatedButton(
-                      onPressed: isDeleting
+                      onPressed: (isDeleting || claveController.text.isEmpty)
                           ? null
                           : () async {
-                              // Validar que se ingresó una clave
-                              if (claveController.text.isEmpty) {
-                                _mostrarSnackBar(
-                                    'Por favor ingrese la clave de confirmación',
-                                    isSuccess: false);
+                              if (!CredentialsService.validateDeletionKey(
+                                  claveController.text)) {
+                                _intentosFallidos++;
+
+                                if (_intentosFallidos >= _maxIntentos) {
+                                  final ahoraUtc = DateTime.now().toUtc();
+                                  final ahoraColombia =
+                                      ahoraUtc.subtract(Duration(hours: 5));
+
+                                  setDialogState(() {
+                                    _tiempoBloqueo =
+                                        DateTime.now().add(_duracionBloqueo);
+                                    _horaBloqueo = DateFormat('hh:mm a', 'es')
+                                        .format(ahoraColombia);
+                                  });
+
+                                  await _guardarEstadoBloqueo();
+                                  Navigator.pop(context);
+
+                                  if (mounted) {
+                                    await _mostrarVentanaBloqueo(context);
+                                  }
+                                } else {
+                                  final intentosRestantes =
+                                      _maxIntentos - _intentosFallidos;
+                                  _mostrarSnackBar(
+                                    intentosRestantes == 1
+                                        ? '⚠️ ÚLTIMO INTENTO: Si fallas nuevamente, serás bloqueado por 12 horas.'
+                                        : 'Clave incorrecta. Te quedan $intentosRestantes ${intentosRestantes == 1 ? 'intento' : 'intentos'}.',
+                                    isSuccess: false,
+                                  );
+                                  claveController.clear();
+                                }
                                 return;
                               }
 
-                              // Validar la clave sin mostrarla en logs
-                              //Clave para confirmacion de una tribu
-                              // Validar la clave usando el servicio ofuscado
-                              if (!CredentialsService.validateDeletionKey(
-                                  claveController.text)) {
-                                _mostrarSnackBar(
-                                    'Clave incorrecta. Eliminación cancelada.',
-                                    isSuccess: false);
-                                claveController.clear();
-                                return;
-                              }
                               setDialogState(() => isDeleting = true);
 
                               try {
-                                // Eliminar la tribu
                                 await _firestore
                                     .collection('tribus')
                                     .doc(docId)
                                     .delete();
 
-                                // Eliminar el usuario asociado
                                 final usuarioSnapshot = await _firestore
                                     .collection('usuarios')
                                     .where('tribuId', isEqualTo: docId)
@@ -5697,8 +6275,13 @@ class _AdminPastoresState extends State<AdminPastores>
                                       .delete();
                                 }
 
-                                // Limpiar el controlador antes de cerrar
                                 claveController.clear();
+                                setState(() {
+                                  _intentosFallidos = 0;
+                                  _tiempoBloqueo = null;
+                                  _horaBloqueo = null;
+                                });
+                                await _guardarEstadoBloqueo();
 
                                 if (mounted) {
                                   Navigator.pop(context);
@@ -5719,8 +6302,7 @@ class _AdminPastoresState extends State<AdminPastores>
                         foregroundColor: Colors.white,
                         padding: EdgeInsets.symmetric(vertical: 12),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
+                            borderRadius: BorderRadius.circular(10)),
                         elevation: 2,
                       ),
                       child: isDeleting
@@ -5745,10 +6327,9 @@ class _AdminPastoresState extends State<AdminPastores>
                               children: [
                                 Icon(Icons.delete_rounded, size: 18),
                                 SizedBox(width: 6),
-                                Text(
-                                  'Eliminar',
-                                  style: TextStyle(fontWeight: FontWeight.w600),
-                                ),
+                                Text('Eliminar',
+                                    style:
+                                        TextStyle(fontWeight: FontWeight.w600)),
                               ],
                             ),
                     ),
@@ -5764,6 +6345,14 @@ class _AdminPastoresState extends State<AdminPastores>
 
   Future<void> _mostrarDialogoConfirmarEliminarLiderConsolidacion(
       String docId) async {
+    _resetInactivityTimer();
+    await _cargarEstadoBloqueo();
+
+    if (_estaUsuarioBloqueado()) {
+      await _mostrarVentanaBloqueo(context);
+      return;
+    }
+
     final TextEditingController claveController = TextEditingController();
     bool isDeleting = false;
     bool obscurePassword = true;
@@ -5774,9 +6363,8 @@ class _AdminPastoresState extends State<AdminPastores>
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
           backgroundColor: backgroundColor,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: Container(
             padding: EdgeInsets.symmetric(vertical: 10),
             child: Row(
@@ -5787,11 +6375,8 @@ class _AdminPastoresState extends State<AdminPastores>
                     color: Colors.red.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: Icon(
-                    Icons.warning_rounded,
-                    color: Colors.red,
-                    size: 24,
-                  ),
+                  child:
+                      Icon(Icons.warning_rounded, color: Colors.red, size: 24),
                 ),
                 SizedBox(width: 12),
                 Expanded(
@@ -5836,11 +6421,8 @@ class _AdminPastoresState extends State<AdminPastores>
                     ),
                     child: Row(
                       children: [
-                        Icon(
-                          Icons.info_outline_rounded,
-                          color: Colors.red[700],
-                          size: 20,
-                        ),
+                        Icon(Icons.info_outline_rounded,
+                            color: Colors.red[700], size: 20),
                         SizedBox(width: 12),
                         Expanded(
                           child: Text(
@@ -5895,9 +6477,7 @@ class _AdminPastoresState extends State<AdminPastores>
                         labelText: 'Clave de confirmación',
                         hintText: 'Ingrese la clave',
                         hintStyle: TextStyle(
-                          color: Colors.grey[400],
-                          letterSpacing: 0,
-                        ),
+                            color: Colors.grey[400], letterSpacing: 0),
                         prefixIcon: Container(
                           margin: EdgeInsets.all(8),
                           padding: EdgeInsets.all(6),
@@ -5946,6 +6526,9 @@ class _AdminPastoresState extends State<AdminPastores>
                           fontWeight: FontWeight.w500,
                         ),
                       ),
+                      onChanged: (value) {
+                        setDialogState(() {});
+                      },
                     ),
                   ),
                 ],
@@ -5968,37 +6551,53 @@ class _AdminPastoresState extends State<AdminPastores>
                       style: TextButton.styleFrom(
                         padding: EdgeInsets.symmetric(vertical: 12),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
+                            borderRadius: BorderRadius.circular(10)),
                       ),
-                      child: Text(
-                        'Cancelar',
-                        style: TextStyle(
-                          color: Colors.grey[600],
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
+                      child: Text('Cancelar',
+                          style: TextStyle(
+                              color: Colors.grey[600],
+                              fontWeight: FontWeight.w600)),
                     ),
                   ),
                   SizedBox(width: 12),
                   Expanded(
                     child: ElevatedButton(
-                      onPressed: isDeleting
+                      onPressed: (isDeleting || claveController.text.isEmpty)
                           ? null
                           : () async {
-                              if (claveController.text.isEmpty) {
-                                _mostrarSnackBar(
-                                    'Por favor ingrese la clave de confirmación',
-                                    isSuccess: false);
-                                return;
-                              }
-
                               if (!CredentialsService.validateDeletionKey(
                                   claveController.text)) {
-                                _mostrarSnackBar(
-                                    'Clave incorrecta. Eliminación cancelada.',
-                                    isSuccess: false);
-                                claveController.clear();
+                                _intentosFallidos++;
+
+                                if (_intentosFallidos >= _maxIntentos) {
+                                  final ahoraUtc = DateTime.now().toUtc();
+                                  final ahoraColombia =
+                                      ahoraUtc.subtract(Duration(hours: 5));
+
+                                  setDialogState(() {
+                                    _tiempoBloqueo =
+                                        DateTime.now().add(_duracionBloqueo);
+                                    _horaBloqueo = DateFormat('hh:mm a', 'es')
+                                        .format(ahoraColombia);
+                                  });
+
+                                  await _guardarEstadoBloqueo();
+                                  Navigator.pop(context);
+
+                                  if (mounted) {
+                                    await _mostrarVentanaBloqueo(context);
+                                  }
+                                } else {
+                                  final intentosRestantes =
+                                      _maxIntentos - _intentosFallidos;
+                                  _mostrarSnackBar(
+                                    intentosRestantes == 1
+                                        ? '⚠️ ÚLTIMO INTENTO: Si fallas nuevamente, serás bloqueado por 12 horas.'
+                                        : 'Clave incorrecta. Te quedan $intentosRestantes ${intentosRestantes == 1 ? 'intento' : 'intentos'}.',
+                                    isSuccess: false,
+                                  );
+                                  claveController.clear();
+                                }
                                 return;
                               }
 
@@ -6022,10 +6621,15 @@ class _AdminPastoresState extends State<AdminPastores>
                                 }
 
                                 claveController.clear();
+                                setState(() {
+                                  _intentosFallidos = 0;
+                                  _tiempoBloqueo = null;
+                                  _horaBloqueo = null;
+                                  _existeLiderConsolidacion = false;
+                                });
+                                await _guardarEstadoBloqueo();
 
                                 if (mounted) {
-                                  setState(
-                                      () => _existeLiderConsolidacion = false);
                                   Navigator.pop(context);
                                   _mostrarSnackBar(
                                       'Líder de consolidación eliminado exitosamente',
@@ -6035,7 +6639,7 @@ class _AdminPastoresState extends State<AdminPastores>
                                 claveController.clear();
                                 setDialogState(() => isDeleting = false);
                                 _mostrarSnackBar(
-                                    'Error al eliminar el líder de consolidación: ${e.toString()}',
+                                    'Error al eliminar el líder: ${e.toString()}',
                                     isSuccess: false);
                               }
                             },
@@ -6044,8 +6648,7 @@ class _AdminPastoresState extends State<AdminPastores>
                         foregroundColor: Colors.white,
                         padding: EdgeInsets.symmetric(vertical: 12),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
+                            borderRadius: BorderRadius.circular(10)),
                         elevation: 2,
                       ),
                       child: isDeleting
@@ -6070,10 +6673,9 @@ class _AdminPastoresState extends State<AdminPastores>
                               children: [
                                 Icon(Icons.delete_rounded, size: 18),
                                 SizedBox(width: 6),
-                                Text(
-                                  'Eliminar',
-                                  style: TextStyle(fontWeight: FontWeight.w600),
-                                ),
+                                Text('Eliminar',
+                                    style:
+                                        TextStyle(fontWeight: FontWeight.w600)),
                               ],
                             ),
                     ),

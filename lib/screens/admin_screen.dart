@@ -501,6 +501,7 @@ class _AdminPanelState extends State<AdminPanel>
             onPressed: () => Navigator.of(context).pop(),
           ),
           elevation: 0,
+          toolbarHeight: null, // Permite altura automática
           flexibleSpace: Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -510,9 +511,8 @@ class _AdminPanelState extends State<AdminPanel>
               ),
             ),
           ),
-          // REEMPLAZA tu bloque completo de `title: _isSearching ...` (tal como lo tienes ahora)
-// POR ESTE BLOQUE EXACTO (va dentro del mismo AppBar, en el mismo lugar del `title:`):
 
+          // ✅ TÍTULO CON LOGO Y DISEÑO PROFESIONAL
           title: _isSearching
               ? TextField(
                   controller: _searchController,
@@ -532,80 +532,136 @@ class _AdminPanelState extends State<AdminPanel>
                 )
               : LayoutBuilder(
                   builder: (context, constraints) {
-                    const String text = 'Panel de Control de Consolidación';
+                    final double availableWidth = constraints.maxWidth;
 
-                    final double w = constraints.maxWidth;
+                    // Detectar tamaño de pantalla
+                    final bool isVerySmallScreen = availableWidth < 280;
+                    final bool isSmallScreen = availableWidth < 420;
+                    final bool isMediumScreen =
+                        availableWidth >= 420 && availableWidth < 600;
 
-                    // En pantallas pequeñas permite 2 líneas para que no se vea diminuto ni cortado.
-                    final int maxLines = w < 420 ? 2 : 1;
+                    return Row(
+                      children: [
+                        // ✅ LOGO CON ANIMACIÓN HERO
+                        Hero(
+                          tag: 'logo_cocep_admin',
+                          child: Container(
+                            padding: EdgeInsets.all(isVerySmallScreen ? 2 : 3),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.15),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 3),
+                                ),
+                              ],
+                            ),
+                            child: Container(
+                              height: isVerySmallScreen
+                                  ? 32
+                                  : (isSmallScreen ? 36 : 40),
+                              width: isVerySmallScreen
+                                  ? 32
+                                  : (isSmallScreen ? 36 : 40),
+                              decoration: const BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.white,
+                              ),
+                              child: ClipOval(
+                                child: Image.asset(
+                                  'assets/Cocep_.png',
+                                  fit: BoxFit.contain,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        SizedBox(
+                            width: isVerySmallScreen
+                                ? 8
+                                : (isSmallScreen ? 10 : 12)),
 
-                    // En pantallas grandes permite crecer un poco más.
-                    final double maxFontSize = w >= 1200
-                        ? 28
-                        : w >= 900
-                            ? 26
-                            : w >= 600
-                                ? 24
-                                : 22;
+                        // ✅ TÍTULO RESPONSIVO CON MÚLTIPLES LÍNEAS
+                        Expanded(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              // Primera línea: "Panel de Control"
+                              FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: Alignment.centerLeft,
+                                child: Text(
+                                  'Panel de Control',
+                                  style: TextStyle(
+                                    color: Colors.white.withOpacity(0.95),
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: isVerySmallScreen
+                                        ? 15
+                                        : (isSmallScreen
+                                            ? 17
+                                            : (isMediumScreen ? 19 : 21)),
+                                    height: 1.1,
+                                    letterSpacing: 0.3,
+                                    shadows: [
+                                      Shadow(
+                                        offset: const Offset(0, 1),
+                                        blurRadius: 2,
+                                        color: Colors.black.withOpacity(0.2),
+                                      ),
+                                    ],
+                                  ),
+                                  maxLines: 1,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
 
-                    // Evita que se vaya demasiado abajo en móviles.
-                    final double minFontSize = w < 320 ? 12 : 13;
-
-                    const TextStyle baseStyle = TextStyle(
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 0.2,
-                      height: 1.12,
-                      color: Colors.white,
-                      shadows: [
-                        Shadow(
-                          offset: Offset(0, 1),
-                          blurRadius: 2,
-                          color: Colors.black26,
+                              // Segunda línea: "de Consolidación"
+                              FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: Alignment.centerLeft,
+                                child: Text(
+                                  'de Consolidación',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: isVerySmallScreen
+                                        ? 17
+                                        : (isSmallScreen
+                                            ? 19
+                                            : (isMediumScreen ? 21 : 24)),
+                                    height: 1.1,
+                                    letterSpacing: 0.5,
+                                    shadows: [
+                                      Shadow(
+                                        offset: const Offset(0, 2),
+                                        blurRadius: 4,
+                                        color: Colors.black.withOpacity(0.3),
+                                      ),
+                                    ],
+                                  ),
+                                  maxLines: 1,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ],
-                    );
-
-                    double low = minFontSize;
-                    double high = maxFontSize;
-                    double best = minFontSize;
-
-                    // Ajuste automático real: encuentra el mayor tamaño de fuente que quepa
-                    // en 1 o 2 líneas según el ancho disponible.
-                    while ((high - low) > 0.1) {
-                      final double mid = (low + high) / 2;
-
-                      final TextPainter painter = TextPainter(
-                        text: TextSpan(
-                          text: text,
-                          style: baseStyle.copyWith(fontSize: mid),
-                        ),
-                        maxLines: maxLines,
-                        textDirection: Directionality.of(context),
-                        ellipsis: '…',
-                      )..layout(maxWidth: w);
-
-                      if (!painter.didExceedMaxLines) {
-                        best = mid;
-                        low = mid;
-                      } else {
-                        high = mid;
-                      }
-                    }
-
-                    return Text(
-                      text,
-                      maxLines: maxLines,
-                      softWrap: true,
-                      overflow: TextOverflow.ellipsis,
-                      style: baseStyle.copyWith(fontSize: best),
                     );
                   },
                 ),
 
           actions: [
+            // Botón de búsqueda
             IconButton(
-              icon: Icon(_isSearching ? Icons.close : Icons.search,
-                  color: Colors.white),
+              icon: Icon(
+                _isSearching ? Icons.close : Icons.search,
+                color: Colors.white,
+                size: 22,
+              ),
               onPressed: () {
                 _resetInactivityTimer();
                 setState(() {
@@ -621,75 +677,206 @@ class _AdminPanelState extends State<AdminPanel>
               tooltip: _isSearching ? 'Cerrar búsqueda' : 'Buscar',
             ),
 
-            // Botón de cerrar sesión (se escala automáticamente si falta espacio)
+            // ✅ BOTÓN DE CERRAR SESIÓN - ADAPTATIVO (solo ícono en pantallas pequeñas)
             Padding(
               padding: const EdgeInsets.only(right: 8.0),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: Colors.white.withOpacity(0.3),
-                    width: 1,
-                  ),
-                ),
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(8),
-                    onTap: _confirmarCerrarSesion,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 6),
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        alignment: Alignment.center,
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: const [
-                            Icon(
-                              Icons.logout_rounded,
-                              color: Colors.white,
-                              size: 16,
-                            ),
-                            SizedBox(width: 4),
-                            Text(
-                              'Salir',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                              ),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  // Detectar si la pantalla es pequeña basándose en el ancho del MediaQuery
+                  final screenWidth = MediaQuery.of(context).size.width;
+                  final isSmallScreen = screenWidth < 500;
+
+                  return Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: _confirmarCerrarSesion,
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        constraints: BoxConstraints(
+                          minWidth: isSmallScreen ? 44 : 70,
+                          maxWidth: isSmallScreen ? 44 : 100,
+                        ),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: isSmallScreen ? 10 : 10,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              Colors.white.withOpacity(0.25),
+                              Colors.white.withOpacity(0.15),
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.6),
+                            width: 1.5,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.1),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
                             ),
                           ],
                         ),
+                        child: isSmallScreen
+                            ? const Icon(
+                                Icons.logout_rounded,
+                                color: Colors.white,
+                                size: 20,
+                              )
+                            : FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: Alignment.center,
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: const [
+                                    Icon(
+                                      Icons.logout_rounded,
+                                      color: Colors.white,
+                                      size: 16,
+                                    ),
+                                    SizedBox(width: 5),
+                                    Text(
+                                      'Salir',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
+                                        letterSpacing: 0.3,
+                                        shadows: [
+                                          Shadow(
+                                            offset: Offset(0, 1),
+                                            blurRadius: 2,
+                                            color: Colors.black26,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
                       ),
                     ),
-                  ),
-                ),
+                  );
+                },
               ),
             ),
           ],
 
+          // Tabs responsivos
           bottom: TabBar(
             indicatorColor: secondaryOrange,
             indicatorWeight: 4,
             labelStyle: const TextStyle(
               fontWeight: FontWeight.bold,
-              fontSize: 16,
+              fontSize: 14,
+              letterSpacing: 0.3,
             ),
             tabs: [
               Tab(
-                icon: Icon(Icons.assignment, color: secondaryOrange),
-                text: 'Registros',
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    if (constraints.maxWidth < 90) {
+                      return Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.assignment,
+                              color: secondaryOrange, size: 18),
+                          const SizedBox(height: 2),
+                          const FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text('Registros'),
+                          ),
+                        ],
+                      );
+                    }
+                    return Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.assignment,
+                            color: secondaryOrange, size: 20),
+                        const SizedBox(width: 6),
+                        const Flexible(
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text('Registros'),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
               ),
               Tab(
-                icon: Icon(Icons.people, color: secondaryOrange),
-                text: 'Consolidadores',
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    if (constraints.maxWidth < 110) {
+                      return Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.people, color: secondaryOrange, size: 18),
+                          const SizedBox(height: 2),
+                          const FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text('Consolidadores'),
+                          ),
+                        ],
+                      );
+                    }
+                    return Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.people, color: secondaryOrange, size: 20),
+                        const SizedBox(width: 6),
+                        const Flexible(
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text('Consolidadores'),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
               ),
               Tab(
-                icon: Icon(Icons.people_alt, color: secondaryOrange),
-                text: 'Perfiles Sociales',
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    if (constraints.maxWidth < 110) {
+                      return Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.people_alt,
+                              color: secondaryOrange, size: 18),
+                          const SizedBox(height: 2),
+                          const FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text('Perfiles Sociales'),
+                          ),
+                        ],
+                      );
+                    }
+                    return Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.people_alt,
+                            color: secondaryOrange, size: 20),
+                        const SizedBox(width: 6),
+                        const Flexible(
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text('Perfiles Sociales'),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
               ),
             ],
           ),

@@ -24,7 +24,12 @@ class AuthService {
       final adminCreds = CredentialsService.getAdminCredentials();
       if (username.toLowerCase() == adminCreds['username']?.toLowerCase() &&
           password == adminCreds['password']) {
-        final result = {'role': 'adminPastores'};
+        // ✅ CAMBIO: Agregar userId único para el admin
+        final result = {
+          'role': 'adminPastores',
+          'userId': 'admin_cocep_unique_id', // ID único fijo para el admin
+          'userName': 'Administrador COCEP',
+        };
         await _guardarSesion(result);
         return result;
       }
@@ -98,7 +103,7 @@ class AuthService {
           }
 
           if (result != null) {
-            await _guardarSesion(result); // 🆕 Guardar sesión
+            await _guardarSesion(result);
           }
           return result;
         } else {
@@ -125,7 +130,7 @@ class AuthService {
           'userName':
               '${coordinadorData['nombre']} ${coordinadorData['apellido']}',
         };
-        await _guardarSesion(result); // 🆕 Guardar sesión
+        await _guardarSesion(result);
         return result;
       }
 
@@ -146,7 +151,7 @@ class AuthService {
           'userId': timoteoData.id,
           'userName': '${timoteoData['nombre']} ${timoteoData['apellido']}',
         };
-        await _guardarSesion(result); // 🆕 Guardar sesión
+        await _guardarSesion(result);
         return result;
       }
 
@@ -165,7 +170,7 @@ class AuthService {
           'userId': liderData.id,
           'userName': liderData['nombre'] ?? username,
         };
-        await _guardarSesion(result); // 🆕 Guardar sesión
+        await _guardarSesion(result);
         return result;
       }
 
@@ -179,7 +184,7 @@ class AuthService {
   }
 
   // =============================================================================
-  // 🆕 MÉTODOS NUEVOS PARA PERSISTENCIA DE SESIÓN
+  // MÉTODOS PARA PERSISTENCIA DE SESIÓN
   // =============================================================================
 
   /// Guarda la sesión del usuario en SharedPreferences

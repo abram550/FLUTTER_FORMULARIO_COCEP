@@ -1,17 +1,28 @@
-import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/services.dart';
-import 'package:formulario_app/utils/excel_exporter.dart';
-import 'package:formulario_app/utils/theme_constants.dart';
-import 'package:intl/intl.dart';
-import 'TimoteosScreen.dart';
-import 'CoordinadorScreen.dart';
-import 'package:flutter/services.dart';
+// Dart SDK
 import 'dart:async';
+import 'dart:math';
+
+// Flutter
+import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
+import 'package:flutter/services.dart';
+
+// Firebase
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+
+// Paquetes externos
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
+
+// Proyecto
+import 'package:formulario_app/services/auth_service.dart';
+import 'package:formulario_app/utils/excel_exporter.dart';
+import 'package:formulario_app/utils/theme_constants.dart';
+
+// Locales
+import 'CoordinadorScreen.dart';
 
 class TribusScreen extends StatefulWidget {
   final String tribuId;
@@ -57,6 +68,16 @@ class _TribusScreenState extends State<TribusScreen>
   String? _anioSeleccionado;
   String? _mesSeleccionado;
 
+  // Variables de bloqueo (ahora son de instancia, no estáticas)
+  int _intentosFallidos = 0;
+  DateTime? _tiempoBloqueo;
+  String? _horaBloqueo; // Hora en formato legible
+  static const int _maxIntentos = 3;
+  static const Duration _duracionBloqueo = Duration(hours: 12);
+
+  // Timer para actualizar el contador de bloqueo
+  Timer? _contadorBloqueoTimer;
+
   @override
   void initState() {
     super.initState();
@@ -73,11 +94,14 @@ class _TribusScreenState extends State<TribusScreen>
         });
       }
     });
+
+    _cargarEstadoBloqueo();
   }
 
   @override
   void dispose() {
     _inactivityTimer?.cancel();
+    _contadorBloqueoTimer?.cancel();
     _tabController.dispose();
     super.dispose();
   }
@@ -241,6 +265,1335 @@ class _TribusScreenState extends State<TribusScreen>
       if (mounted) {
         context.go('/login');
       }
+    }
+  }
+
+  bool _estaUsuarioBloqueado() {
+    if (_tiempoBloqueo == null) return false;
+
+    final ahora = DateTime.now();
+    if (ahora.isBefore(_tiempoBloqueo!)) {
+      return true; // Aún bloqueado
+    } else {
+      // El bloqueo expiró, resetear y guardar
+      _tiempoBloqueo = null;
+      _horaBloqueo = null;
+      _intentosFallidos = 0;
+      _guardarEstadoBloqueo();
+      return false;
+    }
+  }
+
+  Duration _tiempoRestanteBloqueo() {
+    if (_tiempoBloqueo == null) return Duration.zero;
+    final ahora = DateTime.now();
+    return _tiempoBloqueo!.difference(ahora);
+  }
+
+  Future<void> _mostrarVentanaBloqueo(BuildContext context) async {
+    // Cancelar temporizador anterior si existe
+    _contadorBloqueoTimer?.cancel();
+
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            // Iniciar temporizador para actualizar cada segundo
+            _contadorBloqueoTimer?.cancel();
+            _contadorBloqueoTimer =
+                Timer.periodic(Duration(seconds: 1), (timer) {
+              if (!_estaUsuarioBloqueado()) {
+                timer.cancel();
+                Navigator.of(dialogContext).pop();
+                return;
+              }
+
+              // Actualizar UI
+              if (mounted) {
+                setState(() {});
+              }
+            });
+
+            final tiempoRestante = _tiempoRestanteBloqueo();
+            final horas = tiempoRestante.inHours;
+            final minutos = tiempoRestante.inMinutes.remainder(60);
+            final segundos = tiempoRestante.inSeconds.remainder(60);
+
+            // Calcular hora de desbloqueo en zona horaria de Colombia
+            final horaDesbloqueo = _tiempoBloqueo?.toLocal();
+            final horaDesbloqueoStr = horaDesbloqueo != null
+                ? DateFormat('hh:mm a', 'es').format(horaDesbloqueo)
+                : 'Desconocida';
+
+            return Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(28),
+              ),
+              elevation: 16,
+              child: Container(
+                constraints: BoxConstraints(
+                  maxWidth: 420,
+                  maxHeight: 600,
+                ),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(28),
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Colors.white,
+                      Colors.red.shade50.withOpacity(0.5),
+                    ],
+                  ),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Header animado
+                    Container(
+                      padding: EdgeInsets.all(28),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            Colors.red.shade700,
+                            Colors.red.shade900,
+                          ],
+                        ),
+                        borderRadius: BorderRadius.only(
+                          topLeft: Radius.circular(28),
+                          topRight: Radius.circular(28),
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.red.withOpacity(0.4),
+                            blurRadius: 16,
+                            offset: Offset(0, 6),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        children: [
+                          TweenAnimationBuilder(
+                            tween: Tween<double>(begin: 0.0, end: 1.0),
+                            duration: Duration(milliseconds: 800),
+                            curve: Curves.elasticOut,
+                            builder: (context, double value, child) {
+                              return Transform.scale(
+                                scale: value,
+                                child: Container(
+                                  padding: EdgeInsets.all(20),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.25),
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: Colors.white.withOpacity(0.5),
+                                      width: 3,
+                                    ),
+                                  ),
+                                  child: Icon(
+                                    Icons.lock_clock,
+                                    color: Colors.white,
+                                    size: 56,
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                          SizedBox(height: 20),
+                          Text(
+                            '🔒 Usuario Bloqueado',
+                            style: GoogleFonts.poppins(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          SizedBox(height: 8),
+                          Text(
+                            'Seguridad activada',
+                            style: GoogleFonts.poppins(
+                              fontSize: 14,
+                              color: Colors.white.withOpacity(0.9),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // Contenido
+                    Expanded(
+                      child: SingleChildScrollView(
+                        padding: EdgeInsets.all(28),
+                        child: Column(
+                          children: [
+                            // Mensaje explicativo
+                            Container(
+                              padding: EdgeInsets.all(20),
+                              decoration: BoxDecoration(
+                                color: Colors.orange.shade50,
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: Colors.orange.shade300,
+                                  width: 2,
+                                ),
+                              ),
+                              child: Column(
+                                children: [
+                                  Icon(
+                                    Icons.info_outline,
+                                    color: Colors.orange.shade700,
+                                    size: 32,
+                                  ),
+                                  SizedBox(height: 12),
+                                  Text(
+                                    'Has superado el límite de intentos fallidos',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.orange.shade900,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                  SizedBox(height: 8),
+                                  Text(
+                                    'Por seguridad, la función de eliminar usuarios está temporalmente bloqueada.',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 13,
+                                      color: Colors.orange.shade800,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                            SizedBox(height: 24),
+
+                            // Hora de bloqueo y desbloqueo
+                            if (_horaBloqueo != null)
+                              Container(
+                                padding: EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: Colors.blue.shade50,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: Colors.blue.shade300,
+                                    width: 1.5,
+                                  ),
+                                ),
+                                child: Column(
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Icon(Icons.lock_clock,
+                                            color: Colors.blue.shade700,
+                                            size: 20),
+                                        SizedBox(width: 8),
+                                        Text(
+                                          'Bloqueado a las: $_horaBloqueo',
+                                          style: GoogleFonts.poppins(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w600,
+                                            color: Colors.blue.shade900,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    SizedBox(height: 8),
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Icon(Icons.lock_open,
+                                            color: Colors.green.shade700,
+                                            size: 20),
+                                        SizedBox(width: 8),
+                                        Text(
+                                          'Se desbloqueará a las: $horaDesbloqueoStr',
+                                          style: GoogleFonts.poppins(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w600,
+                                            color: Colors.green.shade900,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+
+                            SizedBox(height: 24),
+
+                            // Tiempo restante
+                            Container(
+                              padding: EdgeInsets.all(24),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [
+                                    Colors.red.shade50,
+                                    Colors.red.shade100,
+                                  ],
+                                ),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: Colors.red.shade300,
+                                  width: 2,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.red.withOpacity(0.1),
+                                    blurRadius: 10,
+                                    offset: Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: Column(
+                                children: [
+                                  Text(
+                                    'Tiempo restante de bloqueo:',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                      color: Colors.red.shade900,
+                                    ),
+                                  ),
+                                  SizedBox(height: 16),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      _buildTimeUnit(horas, 'Horas'),
+                                      SizedBox(width: 12),
+                                      Text(
+                                        ':',
+                                        style: TextStyle(
+                                          fontSize: 28,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.red.shade700,
+                                        ),
+                                      ),
+                                      SizedBox(width: 12),
+                                      _buildTimeUnit(minutos, 'Minutos'),
+                                      SizedBox(width: 12),
+                                      Text(
+                                        ':',
+                                        style: TextStyle(
+                                          fontSize: 28,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.red.shade700,
+                                        ),
+                                      ),
+                                      SizedBox(width: 12),
+                                      _buildTimeUnit(segundos, 'Segundos'),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                            SizedBox(height: 24),
+
+                            // Consejos de seguridad
+                            Container(
+                              padding: EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: Colors.blue.shade50,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: Colors.blue.shade200,
+                                  width: 1,
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.lightbulb_outline,
+                                    color: Colors.blue.shade700,
+                                    size: 24,
+                                  ),
+                                  SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      'Consejo: Verifica tu contraseña antes de intentar nuevamente.',
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 12,
+                                        color: Colors.blue.shade900,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    // Footer con botón
+                    Container(
+                      padding: EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade50,
+                        borderRadius: BorderRadius.only(
+                          bottomLeft: Radius.circular(28),
+                          bottomRight: Radius.circular(28),
+                        ),
+                        border: Border(
+                          top: BorderSide(color: Colors.grey.shade300),
+                        ),
+                      ),
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: () {
+                            _contadorBloqueoTimer?.cancel();
+                            Navigator.of(dialogContext).pop();
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red.shade600,
+                            foregroundColor: Colors.white,
+                            padding: EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            elevation: 2,
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.check_circle_outline, size: 20),
+                              SizedBox(width: 8),
+                              Text(
+                                'Entendido',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    ).then((_) {
+      // Cancelar temporizador al cerrar el diálogo
+      _contadorBloqueoTimer?.cancel();
+    });
+  }
+
+  Widget _buildTimeUnit(int value, String label) {
+    return Column(
+      children: [
+        Container(
+          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Colors.red.shade600,
+                Colors.red.shade800,
+              ],
+            ),
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.red.withOpacity(0.3),
+                blurRadius: 8,
+                offset: Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Text(
+            value.toString().padLeft(2, '0'),
+            style: GoogleFonts.poppins(
+              fontSize: 32,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+        ),
+        SizedBox(height: 6),
+        Text(
+          label,
+          style: GoogleFonts.poppins(
+            fontSize: 11,
+            fontWeight: FontWeight.w500,
+            color: Colors.red.shade700,
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Muestra un diálogo de confirmación con verificación de contraseña para eliminar un usuario
+
+  Future<bool> _confirmarEliminacionConContrasena(
+    BuildContext context, {
+    required String tipoUsuario,
+    required String nombreUsuario,
+    required VoidCallback onConfirmed,
+  }) async {
+    _resetInactivityTimer();
+
+    // ✅ CRÍTICO: Cargar estado de bloqueo ANTES de verificar
+    await _cargarEstadoBloqueo();
+
+    // ✅ VERIFICAR SI ESTÁ BLOQUEADO
+    if (_estaUsuarioBloqueado()) {
+      await _mostrarVentanaBloqueo(context);
+      return false;
+    }
+
+    final _passwordController = TextEditingController();
+    bool _obscurePassword = true;
+    bool _isVerifying = false;
+    String? _errorMessage;
+
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24),
+              ),
+              elevation: 10,
+              child: Container(
+                constraints: BoxConstraints(
+                  maxWidth: 450,
+                  maxHeight: 550,
+                ),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(24),
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Colors.white,
+                      Colors.red.shade50.withOpacity(0.3),
+                    ],
+                  ),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Header
+                    Container(
+                      padding: EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            Colors.red.shade600,
+                            Colors.red.shade700,
+                          ],
+                        ),
+                        borderRadius: BorderRadius.only(
+                          topLeft: Radius.circular(24),
+                          topRight: Radius.circular(24),
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.red.withOpacity(0.3),
+                            blurRadius: 12,
+                            offset: Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        children: [
+                          TweenAnimationBuilder(
+                            tween: Tween<double>(begin: 0.8, end: 1.0),
+                            duration: Duration(milliseconds: 600),
+                            curve: Curves.elasticOut,
+                            builder: (context, double scale, child) {
+                              return Transform.scale(
+                                scale: scale,
+                                child: Container(
+                                  padding: EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.2),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(
+                                    Icons.warning_amber_rounded,
+                                    color: Colors.white,
+                                    size: 48,
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                          SizedBox(height: 16),
+                          Text(
+                            '⚠️ Eliminar $tipoUsuario',
+                            style: GoogleFonts.poppins(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          SizedBox(height: 8),
+                          Text(
+                            'Esta acción no se puede deshacer',
+                            style: GoogleFonts.poppins(
+                              fontSize: 13,
+                              color: Colors.white.withOpacity(0.9),
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // Contenido
+                    Expanded(
+                      child: SingleChildScrollView(
+                        padding: EdgeInsets.all(24),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Información del usuario
+                            Container(
+                              padding: EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: Colors.red.shade50,
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: Colors.red.shade200,
+                                  width: 1.5,
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    padding: EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        colors: [
+                                          Colors.red.shade400,
+                                          Colors.red.shade600,
+                                        ],
+                                      ),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Icon(
+                                      tipoUsuario == 'Coordinador'
+                                          ? Icons.supervisor_account
+                                          : Icons.person,
+                                      color: Colors.white,
+                                      size: 28,
+                                    ),
+                                  ),
+                                  SizedBox(width: 16),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Usuario a eliminar:',
+                                          style: GoogleFonts.poppins(
+                                            fontSize: 12,
+                                            color: Colors.red.shade700,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                        SizedBox(height: 4),
+                                        Text(
+                                          nombreUsuario,
+                                          style: GoogleFonts.poppins(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.red.shade900,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                            SizedBox(height: 24),
+
+                            // Pregunta de confirmación
+                            Container(
+                              padding: EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: Colors.orange.shade50,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: Colors.orange.shade300,
+                                  width: 1,
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.help_outline_rounded,
+                                    color: Colors.orange.shade700,
+                                    size: 24,
+                                  ),
+                                  SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      '¿Estás seguro de que deseas eliminar este $tipoUsuario?',
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.orange.shade900,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                            SizedBox(height: 24),
+
+                            // Campo de contraseña
+                            Text(
+                              'Ingresa tu contraseña para confirmar:',
+                              style: GoogleFonts.poppins(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.grey.shade700,
+                              ),
+                            ),
+                            SizedBox(height: 12),
+
+                            Container(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(16),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.05),
+                                    blurRadius: 10,
+                                    offset: Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: TextField(
+                                controller: _passwordController,
+                                obscureText: _obscurePassword,
+                                enabled: !_isVerifying,
+                                style: GoogleFonts.poppins(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                // ✅ CAMBIO CLAVE: onChanged actualiza el estado
+                                onChanged: (value) {
+                                  setState(() {
+                                    // Actualizar estado para habilitar/deshabilitar botón
+                                  });
+                                },
+                                decoration: InputDecoration(
+                                  labelText: 'Contraseña',
+                                  labelStyle: GoogleFonts.poppins(
+                                    color: Colors.grey.shade600,
+                                  ),
+                                  prefixIcon: Container(
+                                    margin: EdgeInsets.all(12),
+                                    padding: EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        colors: [
+                                          Color(0xFF1B998B).withOpacity(0.1),
+                                          Color(0xFF1B998B).withOpacity(0.05),
+                                        ],
+                                      ),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Icon(
+                                      Icons.lock_outline,
+                                      color: Color(0xFF1B998B),
+                                      size: 20,
+                                    ),
+                                  ),
+                                  suffixIcon: IconButton(
+                                    icon: Icon(
+                                      _obscurePassword
+                                          ? Icons.visibility_outlined
+                                          : Icons.visibility_off_outlined,
+                                      color: Color(0xFF1B998B),
+                                    ),
+                                    onPressed: () {
+                                      setState(() {
+                                        _obscurePassword = !_obscurePassword;
+                                      });
+                                    },
+                                  ),
+                                  filled: true,
+                                  fillColor: Colors.white,
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                    borderSide: BorderSide(
+                                      color: Colors.grey.shade300,
+                                      width: 1.5,
+                                    ),
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                    borderSide: BorderSide(
+                                      color: Colors.grey.shade300,
+                                      width: 1.5,
+                                    ),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                    borderSide: BorderSide(
+                                      color: Color(0xFF1B998B),
+                                      width: 2,
+                                    ),
+                                  ),
+                                  errorBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                    borderSide: BorderSide(
+                                      color: Colors.red.shade400,
+                                      width: 2,
+                                    ),
+                                  ),
+                                  focusedErrorBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                    borderSide: BorderSide(
+                                      color: Colors.red.shade400,
+                                      width: 2,
+                                    ),
+                                  ),
+                                  contentPadding: EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 16,
+                                  ),
+                                ),
+
+                                onSubmitted: (_) async {
+                                  if (_passwordController.text.isNotEmpty &&
+                                      !_isVerifying) {
+                                    setState(() {
+                                      _isVerifying = true;
+                                      _errorMessage = null;
+                                    });
+
+                                    try {
+                                      final authService = AuthService();
+                                      final userId =
+                                          await authService.getUserId();
+                                      final userRole = await authService
+                                          .getCurrentUserRole();
+
+                                      String? loginUsername;
+
+                                      if (userRole == 'tribu') {
+                                        final tribuDoc = await FirebaseFirestore
+                                            .instance
+                                            .collection('usuarios')
+                                            .doc(userId)
+                                            .get();
+                                        loginUsername =
+                                            tribuDoc.data()?['usuario'];
+                                      } else if (userRole == 'coordinador') {
+                                        final coordDoc = await FirebaseFirestore
+                                            .instance
+                                            .collection('coordinadores')
+                                            .doc(userId)
+                                            .get();
+                                        loginUsername =
+                                            coordDoc.data()?['usuario'];
+                                      } else if (userRole == 'timoteo') {
+                                        final timDoc = await FirebaseFirestore
+                                            .instance
+                                            .collection('timoteos')
+                                            .doc(userId)
+                                            .get();
+                                        loginUsername =
+                                            timDoc.data()?['usuario'];
+                                      }
+
+                                      if (loginUsername == null ||
+                                          loginUsername.isEmpty) {
+                                        setState(() {
+                                          _errorMessage =
+                                              'No se pudo obtener el usuario. Intenta cerrar sesión e ingresar nuevamente.';
+                                          _isVerifying = false;
+                                        });
+                                        return;
+                                      }
+
+                                      final loginResult =
+                                          await authService.login(
+                                        loginUsername,
+                                        _passwordController.text,
+                                      );
+
+                                      if (loginResult != null) {
+                                        // ✅ Contraseña correcta: resetear intentos y guardar
+                                        setState(() {
+                                          _intentosFallidos = 0;
+                                          _tiempoBloqueo = null;
+                                          _horaBloqueo = null;
+                                        });
+                                        await _guardarEstadoBloqueo();
+
+                                        Navigator.of(dialogContext).pop(true);
+                                      } else {
+                                        // ❌ Contraseña incorrecta
+                                        _intentosFallidos++;
+
+                                        if (_intentosFallidos >= _maxIntentos) {
+                                          // 🔒 BLOQUEAR USUARIO
+                                          final ahoraUtc =
+                                              DateTime.now().toUtc();
+                                          final ahoraColombia = ahoraUtc
+                                              .subtract(Duration(hours: 5));
+
+                                          setState(() {
+                                            _tiempoBloqueo = DateTime.now()
+                                                .add(_duracionBloqueo);
+                                            _horaBloqueo =
+                                                DateFormat('hh:mm a', 'es')
+                                                    .format(ahoraColombia);
+                                          });
+
+                                          // ✅ CRÍTICO: Guardar estado de bloqueo
+                                          await _guardarEstadoBloqueo();
+
+                                          Navigator.of(dialogContext)
+                                              .pop(false);
+
+                                          if (mounted) {
+                                            await _mostrarVentanaBloqueo(
+                                                context);
+                                          }
+                                        } else {
+                                          // Aún tiene intentos
+                                          final intentosRestantes =
+                                              _maxIntentos - _intentosFallidos;
+                                          setState(() {
+                                            _passwordController.clear();
+                                            _isVerifying = false;
+                                            if (intentosRestantes == 1) {
+                                              _errorMessage =
+                                                  '⚠️ ÚLTIMO INTENTO: Si fallas nuevamente, serás bloqueado por 12 horas.';
+                                            } else {
+                                              _errorMessage =
+                                                  'Contraseña incorrecta. Te quedan $intentosRestantes ${intentosRestantes == 1 ? 'intento' : 'intentos'}.';
+                                            }
+                                          });
+                                        }
+                                      }
+                                    } catch (e) {
+                                      setState(() {
+                                        _errorMessage =
+                                            'Error al verificar la contraseña: ${e.toString()}';
+                                        _isVerifying = false;
+                                      });
+                                    }
+                                  }
+                                },
+                              ),
+                            ),
+
+                            // Mensaje de error
+                            if (_errorMessage != null) ...[
+                              SizedBox(height: 12),
+                              Container(
+                                padding: EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.red.shade50,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: Colors.red.shade300,
+                                    width: 1,
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.error_outline,
+                                      color: Colors.red.shade700,
+                                      size: 20,
+                                    ),
+                                    SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        _errorMessage!,
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 12,
+                                          color: Colors.red.shade700,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    // Footer con botones
+                    Container(
+                      padding: EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade50,
+                        borderRadius: BorderRadius.only(
+                          bottomLeft: Radius.circular(24),
+                          bottomRight: Radius.circular(24),
+                        ),
+                        border: Border(
+                          top: BorderSide(color: Colors.grey.shade200),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: _isVerifying
+                                  ? null
+                                  : () =>
+                                      Navigator.of(dialogContext).pop(false),
+                              style: OutlinedButton.styleFrom(
+                                padding: EdgeInsets.symmetric(vertical: 16),
+                                side: BorderSide(
+                                  color: Colors.grey.shade400,
+                                  width: 2,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              child: Text(
+                                'Cancelar',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.grey.shade700,
+                                ),
+                              ),
+                            ),
+                          ),
+                          SizedBox(width: 12),
+                          Expanded(
+                            flex: 2,
+                            child: ElevatedButton(
+                              // ✅ CAMBIO CLAVE: El botón se activa apenas hay texto
+
+                              onPressed: (_isVerifying ||
+                                      _passwordController.text.isEmpty)
+                                  ? null
+                                  : () async {
+                                      setState(() {
+                                        _isVerifying = true;
+                                        _errorMessage = null;
+                                      });
+
+                                      try {
+                                        final authService = AuthService();
+                                        final userId =
+                                            await authService.getUserId();
+                                        final userRole = await authService
+                                            .getCurrentUserRole();
+
+                                        String? loginUsername;
+
+                                        if (userRole == 'tribu') {
+                                          final tribuDoc =
+                                              await FirebaseFirestore.instance
+                                                  .collection('usuarios')
+                                                  .doc(userId)
+                                                  .get();
+                                          loginUsername =
+                                              tribuDoc.data()?['usuario'];
+                                        } else if (userRole == 'coordinador') {
+                                          final coordDoc =
+                                              await FirebaseFirestore.instance
+                                                  .collection('coordinadores')
+                                                  .doc(userId)
+                                                  .get();
+                                          loginUsername =
+                                              coordDoc.data()?['usuario'];
+                                        } else if (userRole == 'timoteo') {
+                                          final timDoc = await FirebaseFirestore
+                                              .instance
+                                              .collection('timoteos')
+                                              .doc(userId)
+                                              .get();
+                                          loginUsername =
+                                              timDoc.data()?['usuario'];
+                                        }
+
+                                        if (loginUsername == null ||
+                                            loginUsername.isEmpty) {
+                                          setState(() {
+                                            _errorMessage =
+                                                'No se pudo obtener el usuario. Intenta cerrar sesión e ingresar nuevamente.';
+                                            _isVerifying = false;
+                                          });
+                                          return;
+                                        }
+
+                                        final loginResult =
+                                            await authService.login(
+                                          loginUsername,
+                                          _passwordController.text,
+                                        );
+
+                                        if (loginResult != null) {
+                                          // ✅ Contraseña correcta: resetear intentos y guardar
+                                          setState(() {
+                                            _intentosFallidos = 0;
+                                            _tiempoBloqueo = null;
+                                            _horaBloqueo = null;
+                                          });
+                                          await _guardarEstadoBloqueo();
+
+                                          Navigator.of(dialogContext).pop(true);
+                                        } else {
+                                          // ❌ Contraseña incorrecta
+                                          _intentosFallidos++;
+
+                                          if (_intentosFallidos >=
+                                              _maxIntentos) {
+                                            // 🔒 BLOQUEAR USUARIO
+                                            final ahoraUtc =
+                                                DateTime.now().toUtc();
+                                            final ahoraColombia = ahoraUtc
+                                                .subtract(Duration(hours: 5));
+
+                                            setState(() {
+                                              _tiempoBloqueo = DateTime.now()
+                                                  .add(_duracionBloqueo);
+                                              _horaBloqueo =
+                                                  DateFormat('hh:mm a', 'es')
+                                                      .format(ahoraColombia);
+                                            });
+
+                                            // ✅ CRÍTICO: Guardar estado de bloqueo
+                                            await _guardarEstadoBloqueo();
+
+                                            Navigator.of(dialogContext)
+                                                .pop(false);
+
+                                            if (mounted) {
+                                              await _mostrarVentanaBloqueo(
+                                                  context);
+                                            }
+                                          } else {
+                                            // Aún tiene intentos
+                                            final intentosRestantes =
+                                                _maxIntentos -
+                                                    _intentosFallidos;
+                                            setState(() {
+                                              _passwordController.clear();
+                                              _isVerifying = false;
+                                              if (intentosRestantes == 1) {
+                                                _errorMessage =
+                                                    '⚠️ ÚLTIMO INTENTO: Si fallas nuevamente, serás bloqueado por 12 horas.';
+                                              } else {
+                                                _errorMessage =
+                                                    'Contraseña incorrecta. Te quedan $intentosRestantes ${intentosRestantes == 1 ? 'intento' : 'intentos'}.';
+                                              }
+                                            });
+                                          }
+                                        }
+                                      } catch (e) {
+                                        setState(() {
+                                          _errorMessage =
+                                              'Error al verificar la contraseña: ${e.toString()}';
+                                          _isVerifying = false;
+                                        });
+                                      }
+                                    },
+
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.red.shade600,
+                                foregroundColor: Colors.white,
+                                padding: EdgeInsets.symmetric(vertical: 16),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                elevation: 2,
+                              ),
+                              child: _isVerifying
+                                  ? SizedBox(
+                                      height: 20,
+                                      width: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(
+                                                Colors.white),
+                                      ),
+                                    )
+                                  : Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Icon(Icons.delete_forever, size: 20),
+                                        SizedBox(width: 8),
+                                        Text(
+                                          'Confirmar Eliminación',
+                                          style: GoogleFonts.poppins(
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    if (result == true) {
+      onConfirmed();
+      return true;
+    }
+
+    return false;
+  }
+
+  /// Cargar estado de bloqueo desde Firestore
+
+  /// Cargar estado de bloqueo desde Firestore
+  Future<void> _cargarEstadoBloqueo() async {
+    try {
+      final authService = AuthService();
+      final userId = await authService.getUserId();
+
+      if (userId.isEmpty) {
+        print('⚠️ No se pudo obtener userId');
+        return;
+      }
+
+      print('🔍 Cargando estado de bloqueo para userId: $userId');
+
+      final doc = await FirebaseFirestore.instance
+          .collection('bloqueos_usuarios')
+          .doc(userId)
+          .get();
+
+      if (doc.exists) {
+        final data = doc.data()!;
+        final tiempoBloqueoTimestamp = data['tiempoBloqueo'] as Timestamp?;
+
+        if (tiempoBloqueoTimestamp != null) {
+          final tiempoBloqueoRecuperado = tiempoBloqueoTimestamp.toDate();
+          final horaBloqueoRecuperada = data['horaBloqueo'] as String?;
+          final intentosFallidosRecuperados =
+              data['intentosFallidos'] as int? ?? 0;
+
+          print('🔍 Bloqueo encontrado en Firestore:');
+          print('   - Tiempo bloqueo: $tiempoBloqueoRecuperado');
+          print('   - Hora bloqueo: $horaBloqueoRecuperada');
+          print('   - Intentos fallidos: $intentosFallidosRecuperados');
+
+          // Verificar si el bloqueo ya expiró
+          final ahora = DateTime.now();
+          if (ahora.isBefore(tiempoBloqueoRecuperado)) {
+            // Bloqueo aún activo
+            if (mounted) {
+              setState(() {
+                _tiempoBloqueo = tiempoBloqueoRecuperado;
+                _horaBloqueo = horaBloqueoRecuperada;
+                _intentosFallidos = intentosFallidosRecuperados;
+              });
+            }
+            print('🔒 Usuario sigue bloqueado hasta: $tiempoBloqueoRecuperado');
+          } else {
+            // Bloqueo expirado
+            print('✅ El bloqueo ya expiró, limpiando estado...');
+            if (mounted) {
+              setState(() {
+                _tiempoBloqueo = null;
+                _horaBloqueo = null;
+                _intentosFallidos = 0;
+              });
+            }
+            await _guardarEstadoBloqueo();
+          }
+        } else {
+          print('ℹ️ Documento existe pero no hay tiempoBloqueo');
+        }
+      } else {
+        print('ℹ️ No existe documento de bloqueo para este usuario');
+      }
+    } catch (e) {
+      print('❌ Error al cargar estado de bloqueo: $e');
+    }
+  }
+
+  /// Guardar estado de bloqueo en Firestore
+  Future<void> _guardarEstadoBloqueo() async {
+    try {
+      // ========================================
+      // PASO 4: LOGS DE DEBUG
+      // ========================================
+      print('💾 Guardando estado de bloqueo:');
+      print('   - Tiempo bloqueo: $_tiempoBloqueo');
+      print('   - Hora bloqueo: $_horaBloqueo');
+      print('   - Intentos fallidos: $_intentosFallidos');
+
+      final authService = AuthService();
+      final userId = await authService.getUserId();
+
+      if (_tiempoBloqueo == null) {
+        // Si no hay bloqueo, eliminar el documento
+        await FirebaseFirestore.instance
+            .collection('bloqueos_usuarios')
+            .doc(userId)
+            .delete();
+
+        print('🗑️ Documento de bloqueo eliminado para userId: $userId');
+      } else {
+        // Guardar estado de bloqueo
+        await FirebaseFirestore.instance
+            .collection('bloqueos_usuarios')
+            .doc(userId)
+            .set({
+          'tiempoBloqueo': Timestamp.fromDate(_tiempoBloqueo!),
+          'horaBloqueo': _horaBloqueo,
+          'intentosFallidos': _intentosFallidos,
+          'userId': userId,
+          'ultimaActualizacion': FieldValue.serverTimestamp(),
+        });
+
+        print('✅ Estado de bloqueo guardado correctamente en Firestore');
+      }
+    } catch (e) {
+      print('❌ Error al guardar estado de bloqueo: $e');
     }
   }
 
@@ -1624,145 +2977,161 @@ class _TribusScreenState extends State<TribusScreen>
         length: 5,
         child: Scaffold(
           appBar: AppBar(
-            elevation: 2,
+            elevation: 0,
             backgroundColor: primaryTeal,
-            titleSpacing: 12,
-            title: Row(
-              children: [
-                // Logo mejorado con mejor visibilidad
-                Hero(
-                  tag: 'logo',
-                  child: Container(
-                    padding: EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.2),
-                          blurRadius: 6,
-                          offset: Offset(0, 3),
-                        ),
-                      ],
-                    ),
-                    child: Container(
-                      height: 38,
-                      width: 38,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.white,
-                      ),
-                      child: ClipOval(
-                        child: Image.asset(
-                          'assets/Cocep_.png',
-                          height: 38,
-                          width: 38,
-                          fit: BoxFit.contain,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                SizedBox(width: 12),
-                // Título con mejor espaciado
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'Tribu',
-                        style: GoogleFonts.poppins(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.white.withOpacity(0.9),
-                        ),
-                      ),
-                      Text(
-                        widget.tribuNombre,
-                        style: GoogleFonts.poppins(
-                          fontSize:
-                              MediaQuery.of(context).size.width < 400 ? 16 : 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            actions: [
-              // Botón de cerrar sesión mejorado
-              Container(
-                margin: EdgeInsets.only(right: 8),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      Colors.white.withOpacity(0.25),
-                      Colors.white.withOpacity(0.15),
-                    ],
-                  ),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: Colors.white.withOpacity(0.6),
-                    width: 2,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.15),
-                      blurRadius: 6,
-                      offset: Offset(0, 3),
-                    ),
+            automaticallyImplyLeading: true,
+            iconTheme: IconThemeData(color: Colors.white),
+            flexibleSpace: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    primaryTeal,
+                    primaryTeal.withOpacity(0.85),
                   ],
                 ),
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: _confirmarCerrarSesion,
-                    borderRadius: BorderRadius.circular(12),
-                    child: Container(
-                      padding:
-                          EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                      constraints: BoxConstraints(
-                        minWidth: 80,
-                        minHeight: 40,
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.logout_rounded,
+              ),
+            ),
+            toolbarHeight: MediaQuery.of(context).size.height * 0.085,
+            title: LayoutBuilder(
+              builder: (context, constraints) {
+                final screenWidth = MediaQuery.of(context).size.width;
+                final isVerySmallScreen = screenWidth < 360;
+                final isSmallScreen = screenWidth < 400;
+                final isMediumScreen = screenWidth >= 400 && screenWidth < 600;
+
+                // Dividir nombre de tribu inteligentemente
+                final tribuNombre = widget.tribuNombre;
+                final palabras = tribuNombre.split(' ');
+
+                // Determinar si necesitamos múltiples líneas basado en longitud
+                final necesitaDosLineas = tribuNombre.length > 20 &&
+                    (isVerySmallScreen || isSmallScreen);
+                final necesitaTresLineas =
+                    tribuNombre.length > 30 && isVerySmallScreen;
+
+                return Row(
+                  children: [
+                    // Logo con efecto Hero
+                    Hero(
+                      tag: 'logo_tribu_${widget.tribuId}',
+                      child: Container(
+                        padding: EdgeInsets.all(isVerySmallScreen ? 3 : 4),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.2),
+                              blurRadius: 8,
+                              offset: Offset(0, 3),
+                            ),
+                          ],
+                        ),
+                        child: Container(
+                          height: isVerySmallScreen
+                              ? 34
+                              : (isSmallScreen ? 36 : 38),
+                          width: isVerySmallScreen
+                              ? 34
+                              : (isSmallScreen ? 36 : 38),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
                             color: Colors.white,
-                            size: 20,
                           ),
-                          SizedBox(width: 6),
-                          Text(
-                            'Salir',
-                            style: GoogleFonts.poppins(
-                              color: Colors.white,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w700,
-                              shadows: [
-                                Shadow(
-                                  offset: Offset(0, 1),
-                                  blurRadius: 2,
-                                  color: Colors.black.withOpacity(0.3),
+                          child: ClipOval(
+                            child: Image.asset(
+                              'assets/Cocep_.png',
+                              fit: BoxFit.contain,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: isVerySmallScreen ? 8 : 12),
+
+                    // Título de la tribu responsivo con múltiples líneas
+                    Expanded(
+                      child: necesitaTresLineas
+                          ? _buildTituloTresLineas(palabras, isVerySmallScreen)
+                          : necesitaDosLineas
+                              ? _buildTituloDosLineas(
+                                  tribuNombre, palabras, isSmallScreen)
+                              : _buildTituloUnaLinea(
+                                  tribuNombre, isSmallScreen, isMediumScreen),
+                    ),
+
+                    SizedBox(width: isVerySmallScreen ? 4 : 8),
+
+                    // Botón de cerrar sesión mejorado
+                    Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            Colors.white.withOpacity(0.25),
+                            Colors.white.withOpacity(0.15),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.6),
+                          width: 2,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.15),
+                            blurRadius: 6,
+                            offset: Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: _confirmarCerrarSesion,
+                          borderRadius: BorderRadius.circular(12),
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: isVerySmallScreen ? 10 : 14,
+                              vertical: isVerySmallScreen ? 8 : 10,
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.logout_rounded,
+                                  color: Colors.white,
+                                  size: isVerySmallScreen ? 18 : 20,
+                                ),
+                                SizedBox(width: 6),
+                                Text(
+                                  'Salir',
+                                  style: GoogleFonts.poppins(
+                                    color: Colors.white,
+                                    fontSize: isVerySmallScreen ? 12 : 13,
+                                    fontWeight: FontWeight.w700,
+                                    shadows: [
+                                      Shadow(
+                                        offset: Offset(0, 1),
+                                        blurRadius: 2,
+                                        color: Colors.black.withOpacity(0.3),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ],
                             ),
                           ),
-                        ],
+                        ),
                       ),
                     ),
-                  ),
-                ),
-              ),
-            ],
+                  ],
+                );
+              },
+            ),
             bottom: PreferredSize(
               preferredSize: Size.fromHeight(60),
               child: Container(
@@ -1776,24 +3145,61 @@ class _TribusScreenState extends State<TribusScreen>
                     ),
                   ],
                 ),
-                child: TabBar(
-                  controller: _tabController,
-                  indicator: BoxDecoration(
-                    color: secondaryOrange,
-                    borderRadius: BorderRadius.only(
-                      topLeft: Radius.circular(10),
-                      topRight: Radius.circular(10),
-                    ),
-                  ),
-                  labelColor: Colors.white,
-                  unselectedLabelColor: Colors.white.withOpacity(0.7),
-                  tabs: [
-                    _buildTab(Icons.people, 'Timoteos'),
-                    _buildTab(Icons.supervised_user_circle, 'Coordinadores'),
-                    _buildTab(Icons.assignment_ind, 'Personas'),
-                    _buildTab(Icons.list_alt, 'Asistencias'),
-                    _buildTab(Icons.event_note, 'Eventos'),
-                  ],
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final screenWidth = MediaQuery.of(context).size.width;
+                    final isVerySmallScreen = screenWidth < 360;
+                    final isSmallScreen = screenWidth < 500;
+
+                    return TabBar(
+                      controller: _tabController,
+                      indicator: BoxDecoration(
+                        color: secondaryOrange,
+                        borderRadius: BorderRadius.only(
+                          topLeft: Radius.circular(10),
+                          topRight: Radius.circular(10),
+                        ),
+                      ),
+                      labelColor: Colors.white,
+                      unselectedLabelColor: Colors.white.withOpacity(0.7),
+                      isScrollable: isSmallScreen,
+                      labelPadding: EdgeInsets.symmetric(
+                        horizontal: isVerySmallScreen ? 8 : 12,
+                      ),
+                      tabs: [
+                        _buildResponsiveTab(
+                          Icons.people,
+                          'Timoteos',
+                          isVerySmallScreen,
+                          isSmallScreen,
+                        ),
+                        _buildResponsiveTab(
+                          Icons.supervised_user_circle,
+                          'Coordinadores',
+                          isVerySmallScreen,
+                          isSmallScreen,
+                        ),
+                        _buildResponsiveTab(
+                          Icons.assignment_ind,
+                          'Personas',
+                          isVerySmallScreen,
+                          isSmallScreen,
+                        ),
+                        _buildResponsiveTab(
+                          Icons.list_alt,
+                          'Asistencias',
+                          isVerySmallScreen,
+                          isSmallScreen,
+                        ),
+                        _buildResponsiveTab(
+                          Icons.event_note,
+                          'Eventos',
+                          isVerySmallScreen,
+                          isSmallScreen,
+                        ),
+                      ],
+                    );
+                  },
                 ),
               ),
             ),
@@ -2111,6 +3517,188 @@ class _TribusScreenState extends State<TribusScreen>
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildTituloUnaLinea(
+      String tribuNombre, bool isSmallScreen, bool isMediumScreen) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text(
+          'Tribu',
+          style: GoogleFonts.poppins(
+            fontSize: isSmallScreen ? 11 : 13,
+            fontWeight: FontWeight.w500,
+            color: Colors.white.withOpacity(0.9),
+            height: 1.1,
+          ),
+        ),
+        SizedBox(height: 2),
+        Text(
+          tribuNombre,
+          style: GoogleFonts.poppins(
+            fontSize: isSmallScreen ? 16 : (isMediumScreen ? 18 : 18),
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+            height: 1.1,
+            shadows: [
+              Shadow(
+                offset: Offset(0, 1),
+                blurRadius: 3,
+                color: Colors.black.withOpacity(0.2),
+              ),
+            ],
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTituloDosLineas(
+      String tribuNombre, List<String> palabras, bool isSmallScreen) {
+    // Dividir inteligentemente en dos líneas
+    final mitad = (palabras.length / 2).ceil();
+    final primeraLinea = palabras.sublist(0, mitad).join(' ');
+    final segundaLinea = palabras.sublist(mitad).join(' ');
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text(
+          'Tribu',
+          style: GoogleFonts.poppins(
+            fontSize: isSmallScreen ? 10 : 11,
+            fontWeight: FontWeight.w500,
+            color: Colors.white.withOpacity(0.85),
+            height: 1.0,
+          ),
+        ),
+        SizedBox(height: 1),
+        Text(
+          primeraLinea,
+          style: GoogleFonts.poppins(
+            fontSize: isSmallScreen ? 13 : 15,
+            fontWeight: FontWeight.w600,
+            color: Colors.white.withOpacity(0.95),
+            height: 1.1,
+            letterSpacing: 0.3,
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        Text(
+          segundaLinea,
+          style: GoogleFonts.poppins(
+            fontSize: isSmallScreen ? 14 : 16,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+            height: 1.1,
+            letterSpacing: 0.4,
+            shadows: [
+              Shadow(
+                offset: Offset(0, 1),
+                blurRadius: 3,
+                color: Colors.black.withOpacity(0.2),
+              ),
+            ],
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTituloTresLineas(List<String> palabras, bool isVerySmallScreen) {
+    // Dividir en tres líneas para pantallas muy pequeñas
+    final tercio = (palabras.length / 3).ceil();
+    final primeraLinea =
+        palabras.sublist(0, min(tercio, palabras.length)).join(' ');
+    final segundaLinea = palabras.length > tercio
+        ? palabras.sublist(tercio, min(tercio * 2, palabras.length)).join(' ')
+        : '';
+    final terceraLinea = palabras.length > tercio * 2
+        ? palabras.sublist(tercio * 2).join(' ')
+        : '';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text(
+          primeraLinea,
+          style: GoogleFonts.poppins(
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: Colors.white.withOpacity(0.9),
+            height: 1.0,
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        if (segundaLinea.isNotEmpty)
+          Text(
+            segundaLinea,
+            style: GoogleFonts.poppins(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Colors.white.withOpacity(0.95),
+              height: 1.0,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        if (terceraLinea.isNotEmpty)
+          Text(
+            terceraLinea,
+            style: GoogleFonts.poppins(
+              fontSize: 13,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+              height: 1.0,
+              shadows: [
+                Shadow(
+                  offset: Offset(0, 1),
+                  blurRadius: 2,
+                  color: Colors.black.withOpacity(0.2),
+                ),
+              ],
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+      ],
+    );
+  }
+
+  Widget _buildResponsiveTab(
+      IconData icon, String text, bool isVerySmallScreen, bool isSmallScreen) {
+    return Tab(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            icon,
+            size: isVerySmallScreen ? 18 : 20,
+          ),
+          SizedBox(height: 4),
+          Text(
+            text,
+            style: GoogleFonts.poppins(
+              fontSize: isVerySmallScreen ? 9 : 10,
+              fontWeight: FontWeight.w600,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+          ),
+        ],
       ),
     );
   }
@@ -4758,83 +6346,146 @@ class CoordinadoresTab extends StatelessWidget {
 
   Future<void> _eliminarCoordinador(
       BuildContext context, DocumentSnapshot coordinador) async {
-    // Mostrar diálogo de confirmación
-    bool? confirmacion = await showDialog<bool>(
-      context: context,
-      barrierDismissible:
-          false, // Evita que el diálogo se cierre al tocar fuera
-      builder: (BuildContext dialogContext) => AlertDialog(
-        title: const Text('Confirmar eliminación'),
-        content: const Text(
-            '¿Estás seguro de eliminar este coordinador? Los timoteos y registros asignados volverán a estar disponibles para asignación.'),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(dialogContext)
-                  .pop(false); // Cierra el diálogo con false
-            },
-            child: const Text('Cancelar'),
+    // Obtener acceso al estado de TribusScreen
+    final _TribusScreenState? tribusState =
+        context.findAncestorStateOfType<_TribusScreenState>();
+
+    if (tribusState == null) return;
+
+    final nombreCompleto =
+        '${coordinador['nombre']} ${coordinador['apellido']}';
+
+    await tribusState._confirmarEliminacionConContrasena(
+      context,
+      tipoUsuario: 'Coordinador',
+      nombreUsuario: nombreCompleto,
+      onConfirmed: () async {
+        // Mostrar indicador de carga
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => Center(
+            child: Container(
+              padding: EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(color: Color(0xFF1B998B)),
+                  SizedBox(height: 16),
+                  Text(
+                    'Eliminando coordinador...',
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
-          TextButton(
-            onPressed: () {
-              Navigator.of(dialogContext)
-                  .pop(true); // Cierra el diálogo con true
-            },
-            child: const Text('Eliminar'),
-          ),
-        ],
-      ),
+        );
+
+        try {
+          final batch = FirebaseFirestore.instance.batch();
+
+          // Obtener y actualizar timoteos asignados
+          final timoteos = await FirebaseFirestore.instance
+              .collection('timoteos')
+              .where('coordinadorId', isEqualTo: coordinador.id)
+              .get();
+
+          for (var timoteo in timoteos.docs) {
+            batch.update(timoteo.reference,
+                {'coordinadorId': null, 'nombreCoordinador': null});
+          }
+
+          // Obtener y actualizar registros asignados
+          final registros = await FirebaseFirestore.instance
+              .collection('registros')
+              .where('coordinadorAsignado', isEqualTo: coordinador.id)
+              .get();
+
+          for (var registro in registros.docs) {
+            batch.update(registro.reference, {
+              'coordinadorAsignado': null,
+              'nombreCoordinador': null,
+              'estado': 'pendiente'
+            });
+          }
+
+          // Eliminar coordinador
+          batch.delete(coordinador.reference);
+
+          await batch.commit();
+
+          // Cerrar diálogo de carga
+          if (context.mounted) {
+            Navigator.of(context, rootNavigator: true).pop();
+          }
+
+          // Mostrar mensaje de éxito
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Row(
+                  children: [
+                    Icon(Icons.check_circle, color: Colors.white),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Coordinador eliminado correctamente',
+                        style: GoogleFonts.poppins(fontWeight: FontWeight.w500),
+                      ),
+                    ),
+                  ],
+                ),
+                backgroundColor: Colors.green,
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            );
+          }
+        } catch (e) {
+          print('Error al eliminar coordinador: $e');
+
+          // Cerrar diálogo de carga
+          if (context.mounted) {
+            Navigator.of(context, rootNavigator: true).pop();
+          }
+
+          // Mostrar mensaje de error
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Row(
+                  children: [
+                    Icon(Icons.error_outline, color: Colors.white),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Error al eliminar el coordinador: $e',
+                        style: GoogleFonts.poppins(fontWeight: FontWeight.w500),
+                      ),
+                    ),
+                  ],
+                ),
+                backgroundColor: Colors.red,
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            );
+          }
+        }
+      },
     );
-
-    // Si no se confirmó la eliminación o se cerró el diálogo, no hacer nada
-    if (confirmacion != true) return;
-
-    try {
-      final batch = FirebaseFirestore.instance.batch();
-
-      // Obtener y actualizar timoteos asignados
-      final timoteos = await FirebaseFirestore.instance
-          .collection('timoteos')
-          .where('coordinadorId', isEqualTo: coordinador.id)
-          .get();
-
-      for (var timoteo in timoteos.docs) {
-        batch.update(timoteo.reference,
-            {'coordinadorId': null, 'nombreCoordinador': null});
-      }
-
-      // Obtener y actualizar registros asignados
-      final registros = await FirebaseFirestore.instance
-          .collection('registros')
-          .where('coordinadorAsignado', isEqualTo: coordinador.id)
-          .get();
-
-      for (var registro in registros.docs) {
-        batch.update(registro.reference, {
-          'coordinadorAsignado': null,
-          'nombreCoordinador': null,
-          'estado': 'pendiente'
-        });
-      }
-
-      // Eliminar coordinador
-      batch.delete(coordinador.reference);
-
-      await batch.commit();
-
-      // Mostrar mensaje de éxito
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text('Coordinador eliminado correctamente')));
-      }
-    } catch (e) {
-      print('Error al eliminar coordinador: $e');
-      // Mostrar mensaje de error
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error al eliminar el coordinador: $e')));
-      }
-    }
   }
 
   Future<void> _verTimoteosAsignados(
@@ -6456,68 +8107,129 @@ class TimoteosTab extends StatelessWidget {
 
   Future<void> _eliminarTimoteo(
       BuildContext context, DocumentSnapshot timoteo) async {
-    // Mostrar diálogo de confirmación
-    bool? confirmacion = await showDialog<bool>(
-      context: context,
-      barrierDismissible:
-          false, // Evita que el diálogo se cierre al tocar fuera
-      builder: (BuildContext dialogContext) => AlertDialog(
-        title: const Text('Confirmar eliminación'),
-        content: const Text('¿Estás seguro de eliminar este timoteo?'),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(dialogContext)
-                  .pop(false); // Cierra el diálogo con false
-            },
-            child: const Text('Cancelar'),
+    final _TribusScreenState? tribusState =
+        context.findAncestorStateOfType<_TribusScreenState>();
+
+    if (tribusState == null) return;
+
+    final nombreCompleto = '${timoteo['nombre']} ${timoteo['apellido']}';
+
+    await tribusState._confirmarEliminacionConContrasena(
+      context,
+      tipoUsuario: 'Timoteo',
+      nombreUsuario: nombreCompleto,
+      onConfirmed: () async {
+        // Mostrar indicador de carga
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => Center(
+            child: Container(
+              padding: EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(color: Color(0xFF1B998B)),
+                  SizedBox(height: 16),
+                  Text(
+                    'Eliminando timoteo...',
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
-          TextButton(
-            onPressed: () {
-              Navigator.of(dialogContext)
-                  .pop(true); // Cierra el diálogo con true
-            },
-            child: const Text('Eliminar'),
-          ),
-        ],
-      ),
+        );
+
+        try {
+          final batch = FirebaseFirestore.instance.batch();
+
+          // Obtener registros asignados al timoteo
+          final registros = await FirebaseFirestore.instance
+              .collection('registros')
+              .where('timoteoAsignado', isEqualTo: timoteo.id)
+              .get();
+
+          // Actualizar cada registro para remover la asignación del timoteo
+          for (var registro in registros.docs) {
+            batch.update(registro.reference,
+                {'timoteoAsignado': null, 'nombreTimoteo': null});
+          }
+
+          // Eliminar el timoteo
+          batch.delete(timoteo.reference);
+
+          await batch.commit();
+
+          // Cerrar diálogo de carga
+          if (context.mounted) {
+            Navigator.of(context, rootNavigator: true).pop();
+          }
+
+          // Mostrar mensaje de éxito
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Row(
+                  children: [
+                    Icon(Icons.check_circle, color: Colors.white),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Timoteo eliminado correctamente',
+                        style: GoogleFonts.poppins(fontWeight: FontWeight.w500),
+                      ),
+                    ),
+                  ],
+                ),
+                backgroundColor: Colors.green,
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            );
+          }
+        } catch (e) {
+          // Cerrar diálogo de carga
+          if (context.mounted) {
+            Navigator.of(context, rootNavigator: true).pop();
+          }
+
+          // Mostrar mensaje de error
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Row(
+                  children: [
+                    Icon(Icons.error_outline, color: Colors.white),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Error al eliminar el timoteo: $e',
+                        style: GoogleFonts.poppins(fontWeight: FontWeight.w500),
+                      ),
+                    ),
+                  ],
+                ),
+                backgroundColor: Colors.red,
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            );
+          }
+        }
+      },
     );
-
-    // Si no se confirmó la eliminación o se cerró el diálogo, no hacer nada
-    if (confirmacion != true) return;
-
-    try {
-      final batch = FirebaseFirestore.instance.batch();
-
-      // Obtener registros asignados al timoteo
-      final registros = await FirebaseFirestore.instance
-          .collection('registros')
-          .where('timoteoAsignado', isEqualTo: timoteo.id)
-          .get();
-
-      // Actualizar cada registro para remover la asignación del timoteo
-      for (var registro in registros.docs) {
-        batch.update(registro.reference,
-            {'timoteoAsignado': null, 'nombreTimoteo': null});
-      }
-
-      // Eliminar el timoteo
-      batch.delete(timoteo.reference);
-
-      await batch.commit();
-
-      // Mostrar mensaje de éxito
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Timoteo eliminado correctamente')));
-      }
-    } catch (e) {
-      // Mostrar mensaje de error
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error al eliminar el timoteo: $e')));
-      }
-    }
   }
 
   Future<void> _asignarACoordinador(

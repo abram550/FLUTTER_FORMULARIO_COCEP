@@ -12,6 +12,7 @@ import 'dart:async';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter/gestures.dart';
+import 'dart:math';
 
 // Color scheme based on the COCEP logo
 const kPrimaryColor = Color(0xFF1B8C8C); // Turquesa
@@ -328,184 +329,179 @@ class _CoordinadorScreenState extends State<CoordinadorScreen>
             appBar: AppBar(
               elevation: 0,
               backgroundColor: kPrimaryColor,
-              titleSpacing: 12,
-              title: Row(
-                children: [
-                  // Logo mejorado con mejor visibilidad
-                  Hero(
-                    tag: 'coordinador_logo',
-                    child: Container(
-                      padding: EdgeInsets.all(4),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.2),
-                            blurRadius: 6,
-                            offset: Offset(0, 3),
-                          ),
-                        ],
-                      ),
-                      child: Container(
-                        height: 36,
-                        width: 36,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.white,
-                          border: Border.all(
-                            color: kPrimaryColor.withOpacity(0.1),
-                            width: 1,
-                          ),
-                        ),
-                        child: ClipOval(
-                          child: Image.asset(
-                            'assets/Cocep_.png',
-                            height: 36,
-                            width: 36,
-                            fit: BoxFit.contain,
-                            errorBuilder: (context, error, stackTrace) {
-                              return Container(
-                                decoration: BoxDecoration(
-                                  color: kAccentColor.withOpacity(0.2),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Icon(
-                                  Icons.local_fire_department,
-                                  color: kPrimaryColor,
-                                  size: 20,
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  SizedBox(width: 12),
-                  // Avatar del coordinador
-                  /*Hero(
-                    tag: 'coordinador_avatar',
-                    child: Container(
-                      padding: EdgeInsets.all(2),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black12,
-                            blurRadius: 4,
-                            offset: Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      /*child: CircleAvatar(
-                        radius: 16,
-                        backgroundColor: kAccentColor.withOpacity(0.2),
-                        child: Icon(
-                          Icons.person,
-                          color: kPrimaryColor,
-                          size: 18,
-                        ),
-                      ),*/
-                    ),
-                  ),*/
-                  SizedBox(width: 12),
-                  // Información del coordinador
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          'Coordinador',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.white.withOpacity(0.8),
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        Text(
-                          widget.coordinadorNombre,
-                          style: TextStyle(
-                            fontSize: MediaQuery.of(context).size.width < 400
-                                ? 16
-                                : 18,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 0.3,
-                            color: Colors.white,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              actions: [
-                Container(
-                  margin: EdgeInsets.only(right: 8),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        Colors.white.withOpacity(0.25),
-                        Colors.white.withOpacity(0.15),
-                      ],
-                    ),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: Colors.white.withOpacity(0.4),
-                      width: 1.5,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.15),
-                        blurRadius: 6,
-                        offset: Offset(0, 3),
-                      ),
+              automaticallyImplyLeading: true,
+              iconTheme: IconThemeData(color: Colors.white),
+              flexibleSpace: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      kPrimaryColor,
+                      kPrimaryColor.withOpacity(0.85),
                     ],
                   ),
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(12),
-                      onTap: _confirmarCerrarSesion,
-                      child: Container(
-                        padding:
-                            EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.logout_rounded,
+                ),
+              ),
+              toolbarHeight: MediaQuery.of(context).size.height * 0.09,
+              title: LayoutBuilder(
+                builder: (context, constraints) {
+                  final screenWidth = MediaQuery.of(context).size.width;
+                  final isVerySmallScreen = screenWidth < 360;
+                  final isSmallScreen = screenWidth < 400;
+                  final isMediumScreen =
+                      screenWidth >= 400 && screenWidth < 600;
+
+                  // Analizar nombre del coordinador
+                  final coordinadorNombre = widget.coordinadorNombre;
+                  final palabras = coordinadorNombre.split(' ');
+                  final nombreLargo = coordinadorNombre.length > 18;
+
+                  // Determinar estructura de líneas basado en longitud y pantalla
+                  final usarDosLineas = (nombreLargo && isSmallScreen) ||
+                      (coordinadorNombre.length > 24 && isMediumScreen);
+                  final usarTresLineas =
+                      coordinadorNombre.length > 25 && isVerySmallScreen;
+
+                  return Row(
+                    children: [
+                      // Logo COCEP con animación Hero
+                      Hero(
+                        tag: 'coordinador_logo_${widget.coordinadorId}',
+                        child: Container(
+                          padding: EdgeInsets.all(isVerySmallScreen ? 3 : 4),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.2),
+                                blurRadius: 8,
+                                offset: Offset(0, 3),
+                              ),
+                            ],
+                          ),
+                          child: Container(
+                            height: isVerySmallScreen
+                                ? 34
+                                : (isSmallScreen ? 36 : 36),
+                            width: isVerySmallScreen
+                                ? 34
+                                : (isSmallScreen ? 36 : 36),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
                               color: Colors.white,
-                              size: 18,
+                              border: Border.all(
+                                color: kPrimaryColor.withOpacity(0.1),
+                                width: 1,
+                              ),
                             ),
-                            SizedBox(width: 4),
-                            Text(
-                              'Salir',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                shadows: [
-                                  Shadow(
-                                    offset: Offset(0, 1),
-                                    blurRadius: 2,
-                                    color: Colors.black.withOpacity(0.3),
+                            child: ClipOval(
+                              child: Image.asset(
+                                'assets/Cocep_.png',
+                                fit: BoxFit.contain,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Container(
+                                    decoration: BoxDecoration(
+                                      color: kAccentColor.withOpacity(0.2),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(
+                                      Icons.local_fire_department,
+                                      color: kPrimaryColor,
+                                      size: isVerySmallScreen ? 18 : 20,
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: isVerySmallScreen ? 8 : 12),
+
+                      // Nombre del coordinador con diseño adaptativo
+                      Expanded(
+                        child: usarTresLineas
+                            ? _buildCoordinadorTresLineas(
+                                palabras, isVerySmallScreen)
+                            : usarDosLineas
+                                ? _buildCoordinadorDosLineas(
+                                    coordinadorNombre, palabras, isSmallScreen)
+                                : _buildCoordinadorUnaLinea(coordinadorNombre,
+                                    isSmallScreen, isMediumScreen),
+                      ),
+
+                      SizedBox(width: isVerySmallScreen ? 4 : 8),
+
+                      // Botón de salir mejorado
+                      Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              Colors.white.withOpacity(0.25),
+                              Colors.white.withOpacity(0.15),
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.5),
+                            width: 1.5,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.15),
+                              blurRadius: 6,
+                              offset: Offset(0, 3),
+                            ),
+                          ],
+                        ),
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(12),
+                            onTap: _confirmarCerrarSesion,
+                            child: Container(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: isVerySmallScreen ? 10 : 12,
+                                vertical: isVerySmallScreen ? 8 : 8,
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.logout_rounded,
+                                    color: Colors.white,
+                                    size: isVerySmallScreen ? 16 : 18,
+                                  ),
+                                  SizedBox(width: 4),
+                                  Text(
+                                    'Salir',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: isVerySmallScreen ? 11 : 12,
+                                      fontWeight: FontWeight.w600,
+                                      shadows: [
+                                        Shadow(
+                                          offset: Offset(0, 1),
+                                          blurRadius: 2,
+                                          color: Colors.black.withOpacity(0.3),
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ],
                               ),
                             ),
-                          ],
+                          ),
                         ),
                       ),
-                    ),
-                  ),
-                ),
-              ],
+                    ],
+                  );
+                },
+              ),
               bottom: PreferredSize(
                 preferredSize: Size.fromHeight(kToolbarHeight + 15),
                 child: Container(
@@ -519,54 +515,66 @@ class _CoordinadorScreenState extends State<CoordinadorScreen>
                       ),
                     ],
                   ),
-                  child: TabBar(
-                    controller: _tabController,
-                    indicatorWeight: 3,
-                    indicator: BoxDecoration(
-                      border: Border(
-                        bottom: BorderSide(
-                          color: kAccentColor,
-                          width: 3,
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final screenWidth = MediaQuery.of(context).size.width;
+                      final isVerySmallScreen = screenWidth < 360;
+                      final isSmallScreen = screenWidth < 500;
+
+                      return TabBar(
+                        controller: _tabController,
+                        indicatorWeight: 3,
+                        indicator: BoxDecoration(
+                          border: Border(
+                            bottom: BorderSide(
+                              color: kAccentColor,
+                              width: 3,
+                            ),
+                          ),
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.transparent,
+                              kAccentColor.withOpacity(0.1),
+                            ],
+                          ),
                         ),
-                      ),
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.transparent,
-                          kAccentColor.withOpacity(0.1),
+                        labelColor: Colors.white,
+                        unselectedLabelColor: Colors.white60,
+                        isScrollable: isSmallScreen,
+                        labelPadding: EdgeInsets.symmetric(
+                          horizontal: isVerySmallScreen ? 8 : 12,
+                        ),
+                        labelStyle: TextStyle(
+                          fontSize: isVerySmallScreen ? 12 : 14,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.3,
+                        ),
+                        tabs: [
+                          _buildCoordinadorTab(
+                            Icons.people,
+                            'Timoteos',
+                            isVerySmallScreen,
+                          ),
+                          _buildCoordinadorTab(
+                            Icons.assignment_ind,
+                            'Asignados',
+                            isVerySmallScreen,
+                          ),
+                          _buildCoordinadorTab(
+                            Icons.warning_amber_rounded,
+                            'Alertas',
+                            isVerySmallScreen,
+                          ),
+                          _buildCoordinadorTab(
+                            Icons.calendar_today,
+                            'Asistencia',
+                            isVerySmallScreen,
+                          ),
                         ],
-                      ),
-                    ),
-                    labelColor: Colors.white,
-                    unselectedLabelColor: Colors.white60,
-                    labelStyle: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 0.3,
-                    ),
-                    tabs: [
-                      Tab(
-                        icon: Icon(Icons.people),
-                        text: 'Timoteos',
-                        iconMargin: EdgeInsets.only(bottom: 4),
-                      ),
-                      Tab(
-                        icon: Icon(Icons.assignment_ind),
-                        text: 'Asignados',
-                        iconMargin: EdgeInsets.only(bottom: 4),
-                      ),
-                      Tab(
-                        icon: Icon(Icons.warning_amber_rounded),
-                        text: 'Alertas',
-                        iconMargin: EdgeInsets.only(bottom: 4),
-                      ),
-                      Tab(
-                        icon: Icon(Icons.calendar_today),
-                        text: 'Asistencia',
-                        iconMargin: EdgeInsets.only(bottom: 4),
-                      ),
-                    ],
+                      );
+                    },
                   ),
                 ),
               ),
@@ -608,6 +616,180 @@ class _CoordinadorScreenState extends State<CoordinadorScreen>
           ),
         );
       },
+    );
+  }
+
+  Widget _buildCoordinadorUnaLinea(
+      String coordinadorNombre, bool isSmallScreen, bool isMediumScreen) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text(
+          'Coordinador',
+          style: TextStyle(
+            fontSize: isSmallScreen ? 11 : 12,
+            color: Colors.white.withOpacity(0.85),
+            fontWeight: FontWeight.w500,
+            height: 1.1,
+          ),
+        ),
+        SizedBox(height: 2),
+        Text(
+          coordinadorNombre,
+          style: TextStyle(
+            fontSize: isSmallScreen ? 16 : (isMediumScreen ? 18 : 18),
+            fontWeight: FontWeight.bold,
+            letterSpacing: 0.3,
+            color: Colors.white,
+            height: 1.2,
+            shadows: [
+              Shadow(
+                offset: Offset(0, 1),
+                blurRadius: 3,
+                color: Colors.black.withOpacity(0.2),
+              ),
+            ],
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCoordinadorDosLineas(
+      String coordinadorNombre, List<String> palabras, bool isSmallScreen) {
+    // División inteligente: nombre(s) en primera línea, apellido(s) en segunda
+    String primeraLinea, segundaLinea;
+
+    if (palabras.length >= 3) {
+      // Si tiene 3+ palabras, dividir aproximadamente a la mitad
+      final mitad = (palabras.length / 2).ceil();
+      primeraLinea = palabras.sublist(0, mitad).join(' ');
+      segundaLinea = palabras.sublist(mitad).join(' ');
+    } else if (palabras.length == 2) {
+      // Si tiene 2 palabras, una en cada línea
+      primeraLinea = palabras[0];
+      segundaLinea = palabras[1];
+    } else {
+      // Si tiene 1 palabra, mostrar en segunda línea
+      primeraLinea = 'Coordinador';
+      segundaLinea = palabras[0];
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text(
+          primeraLinea,
+          style: TextStyle(
+            fontSize: isSmallScreen ? 13 : 15,
+            fontWeight: FontWeight.w600,
+            color: Colors.white.withOpacity(0.95),
+            height: 1.1,
+            letterSpacing: 0.2,
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        Text(
+          segundaLinea,
+          style: TextStyle(
+            fontSize: isSmallScreen ? 15 : 17,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+            height: 1.1,
+            letterSpacing: 0.3,
+            shadows: [
+              Shadow(
+                offset: Offset(0, 1),
+                blurRadius: 3,
+                color: Colors.black.withOpacity(0.2),
+              ),
+            ],
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCoordinadorTresLineas(
+      List<String> palabras, bool isVerySmallScreen) {
+    // Para pantallas muy pequeñas, dividir en 3 líneas
+    String primeraLinea = 'Coordinador';
+    String segundaLinea = '';
+    String terceraLinea = '';
+
+    if (palabras.length >= 2) {
+      segundaLinea = palabras[0];
+      terceraLinea = palabras.sublist(1).join(' ');
+    } else if (palabras.length == 1) {
+      segundaLinea = palabras[0];
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text(
+          primeraLinea,
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w500,
+            color: Colors.white.withOpacity(0.8),
+            height: 1.0,
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        if (segundaLinea.isNotEmpty)
+          Text(
+            segundaLinea,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Colors.white.withOpacity(0.95),
+              height: 1.0,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        if (terceraLinea.isNotEmpty)
+          Text(
+            terceraLinea,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+              height: 1.0,
+              shadows: [
+                Shadow(
+                  offset: Offset(0, 1),
+                  blurRadius: 2,
+                  color: Colors.black.withOpacity(0.2),
+                ),
+              ],
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+      ],
+    );
+  }
+
+  Widget _buildCoordinadorTab(
+      IconData icon, String text, bool isVerySmallScreen) {
+    return Tab(
+      icon: Icon(
+        icon,
+        size: isVerySmallScreen ? 20 : 24,
+      ),
+      text: text,
+      iconMargin: EdgeInsets.only(bottom: 4),
     );
   }
 

@@ -1203,53 +1203,7 @@ class _FormularioPageState extends State<FormularioPage> {
       appBar: AppBar(
         elevation: 0,
         backgroundColor: Colors.teal.shade700,
-        toolbarHeight: MediaQuery.of(context).size.width < 360 ? 70 : 56,
-        title: LayoutBuilder(
-          builder: (context, constraints) {
-            // Calcular tamaño de fuente basado en el ancho disponible
-            double fontSize;
-            if (constraints.maxWidth < 300) {
-              fontSize = 11;
-            } else if (constraints.maxWidth < 350) {
-              fontSize = 12.5;
-            } else if (constraints.maxWidth < 400) {
-              fontSize = 14;
-            } else {
-              fontSize = 16.5;
-            }
-
-            // Calcular tamaño del ícono
-            double iconSize = constraints.maxWidth < 350 ? 22 : 28;
-
-            return Row(
-              children: [
-                Icon(
-                  Icons.article_rounded,
-                  color: Colors.white,
-                  size: iconSize,
-                ),
-                SizedBox(width: constraints.maxWidth < 350 ? 6 : 8),
-                Expanded(
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      'TOMA DE DATOS CONSOLIDACIÓN ${DateTime.now().year}',
-                      style: GoogleFonts.poppins(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
-                        fontSize: fontSize,
-                        letterSpacing: 0.5,
-                      ),
-                      maxLines: constraints.maxWidth < 360 ? 2 : 1,
-                      textAlign: TextAlign.left,
-                    ),
-                  ),
-                ),
-              ],
-            );
-          },
-        ),
+        toolbarHeight: null, // Permite altura automática
         flexibleSpace: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
@@ -1261,6 +1215,101 @@ class _FormularioPageState extends State<FormularioPage> {
               ],
             ),
           ),
+        ),
+        title: LayoutBuilder(
+          builder: (context, constraints) {
+            final double availableWidth = constraints.maxWidth;
+
+            // Detectar tamaño de pantalla
+            final bool isVerySmallScreen = availableWidth < 260;
+            final bool isSmallScreen = availableWidth < 350;
+            final bool isMediumScreen =
+                availableWidth >= 350 && availableWidth < 500;
+
+            // Calcular tamaño del ícono
+            final double iconSize =
+                isVerySmallScreen ? 22 : (isSmallScreen ? 24 : 28);
+
+            return Row(
+              children: [
+                // Ícono con tamaño adaptativo
+                Icon(
+                  Icons.article_rounded,
+                  color: Colors.white,
+                  size: iconSize,
+                ),
+                SizedBox(
+                    width: isVerySmallScreen ? 6 : (isSmallScreen ? 8 : 10)),
+
+                // Título adaptativo con múltiples líneas
+                Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Primera línea: "TOMA DE DATOS"
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          'TOMA DE DATOS',
+                          style: GoogleFonts.poppins(
+                            color: Colors.white.withOpacity(0.95),
+                            fontWeight: FontWeight.w600,
+                            fontSize: isVerySmallScreen
+                                ? 13
+                                : (isSmallScreen
+                                    ? 15
+                                    : (isMediumScreen ? 17 : 19)),
+                            height: 1.1,
+                            letterSpacing: 0.4,
+                            shadows: [
+                              Shadow(
+                                offset: const Offset(0, 1),
+                                blurRadius: 2,
+                                color: Colors.black.withOpacity(0.2),
+                              ),
+                            ],
+                          ),
+                          maxLines: 1,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+
+                      // Segunda línea: "CONSOLIDACIÓN 2025"
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          'CONSOLIDACIÓN ${DateTime.now().year}',
+                          style: GoogleFonts.poppins(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: isVerySmallScreen
+                                ? 15
+                                : (isSmallScreen
+                                    ? 17
+                                    : (isMediumScreen ? 19 : 22)),
+                            height: 1.1,
+                            letterSpacing: 0.5,
+                            shadows: [
+                              Shadow(
+                                offset: const Offset(0, 2),
+                                blurRadius: 4,
+                                color: Colors.black.withOpacity(0.3),
+                              ),
+                            ],
+                          ),
+                          maxLines: 1,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            );
+          },
         ),
       ),
       body: SafeArea(

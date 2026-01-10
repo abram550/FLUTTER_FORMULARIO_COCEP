@@ -1,16 +1,11 @@
 import 'dart:math';
 import 'dart:async';
-
-import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/services.dart';
-import 'package:formulario_app/utils/database_utils.dart';
 import 'package:formulario_app/utils/email_service.dart';
 import 'package:intl/intl.dart';
-import 'package:url_launcher/url_launcher.dart';
-import 'package:intl/date_symbol_data_local.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter/gestures.dart';
@@ -253,152 +248,268 @@ class _TimoteoScreenState extends State<TimoteoScreen>
         appBar: AppBar(
           elevation: 2,
           backgroundColor: kPrimaryColor,
+          toolbarHeight: null, // Permite altura automática
+          flexibleSpace: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  kPrimaryColor,
+                  kPrimaryColor.withOpacity(0.85),
+                ],
+              ),
+            ),
+          ),
           shape: const RoundedRectangleBorder(
             borderRadius: BorderRadius.vertical(
               bottom: Radius.circular(20),
             ),
           ),
-          title: Row(
-            children: [
-              Container(
-                height: 40,
-                width: 40,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: 4,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Icon(
-                  Icons.person,
-                  color: kPrimaryColor,
-                  size: 24,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Timoteo',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.white70,
-                      ),
-                    ),
-                    Text(
-                      widget.timoteoNombre,
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            // ===== BOTÓN DE NOTIFICACIONES (COMENTADO) =====
-            // Descomentar cuando se implemente la funcionalidad de notificaciones
-            /*
-  IconButton(
-    icon: const Icon(Icons.notifications_outlined),
-    onPressed: () {
-      _resetInactivityTimer();
-      // TODO: Implementar funcionalidad de notificaciones
-    },
-    tooltip: 'Notificaciones',
-  ),
-  */
-            // ===== FIN BOTÓN DE NOTIFICACIONES =====
+          title: LayoutBuilder(
+            builder: (context, constraints) {
+              // Detectar ancho disponible
+              final double availableWidth = constraints.maxWidth;
 
-            Container(
-              margin: EdgeInsets.only(right: 8),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: Colors.white.withOpacity(0.3),
-                  width: 1,
-                ),
-              ),
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(12),
-                  onTap: _confirmarCerrarSesion,
-                  child: Container(
-                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    child: Row(
+              // Determinar si es pantalla pequeña
+              final bool isSmallScreen = availableWidth < 380;
+              final bool isMediumScreen =
+                  availableWidth >= 380 && availableWidth < 600;
+
+              return Row(
+                children: [
+                  // Avatar con animación sutil
+                  Hero(
+                    tag: 'avatar_${widget.timoteoId}',
+                    child: Container(
+                      height: isSmallScreen ? 36 : 40,
+                      width: isSmallScreen ? 36 : 40,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.15),
+                            blurRadius: 8,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: Icon(
+                        Icons.person,
+                        color: kPrimaryColor,
+                        size: isSmallScreen ? 20 : 24,
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: isSmallScreen ? 10 : 12),
+
+                  // Columna con título adaptativo
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(
-                          Icons.logout_rounded,
-                          color: Colors.white,
-                          size: 18,
-                        ),
-                        SizedBox(width: 4),
+                        // Label "Timoteo" - siempre en una línea
                         Text(
-                          'Salir',
+                          'Timoteo',
                           style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
+                            fontSize: isSmallScreen ? 11 : 13,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.white.withOpacity(0.85),
+                            letterSpacing: 0.3,
                           ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        SizedBox(height: 2),
+
+                        // Nombre adaptativo con ajuste automático
+                        LayoutBuilder(
+                          builder: (context, nameConstraints) {
+                            final String nombre = widget.timoteoNombre;
+
+                            // Calcular tamaño de fuente óptimo
+                            double fontSize = isSmallScreen ? 16 : 20;
+                            int maxLines = 1;
+
+                            // Si el nombre es muy largo, permitir 2 líneas
+                            if (nombre.length > 15 && isSmallScreen) {
+                              maxLines = 2;
+                              fontSize = 14;
+                            } else if (nombre.length > 20 && isMediumScreen) {
+                              maxLines = 2;
+                              fontSize = 16;
+                            }
+
+                            return Text(
+                              nombre,
+                              style: TextStyle(
+                                fontSize: fontSize,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                                height: 1.2,
+                                letterSpacing: 0.2,
+                                shadows: [
+                                  Shadow(
+                                    color: Colors.black.withOpacity(0.2),
+                                    offset: const Offset(0, 1),
+                                    blurRadius: 2,
+                                  ),
+                                ],
+                              ),
+                              maxLines: maxLines,
+                              overflow: TextOverflow.ellipsis,
+                            );
+                          },
                         ),
                       ],
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+          actions: [
+            // Botón de cerrar sesión - siempre visible con texto
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: Container(
+                constraints: const BoxConstraints(
+                  minWidth: 70,
+                  maxWidth: 100,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: Colors.white.withOpacity(0.3),
+                    width: 1,
+                  ),
+                ),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: _confirmarCerrarSesion,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 8),
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: const [
+                            Icon(
+                              Icons.logout_rounded,
+                              color: Colors.white,
+                              size: 16,
+                            ),
+                            SizedBox(width: 4),
+                            Text(
+                              'Salir',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 0.3,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 ),
               ),
             ),
           ],
-          bottom: TabBar(
-            controller: _tabController,
-            indicatorColor: kSecondaryColor,
-            indicatorWeight: 4,
-            indicatorSize: TabBarIndicatorSize.label,
-            labelStyle: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-            unselectedLabelStyle: const TextStyle(
-              fontSize: 16,
-            ),
-            labelColor: Colors.white,
-            unselectedLabelColor: Colors.white70,
-            tabs: [
-              Tab(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: const [
-                    Icon(Icons.person_outline),
-                    SizedBox(width: 8),
-                    Text('Perfil'),
-                  ],
-                ),
+          bottom: PreferredSize(
+            preferredSize: const Size.fromHeight(50),
+            child: TabBar(
+              controller: _tabController,
+              indicatorColor: kSecondaryColor,
+              indicatorWeight: 4,
+              indicatorSize: TabBarIndicatorSize.label,
+              labelStyle: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 0.3,
               ),
-              Tab(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: const [
-                    Icon(Icons.groups_outlined),
-                    SizedBox(width: 8),
-                    Text('Discípulos'),
-                  ],
-                ),
+              unselectedLabelStyle: const TextStyle(
+                fontSize: 15,
               ),
-            ],
+              labelColor: Colors.white,
+              unselectedLabelColor: Colors.white70,
+              tabs: [
+                Tab(
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      // Si el ancho es muy pequeño, ajustar diseño
+                      if (constraints.maxWidth < 100) {
+                        return Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: const [
+                            Icon(Icons.person_outline, size: 18),
+                            SizedBox(height: 2),
+                            FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text('Perfil'),
+                            ),
+                          ],
+                        );
+                      }
+                      return Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: const [
+                          Icon(Icons.person_outline, size: 20),
+                          SizedBox(width: 6),
+                          Flexible(
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text('Perfil'),
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+                Tab(
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      if (constraints.maxWidth < 100) {
+                        return Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: const [
+                            Icon(Icons.groups_outlined, size: 18),
+                            SizedBox(height: 2),
+                            FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text('Discípulos'),
+                            ),
+                          ],
+                        );
+                      }
+                      return Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: const [
+                          Icon(Icons.groups_outlined, size: 20),
+                          SizedBox(width: 6),
+                          Flexible(
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text('Discípulos'),
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
         body: Container(
