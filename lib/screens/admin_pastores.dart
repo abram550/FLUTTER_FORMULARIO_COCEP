@@ -384,7 +384,11 @@ class _AdminPastoresState extends State<AdminPastores>
     }
   }
 
-  // ✅ MÉTODO 5: Mostrar ventana de bloqueo
+  //Mostrar ventana de bloqueo
+
+// ✅ REEMPLAZA COMPLETAMENTE el método _mostrarVentanaBloqueo
+// Busca en tu código (aproximadamente línea 340) y reemplaza toda la función:
+
   Future<void> _mostrarVentanaBloqueo(BuildContext context) async {
     _contadorBloqueoTimer?.cancel();
 
@@ -417,287 +421,614 @@ class _AdminPastoresState extends State<AdminPastores>
                 ? DateFormat('hh:mm a', 'es').format(horaDesbloqueo)
                 : 'Desconocida';
 
-            return Dialog(
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(28)),
-              elevation: 16,
-              child: Container(
-                constraints: BoxConstraints(maxWidth: 420, maxHeight: 600),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(28),
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [Colors.white, Colors.red.shade50.withOpacity(0.5)],
-                  ),
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Header
-                    Container(
-                      padding: EdgeInsets.all(28),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [Colors.red.shade700, Colors.red.shade900],
-                        ),
-                        borderRadius: BorderRadius.only(
-                          topLeft: Radius.circular(28),
-                          topRight: Radius.circular(28),
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.red.withOpacity(0.4),
-                            blurRadius: 16,
-                            offset: Offset(0, 6),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        children: [
-                          TweenAnimationBuilder(
-                            tween: Tween<double>(begin: 0.0, end: 1.0),
-                            duration: Duration(milliseconds: 800),
-                            curve: Curves.elasticOut,
-                            builder: (context, double value, child) {
-                              return Transform.scale(
-                                scale: value,
-                                child: Container(
-                                  padding: EdgeInsets.all(20),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withOpacity(0.25),
-                                    shape: BoxShape.circle,
-                                    border: Border.all(
-                                      color: Colors.white.withOpacity(0.5),
-                                      width: 3,
-                                    ),
-                                  ),
-                                  child: Icon(Icons.lock_clock,
-                                      color: Colors.white, size: 56),
-                                ),
-                              );
-                            },
-                          ),
-                          SizedBox(height: 20),
-                          Text(
-                            '🔒 Usuario Bloqueado',
-                            style: GoogleFonts.poppins(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                          SizedBox(height: 8),
-                          Text(
-                            'Seguridad activada',
-                            style: GoogleFonts.poppins(
-                              fontSize: 14,
-                              color: Colors.white.withOpacity(0.9),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+            // ✅ Responsive Layout Builder
+            return LayoutBuilder(
+              builder: (context, constraints) {
+                final mediaQuery = MediaQuery.of(dialogContext);
+                final screenWidth = mediaQuery.size.width;
+                final screenHeight = mediaQuery.size.height;
+                final isSmallScreen = screenWidth < 400;
+                final isMediumScreen = screenWidth >= 400 && screenWidth < 600;
+                final isLargeScreen = screenWidth >= 600;
 
-                    // Contenido
-                    Expanded(
-                      child: SingleChildScrollView(
-                        padding: EdgeInsets.all(28),
-                        child: Column(
-                          children: [
-                            Container(
-                              padding: EdgeInsets.all(20),
-                              decoration: BoxDecoration(
-                                color: Colors.orange.shade50,
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(
-                                    color: Colors.orange.shade300, width: 2),
-                              ),
-                              child: Column(
-                                children: [
-                                  Icon(Icons.info_outline,
-                                      color: Colors.orange.shade700, size: 32),
-                                  SizedBox(height: 12),
-                                  Text(
-                                    'Has superado el límite de intentos fallidos',
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w600,
-                                      color: Colors.orange.shade900,
-                                    ),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                  SizedBox(height: 8),
-                                  Text(
-                                    'Por seguridad, la función de eliminar está temporalmente bloqueada.',
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 13,
-                                      color: Colors.orange.shade800,
-                                    ),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ],
-                              ),
+                // ✅ Tamaños adaptativos refinados
+                final titleFontSize =
+                    isSmallScreen ? 22.0 : (isMediumScreen ? 26.0 : 30.0);
+                final subtitleFontSize =
+                    isSmallScreen ? 13.0 : (isMediumScreen ? 15.0 : 17.0);
+                final iconSize =
+                    isSmallScreen ? 48.0 : (isMediumScreen ? 64.0 : 72.0);
+                final padding =
+                    isSmallScreen ? 20.0 : (isMediumScreen ? 24.0 : 32.0);
+                final timeDigitSize =
+                    isSmallScreen ? 32.0 : (isMediumScreen ? 40.0 : 48.0);
+                final timeLabelSize =
+                    isSmallScreen ? 10.0 : (isMediumScreen ? 12.0 : 14.0);
+                final contentFontSize =
+                    isSmallScreen ? 14.0 : (isMediumScreen ? 16.0 : 18.0);
+                final infoPadding =
+                    isSmallScreen ? 16.0 : (isMediumScreen ? 20.0 : 24.0);
+
+                // ✅ Constraints adaptativos
+                final maxWidth = isSmallScreen
+                    ? screenWidth * 0.92
+                    : (isMediumScreen ? 480.0 : 560.0);
+                final maxHeight = isSmallScreen
+                    ? screenHeight * 0.88
+                    : (isMediumScreen ? screenHeight * 0.82 : 720.0);
+
+                return Dialog(
+                  backgroundColor: Colors.transparent,
+                  elevation: 0,
+                  insetPadding: EdgeInsets.symmetric(
+                    horizontal: isSmallScreen ? 16 : 24,
+                    vertical: isSmallScreen ? 20 : 24,
+                  ),
+                  child: Container(
+                    constraints: BoxConstraints(
+                      maxWidth: maxWidth,
+                      maxHeight: maxHeight,
+                    ),
+                    decoration: BoxDecoration(
+                      borderRadius:
+                          BorderRadius.circular(isSmallScreen ? 24 : 32),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.3),
+                          blurRadius: 32,
+                          spreadRadius: 4,
+                          offset: Offset(0, 12),
+                        ),
+                        BoxShadow(
+                          color: Colors.red.withOpacity(0.2),
+                          blurRadius: 24,
+                          spreadRadius: -4,
+                          offset: Offset(0, 8),
+                        ),
+                      ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius:
+                          BorderRadius.circular(isSmallScreen ? 24 : 32),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // ✅ Header Premium con degradado mejorado
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                              vertical: padding,
+                              horizontal: padding * 0.8,
                             ),
-                            SizedBox(height: 24),
-                            if (_horaBloqueo != null)
-                              Container(
-                                padding: EdgeInsets.all(16),
-                                decoration: BoxDecoration(
-                                  color: Colors.blue.shade50,
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                      color: Colors.blue.shade300, width: 1.5),
-                                ),
-                                child: Column(
-                                  children: [
-                                    Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        Icon(Icons.lock_clock,
-                                            color: Colors.blue.shade700,
-                                            size: 20),
-                                        SizedBox(width: 8),
-                                        Text(
-                                          'Bloqueado a las: $_horaBloqueo',
-                                          style: GoogleFonts.poppins(
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.w600,
-                                            color: Colors.blue.shade900,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    SizedBox(height: 8),
-                                    Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        Icon(Icons.lock_open,
-                                            color: Colors.green.shade700,
-                                            size: 20),
-                                        SizedBox(width: 8),
-                                        Text(
-                                          'Se desbloqueará a las: $horaDesbloqueoStr',
-                                          style: GoogleFonts.poppins(
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.w600,
-                                            color: Colors.green.shade900,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            SizedBox(height: 24),
-                            Container(
-                              padding: EdgeInsets.all(24),
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [
-                                    Colors.red.shade50,
-                                    Colors.red.shade100
-                                  ],
-                                ),
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(
-                                    color: Colors.red.shade300, width: 2),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.red.withOpacity(0.1),
-                                    blurRadius: 10,
-                                    offset: Offset(0, 4),
-                                  ),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [
+                                  Color(0xFFD32F2F), // Rojo más elegante
+                                  Color(0xFFC62828),
+                                  Color(0xFFB71C1C),
                                 ],
+                                stops: [0.0, 0.5, 1.0],
                               ),
-                              child: Column(
-                                children: [
-                                  Text(
-                                    'Tiempo restante de bloqueo:',
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w500,
-                                      color: Colors.red.shade900,
-                                    ),
-                                  ),
-                                  SizedBox(height: 16),
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.red.shade900.withOpacity(0.4),
+                                  blurRadius: 20,
+                                  offset: Offset(0, 8),
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              children: [
+                                // Icono animado premium
+                                TweenAnimationBuilder(
+                                  tween: Tween<double>(begin: 0.0, end: 1.0),
+                                  duration: Duration(milliseconds: 1000),
+                                  curve: Curves.elasticOut,
+                                  builder: (context, double value, child) {
+                                    return Transform.scale(
+                                      scale: value,
+                                      child: Container(
+                                        padding: EdgeInsets.all(isSmallScreen
+                                            ? 16
+                                            : (isMediumScreen ? 20 : 24)),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white.withOpacity(0.2),
+                                          shape: BoxShape.circle,
+                                          border: Border.all(
+                                            color:
+                                                Colors.white.withOpacity(0.6),
+                                            width: isSmallScreen ? 3 : 4,
+                                          ),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color:
+                                                  Colors.white.withOpacity(0.3),
+                                              blurRadius: 20,
+                                              spreadRadius: 2,
+                                            ),
+                                          ],
+                                        ),
+                                        child: Icon(
+                                          Icons.lock_clock_rounded,
+                                          color: Colors.white,
+                                          size: iconSize,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                                SizedBox(height: isSmallScreen ? 16 : 24),
+                                // Título con mejor tipografía
+                                Container(
+                                  padding: EdgeInsets.symmetric(horizontal: 16),
+                                  child: Column(
                                     children: [
-                                      _buildTimeUnit(horas, 'Horas'),
-                                      SizedBox(width: 12),
-                                      Text(':',
-                                          style: TextStyle(
-                                              fontSize: 28,
-                                              fontWeight: FontWeight.bold,
-                                              color: Colors.red.shade700)),
-                                      SizedBox(width: 12),
-                                      _buildTimeUnit(minutos, 'Minutos'),
-                                      SizedBox(width: 12),
-                                      Text(':',
-                                          style: TextStyle(
-                                              fontSize: 28,
-                                              fontWeight: FontWeight.bold,
-                                              color: Colors.red.shade700)),
-                                      SizedBox(width: 12),
-                                      _buildTimeUnit(segundos, 'Segundos'),
+                                      Text(
+                                        'Acceso Bloqueado',
+                                        style: GoogleFonts.poppins(
+                                          fontSize: titleFontSize,
+                                          fontWeight: FontWeight.w700,
+                                          color: Colors.white,
+                                          letterSpacing: 0.5,
+                                          height: 1.2,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                      SizedBox(height: isSmallScreen ? 6 : 10),
+                                      Container(
+                                        padding: EdgeInsets.symmetric(
+                                          horizontal: isSmallScreen ? 12 : 16,
+                                          vertical: isSmallScreen ? 6 : 8,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white.withOpacity(0.15),
+                                          borderRadius:
+                                              BorderRadius.circular(20),
+                                          border: Border.all(
+                                            color:
+                                                Colors.white.withOpacity(0.3),
+                                            width: 1,
+                                          ),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(
+                                              Icons.security_rounded,
+                                              color: Colors.white
+                                                  .withOpacity(0.95),
+                                              size: isSmallScreen ? 14 : 16,
+                                            ),
+                                            SizedBox(width: 6),
+                                            Text(
+                                              'Seguridad Activada',
+                                              style: GoogleFonts.poppins(
+                                                fontSize: subtitleFontSize - 2,
+                                                fontWeight: FontWeight.w500,
+                                                color: Colors.white
+                                                    .withOpacity(0.95),
+                                                letterSpacing: 0.3,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
                                     ],
                                   ),
-                                ],
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          // ✅ Contenido con mejor diseño
+                          Flexible(
+                            child: Container(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                  colors: [
+                                    Colors.white,
+                                    Colors.grey.shade50,
+                                  ],
+                                ),
+                              ),
+                              child: SingleChildScrollView(
+                                padding: EdgeInsets.all(padding),
+                                physics: BouncingScrollPhysics(),
+                                child: Column(
+                                  children: [
+                                    // Alerta principal con mejor diseño
+                                    Container(
+                                      padding: EdgeInsets.all(infoPadding),
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                          colors: [
+                                            Colors.orange.shade50,
+                                            Colors.orange.shade100
+                                                .withOpacity(0.5),
+                                          ],
+                                        ),
+                                        borderRadius: BorderRadius.circular(
+                                            isSmallScreen ? 16 : 20),
+                                        border: Border.all(
+                                          color: Colors.orange.shade400,
+                                          width: 2,
+                                        ),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color:
+                                                Colors.orange.withOpacity(0.15),
+                                            blurRadius: 12,
+                                            offset: Offset(0, 4),
+                                          ),
+                                        ],
+                                      ),
+                                      child: Column(
+                                        children: [
+                                          Container(
+                                            padding: EdgeInsets.all(
+                                                isSmallScreen ? 10 : 12),
+                                            decoration: BoxDecoration(
+                                              color: Colors.orange.shade600,
+                                              shape: BoxShape.circle,
+                                              boxShadow: [
+                                                BoxShadow(
+                                                  color: Colors.orange.shade400
+                                                      .withOpacity(0.4),
+                                                  blurRadius: 8,
+                                                  spreadRadius: 2,
+                                                ),
+                                              ],
+                                            ),
+                                            child: Icon(
+                                              Icons.warning_rounded,
+                                              color: Colors.white,
+                                              size: isSmallScreen
+                                                  ? 28
+                                                  : (isMediumScreen ? 32 : 36),
+                                            ),
+                                          ),
+                                          SizedBox(
+                                              height: isSmallScreen ? 12 : 16),
+                                          Text(
+                                            'Límite de Intentos Excedido',
+                                            style: GoogleFonts.poppins(
+                                              fontSize: contentFontSize + 2,
+                                              fontWeight: FontWeight.w700,
+                                              color: Colors.orange.shade900,
+                                              letterSpacing: 0.3,
+                                            ),
+                                            textAlign: TextAlign.center,
+                                          ),
+                                          SizedBox(
+                                              height: isSmallScreen ? 8 : 12),
+                                          Container(
+                                            padding: EdgeInsets.symmetric(
+                                              horizontal:
+                                                  isSmallScreen ? 12 : 16,
+                                              vertical: isSmallScreen ? 8 : 10,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color:
+                                                  Colors.white.withOpacity(0.7),
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                              border: Border.all(
+                                                color: Colors.orange.shade200,
+                                                width: 1,
+                                              ),
+                                            ),
+                                            child: Text(
+                                              'Por motivos de seguridad, la función de eliminación ha sido bloqueada temporalmente.',
+                                              style: GoogleFonts.poppins(
+                                                fontSize: contentFontSize - 2,
+                                                color: Colors.orange.shade800,
+                                                height: 1.4,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                              textAlign: TextAlign.center,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+
+                                    SizedBox(height: isSmallScreen ? 20 : 28),
+
+                                    // Información de horarios mejorada
+                                    if (_horaBloqueo != null)
+                                      Container(
+                                        padding: EdgeInsets.all(infoPadding),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          borderRadius: BorderRadius.circular(
+                                              isSmallScreen ? 16 : 20),
+                                          border: Border.all(
+                                            color: Colors.grey.shade300,
+                                            width: 1.5,
+                                          ),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: Colors.black
+                                                  .withOpacity(0.05),
+                                              blurRadius: 12,
+                                              offset: Offset(0, 4),
+                                            ),
+                                          ],
+                                        ),
+                                        child: Column(
+                                          children: [
+                                            // Bloqueado
+                                            _buildTimeInfoRow(
+                                              icon: Icons.lock_clock_rounded,
+                                              iconColor: Colors.red.shade600,
+                                              iconBgColor: Colors.red.shade50,
+                                              label: 'Bloqueado',
+                                              time: _horaBloqueo!,
+                                              contentFontSize: contentFontSize,
+                                              isSmallScreen: isSmallScreen,
+                                            ),
+
+                                            SizedBox(
+                                                height:
+                                                    isSmallScreen ? 12 : 16),
+
+                                            // Divider elegante
+                                            Container(
+                                              height: 1,
+                                              decoration: BoxDecoration(
+                                                gradient: LinearGradient(
+                                                  colors: [
+                                                    Colors.transparent,
+                                                    Colors.grey.shade300,
+                                                    Colors.transparent,
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+
+                                            SizedBox(
+                                                height:
+                                                    isSmallScreen ? 12 : 16),
+
+                                            // Desbloqueado
+                                            _buildTimeInfoRow(
+                                              icon: Icons.lock_open_rounded,
+                                              iconColor: Colors.green.shade600,
+                                              iconBgColor: Colors.green.shade50,
+                                              label: 'Se desbloqueará',
+                                              time: horaDesbloqueoStr,
+                                              contentFontSize: contentFontSize,
+                                              isSmallScreen: isSmallScreen,
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+
+                                    SizedBox(height: isSmallScreen ? 20 : 28),
+
+                                    // ✅ Contador de tiempo premium
+                                    Container(
+                                      padding: EdgeInsets.all(isSmallScreen
+                                          ? 20
+                                          : (isMediumScreen ? 24 : 28)),
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                          colors: [
+                                            Colors.red.shade50,
+                                            Colors.red.shade100,
+                                            Colors.red.shade50,
+                                          ],
+                                        ),
+                                        borderRadius: BorderRadius.circular(
+                                            isSmallScreen ? 20 : 24),
+                                        border: Border.all(
+                                          color: Colors.red.shade300,
+                                          width: 2,
+                                        ),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.red.withOpacity(0.2),
+                                            blurRadius: 16,
+                                            offset: Offset(0, 6),
+                                          ),
+                                        ],
+                                      ),
+                                      child: Column(
+                                        children: [
+                                          Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
+                                            children: [
+                                              Container(
+                                                padding: EdgeInsets.all(
+                                                    isSmallScreen ? 6 : 8),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.red.shade600,
+                                                  shape: BoxShape.circle,
+                                                ),
+                                                child: Icon(
+                                                  Icons.timer_rounded,
+                                                  color: Colors.white,
+                                                  size: isSmallScreen ? 16 : 20,
+                                                ),
+                                              ),
+                                              SizedBox(width: 10),
+                                              Text(
+                                                'Tiempo Restante',
+                                                style: GoogleFonts.poppins(
+                                                  fontSize: contentFontSize,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: Colors.red.shade900,
+                                                  letterSpacing: 0.5,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          SizedBox(
+                                              height: isSmallScreen ? 16 : 24),
+
+                                          // ✅ Layout adaptativo para el contador
+                                          isSmallScreen
+                                              ? Column(
+                                                  children: [
+                                                    _buildTimeUnit(
+                                                        horas,
+                                                        'Horas',
+                                                        timeDigitSize,
+                                                        timeLabelSize,
+                                                        isSmallScreen),
+                                                    SizedBox(height: 12),
+                                                    _buildTimeUnit(
+                                                        minutos,
+                                                        'Minutos',
+                                                        timeDigitSize,
+                                                        timeLabelSize,
+                                                        isSmallScreen),
+                                                    SizedBox(height: 12),
+                                                    _buildTimeUnit(
+                                                        segundos,
+                                                        'Segundos',
+                                                        timeDigitSize,
+                                                        timeLabelSize,
+                                                        isSmallScreen),
+                                                  ],
+                                                )
+                                              : Wrap(
+                                                  alignment:
+                                                      WrapAlignment.center,
+                                                  crossAxisAlignment:
+                                                      WrapCrossAlignment.center,
+                                                  spacing:
+                                                      isSmallScreen ? 8 : 16,
+                                                  children: [
+                                                    _buildTimeUnit(
+                                                        horas,
+                                                        'Horas',
+                                                        timeDigitSize,
+                                                        timeLabelSize,
+                                                        isSmallScreen),
+                                                    Text(
+                                                      ':',
+                                                      style:
+                                                          GoogleFonts.poppins(
+                                                        fontSize: timeDigitSize,
+                                                        fontWeight:
+                                                            FontWeight.w800,
+                                                        color:
+                                                            Colors.red.shade700,
+                                                        height: 1,
+                                                      ),
+                                                    ),
+                                                    _buildTimeUnit(
+                                                        minutos,
+                                                        'Minutos',
+                                                        timeDigitSize,
+                                                        timeLabelSize,
+                                                        isSmallScreen),
+                                                    Text(
+                                                      ':',
+                                                      style:
+                                                          GoogleFonts.poppins(
+                                                        fontSize: timeDigitSize,
+                                                        fontWeight:
+                                                            FontWeight.w800,
+                                                        color:
+                                                            Colors.red.shade700,
+                                                        height: 1,
+                                                      ),
+                                                    ),
+                                                    _buildTimeUnit(
+                                                        segundos,
+                                                        'Segundos',
+                                                        timeDigitSize,
+                                                        timeLabelSize,
+                                                        isSmallScreen),
+                                                  ],
+                                                ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
-                          ],
-                        ),
-                      ),
-                    ),
+                          ),
 
-                    // Footer
-                    Container(
-                      padding: EdgeInsets.all(24),
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade50,
-                        borderRadius: BorderRadius.only(
-                          bottomLeft: Radius.circular(28),
-                          bottomRight: Radius.circular(28),
-                        ),
-                        border: Border(
-                            top: BorderSide(color: Colors.grey.shade300)),
-                      ),
-                      child: SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: () {
-                            _contadorBloqueoTimer?.cancel();
-                            Navigator.of(dialogContext).pop();
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.red.shade600,
-                            foregroundColor: Colors.white,
-                            padding: EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12)),
-                            elevation: 2,
+                          // ✅ Footer Premium
+                          Container(
+                            padding: EdgeInsets.all(padding),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              border: Border(
+                                top: BorderSide(
+                                  color: Colors.grey.shade200,
+                                  width: 1,
+                                ),
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.05),
+                                  blurRadius: 12,
+                                  offset: Offset(0, -4),
+                                ),
+                              ],
+                            ),
+                            child: SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton(
+                                onPressed: () {
+                                  _contadorBloqueoTimer?.cancel();
+                                  Navigator.of(dialogContext).pop();
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.red.shade600,
+                                  foregroundColor: Colors.white,
+                                  padding: EdgeInsets.symmetric(
+                                    vertical: isSmallScreen ? 14 : 18,
+                                    horizontal: isSmallScreen ? 24 : 32,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(
+                                        isSmallScreen ? 12 : 16),
+                                  ),
+                                  elevation: 4,
+                                  shadowColor:
+                                      Colors.red.shade600.withOpacity(0.4),
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.check_circle_rounded,
+                                      size: isSmallScreen ? 20 : 24,
+                                    ),
+                                    SizedBox(width: isSmallScreen ? 8 : 12),
+                                    Text(
+                                      'Entendido',
+                                      style: GoogleFonts.poppins(
+                                        fontSize: isSmallScreen ? 15 : 18,
+                                        fontWeight: FontWeight.w700,
+                                        letterSpacing: 0.5,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
                           ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.check_circle_outline, size: 20),
-                              SizedBox(width: 8),
-                              Text('Entendido',
-                                  style: GoogleFonts.poppins(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600)),
-                            ],
-                          ),
-                        ),
+                        ],
                       ),
                     ),
-                  ],
-                ),
-              ),
+                  ),
+                );
+              },
             );
           },
         );
@@ -707,41 +1038,139 @@ class _AdminPastoresState extends State<AdminPastores>
     });
   }
 
-  // ✅ MÉTODO 6: Widget para unidades de tiempo
-  Widget _buildTimeUnit(int value, String label) {
-    return Column(
+// ✅ NUEVO MÉTODO para las filas de información de tiempo
+  Widget _buildTimeInfoRow({
+    required IconData icon,
+    required Color iconColor,
+    required Color iconBgColor,
+    required String label,
+    required String time,
+    required double contentFontSize,
+    required bool isSmallScreen,
+  }) {
+    return Row(
       children: [
         Container(
-          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          padding: EdgeInsets.all(isSmallScreen ? 10 : 12),
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Colors.red.shade600, Colors.red.shade800],
-            ),
+            color: iconBgColor,
             borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.red.withOpacity(0.3),
-                blurRadius: 8,
-                offset: Offset(0, 4),
+            border: Border.all(
+              color: iconColor.withOpacity(0.3),
+              width: 1.5,
+            ),
+          ),
+          child: Icon(
+            icon,
+            color: iconColor,
+            size: isSmallScreen ? 20 : 24,
+          ),
+        ),
+        SizedBox(width: isSmallScreen ? 12 : 16),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: GoogleFonts.poppins(
+                  fontSize: contentFontSize - 4,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey.shade600,
+                  letterSpacing: 0.3,
+                ),
+              ),
+              SizedBox(height: 4),
+              Text(
+                time,
+                style: GoogleFonts.poppins(
+                  fontSize: contentFontSize + 2,
+                  fontWeight: FontWeight.w700,
+                  color: iconColor,
+                  letterSpacing: 0.5,
+                ),
               ),
             ],
+          ),
+        ),
+      ],
+    );
+  }
+
+// ✅ REEMPLAZA el método _buildTimeUnit con esta versión premium
+  Widget _buildTimeUnit(int value, String label, double digitSize,
+      double labelSize, bool isSmallScreen) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          padding: EdgeInsets.symmetric(
+            horizontal: isSmallScreen ? 16 : 24,
+            vertical: isSmallScreen ? 12 : 16,
+          ),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Color(0xFFD32F2F),
+                Color(0xFFC62828),
+                Color(0xFFB71C1C),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(isSmallScreen ? 12 : 16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.red.shade900.withOpacity(0.4),
+                blurRadius: 12,
+                offset: Offset(0, 6),
+              ),
+              BoxShadow(
+                color: Colors.red.withOpacity(0.2),
+                blurRadius: 8,
+                offset: Offset(0, 2),
+              ),
+            ],
+            border: Border.all(
+              color: Colors.white.withOpacity(0.2),
+              width: 1.5,
+            ),
           ),
           child: Text(
             value.toString().padLeft(2, '0'),
             style: GoogleFonts.poppins(
-              fontSize: 32,
-              fontWeight: FontWeight.bold,
+              fontSize: digitSize,
+              fontWeight: FontWeight.w800,
               color: Colors.white,
+              letterSpacing: 2,
+              shadows: [
+                Shadow(
+                  color: Colors.black.withOpacity(0.3),
+                  offset: Offset(0, 2),
+                  blurRadius: 4,
+                ),
+              ],
             ),
           ),
         ),
-        SizedBox(height: 6),
-        Text(
-          label,
-          style: GoogleFonts.poppins(
-            fontSize: 11,
-            fontWeight: FontWeight.w500,
+        SizedBox(height: isSmallScreen ? 6 : 10),
+        Container(
+          padding: EdgeInsets.symmetric(
+            horizontal: isSmallScreen ? 8 : 12,
+            vertical: isSmallScreen ? 4 : 6,
+          ),
+          decoration: BoxDecoration(
             color: Colors.red.shade700,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text(
+            label,
+            style: GoogleFonts.poppins(
+              fontSize: labelSize,
+              fontWeight: FontWeight.w700,
+              color: Colors.white,
+              letterSpacing: 0.8,
+            ),
           ),
         ),
       ],
@@ -6009,6 +6438,9 @@ class _AdminPastoresState extends State<AdminPastores>
     );
   }
 
+// REEMPLAZA COMPLETAMENTE la función _mostrarDialogoConfirmarEliminarTribu
+// Busca en tu código (aproximadamente línea 1870) y reemplaza toda la función:
+
   Future<void> _mostrarDialogoConfirmarEliminarTribu(String docId) async {
     _resetInactivityTimer();
     await _cargarEstadoBloqueo();
@@ -6022,336 +6454,529 @@ class _AdminPastoresState extends State<AdminPastores>
     bool isDeleting = false;
     bool obscurePassword = true;
 
+    // ✅ IMPORTANTE: Guardamos el context del State principal
+    final BuildContext mainContext = context;
+
     return showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          backgroundColor: backgroundColor,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Container(
-            padding: EdgeInsets.symmetric(vertical: 10),
-            child: Row(
-              children: [
-                Container(
-                  padding: EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.red.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(10),
+      context: mainContext,
+      barrierDismissible: true, // ✅ Permitir cerrar al tocar fuera
+
+      builder: (BuildContext dialogContext) => WillPopScope(
+        onWillPop: () async => !isDeleting,
+        child: StatefulBuilder(
+          builder: (context, setDialogState) {
+            // ✅ Recalcula en cada rebuild para actualizar con el teclado
+            return LayoutBuilder(
+              builder: (context, constraints) {
+                final mediaQuery = MediaQuery.of(dialogContext);
+                final screenWidth = mediaQuery.size.width;
+                final screenHeight = mediaQuery.size.height;
+                final keyboardHeight = mediaQuery.viewInsets.bottom;
+
+                // ✅ Previene que el diálogo se salga de la pantalla
+                final availableHeight = screenHeight - keyboardHeight - 48;
+
+                final isSmallScreen = screenWidth < 400;
+                final isMediumScreen = screenWidth >= 400 && screenWidth < 600;
+
+                final titleFontSize = isSmallScreen ? 18.0 : 20.0;
+                final subtitleFontSize = isSmallScreen ? 12.0 : 14.0;
+                final contentFontSize = isSmallScreen ? 13.0 : 14.0;
+                final iconSize = isSmallScreen ? 20.0 : 24.0;
+                final padding = isSmallScreen ? 12.0 : 16.0;
+
+                return Dialog(
+                  backgroundColor: Colors.transparent,
+                  insetPadding: EdgeInsets.only(
+                    left: isSmallScreen ? 16 : 24,
+                    right: isSmallScreen ? 16 : 24,
+                    top: 24,
+                    bottom: 24,
                   ),
-                  child:
-                      Icon(Icons.warning_rounded, color: Colors.red, size: 24),
-                ),
-                SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Eliminar Tribu',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.red[700],
-                        ),
-                      ),
-                      Text(
-                        'Esta acción no se puede deshacer',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey[600],
-                          fontWeight: FontWeight.normal,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          content: Container(
-            width: double.maxFinite,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    padding: EdgeInsets.all(16),
+                  child: Container(
+                    constraints: BoxConstraints(
+                      maxWidth: 500,
+                      maxHeight: screenHeight -
+                          keyboardHeight -
+                          48, // ✅ Altura máxima adaptativa
+                    ),
                     decoration: BoxDecoration(
-                      color: Colors.red.withOpacity(0.05),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.red.withOpacity(0.2)),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.info_outline_rounded,
-                            color: Colors.red[700], size: 20),
-                        SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            '¿Está seguro que desea eliminar esta tribu? Esta acción eliminará todos los datos relacionados.',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.red[700],
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  SizedBox(height: 20),
-                  Text(
-                    'Ingrese la clave de confirmación:',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.grey[800],
-                    ),
-                  ),
-                  SizedBox(height: 12),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.red.withOpacity(0.3)),
+                      color: backgroundColor,
+                      borderRadius: BorderRadius.circular(20),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
-                          blurRadius: 4,
-                          offset: Offset(0, 2),
+                          color: Colors.black.withOpacity(0.2),
+                          blurRadius: 10,
+                          offset: Offset(0, 4),
                         ),
                       ],
                     ),
-                    child: TextField(
-                      controller: claveController,
-                      obscureText: obscurePassword,
-                      enabled: !isDeleting,
-                      enableInteractiveSelection: false,
-                      autocorrect: false,
-                      enableSuggestions: false,
-                      keyboardType: TextInputType.visiblePassword,
-                      style: TextStyle(
-                        color: isDeleting ? Colors.grey[400] : Colors.black87,
-                        fontSize: 16,
-                        letterSpacing: obscurePassword ? 3 : 0,
-                      ),
-                      decoration: InputDecoration(
-                        labelText: 'Clave de confirmación',
-                        hintText: 'Ingrese la clave',
-                        hintStyle: TextStyle(
-                            color: Colors.grey[400], letterSpacing: 0),
-                        prefixIcon: Container(
-                          margin: EdgeInsets.all(8),
-                          padding: EdgeInsets.all(6),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // ✅ Header
+                        Container(
+                          padding: EdgeInsets.all(padding),
                           decoration: BoxDecoration(
-                            color: isDeleting
-                                ? Colors.grey.withOpacity(0.1)
-                                : Colors.red.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(8),
+                            color: Colors.red.withOpacity(0.1),
+                            borderRadius: BorderRadius.only(
+                              topLeft: Radius.circular(20),
+                              topRight: Radius.circular(20),
+                            ),
                           ),
-                          child: Icon(
-                            Icons.lock_rounded,
-                            color:
-                                isDeleting ? Colors.grey[400] : Colors.red[700],
-                            size: 20,
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: EdgeInsets.all(isSmallScreen ? 6 : 8),
+                                decoration: BoxDecoration(
+                                  color: Colors.red.withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Icon(
+                                  Icons.warning_rounded,
+                                  color: Colors.red,
+                                  size: iconSize,
+                                ),
+                              ),
+                              SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Eliminar Tribu',
+                                      style: TextStyle(
+                                        fontSize: titleFontSize,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.red[700],
+                                      ),
+                                    ),
+                                    Text(
+                                      'Esta acción no se puede deshacer',
+                                      style: TextStyle(
+                                        fontSize: subtitleFontSize,
+                                        color: Colors.grey[600],
+                                        fontWeight: FontWeight.normal,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            obscurePassword
-                                ? Icons.visibility_off_rounded
-                                : Icons.visibility_rounded,
-                            color: isDeleting
-                                ? Colors.grey[400]
-                                : Colors.grey[600],
-                            size: 20,
-                          ),
-                          onPressed: isDeleting
-                              ? null
-                              : () {
-                                  setDialogState(() {
-                                    obscurePassword = !obscurePassword;
-                                  });
-                                },
-                        ),
-                        border: InputBorder.none,
-                        contentPadding:
-                            EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                        labelStyle: TextStyle(
-                          color:
-                              isDeleting ? Colors.grey[400] : Colors.red[700],
-                          fontSize: 14,
-                        ),
-                        floatingLabelStyle: TextStyle(
-                          color: Colors.red[700],
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      onChanged: (value) {
-                        setDialogState(() {});
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          actions: [
-            Container(
-              width: double.maxFinite,
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextButton(
-                      onPressed: isDeleting
-                          ? null
-                          : () {
-                              claveController.clear();
-                              Navigator.pop(context);
-                            },
-                      style: TextButton.styleFrom(
-                        padding: EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10)),
-                      ),
-                      child: Text('Cancelar',
-                          style: TextStyle(
-                              color: Colors.grey[600],
-                              fontWeight: FontWeight.w600)),
-                    ),
-                  ),
-                  SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: (isDeleting || claveController.text.isEmpty)
-                          ? null
-                          : () async {
-                              if (!CredentialsService.validateDeletionKey(
-                                  claveController.text)) {
-                                _intentosFallidos++;
 
-                                if (_intentosFallidos >= _maxIntentos) {
-                                  final ahoraUtc = DateTime.now().toUtc();
-                                  final ahoraColombia =
-                                      ahoraUtc.subtract(Duration(hours: 5));
-
-                                  setDialogState(() {
-                                    _tiempoBloqueo =
-                                        DateTime.now().add(_duracionBloqueo);
-                                    _horaBloqueo = DateFormat('hh:mm a', 'es')
-                                        .format(ahoraColombia);
-                                  });
-
-                                  await _guardarEstadoBloqueo();
-                                  Navigator.pop(context);
-
-                                  if (mounted) {
-                                    await _mostrarVentanaBloqueo(context);
-                                  }
-                                } else {
-                                  final intentosRestantes =
-                                      _maxIntentos - _intentosFallidos;
-                                  _mostrarSnackBar(
-                                    intentosRestantes == 1
-                                        ? '⚠️ ÚLTIMO INTENTO: Si fallas nuevamente, serás bloqueado por 12 horas.'
-                                        : 'Clave incorrecta. Te quedan $intentosRestantes ${intentosRestantes == 1 ? 'intento' : 'intentos'}.',
-                                    isSuccess: false,
-                                  );
-                                  claveController.clear();
-                                }
-                                return;
-                              }
-
-                              setDialogState(() => isDeleting = true);
-
-                              try {
-                                await _firestore
-                                    .collection('tribus')
-                                    .doc(docId)
-                                    .delete();
-
-                                final usuarioSnapshot = await _firestore
-                                    .collection('usuarios')
-                                    .where('tribuId', isEqualTo: docId)
-                                    .limit(1)
-                                    .get();
-
-                                if (usuarioSnapshot.docs.isNotEmpty) {
-                                  await usuarioSnapshot.docs.first.reference
-                                      .delete();
-                                }
-
-                                claveController.clear();
-                                setState(() {
-                                  _intentosFallidos = 0;
-                                  _tiempoBloqueo = null;
-                                  _horaBloqueo = null;
-                                });
-                                await _guardarEstadoBloqueo();
-
-                                if (mounted) {
-                                  Navigator.pop(context);
-                                  _mostrarSnackBar(
-                                      'Tribu eliminada exitosamente',
-                                      isSuccess: true);
-                                }
-                              } catch (e) {
-                                claveController.clear();
-                                setDialogState(() => isDeleting = false);
-                                _mostrarSnackBar(
-                                    'Error al eliminar la tribu: ${e.toString()}',
-                                    isSuccess: false);
-                              }
-                            },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red[600],
-                        foregroundColor: Colors.white,
-                        padding: EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10)),
-                        elevation: 2,
-                      ),
-                      child: isDeleting
-                          ? Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
+                        // ✅ Content con scroll
+                        Flexible(
+                          child: SingleChildScrollView(
+                            padding: EdgeInsets.all(padding),
+                            keyboardDismissBehavior:
+                                ScrollViewKeyboardDismissBehavior.manual,
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                SizedBox(
-                                  width: 16,
-                                  height: 16,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation<Color>(
-                                        Colors.white),
+                                Container(
+                                  padding: EdgeInsets.all(padding),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red.withOpacity(0.05),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: Colors.red.withOpacity(0.2),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Icon(
+                                        Icons.info_outline_rounded,
+                                        color: Colors.red[700],
+                                        size: isSmallScreen ? 18 : 20,
+                                      ),
+                                      SizedBox(width: 12),
+                                      Expanded(
+                                        child: Text(
+                                          '¿Está seguro que desea eliminar esta tribu? Esta acción eliminará todos los datos relacionados.',
+                                          style: TextStyle(
+                                            fontSize: contentFontSize,
+                                            color: Colors.red[700],
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
-                                SizedBox(width: 8),
-                                Text('Eliminando...'),
-                              ],
-                            )
-                          : Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(Icons.delete_rounded, size: 18),
-                                SizedBox(width: 6),
-                                Text('Eliminar',
-                                    style:
-                                        TextStyle(fontWeight: FontWeight.w600)),
+                                SizedBox(height: padding),
+                                Text(
+                                  'Ingrese la clave de confirmación:',
+                                  style: TextStyle(
+                                    fontSize: contentFontSize,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.grey[800],
+                                  ),
+                                ),
+                                SizedBox(height: 12),
+                                Container(
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: Colors.red.withOpacity(0.3),
+                                    ),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.05),
+                                        blurRadius: 4,
+                                        offset: Offset(0, 2),
+                                      ),
+                                    ],
+                                  ),
+                                  child: TextField(
+                                    controller: claveController,
+                                    obscureText: obscurePassword,
+                                    enabled: !isDeleting,
+                                    enableInteractiveSelection: false,
+                                    autocorrect: false,
+                                    enableSuggestions: false,
+                                    keyboardType: TextInputType.visiblePassword,
+                                    style: TextStyle(
+                                      color: isDeleting
+                                          ? Colors.grey[400]
+                                          : Colors.black87,
+                                      fontSize: isSmallScreen ? 14 : 16,
+                                      letterSpacing: obscurePassword ? 3 : 0,
+                                    ),
+                                    decoration: InputDecoration(
+                                      labelText: 'Clave de confirmación',
+                                      hintText: 'Ingrese la clave',
+                                      hintStyle: TextStyle(
+                                        color: Colors.grey[400],
+                                        letterSpacing: 0,
+                                      ),
+                                      prefixIcon: Container(
+                                        margin: EdgeInsets.all(8),
+                                        padding: EdgeInsets.all(6),
+                                        decoration: BoxDecoration(
+                                          color: isDeleting
+                                              ? Colors.grey.withOpacity(0.1)
+                                              : Colors.red.withOpacity(0.1),
+                                          borderRadius:
+                                              BorderRadius.circular(8),
+                                        ),
+                                        child: Icon(
+                                          Icons.lock_rounded,
+                                          color: isDeleting
+                                              ? Colors.grey[400]
+                                              : Colors.red[700],
+                                          size: isSmallScreen ? 18 : 20,
+                                        ),
+                                      ),
+                                      suffixIcon: IconButton(
+                                        icon: Icon(
+                                          obscurePassword
+                                              ? Icons.visibility_off_rounded
+                                              : Icons.visibility_rounded,
+                                          color: isDeleting
+                                              ? Colors.grey[400]
+                                              : Colors.grey[600],
+                                          size: isSmallScreen ? 18 : 20,
+                                        ),
+                                        onPressed: isDeleting
+                                            ? null
+                                            : () {
+                                                setDialogState(() {
+                                                  obscurePassword =
+                                                      !obscurePassword;
+                                                });
+                                              },
+                                      ),
+                                      border: InputBorder.none,
+                                      contentPadding: EdgeInsets.symmetric(
+                                        horizontal: 16,
+                                        vertical: 16,
+                                      ),
+                                      labelStyle: TextStyle(
+                                        color: isDeleting
+                                            ? Colors.grey[400]
+                                            : Colors.red[700],
+                                        fontSize: contentFontSize,
+                                      ),
+                                      floatingLabelStyle: TextStyle(
+                                        color: Colors.red[700],
+                                        fontSize: isSmallScreen ? 14 : 16,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    onChanged: (value) {
+                                      setDialogState(() {});
+                                    },
+                                  ),
+                                ),
+                                // ✅ Espaciado extra cuando el teclado está visible
+                                SizedBox(height: keyboardHeight > 0 ? 80 : 0),
                               ],
                             ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+                          ),
+                        ),
+
+                        // ✅ Actions (siempre visible al final)
+                        Container(
+                          padding: EdgeInsets.all(padding),
+                          decoration: BoxDecoration(
+                            color: Colors.grey[50],
+                            borderRadius: BorderRadius.only(
+                              bottomLeft: Radius.circular(20),
+                              bottomRight: Radius.circular(20),
+                            ),
+                            border: Border(
+                              top: BorderSide(color: Colors.grey.shade300),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: TextButton(
+                                  onPressed: isDeleting
+                                      ? null
+                                      : () {
+                                          claveController.clear();
+                                          Navigator.of(dialogContext).pop();
+                                        },
+                                  style: TextButton.styleFrom(
+                                    padding: EdgeInsets.symmetric(
+                                      vertical: isSmallScreen ? 10 : 12,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    'Cancelar',
+                                    style: TextStyle(
+                                      color: Colors.grey[600],
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: isSmallScreen ? 13 : 14,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              SizedBox(width: 12),
+                              Expanded(
+                                child: ElevatedButton(
+                                  onPressed: (isDeleting ||
+                                          claveController.text.isEmpty)
+                                      ? null
+                                      : () async {
+                                          // ✅ Validar clave
+                                          if (!CredentialsService
+                                              .validateDeletionKey(
+                                                  claveController.text)) {
+                                            _intentosFallidos++;
+
+                                            if (_intentosFallidos >=
+                                                _maxIntentos) {
+                                              final ahoraUtc =
+                                                  DateTime.now().toUtc();
+                                              final ahoraColombia = ahoraUtc
+                                                  .subtract(Duration(hours: 5));
+
+                                              setDialogState(() {
+                                                _tiempoBloqueo = DateTime.now()
+                                                    .add(_duracionBloqueo);
+                                                _horaBloqueo =
+                                                    DateFormat('hh:mm a', 'es')
+                                                        .format(ahoraColombia);
+                                              });
+
+                                              await _guardarEstadoBloqueo();
+
+                                              // ✅ Cerrar diálogo con su propio context
+                                              if (Navigator.of(dialogContext)
+                                                  .canPop()) {
+                                                Navigator.of(dialogContext)
+                                                    .pop();
+                                              }
+
+                                              // ✅ Mostrar ventana de bloqueo con context principal
+                                              if (mounted) {
+                                                await _mostrarVentanaBloqueo(
+                                                    mainContext);
+                                              }
+                                            } else {
+                                              final intentosRestantes =
+                                                  _maxIntentos -
+                                                      _intentosFallidos;
+                                              _mostrarSnackBar(
+                                                intentosRestantes == 1
+                                                    ? '⚠️ ÚLTIMO INTENTO: Si fallas nuevamente, serás bloqueado por 12 horas.'
+                                                    : 'Clave incorrecta. Te quedan $intentosRestantes ${intentosRestantes == 1 ? 'intento' : 'intentos'}.',
+                                                isSuccess: false,
+                                              );
+                                              claveController.clear();
+                                            }
+                                            return;
+                                          }
+
+                                          // ✅ Iniciar proceso de eliminación
+                                          setDialogState(
+                                              () => isDeleting = true);
+
+                                          try {
+                                            print(
+                                                '🗑️ Iniciando eliminación de tribu: $docId');
+
+                                            // ✅ Eliminar tribu
+                                            await _firestore
+                                                .collection('tribus')
+                                                .doc(docId)
+                                                .delete();
+                                            print(
+                                                '✅ Tribu eliminada de colección tribus');
+
+                                            // ✅ Eliminar usuario asociado
+                                            final usuarioSnapshot =
+                                                await _firestore
+                                                    .collection('usuarios')
+                                                    .where('tribuId',
+                                                        isEqualTo: docId)
+                                                    .limit(1)
+                                                    .get();
+
+                                            if (usuarioSnapshot
+                                                .docs.isNotEmpty) {
+                                              await usuarioSnapshot
+                                                  .docs.first.reference
+                                                  .delete();
+                                              print(
+                                                  '✅ Usuario asociado eliminado');
+                                            }
+
+                                            claveController.clear();
+
+                                            // ✅ Actualizar estado del widget principal
+                                            if (mounted) {
+                                              setState(() {
+                                                _intentosFallidos = 0;
+                                                _tiempoBloqueo = null;
+                                                _horaBloqueo = null;
+                                              });
+                                              await _guardarEstadoBloqueo();
+                                              print(
+                                                  '✅ Estado actualizado correctamente');
+                                            }
+
+                                            // ✅ Cerrar diálogo con su propio context
+                                            if (Navigator.of(dialogContext)
+                                                .canPop()) {
+                                              Navigator.of(dialogContext).pop();
+                                              print('✅ Diálogo cerrado');
+                                            }
+
+                                            // ✅ Mostrar mensaje de éxito con context principal
+                                            if (mounted) {
+                                              _mostrarSnackBar(
+                                                'Tribu eliminada exitosamente',
+                                                isSuccess: true,
+                                              );
+                                              print(
+                                                  '✅ Eliminación completada exitosamente');
+                                            }
+                                          } catch (e, stackTrace) {
+                                            print(
+                                                '❌ Error al eliminar tribu: $e');
+                                            print('Stack trace: $stackTrace');
+
+                                            claveController.clear();
+                                            setDialogState(
+                                                () => isDeleting = false);
+
+                                            // ✅ Mostrar error con context principal
+                                            if (mounted) {
+                                              _mostrarSnackBar(
+                                                'Error al eliminar la tribu: ${e.toString()}',
+                                                isSuccess: false,
+                                              );
+                                            }
+                                          }
+                                        },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.red[600],
+                                    foregroundColor: Colors.white,
+                                    padding: EdgeInsets.symmetric(
+                                      vertical: isSmallScreen ? 10 : 12,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    elevation: 2,
+                                  ),
+                                  child: isDeleting
+                                      ? Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            SizedBox(
+                                              width: 14,
+                                              height: 14,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                                valueColor:
+                                                    AlwaysStoppedAnimation<
+                                                        Color>(Colors.white),
+                                              ),
+                                            ),
+                                            SizedBox(width: 8),
+                                            Text(
+                                              'Eliminando...',
+                                              style: TextStyle(
+                                                fontSize:
+                                                    isSmallScreen ? 12 : 14,
+                                              ),
+                                            ),
+                                          ],
+                                        )
+                                      : Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(
+                                              Icons.delete_rounded,
+                                              size: isSmallScreen ? 16 : 18,
+                                            ),
+                                            SizedBox(width: 6),
+                                            Text(
+                                              'Eliminar',
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.w600,
+                                                fontSize:
+                                                    isSmallScreen ? 13 : 14,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                ),
+                              ),
+                            ], // Cierre de children del Row de botones
+                          ), // Cierre del Row
+                        ), // Cierre del Container de acciones
+                      ], // Cierre de children de Column
+                    ), // Cierre de Column
+                  ), // Cierre de Container del Dialog
+                ); // Cierre de Dialog
+              }, // Cierre de builder de LayoutBuilder
+            ); // Cierre de LayoutBuilder
+          }, // Cierre de builder de StatefulBuilder
+        ), // Cierre de StatefulBuilder
+      ), // Cierre de child de WillPopScope
+    ); // Cierre de WillPopScope
+  } // Cierre de función _mostrarDialogoConfirmarEliminarLiderConsolidacion
+
+// REEMPLAZA COMPLETAMENTE la función _mostrarDialogoConfirmarEliminarLiderConsolidacion
+// Busca en tu código (aproximadamente línea 2150) y reemplaza toda la función:
 
   Future<void> _mostrarDialogoConfirmarEliminarLiderConsolidacion(
       String docId) async {
@@ -6367,333 +6992,525 @@ class _AdminPastoresState extends State<AdminPastores>
     bool isDeleting = false;
     bool obscurePassword = true;
 
+    // ✅ IMPORTANTE: Guardamos el context del State principal
+    final BuildContext mainContext = context;
+
     return showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          backgroundColor: backgroundColor,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Container(
-            padding: EdgeInsets.symmetric(vertical: 10),
-            child: Row(
-              children: [
-                Container(
-                  padding: EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.red.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(10),
+      context: mainContext,
+      barrierDismissible: true, // ✅ Permitir cerrar al tocar fuera
+
+      builder: (BuildContext dialogContext) => WillPopScope(
+        onWillPop: () async => !isDeleting,
+        child: StatefulBuilder(
+          builder: (context, setDialogState) {
+            // ✅ Recalcula en cada rebuild para actualizar con el teclado
+            return LayoutBuilder(
+              builder: (context, constraints) {
+                final mediaQuery = MediaQuery.of(dialogContext);
+                final screenWidth = mediaQuery.size.width;
+                final screenHeight = mediaQuery.size.height;
+                final keyboardHeight = mediaQuery.viewInsets.bottom;
+
+                // ✅ Previene que el diálogo se salga de la pantalla
+                final availableHeight = screenHeight - keyboardHeight - 48;
+
+                final isSmallScreen = screenWidth < 400;
+                final isMediumScreen = screenWidth >= 400 && screenWidth < 600;
+
+                final titleFontSize = isSmallScreen ? 18.0 : 20.0;
+                final subtitleFontSize = isSmallScreen ? 12.0 : 14.0;
+                final contentFontSize = isSmallScreen ? 13.0 : 14.0;
+                final iconSize = isSmallScreen ? 20.0 : 24.0;
+                final padding = isSmallScreen ? 12.0 : 16.0;
+
+                return Dialog(
+                  backgroundColor: Colors.transparent,
+                  insetPadding: EdgeInsets.only(
+                    left: isSmallScreen ? 16 : 24,
+                    right: isSmallScreen ? 16 : 24,
+                    top: 24,
+                    bottom: 24,
                   ),
-                  child:
-                      Icon(Icons.warning_rounded, color: Colors.red, size: 24),
-                ),
-                SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Eliminar Líder',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.red[700],
-                        ),
-                      ),
-                      Text(
-                        'Esta acción no se puede deshacer',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey[600],
-                          fontWeight: FontWeight.normal,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          content: Container(
-            width: double.maxFinite,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    padding: EdgeInsets.all(16),
+                  child: Container(
+                    constraints: BoxConstraints(
+                      maxWidth: 500,
+                      maxHeight: screenHeight - keyboardHeight - 48,
+                    ),
+
                     decoration: BoxDecoration(
-                      color: Colors.red.withOpacity(0.05),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.red.withOpacity(0.2)),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.info_outline_rounded,
-                            color: Colors.red[700], size: 20),
-                        SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            '¿Está seguro que desea eliminar este líder de consolidación? Esta acción eliminará todos los datos relacionados.',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.red[700],
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  SizedBox(height: 20),
-                  Text(
-                    'Ingrese la clave de confirmación:',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.grey[800],
-                    ),
-                  ),
-                  SizedBox(height: 12),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.red.withOpacity(0.3)),
+                      color: backgroundColor,
+                      borderRadius: BorderRadius.circular(20),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
-                          blurRadius: 4,
-                          offset: Offset(0, 2),
+                          color: Colors.black.withOpacity(0.2),
+                          blurRadius: 10,
+                          offset: Offset(0, 4),
                         ),
                       ],
                     ),
-                    child: TextField(
-                      controller: claveController,
-                      obscureText: obscurePassword,
-                      enabled: !isDeleting,
-                      enableInteractiveSelection: false,
-                      autocorrect: false,
-                      enableSuggestions: false,
-                      keyboardType: TextInputType.visiblePassword,
-                      style: TextStyle(
-                        color: isDeleting ? Colors.grey[400] : Colors.black87,
-                        fontSize: 16,
-                        letterSpacing: obscurePassword ? 3 : 0,
-                      ),
-                      decoration: InputDecoration(
-                        labelText: 'Clave de confirmación',
-                        hintText: 'Ingrese la clave',
-                        hintStyle: TextStyle(
-                            color: Colors.grey[400], letterSpacing: 0),
-                        prefixIcon: Container(
-                          margin: EdgeInsets.all(8),
-                          padding: EdgeInsets.all(6),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // ✅ Header
+                        Container(
+                          padding: EdgeInsets.all(padding),
                           decoration: BoxDecoration(
-                            color: isDeleting
-                                ? Colors.grey.withOpacity(0.1)
-                                : Colors.red.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(8),
+                            color: Colors.red.withOpacity(0.1),
+                            borderRadius: BorderRadius.only(
+                              topLeft: Radius.circular(20),
+                              topRight: Radius.circular(20),
+                            ),
                           ),
-                          child: Icon(
-                            Icons.lock_rounded,
-                            color:
-                                isDeleting ? Colors.grey[400] : Colors.red[700],
-                            size: 20,
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: EdgeInsets.all(isSmallScreen ? 6 : 8),
+                                decoration: BoxDecoration(
+                                  color: Colors.red.withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Icon(
+                                  Icons.warning_rounded,
+                                  color: Colors.red,
+                                  size: iconSize,
+                                ),
+                              ),
+                              SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Eliminar Líder',
+                                      style: TextStyle(
+                                        fontSize: titleFontSize,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.red[700],
+                                      ),
+                                    ),
+                                    Text(
+                                      'Esta acción no se puede deshacer',
+                                      style: TextStyle(
+                                        fontSize: subtitleFontSize,
+                                        color: Colors.grey[600],
+                                        fontWeight: FontWeight.normal,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            obscurePassword
-                                ? Icons.visibility_off_rounded
-                                : Icons.visibility_rounded,
-                            color: isDeleting
-                                ? Colors.grey[400]
-                                : Colors.grey[600],
-                            size: 20,
-                          ),
-                          onPressed: isDeleting
-                              ? null
-                              : () {
-                                  setDialogState(() {
-                                    obscurePassword = !obscurePassword;
-                                  });
-                                },
-                        ),
-                        border: InputBorder.none,
-                        contentPadding:
-                            EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                        labelStyle: TextStyle(
-                          color:
-                              isDeleting ? Colors.grey[400] : Colors.red[700],
-                          fontSize: 14,
-                        ),
-                        floatingLabelStyle: TextStyle(
-                          color: Colors.red[700],
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      onChanged: (value) {
-                        setDialogState(() {});
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          actions: [
-            Container(
-              width: double.maxFinite,
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextButton(
-                      onPressed: isDeleting
-                          ? null
-                          : () {
-                              claveController.clear();
-                              Navigator.pop(context);
-                            },
-                      style: TextButton.styleFrom(
-                        padding: EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10)),
-                      ),
-                      child: Text('Cancelar',
-                          style: TextStyle(
-                              color: Colors.grey[600],
-                              fontWeight: FontWeight.w600)),
-                    ),
-                  ),
-                  SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: (isDeleting || claveController.text.isEmpty)
-                          ? null
-                          : () async {
-                              if (!CredentialsService.validateDeletionKey(
-                                  claveController.text)) {
-                                _intentosFallidos++;
 
-                                if (_intentosFallidos >= _maxIntentos) {
-                                  final ahoraUtc = DateTime.now().toUtc();
-                                  final ahoraColombia =
-                                      ahoraUtc.subtract(Duration(hours: 5));
-
-                                  setDialogState(() {
-                                    _tiempoBloqueo =
-                                        DateTime.now().add(_duracionBloqueo);
-                                    _horaBloqueo = DateFormat('hh:mm a', 'es')
-                                        .format(ahoraColombia);
-                                  });
-
-                                  await _guardarEstadoBloqueo();
-                                  Navigator.pop(context);
-
-                                  if (mounted) {
-                                    await _mostrarVentanaBloqueo(context);
-                                  }
-                                } else {
-                                  final intentosRestantes =
-                                      _maxIntentos - _intentosFallidos;
-                                  _mostrarSnackBar(
-                                    intentosRestantes == 1
-                                        ? '⚠️ ÚLTIMO INTENTO: Si fallas nuevamente, serás bloqueado por 12 horas.'
-                                        : 'Clave incorrecta. Te quedan $intentosRestantes ${intentosRestantes == 1 ? 'intento' : 'intentos'}.',
-                                    isSuccess: false,
-                                  );
-                                  claveController.clear();
-                                }
-                                return;
-                              }
-
-                              setDialogState(() => isDeleting = true);
-
-                              try {
-                                await _firestore
-                                    .collection('lideresConsolidacion')
-                                    .doc(docId)
-                                    .delete();
-
-                                final usuarioSnapshot = await _firestore
-                                    .collection('usuarios')
-                                    .where('rol',
-                                        isEqualTo: 'liderConsolidacion')
-                                    .get();
-
-                                if (usuarioSnapshot.docs.isNotEmpty) {
-                                  await usuarioSnapshot.docs.first.reference
-                                      .delete();
-                                }
-
-                                claveController.clear();
-                                setState(() {
-                                  _intentosFallidos = 0;
-                                  _tiempoBloqueo = null;
-                                  _horaBloqueo = null;
-                                  _existeLiderConsolidacion = false;
-                                });
-                                await _guardarEstadoBloqueo();
-
-                                if (mounted) {
-                                  Navigator.pop(context);
-                                  _mostrarSnackBar(
-                                      'Líder de consolidación eliminado exitosamente',
-                                      isSuccess: true);
-                                }
-                              } catch (e) {
-                                claveController.clear();
-                                setDialogState(() => isDeleting = false);
-                                _mostrarSnackBar(
-                                    'Error al eliminar el líder: ${e.toString()}',
-                                    isSuccess: false);
-                              }
-                            },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red[600],
-                        foregroundColor: Colors.white,
-                        padding: EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10)),
-                        elevation: 2,
-                      ),
-                      child: isDeleting
-                          ? Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
+                        // ✅ Content con scroll
+                        Flexible(
+                          child: SingleChildScrollView(
+                            padding: EdgeInsets.all(padding),
+                            keyboardDismissBehavior:
+                                ScrollViewKeyboardDismissBehavior.manual,
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                SizedBox(
-                                  width: 16,
-                                  height: 16,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation<Color>(
-                                        Colors.white),
+                                Container(
+                                  padding: EdgeInsets.all(padding),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red.withOpacity(0.05),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: Colors.red.withOpacity(0.2),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Icon(
+                                        Icons.info_outline_rounded,
+                                        color: Colors.red[700],
+                                        size: isSmallScreen ? 18 : 20,
+                                      ),
+                                      SizedBox(width: 12),
+                                      Expanded(
+                                        child: Text(
+                                          '¿Está seguro que desea eliminar este líder de consolidación? Esta acción eliminará todos los datos relacionados.',
+                                          style: TextStyle(
+                                            fontSize: contentFontSize,
+                                            color: Colors.red[700],
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
-                                SizedBox(width: 8),
-                                Text('Eliminando...'),
-                              ],
-                            )
-                          : Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(Icons.delete_rounded, size: 18),
-                                SizedBox(width: 6),
-                                Text('Eliminar',
-                                    style:
-                                        TextStyle(fontWeight: FontWeight.w600)),
+                                SizedBox(height: padding),
+                                Text(
+                                  'Ingrese la clave de confirmación:',
+                                  style: TextStyle(
+                                    fontSize: contentFontSize,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.grey[800],
+                                  ),
+                                ),
+                                SizedBox(height: 12),
+                                Container(
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: Colors.red.withOpacity(0.3),
+                                    ),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.05),
+                                        blurRadius: 4,
+                                        offset: Offset(0, 2),
+                                      ),
+                                    ],
+                                  ),
+                                  child: TextField(
+                                    controller: claveController,
+                                    obscureText: obscurePassword,
+                                    enabled: !isDeleting,
+                                    enableInteractiveSelection: false,
+                                    autocorrect: false,
+                                    enableSuggestions: false,
+                                    keyboardType: TextInputType.visiblePassword,
+                                    style: TextStyle(
+                                      color: isDeleting
+                                          ? Colors.grey[400]
+                                          : Colors.black87,
+                                      fontSize: isSmallScreen ? 14 : 16,
+                                      letterSpacing: obscurePassword ? 3 : 0,
+                                    ),
+                                    decoration: InputDecoration(
+                                      labelText: 'Clave de confirmación',
+                                      hintText: 'Ingrese la clave',
+                                      hintStyle: TextStyle(
+                                        color: Colors.grey[400],
+                                        letterSpacing: 0,
+                                      ),
+                                      prefixIcon: Container(
+                                        margin: EdgeInsets.all(8),
+                                        padding: EdgeInsets.all(6),
+                                        decoration: BoxDecoration(
+                                          color: isDeleting
+                                              ? Colors.grey.withOpacity(0.1)
+                                              : Colors.red.withOpacity(0.1),
+                                          borderRadius:
+                                              BorderRadius.circular(8),
+                                        ),
+                                        child: Icon(
+                                          Icons.lock_rounded,
+                                          color: isDeleting
+                                              ? Colors.grey[400]
+                                              : Colors.red[700],
+                                          size: isSmallScreen ? 18 : 20,
+                                        ),
+                                      ),
+                                      suffixIcon: IconButton(
+                                        icon: Icon(
+                                          obscurePassword
+                                              ? Icons.visibility_off_rounded
+                                              : Icons.visibility_rounded,
+                                          color: isDeleting
+                                              ? Colors.grey[400]
+                                              : Colors.grey[600],
+                                          size: isSmallScreen ? 18 : 20,
+                                        ),
+                                        onPressed: isDeleting
+                                            ? null
+                                            : () {
+                                                setDialogState(() {
+                                                  obscurePassword =
+                                                      !obscurePassword;
+                                                });
+                                              },
+                                      ),
+                                      border: InputBorder.none,
+                                      contentPadding: EdgeInsets.symmetric(
+                                        horizontal: 16,
+                                        vertical: 16,
+                                      ),
+                                      labelStyle: TextStyle(
+                                        color: isDeleting
+                                            ? Colors.grey[400]
+                                            : Colors.red[700],
+                                        fontSize: contentFontSize,
+                                      ),
+                                      floatingLabelStyle: TextStyle(
+                                        color: Colors.red[700],
+                                        fontSize: isSmallScreen ? 14 : 16,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    onChanged: (value) {
+                                      setDialogState(() {});
+                                    },
+                                  ),
+                                ),
+                                // ✅ Espaciado extra cuando el teclado está visible
+                                SizedBox(height: keyboardHeight > 0 ? 80 : 0),
                               ],
                             ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
+                          ),
+                        ),
+
+                        // ✅ Actions (siempre visible al final)
+                        Container(
+                          padding: EdgeInsets.all(padding),
+                          decoration: BoxDecoration(
+                            color: Colors.grey[50],
+                            borderRadius: BorderRadius.only(
+                              bottomLeft: Radius.circular(20),
+                              bottomRight: Radius.circular(20),
+                            ),
+                            border: Border(
+                              top: BorderSide(color: Colors.grey.shade300),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: TextButton(
+                                  onPressed: isDeleting
+                                      ? null
+                                      : () {
+                                          claveController.clear();
+                                          Navigator.of(dialogContext).pop();
+                                        },
+                                  style: TextButton.styleFrom(
+                                    padding: EdgeInsets.symmetric(
+                                      vertical: isSmallScreen ? 10 : 12,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    'Cancelar',
+                                    style: TextStyle(
+                                      color: Colors.grey[600],
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: isSmallScreen ? 13 : 14,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              SizedBox(width: 12),
+                              Expanded(
+                                child: ElevatedButton(
+                                  onPressed: (isDeleting ||
+                                          claveController.text.isEmpty)
+                                      ? null
+                                      : () async {
+                                          // ✅ Validar clave
+                                          if (!CredentialsService
+                                              .validateDeletionKey(
+                                                  claveController.text)) {
+                                            _intentosFallidos++;
+
+                                            if (_intentosFallidos >=
+                                                _maxIntentos) {
+                                              final ahoraUtc =
+                                                  DateTime.now().toUtc();
+                                              final ahoraColombia = ahoraUtc
+                                                  .subtract(Duration(hours: 5));
+
+                                              setDialogState(() {
+                                                _tiempoBloqueo = DateTime.now()
+                                                    .add(_duracionBloqueo);
+                                                _horaBloqueo =
+                                                    DateFormat('hh:mm a', 'es')
+                                                        .format(ahoraColombia);
+                                              });
+
+                                              await _guardarEstadoBloqueo();
+
+                                              // ✅ Cerrar diálogo con su propio context
+                                              if (Navigator.of(dialogContext)
+                                                  .canPop()) {
+                                                Navigator.of(dialogContext)
+                                                    .pop();
+                                              }
+
+                                              // ✅ Mostrar ventana de bloqueo con context principal
+                                              if (mounted) {
+                                                await _mostrarVentanaBloqueo(
+                                                    mainContext);
+                                              }
+                                            } else {
+                                              final intentosRestantes =
+                                                  _maxIntentos -
+                                                      _intentosFallidos;
+                                              _mostrarSnackBar(
+                                                intentosRestantes == 1
+                                                    ? '⚠️ ÚLTIMO INTENTO: Si fallas nuevamente, serás bloqueado por 12 horas.'
+                                                    : 'Clave incorrecta. Te quedan $intentosRestantes ${intentosRestantes == 1 ? 'intento' : 'intentos'}.',
+                                                isSuccess: false,
+                                              );
+                                              claveController.clear();
+                                            }
+                                            return;
+                                          }
+
+                                          // ✅ Iniciar proceso de eliminación
+                                          setDialogState(
+                                              () => isDeleting = true);
+
+                                          try {
+                                            print(
+                                                '🗑️ Iniciando eliminación de líder de consolidación: $docId');
+
+                                            // ✅ Eliminar líder de consolidación
+                                            await _firestore
+                                                .collection(
+                                                    'lideresConsolidacion')
+                                                .doc(docId)
+                                                .delete();
+                                            print(
+                                                '✅ Líder eliminado de colección lideresConsolidacion');
+
+                                            // ✅ Eliminar usuario asociado
+                                            final usuarioSnapshot =
+                                                await _firestore
+                                                    .collection('usuarios')
+                                                    .where(
+                                                        'rol',
+                                                        isEqualTo:
+                                                            'liderConsolidacion')
+                                                    .get();
+
+                                            if (usuarioSnapshot
+                                                .docs.isNotEmpty) {
+                                              await usuarioSnapshot
+                                                  .docs.first.reference
+                                                  .delete();
+                                              print(
+                                                  '✅ Usuario asociado eliminado');
+                                            }
+
+                                            claveController.clear();
+
+                                            // ✅ Actualizar estado del widget principal
+                                            if (mounted) {
+                                              setState(() {
+                                                _intentosFallidos = 0;
+                                                _tiempoBloqueo = null;
+                                                _horaBloqueo = null;
+                                                _existeLiderConsolidacion =
+                                                    false;
+                                              });
+                                              await _guardarEstadoBloqueo();
+                                              print(
+                                                  '✅ Estado actualizado correctamente');
+                                            }
+
+                                            // ✅ Cerrar diálogo con su propio context
+                                            if (Navigator.of(dialogContext)
+                                                .canPop()) {
+                                              Navigator.of(dialogContext).pop();
+                                              print('✅ Diálogo cerrado');
+                                            }
+
+                                            // ✅ Mostrar mensaje de éxito con context principal
+                                            if (mounted) {
+                                              _mostrarSnackBar(
+                                                'Líder de consolidación eliminado exitosamente',
+                                                isSuccess: true,
+                                              );
+                                              print(
+                                                  '✅ Eliminación completada exitosamente');
+                                            }
+                                          } catch (e, stackTrace) {
+                                            print(
+                                                '❌ Error al eliminar líder de consolidación: $e');
+                                            print('Stack trace: $stackTrace');
+
+                                            claveController.clear();
+                                            setDialogState(
+                                                () => isDeleting = false);
+
+                                            // ✅ Mostrar error con context principal
+                                            if (mounted) {
+                                              _mostrarSnackBar(
+                                                'Error al eliminar el líder: ${e.toString()}',
+                                                isSuccess: false,
+                                              );
+                                            }
+                                          }
+                                        },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.red[600],
+                                    foregroundColor: Colors.white,
+                                    padding: EdgeInsets.symmetric(
+                                      vertical: isSmallScreen ? 10 : 12,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    elevation: 2,
+                                  ),
+                                  child: isDeleting
+                                      ? Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            SizedBox(
+                                              width: 14,
+                                              height: 14,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                                valueColor:
+                                                    AlwaysStoppedAnimation<
+                                                        Color>(Colors.white),
+                                              ),
+                                            ),
+                                            SizedBox(width: 8),
+                                            Text(
+                                              'Eliminando...',
+                                              style: TextStyle(
+                                                fontSize:
+                                                    isSmallScreen ? 12 : 14,
+                                              ),
+                                            ),
+                                          ],
+                                        )
+                                      : Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(
+                                              Icons.delete_rounded,
+                                              size: isSmallScreen ? 16 : 18,
+                                            ),
+                                            SizedBox(width: 6),
+                                            Text(
+                                              'Eliminar',
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.w600,
+                                                fontSize:
+                                                    isSmallScreen ? 13 : 14,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                ),
+                              ),
+                            ], // Cierre de children del Row de botones
+                          ), // Cierre del Row
+                        ), // Cierre del Container de acciones
+                      ], // Cierre de children de Column
+                    ), // Cierre de Column
+                  ), // Cierre de Container del Dialog
+                ); // Cierre de Dialog
+              }, // Cierre de builder de LayoutBuilder
+            ); // Cierre de LayoutBuilder
+          }, // Cierre de builder de StatefulBuilder
         ),
       ),
     );
