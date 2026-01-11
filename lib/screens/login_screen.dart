@@ -27,16 +27,16 @@ class _LoginPageState extends State<LoginPage>
   final _formKey = GlobalKey<FormState>();
   final _usuarioController = TextEditingController();
   final _contrasenaController = TextEditingController();
+  final FocusNode _usuarioFocus = FocusNode();
+  final FocusNode _contrasenaFocus = FocusNode();
   bool _isLoading = false;
   bool _obscureText = true;
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
 
   // Definimos los colores personalizados de COCEP
-  final Color cocepTeal =
-      const Color(0xFF1D8B96); // Color turquesa/verde azulado
-  final Color cocepOrange =
-      const Color(0xFFFF5722); // Color naranja/rojo para el degradado
+  final Color cocepTeal = const Color(0xFF1D8B96);
+  final Color cocepOrange = const Color(0xFFFF5722);
 
   @override
   void initState() {
@@ -55,6 +55,8 @@ class _LoginPageState extends State<LoginPage>
   void dispose() {
     _usuarioController.dispose();
     _contrasenaController.dispose();
+    _usuarioFocus.dispose();
+    _contrasenaFocus.dispose();
     _animationController.dispose();
     super.dispose();
   }
@@ -148,12 +150,27 @@ class _LoginPageState extends State<LoginPage>
 
   @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+    final keyboardVisible = MediaQuery.of(context).viewInsets.bottom > 0;
+
+    // Determinamos tamaños responsivos
+    final bool isSmallScreen = size.width < 360;
+    final bool isMediumScreen = size.width >= 360 && size.width < 600;
+    final bool isLargeScreen = size.width >= 600;
+
+    final double horizontalPadding =
+        isSmallScreen ? 20 : (isMediumScreen ? 24 : 32);
+    final double logoSize = isSmallScreen ? 80 : (isMediumScreen ? 100 : 120);
+    final double titleSize = isSmallScreen ? 26 : (isMediumScreen ? 32 : 38);
+    final double subtitleSize = isSmallScreen ? 13 : (isMediumScreen ? 15 : 17);
+
     return Scaffold(
+      resizeToAvoidBottomInset: true,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios, color: Colors.white),
+          icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
@@ -171,166 +188,230 @@ class _LoginPageState extends State<LoginPage>
           ),
         ),
         child: SafeArea(
-          child: SingleChildScrollView(
-            child: FadeTransition(
-              opacity: _fadeAnimation,
-              child: Padding(
-                padding: const EdgeInsets.all(24.0),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const SizedBox(height: 30),
-                    // Avatar y título con los colores de COCEP
-                    Hero(
-                      tag: 'login_avatar',
-                      child: Container(
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.2),
-                              spreadRadius: 5,
-                              blurRadius: 15,
-                              offset: const Offset(0, 5),
-                            ),
-                          ],
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              return SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                padding: EdgeInsets.only(
+                  bottom: MediaQuery.of(context).viewInsets.bottom,
+                ),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    minHeight: constraints.maxHeight,
+                  ),
+                  child: IntrinsicHeight(
+                    child: FadeTransition(
+                      opacity: _fadeAnimation,
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: horizontalPadding,
+                          vertical: keyboardVisible ? 16 : 24,
                         ),
-                        child: CircleAvatar(
-                          radius: 70,
-                          backgroundColor: Colors.white,
-                          child: Container(
-                            width: 80,
-                            height: 80,
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [
-                                  cocepOrange,
-                                  Colors.amber,
-                                ],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.person,
-                              size: 60,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 30),
-                    Text(
-                      'Bienvenido',
-                      style: TextStyle(
-                        fontSize: 32,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                        shadows: [
-                          Shadow(
-                            color: Colors.black.withOpacity(0.3),
-                            offset: const Offset(0, 3),
-                            blurRadius: 5,
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 50),
-                    // Formulario
-                    Form(
-                      key: _formKey,
-                      child: Column(
-                        children: [
-                          _buildTextField(
-                            controller: _usuarioController,
-                            label: 'Usuario',
-                            icon: Icons.person,
-                            validator: (value) => value?.isEmpty ?? true
-                                ? 'Por favor ingresa el usuario'
-                                : null,
-                            onFieldSubmitted: (_) =>
-                                FocusScope.of(context).nextFocus(),
-                          ),
-                          const SizedBox(height: 20),
-                          _buildTextField(
-                            controller: _contrasenaController,
-                            label: 'Contraseña',
-                            icon: Icons.lock,
-                            obscureText: _obscureText,
-                            suffixIcon: IconButton(
-                              icon: Icon(
-                                _obscureText
-                                    ? Icons.visibility
-                                    : Icons.visibility_off,
-                                color: cocepTeal,
-                              ),
-                              onPressed: () {
-                                setState(() => _obscureText = !_obscureText);
-                              },
-                            ),
-                            validator: (value) => value?.isEmpty ?? true
-                                ? 'Por favor ingresa la contraseña'
-                                : null,
-                            onFieldSubmitted: (_) => _login(),
-                          ),
-                          const SizedBox(height: 40),
-                          // Botón de login con gradiente de COCEP
-                          Container(
-                            width: double.infinity,
-                            height: 55,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(30),
-                              gradient: LinearGradient(
-                                colors: [
-                                  cocepOrange,
-                                  Colors.amber,
-                                ],
-                                begin: Alignment.centerLeft,
-                                end: Alignment.centerRight,
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: cocepOrange.withOpacity(0.3),
-                                  spreadRadius: 1,
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
-                            ),
-                            child: ElevatedButton(
-                              onPressed: _isLoading ? null : _login,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.transparent,
-                                shadowColor: Colors.transparent,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(30),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            if (!keyboardVisible) ...[
+                              SizedBox(height: isSmallScreen ? 10 : 20),
+                              // Logo de COCEP
+                              Hero(
+                                tag: 'login_logo',
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: Colors.white,
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.2),
+                                        spreadRadius: 3,
+                                        blurRadius: 15,
+                                        offset: const Offset(0, 5),
+                                      ),
+                                    ],
+                                  ),
+                                  padding: const EdgeInsets.all(8),
+                                  child: ClipOval(
+                                    child: Image.asset(
+                                      'assets/Cocep_.png',
+                                      height: logoSize,
+                                      width: logoSize,
+                                      fit: BoxFit.cover,
+                                    ),
+                                  ),
                                 ),
                               ),
-                              child: _isLoading
-                                  ? const CircularProgressIndicator(
-                                      valueColor: AlwaysStoppedAnimation<Color>(
-                                          Colors.white),
-                                    )
-                                  : const Text(
-                                      'INICIAR SESIÓN',
-                                      style: TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.white,
-                                        letterSpacing: 1.5,
+                              SizedBox(height: isSmallScreen ? 16 : 24),
+                              // Título
+                              Text(
+                                'Bienvenido',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: titleSize,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                  letterSpacing: 0.5,
+                                  shadows: [
+                                    Shadow(
+                                      color: Colors.black.withOpacity(0.3),
+                                      offset: const Offset(0, 2),
+                                      blurRadius: 4,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              SizedBox(height: isSmallScreen ? 6 : 8),
+                              // Subtítulo
+                              Text(
+                                'Inicia sesión para continuar',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: subtitleSize,
+                                  color: Colors.white.withOpacity(0.9),
+                                  letterSpacing: 0.3,
+                                ),
+                              ),
+                              SizedBox(height: isSmallScreen ? 24 : 32),
+                            ] else ...[
+                              const SizedBox(height: 8),
+                            ],
+                            // Formulario con fondo blanco
+                            Container(
+                              constraints: BoxConstraints(
+                                maxWidth: isLargeScreen ? 500 : double.infinity,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(24),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.1),
+                                    spreadRadius: 2,
+                                    blurRadius: 20,
+                                    offset: const Offset(0, 8),
+                                  ),
+                                ],
+                              ),
+                              padding: EdgeInsets.all(isSmallScreen ? 20 : 28),
+                              child: Form(
+                                key: _formKey,
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    _buildTextField(
+                                      controller: _usuarioController,
+                                      focusNode: _usuarioFocus,
+                                      label: 'Usuario',
+                                      icon: Icons.person_outline,
+                                      validator: (value) =>
+                                          value?.isEmpty ?? true
+                                              ? 'Ingresa tu usuario'
+                                              : null,
+                                      onFieldSubmitted: (_) {
+                                        FocusScope.of(context)
+                                            .requestFocus(_contrasenaFocus);
+                                      },
+                                      textInputAction: TextInputAction.next,
+                                      fontSize: isSmallScreen ? 14 : 16,
+                                    ),
+                                    SizedBox(height: isSmallScreen ? 16 : 20),
+                                    _buildTextField(
+                                      controller: _contrasenaController,
+                                      focusNode: _contrasenaFocus,
+                                      label: 'Contraseña',
+                                      icon: Icons.lock_outline,
+                                      obscureText: _obscureText,
+                                      suffixIcon: IconButton(
+                                        icon: Icon(
+                                          _obscureText
+                                              ? Icons.visibility_outlined
+                                              : Icons.visibility_off_outlined,
+                                          color: cocepTeal,
+                                          size: isSmallScreen ? 20 : 24,
+                                        ),
+                                        onPressed: () {
+                                          setState(() =>
+                                              _obscureText = !_obscureText);
+                                        },
+                                      ),
+                                      validator: (value) =>
+                                          value?.isEmpty ?? true
+                                              ? 'Ingresa tu contraseña'
+                                              : null,
+                                      onFieldSubmitted: (_) => _login(),
+                                      textInputAction: TextInputAction.done,
+                                      fontSize: isSmallScreen ? 14 : 16,
+                                    ),
+                                    SizedBox(height: isSmallScreen ? 24 : 32),
+                                    // Botón de login
+                                    Container(
+                                      width: double.infinity,
+                                      height: isSmallScreen ? 50 : 56,
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(28),
+                                        gradient: LinearGradient(
+                                          colors: [
+                                            cocepOrange,
+                                            Colors.amber,
+                                          ],
+                                          begin: Alignment.centerLeft,
+                                          end: Alignment.centerRight,
+                                        ),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: cocepOrange.withOpacity(0.4),
+                                            spreadRadius: 1,
+                                            blurRadius: 8,
+                                            offset: const Offset(0, 4),
+                                          ),
+                                        ],
+                                      ),
+                                      child: ElevatedButton(
+                                        onPressed: _isLoading ? null : _login,
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.transparent,
+                                          shadowColor: Colors.transparent,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(28),
+                                          ),
+                                        ),
+                                        child: _isLoading
+                                            ? SizedBox(
+                                                width: 24,
+                                                height: 24,
+                                                child:
+                                                    const CircularProgressIndicator(
+                                                  valueColor:
+                                                      AlwaysStoppedAnimation<
+                                                          Color>(Colors.white),
+                                                  strokeWidth: 2.5,
+                                                ),
+                                              )
+                                            : Text(
+                                                'INICIAR SESIÓN',
+                                                style: TextStyle(
+                                                  fontSize:
+                                                      isSmallScreen ? 15 : 17,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: Colors.white,
+                                                  letterSpacing: 1.2,
+                                                ),
+                                              ),
                                       ),
                                     ),
+                                  ],
+                                ),
+                              ),
                             ),
-                          ),
-                        ],
+                            if (!keyboardVisible)
+                              SizedBox(height: isSmallScreen ? 16 : 24),
+                          ],
+                        ),
                       ),
                     ),
-                  ],
+                  ),
                 ),
-              ),
-            ),
+              );
+            },
           ),
         ),
       ),
@@ -339,47 +420,67 @@ class _LoginPageState extends State<LoginPage>
 
   Widget _buildTextField({
     required TextEditingController controller,
+    required FocusNode focusNode,
     required String label,
     required IconData icon,
     String? Function(String?)? validator,
     bool obscureText = false,
     Widget? suffixIcon,
     void Function(String)? onFieldSubmitted,
+    TextInputAction? textInputAction,
+    double fontSize = 16,
   }) {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(30),
-        color: Colors.white.withOpacity(0.9),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            spreadRadius: 1,
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
+    return TextFormField(
+      controller: controller,
+      focusNode: focusNode,
+      obscureText: obscureText,
+      textInputAction: textInputAction,
+      style: TextStyle(
+        color: cocepTeal,
+        fontSize: fontSize,
+        fontWeight: FontWeight.w500,
       ),
-      child: TextFormField(
-        controller: controller,
-        obscureText: obscureText,
-        style: TextStyle(color: cocepTeal),
-        decoration: InputDecoration(
-          labelText: label,
-          labelStyle: TextStyle(color: cocepTeal),
-          prefixIcon: Icon(icon, color: cocepTeal),
-          suffixIcon: suffixIcon,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(30),
-            borderSide: BorderSide.none,
-          ),
-          filled: true,
-          fillColor: Colors.transparent,
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: TextStyle(
+          color: cocepTeal.withOpacity(0.7),
+          fontSize: fontSize,
         ),
-        validator: validator,
-        onFieldSubmitted: onFieldSubmitted,
+        prefixIcon: Icon(
+          icon,
+          color: cocepTeal,
+          size: fontSize + 6,
+        ),
+        suffixIcon: suffixIcon,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: cocepTeal.withOpacity(0.3), width: 1.5),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: cocepTeal.withOpacity(0.3), width: 1.5),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: cocepTeal, width: 2),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: Colors.redAccent, width: 1.5),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: Colors.redAccent, width: 2),
+        ),
+        filled: true,
+        fillColor: Colors.grey[50],
+        contentPadding: EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: fontSize > 14 ? 16 : 14,
+        ),
       ),
+      validator: validator,
+      onFieldSubmitted: onFieldSubmitted,
     );
   }
 }
