@@ -21,8 +21,7 @@ class LoginPage extends StatefulWidget {
   _LoginPageState createState() => _LoginPageState();
 }
 
-class _LoginPageState extends State<LoginPage>
-    with TickerProviderStateMixin {
+class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
   final AuthService _authService = AuthService();
   final _formKey = GlobalKey<FormState>();
   final _usuarioController = TextEditingController();
@@ -44,7 +43,7 @@ class _LoginPageState extends State<LoginPage>
   @override
   void initState() {
     super.initState();
-    
+
     // Animación de fade-in
     _fadeController = AnimationController(
       vsync: this,
@@ -56,7 +55,7 @@ class _LoginPageState extends State<LoginPage>
     _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
       CurvedAnimation(parent: _fadeController, curve: Curves.easeOutBack),
     );
-    
+
     // Animación flotante para el logo
     _floatingController = AnimationController(
       vsync: this,
@@ -65,7 +64,7 @@ class _LoginPageState extends State<LoginPage>
     _floatingAnimation = Tween<double>(begin: -8.0, end: 8.0).animate(
       CurvedAnimation(parent: _floatingController, curve: Curves.easeInOut),
     );
-    
+
     _fadeController.forward();
   }
 
@@ -191,13 +190,14 @@ class _LoginPageState extends State<LoginPage>
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
     final keyboardVisible = MediaQuery.of(context).viewInsets.bottom > 0;
-    
+
     // Tamaños responsivos
     final bool isSmallScreen = size.width < 360;
     final bool isMediumScreen = size.width >= 360 && size.width < 600;
     final bool isLargeScreen = size.width >= 600;
-    
-    final double horizontalPadding = isSmallScreen ? 20 : (isMediumScreen ? 24 : 32);
+
+    final double horizontalPadding =
+        isSmallScreen ? 20 : (isMediumScreen ? 24 : 32);
     final double logoSize = isSmallScreen ? 90 : (isMediumScreen ? 110 : 130);
     final double titleSize = isSmallScreen ? 28 : (isMediumScreen ? 34 : 40);
     final double subtitleSize = isSmallScreen ? 14 : (isMediumScreen ? 16 : 18);
@@ -227,14 +227,16 @@ class _LoginPageState extends State<LoginPage>
             Positioned(
               bottom: -80,
               left: -80,
-              child: _buildDecorativeCircle(200, Colors.white.withOpacity(0.05)),
+              child:
+                  _buildDecorativeCircle(200, Colors.white.withOpacity(0.05)),
             ),
             Positioned(
               top: size.height * 0.3,
               right: -50,
-              child: _buildDecorativeCircle(150, Colors.white.withOpacity(0.03)),
+              child:
+                  _buildDecorativeCircle(150, Colors.white.withOpacity(0.03)),
             ),
-            
+
             SafeArea(
               child: LayoutBuilder(
                 builder: (context, constraints) {
@@ -267,7 +269,8 @@ class _LoginPageState extends State<LoginPage>
                                       animation: _floatingAnimation,
                                       builder: (context, child) {
                                         return Transform.translate(
-                                          offset: Offset(0, _floatingAnimation.value),
+                                          offset: Offset(
+                                              0, _floatingAnimation.value),
                                           child: child,
                                         );
                                       },
@@ -279,13 +282,15 @@ class _LoginPageState extends State<LoginPage>
                                             color: Colors.white,
                                             boxShadow: [
                                               BoxShadow(
-                                                color: cocepOrange.withOpacity(0.3),
+                                                color: cocepOrange
+                                                    .withOpacity(0.3),
                                                 spreadRadius: 0,
                                                 blurRadius: 30,
                                                 offset: const Offset(0, 10),
                                               ),
                                               BoxShadow(
-                                                color: Colors.black.withOpacity(0.1),
+                                                color: Colors.black
+                                                    .withOpacity(0.1),
                                                 spreadRadius: 2,
                                                 blurRadius: 15,
                                                 offset: const Offset(0, 5),
@@ -325,7 +330,8 @@ class _LoginPageState extends State<LoginPage>
                                         height: 1.2,
                                         shadows: [
                                           Shadow(
-                                            color: Colors.black.withOpacity(0.3),
+                                            color:
+                                                Colors.black.withOpacity(0.3),
                                             offset: const Offset(0, 3),
                                             blurRadius: 8,
                                           ),
@@ -354,7 +360,8 @@ class _LoginPageState extends State<LoginPage>
                                   scale: _scaleAnimation,
                                   child: Container(
                                     constraints: BoxConstraints(
-                                      maxWidth: isLargeScreen ? 480 : double.infinity,
+                                      maxWidth:
+                                          isLargeScreen ? 480 : double.infinity,
                                     ),
                                     decoration: BoxDecoration(
                                       color: Colors.white.withOpacity(0.98),
@@ -387,7 +394,8 @@ class _LoginPageState extends State<LoginPage>
                                             end: Alignment.bottomRight,
                                           ),
                                         ),
-                                        padding: EdgeInsets.all(isSmallScreen ? 24 : 32),
+                                        padding: EdgeInsets.all(
+                                            isSmallScreen ? 24 : 32),
                                         child: Form(
                                           key: _formKey,
                                           child: Column(
@@ -398,44 +406,66 @@ class _LoginPageState extends State<LoginPage>
                                                 focusNode: _usuarioFocus,
                                                 label: 'Usuario',
                                                 hint: 'Ingresa tu usuario',
-                                                icon: Icons.person_outline_rounded,
-                                                validator: (value) => value?.isEmpty ?? true
-                                                    ? 'Ingresa tu usuario'
-                                                    : null,
+                                                icon: Icons
+                                                    .person_outline_rounded,
+                                                validator: (value) =>
+                                                    value?.isEmpty ?? true
+                                                        ? 'Ingresa tu usuario'
+                                                        : null,
                                                 onFieldSubmitted: (_) {
-                                                  FocusScope.of(context).requestFocus(_contrasenaFocus);
+                                                  FocusScope.of(context)
+                                                      .requestFocus(
+                                                          _contrasenaFocus);
                                                 },
-                                                textInputAction: TextInputAction.next,
-                                                fontSize: isSmallScreen ? 14 : 16,
+                                                textInputAction:
+                                                    TextInputAction.next,
+                                                fontSize:
+                                                    isSmallScreen ? 14 : 16,
                                               ),
-                                              SizedBox(height: isSmallScreen ? 18 : 22),
+                                              SizedBox(
+                                                  height:
+                                                      isSmallScreen ? 18 : 22),
                                               _buildPremiumTextField(
-                                                controller: _contrasenaController,
+                                                controller:
+                                                    _contrasenaController,
                                                 focusNode: _contrasenaFocus,
                                                 label: 'Contraseña',
                                                 hint: 'Ingresa tu contraseña',
-                                                icon: Icons.lock_outline_rounded,
+                                                icon:
+                                                    Icons.lock_outline_rounded,
                                                 obscureText: _obscureText,
                                                 suffixIcon: IconButton(
                                                   icon: Icon(
                                                     _obscureText
-                                                        ? Icons.visibility_outlined
-                                                        : Icons.visibility_off_outlined,
+                                                        ? Icons
+                                                            .visibility_outlined
+                                                        : Icons
+                                                            .visibility_off_outlined,
                                                     color: cocepTeal,
-                                                    size: isSmallScreen ? 20 : 22,
+                                                    size:
+                                                        isSmallScreen ? 20 : 22,
                                                   ),
                                                   onPressed: () {
-                                                    setState(() => _obscureText = !_obscureText);
+                                                    setState(() =>
+                                                        _obscureText =
+                                                            !_obscureText);
                                                   },
                                                 ),
-                                                validator: (value) => value?.isEmpty ?? true
+                                                validator: (value) => value
+                                                            ?.isEmpty ??
+                                                        true
                                                     ? 'Ingresa tu contraseña'
                                                     : null,
-                                                onFieldSubmitted: (_) => _login(),
-                                                textInputAction: TextInputAction.done,
-                                                fontSize: isSmallScreen ? 14 : 16,
+                                                onFieldSubmitted: (_) =>
+                                                    _login(),
+                                                textInputAction:
+                                                    TextInputAction.done,
+                                                fontSize:
+                                                    isSmallScreen ? 14 : 16,
                                               ),
-                                              SizedBox(height: isSmallScreen ? 28 : 36),
+                                              SizedBox(
+                                                  height:
+                                                      isSmallScreen ? 28 : 36),
                                               // Botón premium con efecto hover
                                               _buildPremiumButton(
                                                 isSmallScreen: isSmallScreen,
@@ -447,7 +477,7 @@ class _LoginPageState extends State<LoginPage>
                                     ),
                                   ),
                                 ),
-                                if (!keyboardVisible) 
+                                if (!keyboardVisible)
                                   SizedBox(height: isSmallScreen ? 20 : 30),
                               ],
                             ),
