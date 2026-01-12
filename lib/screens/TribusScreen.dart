@@ -3123,7 +3123,7 @@ class _TribusScreenState extends State<TribusScreen>
                                             maxLines: 3),
 
                                         _buildTextFieldConOpcionesWithFocus(
-                                            'Estado de Proceso',
+                                            'Estado del Proceso',
                                             Icons.track_changes_outlined,
                                             (value) => estadoProceso = value,
                                             _estadoProcesoFocus,
@@ -12079,7 +12079,7 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
                                         }
                                       } else if (fieldName == 'estadoProceso') {
                                         return _buildAnimatedTextFieldConOpcionesResponsive(
-                                          label: 'Estado de Proceso',
+                                          label: 'Estado del Proceso',
                                           icon: fieldIcon,
                                           controller: controller!,
                                           focusNode: focusNode!,

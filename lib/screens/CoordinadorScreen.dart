@@ -6639,6 +6639,7 @@ Future<List<Map<String, dynamic>>> _obtenerTimoteosConConteo(
   }
 
 //EDITAR EL DETALLE DEL REGISTRO
+
   void _editarRegistro(BuildContext context, DocumentSnapshot registro) {
     // Colores de la aplicación
     const Color primaryTeal = Color(0xFF1B998B);
@@ -6648,23 +6649,22 @@ Future<List<Map<String, dynamic>>> _obtenerTimoteosConConteo(
     // Flag para rastrear si hay cambios sin guardar
     bool hayModificaciones = false;
 
-    // Función mejorada para obtener un valor seguro del documento con mejor manejo de nulos
+    // ✅ NUEVO: FocusNodes para navegación entre campos
+    final Map<String, FocusNode> focusNodes = {};
+
+    // Función mejorada para obtener un valor seguro del documento
     T? getSafeValue<T>(String field) {
       try {
-        // Check if data() is null first
         final data = registro.data();
         if (data == null) return null;
 
-        // Comprobar que data es un Map antes de intentar acceder a sus elementos
         if (data is Map) {
-          // ✅ USAR LA NUEVA FUNCIÓN PARA OBTENER EL VALOR CON DETECCIÓN DE VARIANTES
           final value =
               obtenerValorCampoEdicion(data as Map<String, dynamic>, field);
 
           if (value is T) {
             return value;
           } else if (value != null) {
-            // Intentar convertir al tipo correcto si es posible
             if (T == String && value != null) {
               return value.toString() as T;
             } else if (T == int && value is num) {
@@ -6725,15 +6725,19 @@ Future<List<Map<String, dynamic>>> _obtenerTimoteosConConteo(
       }
     }
 
-    // Controladores para los campos (solo se crean para campos que existen)
+    // Controladores para los campos
     final Map<String, TextEditingController> controllers = {};
 
-    // Estado para campos de selección con valores predeterminados para evitar nulos
+    // Estado para campos de selección
     String estadoCivilSeleccionado =
         getSafeValue<String>('estadoCivil') ?? 'Soltero(a)';
     String sexoSeleccionado = getSafeValue<String>('sexo') ?? 'Hombre';
 
-    // NUEVO: Fecha de nacimiento
+    // Estado activo del registro
+    bool estadoActivo = getSafeValue<bool>('activo') ?? true;
+    bool estadoActivoAnterior = estadoActivo;
+
+    // Fecha de nacimiento
     DateTime? fechaNacimiento;
     final fechaNacimientoValue = getSafeValue('fechaNacimiento');
     if (fechaNacimientoValue != null) {
@@ -6784,13 +6788,11 @@ Future<List<Map<String, dynamic>>> _obtenerTimoteosConConteo(
       'fechaNacimiento': {'icon': Icons.calendar_today, 'type': 'date'},
     };
 
-    // Inicializar controladores de manera segura
+    // Inicializar controladores y FocusNodes
     camposDefinicion.forEach((key, value) {
       if (key != 'estadoCivil' && key != 'sexo' && key != 'fechaNacimiento') {
-        // Estos se manejan con dropdowns o date picker
         var fieldValue = getSafeValue(key);
 
-        // Crear controladores para todos los campos definidos para evitar errores de nullability
         if (value['type'] == 'list' && fieldValue is List) {
           controllers[key] = TextEditingController(text: fieldValue.join(', '));
         } else if (value['type'] == 'int' && fieldValue != null) {
@@ -6798,15 +6800,49 @@ Future<List<Map<String, dynamic>>> _obtenerTimoteosConConteo(
         } else if (fieldValue != null) {
           controllers[key] = TextEditingController(text: fieldValue.toString());
         } else {
-          // Crear controladores vacíos para todos los campos para evitar problemas de nulabilidad
           controllers[key] = TextEditingController();
         }
+
+        // ✅ NUEVO: Crear FocusNode para cada campo
+        focusNodes[key] = FocusNode();
       }
     });
 
-    // Asegurar que nombrePareja siempre tenga un controlador para evitar null errors
     if (controllers['nombrePareja'] == null) {
       controllers['nombrePareja'] = TextEditingController();
+      focusNodes['nombrePareja'] = FocusNode();
+    }
+
+    // ✅ NUEVO: Lista ordenada de campos para navegación
+    final List<String> camposOrdenados = [
+      'nombre',
+      'apellido',
+      'telefono',
+      'direccion',
+      'barrio',
+      'nombrePareja',
+      'ocupaciones',
+      'descripcionOcupacion',
+      'referenciaInvitacion',
+      'observaciones',
+      'estadoFonovisita',
+      'observaciones2',
+      'edad',
+      'peticiones',
+      'estadoProceso',
+    ];
+
+    // ✅ NUEVO: Función para ir al siguiente campo
+    void _irAlSiguienteCampo(String campoActual) {
+      final index = camposOrdenados.indexOf(campoActual);
+      if (index != -1 && index < camposOrdenados.length - 1) {
+        final siguienteCampo = camposOrdenados[index + 1];
+        if (focusNodes.containsKey(siguienteCampo)) {
+          focusNodes[siguienteCampo]?.requestFocus();
+        }
+      } else {
+        FocusScope.of(context).unfocus();
+      }
     }
 
     // Función para verificar si se debe mostrar el campo de nombre de pareja
@@ -6846,17 +6882,220 @@ Future<List<Map<String, dynamic>>> _obtenerTimoteosConConteo(
       }
     }
 
-    // Función para mostrar el diálogo de confirmación con manejo seguro de context
+    // Función para mostrar diálogo de observaciones al desactivar
+    Future<String?> _mostrarDialogoObservacionesDesactivacion() async {
+      final TextEditingController observacionesController =
+          TextEditingController();
+      String? resultado;
+
+      await showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext dialogContext) {
+          return AlertDialog(
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    Icons.warning_amber_rounded,
+                    color: Colors.orange,
+                    size: 24,
+                  ),
+                ),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Observaciones Requeridas',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: primaryTeal,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: Colors.orange.withOpacity(0.3),
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.info_outline,
+                            color: Colors.orange, size: 20),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Por favor, explica la razón por la cual esta persona ya no forma parte de la iglesia.',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.orange[800],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(height: 16),
+                  TextField(
+                    controller: observacionesController,
+                    maxLines: 5,
+                    maxLength: 500,
+                    decoration: InputDecoration(
+                      labelText: 'Observaciones *',
+                      labelStyle: TextStyle(
+                        color: primaryTeal.withOpacity(0.8),
+                        fontWeight: FontWeight.w500,
+                      ),
+                      hintText: 'Describe el motivo de la desactivación...',
+                      hintStyle: TextStyle(
+                        color: Colors.grey[400],
+                        fontSize: 14,
+                      ),
+                      prefixIcon: Container(
+                        margin: EdgeInsets.all(12),
+                        padding: EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: primaryTeal.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child:
+                            Icon(Icons.edit_note, color: primaryTeal, size: 20),
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide:
+                            BorderSide(color: primaryTeal.withOpacity(0.3)),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide:
+                            BorderSide(color: primaryTeal.withOpacity(0.5)),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: primaryTeal, width: 2),
+                      ),
+                      errorBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide:
+                            BorderSide(color: Colors.red.shade400, width: 2),
+                      ),
+                      filled: true,
+                      fillColor: Colors.white,
+                      contentPadding:
+                          EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                      counterStyle:
+                          TextStyle(color: Colors.grey[600], fontSize: 12),
+                    ),
+                    style: TextStyle(fontSize: 15),
+                    textCapitalization: TextCapitalization.sentences,
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.of(dialogContext).pop();
+                  resultado = null;
+                },
+                style: TextButton.styleFrom(
+                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                child: Text(
+                  'Cancelar',
+                  style: TextStyle(
+                    color: Colors.grey[600],
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  if (observacionesController.text.trim().isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Row(
+                          children: [
+                            Icon(Icons.error_outline, color: Colors.white),
+                            SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                'Las observaciones son obligatorias al desactivar un registro',
+                                style: TextStyle(fontWeight: FontWeight.w500),
+                              ),
+                            ),
+                          ],
+                        ),
+                        backgroundColor: Colors.red,
+                        behavior: SnackBarBehavior.floating,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        margin: EdgeInsets.all(16),
+                      ),
+                    );
+                    return;
+                  }
+
+                  resultado = observacionesController.text.trim();
+                  Navigator.of(dialogContext).pop();
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: secondaryOrange,
+                  foregroundColor: Colors.white,
+                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  elevation: 2,
+                ),
+                child: Text(
+                  'Guardar Observación',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
+          );
+        },
+      );
+
+      observacionesController.dispose();
+      return resultado;
+    }
+
+    // Función para mostrar el diálogo de confirmación
     Future<bool> confirmarSalida() async {
       if (!hayModificaciones) return true;
 
-      // Verificar que el contexto sigue siendo válido
       if (!context.mounted) return false;
 
       bool confirmar = false;
       await showDialog(
         context: context,
-        barrierDismissible: true, // Evitar cierre accidental
+        barrierDismissible: true,
         builder: (BuildContext dialogContext) => AlertDialog(
           title: Row(
             children: [
@@ -6895,7 +7134,7 @@ Future<List<Map<String, dynamic>>> _obtenerTimoteosConConteo(
       return confirmar;
     }
 
-    // Mostrar el nombre del registro en lugar del ID con manejo seguro de nulos
+    // Mostrar el nombre del registro
     String getNombreCompleto() {
       String nombre = getSafeValue<String>('nombre') ?? '';
       String apellido = getSafeValue<String>('apellido') ?? '';
@@ -6907,665 +7146,1892 @@ Future<List<Map<String, dynamic>>> _obtenerTimoteosConConteo(
       return 'Registro ${registro.id}';
     }
 
-    // Verificar si el contexto es válido antes de mostrar el diálogo
     if (!context.mounted) return;
 
     showDialog(
       context: context,
-      barrierDismissible: true, // No se cierra al tocar fuera
+      barrierDismissible: true,
       builder: (BuildContext dialogContext) {
-        return StatefulBuilder(builder: (stateContext, setState) {
-          return WillPopScope(
-            onWillPop: () async {
-              bool confirmar = await confirmarSalida();
-              return confirmar;
-            },
-            child: Dialog(
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20)),
-              child: Container(
-                constraints: BoxConstraints(
-                  maxWidth: 500,
-                  maxHeight: MediaQuery.of(dialogContext).size.height * 0.8,
-                ),
-                child: SingleChildScrollView(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Encabezado
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: lightTeal,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(Icons.edit, color: primaryTeal, size: 28),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Text(
-                                  'Editar Registro',
-                                  style: TextStyle(
-                                      fontSize: 22,
-                                      fontWeight: FontWeight.bold,
-                                      color: primaryTeal),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 24),
+        return MediaQuery.removeViewInsets(
+          context: dialogContext,
+          removeBottom: true,
+          child: StatefulBuilder(
+            builder: (stateContext, setState) {
+              return WillPopScope(
+                onWillPop: () async {
+                  final bool confirmar = await confirmarSalida();
+                  return confirmar;
+                },
+                child: Dialog(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      // ✅ RESPONSIVE: Calcular tamaños dinámicos
+                      final mediaQuery = MediaQuery.of(dialogContext);
+                      final screenWidth = mediaQuery.size.width;
+                      final screenHeight = mediaQuery.size.height;
+                      final bottomInset = mediaQuery.viewInsets.bottom;
 
-                        // Información del registro
-                        Row(
+                      final isVerySmallScreen = screenWidth < 360;
+                      final isSmallScreen = screenWidth < 600;
+                      final isMediumScreen =
+                          screenWidth >= 600 && screenWidth < 900;
+
+                      // ✅ Tamaños adaptativos mejorados
+                      final horizontalPadding = isVerySmallScreen
+                          ? 12.0
+                          : (isSmallScreen
+                              ? 16.0
+                              : (isMediumScreen ? 20.0 : 24.0));
+                      final verticalPadding = isVerySmallScreen
+                          ? 12.0
+                          : (isSmallScreen
+                              ? 16.0
+                              : (isMediumScreen ? 20.0 : 24.0));
+                      final headerPadding = isVerySmallScreen
+                          ? 14.0
+                          : (isSmallScreen
+                              ? 16.0
+                              : (isMediumScreen ? 20.0 : 24.0));
+                      final titleFontSize = isVerySmallScreen
+                          ? 18.0
+                          : (isSmallScreen
+                              ? 20.0
+                              : (isMediumScreen ? 22.0 : 24.0));
+                      final labelFontSize = isVerySmallScreen
+                          ? 13.0
+                          : (isSmallScreen
+                              ? 14.0
+                              : (isMediumScreen ? 15.0 : 16.0));
+                      final contentFontSize = isVerySmallScreen
+                          ? 14.0
+                          : (isSmallScreen
+                              ? 15.0
+                              : (isMediumScreen ? 16.0 : 17.0));
+                      final buttonFontSize = isVerySmallScreen
+                          ? 13.0
+                          : (isSmallScreen
+                              ? 14.0
+                              : (isMediumScreen ? 15.0 : 16.0));
+                      final iconSize = isVerySmallScreen
+                          ? 20.0
+                          : (isSmallScreen
+                              ? 22.0
+                              : (isMediumScreen ? 24.0 : 26.0));
+                      final borderRadius = isVerySmallScreen
+                          ? 10.0
+                          : (isSmallScreen
+                              ? 12.0
+                              : (isMediumScreen ? 14.0 : 16.0));
+
+                      final maxWidth = isVerySmallScreen
+                          ? screenWidth * 0.95
+                          : (isSmallScreen
+                              ? 600.0
+                              : (isMediumScreen ? 650.0 : 700.0));
+
+                      return Container(
+                        constraints: BoxConstraints(
+                          maxWidth: maxWidth,
+                          maxHeight: screenHeight *
+                              0.85, // ✅ maxHeight en lugar de height
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            Expanded(
-                              child: Container(
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: Colors.grey.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(12),
+                            // ✅ Encabezado RESPONSIVE
+                            Container(
+                              padding: EdgeInsets.all(headerPadding),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    primaryTeal,
+                                    primaryTeal.withOpacity(0.85)
+                                  ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
                                 ),
-                                child: Row(
-                                  children: [
-                                    Icon(Icons.person,
-                                        color: Colors.grey[700], size: 18),
-                                    SizedBox(width: 8),
-                                    Expanded(
-                                      child: Text(
-                                        getNombreCompleto(),
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          color: Colors.grey[800],
-                                          fontWeight: FontWeight.w500,
+                                borderRadius: BorderRadius.only(
+                                  topLeft: Radius.circular(20),
+                                  topRight: Radius.circular(20),
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: primaryTeal.withOpacity(0.3),
+                                    blurRadius: 8,
+                                    offset: Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    padding: EdgeInsets.all(
+                                        isVerySmallScreen ? 6 : 8),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withOpacity(0.2),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Icon(
+                                      Icons.edit_rounded,
+                                      color: Colors.white,
+                                      size: iconSize,
+                                    ),
+                                  ),
+                                  SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        FittedBox(
+                                          fit: BoxFit.scaleDown,
+                                          alignment: Alignment.centerLeft,
+                                          child: Text(
+                                            'Editar Registro',
+                                            style: GoogleFonts.poppins(
+                                              fontSize: titleFontSize,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.white,
+                                            ),
+                                            maxLines: 1,
+                                          ),
                                         ),
-                                        overflow: TextOverflow.ellipsis,
+                                        if (!isVerySmallScreen)
+                                          FittedBox(
+                                            fit: BoxFit.scaleDown,
+                                            alignment: Alignment.centerLeft,
+                                            child: Text(
+                                              'Modifica la información del miembro',
+                                              style: GoogleFonts.poppins(
+                                                fontSize: labelFontSize - 2,
+                                                color: Colors.white
+                                                    .withOpacity(0.9),
+                                              ),
+                                              maxLines: 1,
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                  IconButton(
+                                    onPressed: () async {
+                                      focusNodes.values
+                                          .forEach((fn) => fn.dispose());
+                                      bool confirmar = await confirmarSalida();
+                                      if (confirmar && dialogContext.mounted) {
+                                        Navigator.pop(dialogContext);
+                                      }
+                                    },
+                                    icon: Icon(Icons.close_rounded,
+                                        color: Colors.white, size: iconSize),
+                                    style: IconButton.styleFrom(
+                                      backgroundColor:
+                                          Colors.white.withOpacity(0.2),
+                                      shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(10)),
+                                      padding: EdgeInsets.all(
+                                          isVerySmallScreen ? 6 : 8),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                            // ✅ CONTENIDO CON SCROLL + BOTONES AL FINAL
+                            Expanded(
+                              child: SingleChildScrollView(
+                                keyboardDismissBehavior:
+                                    ScrollViewKeyboardDismissBehavior.manual,
+                                physics: ClampingScrollPhysics(),
+                                padding: EdgeInsets.fromLTRB(
+                                  horizontalPadding,
+                                  horizontalPadding,
+                                  horizontalPadding,
+                                  horizontalPadding + bottomInset,
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    SizedBox(height: verticalPadding * 0.5),
+
+                                    // Información del registro
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: Container(
+                                            padding: EdgeInsets.all(12),
+                                            decoration: BoxDecoration(
+                                              color:
+                                                  Colors.grey.withOpacity(0.1),
+                                              borderRadius:
+                                                  BorderRadius.circular(
+                                                      borderRadius),
+                                              border: Border.all(
+                                                color: Colors.grey
+                                                    .withOpacity(0.3),
+                                              ),
+                                            ),
+                                            child: Row(
+                                              children: [
+                                                Icon(Icons.person,
+                                                    color: Colors.grey[700],
+                                                    size: iconSize * 0.8),
+                                                SizedBox(width: 8),
+                                                Expanded(
+                                                  child: Text(
+                                                    getNombreCompleto(),
+                                                    style: GoogleFonts.poppins(
+                                                      fontSize: labelFontSize,
+                                                      color: Colors.grey[800],
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                    ),
+                                                    maxLines: 2,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    SizedBox(height: verticalPadding),
+
+                                    // Switch para estado activo/inactivo
+                                    Container(
+                                      padding:
+                                          EdgeInsets.all(horizontalPadding),
+                                      decoration: BoxDecoration(
+                                        color: estadoActivo
+                                            ? Colors.green.withOpacity(0.1)
+                                            : Colors.red.withOpacity(0.1),
+                                        borderRadius:
+                                            BorderRadius.circular(borderRadius),
+                                        border: Border.all(
+                                          color: estadoActivo
+                                              ? Colors.green.withOpacity(0.3)
+                                              : Colors.red.withOpacity(0.3),
+                                          width: 1,
+                                        ),
+                                      ),
+                                      child: Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Expanded(
+                                            child: Row(
+                                              children: [
+                                                Icon(
+                                                  estadoActivo
+                                                      ? Icons.check_circle
+                                                      : Icons.cancel,
+                                                  color: estadoActivo
+                                                      ? Colors.green
+                                                      : Colors.red,
+                                                  size: iconSize,
+                                                ),
+                                                SizedBox(width: 12),
+                                                Expanded(
+                                                  child: Column(
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment
+                                                            .start,
+                                                    children: [
+                                                      Text(
+                                                        'Estado del Registro',
+                                                        style:
+                                                            GoogleFonts.poppins(
+                                                          fontSize:
+                                                              labelFontSize - 2,
+                                                          color:
+                                                              Colors.grey[600],
+                                                          fontWeight:
+                                                              FontWeight.w500,
+                                                        ),
+                                                        maxLines: 1,
+                                                        overflow: TextOverflow
+                                                            .ellipsis,
+                                                      ),
+                                                      Text(
+                                                        estadoActivo
+                                                            ? "Activo"
+                                                            : "No Activo",
+                                                        style:
+                                                            GoogleFonts.poppins(
+                                                          fontSize:
+                                                              labelFontSize,
+                                                          fontWeight:
+                                                              FontWeight.w700,
+                                                          color: estadoActivo
+                                                              ? Colors
+                                                                  .green[700]
+                                                              : Colors.red[700],
+                                                        ),
+                                                        maxLines: 1,
+                                                        overflow: TextOverflow
+                                                            .ellipsis,
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          Switch(
+                                            value: estadoActivo,
+                                            activeColor: secondaryOrange,
+                                            inactiveThumbColor:
+                                                Colors.grey[400],
+                                            inactiveTrackColor:
+                                                Colors.grey[300],
+                                            onChanged: (value) async {
+                                              if (!value &&
+                                                  estadoActivoAnterior) {
+                                                final observacion =
+                                                    await _mostrarDialogoObservacionesDesactivacion();
+
+                                                if (observacion != null &&
+                                                    observacion.isNotEmpty) {
+                                                  if (controllers[
+                                                          'observaciones'] !=
+                                                      null) {
+                                                    final observacionActual =
+                                                        controllers[
+                                                                'observaciones']!
+                                                            .text;
+                                                    final nuevaObservacion =
+                                                        observacionActual
+                                                                .isEmpty
+                                                            ? 'MOTIVO DESACTIVACIÓN: $observacion'
+                                                            : '$observacionActual\n\nMOTIVO DESACTIVACIÓN: $observacion';
+                                                    controllers['observaciones']!
+                                                            .text =
+                                                        nuevaObservacion;
+                                                  }
+
+                                                  setState(() {
+                                                    estadoActivo = value;
+                                                    estadoActivoAnterior =
+                                                        value;
+                                                    hayModificaciones = true;
+                                                  });
+                                                }
+                                              } else {
+                                                setState(() {
+                                                  estadoActivo = value;
+                                                  estadoActivoAnterior = value;
+                                                  hayModificaciones = true;
+                                                });
+                                              }
+                                            },
+                                          ),
+                                        ],
                                       ),
                                     ),
+                                    SizedBox(height: verticalPadding),
+
+                                    if (!estadoActivo)
+                                      Container(
+                                        padding: EdgeInsets.all(12),
+                                        margin: EdgeInsets.only(
+                                            bottom: verticalPadding),
+                                        decoration: BoxDecoration(
+                                          color: Colors.orange.withOpacity(0.1),
+                                          borderRadius: BorderRadius.circular(
+                                              borderRadius),
+                                          border: Border.all(
+                                            color:
+                                                Colors.orange.withOpacity(0.3),
+                                            width: 1,
+                                          ),
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            Icon(Icons.info_outline,
+                                                color: Colors.orange,
+                                                size: iconSize * 0.8),
+                                            SizedBox(width: 8),
+                                            Expanded(
+                                              child: Text(
+                                                'Al desactivar este registro, se eliminarán automáticamente las asignaciones de coordinador y timoteo.',
+                                                style: GoogleFonts.poppins(
+                                                  fontSize: labelFontSize - 2,
+                                                  color: Colors.orange[800],
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+
+                                    // ✅ CAMPOS DEL FORMULARIO CON NAVEGACIÓN
+                                    ...camposDefinicion.entries.map((entry) {
+                                      final fieldName = entry.key;
+                                      final fieldData = entry.value;
+                                      final controller = controllers[fieldName];
+                                      final fieldIcon = fieldData['icon'] ??
+                                          Icons.help_outline;
+                                      final focusNode = focusNodes[fieldName];
+
+                                      if (fieldName == 'estadoCivil') {
+                                        return _buildDropdownFieldResponsive(
+                                          label: 'Estado Civil',
+                                          icon: fieldIcon,
+                                          value: estadoCivilSeleccionado,
+                                          items: opcionesEstadoCivil,
+                                          primaryColor: primaryTeal,
+                                          fontSize: contentFontSize,
+                                          iconSize: iconSize,
+                                          borderRadius: borderRadius,
+                                          onChanged: (newValue) {
+                                            if (newValue != null) {
+                                              setState(() {
+                                                estadoCivilSeleccionado =
+                                                    newValue;
+                                                hayModificaciones = true;
+                                              });
+                                            }
+                                          },
+                                        );
+                                      } else if (fieldName == 'sexo') {
+                                        return _buildDropdownFieldResponsive(
+                                          label: 'Sexo',
+                                          icon: fieldIcon,
+                                          value: sexoSeleccionado,
+                                          items: opcionesSexo,
+                                          primaryColor: primaryTeal,
+                                          fontSize: contentFontSize,
+                                          iconSize: iconSize,
+                                          borderRadius: borderRadius,
+                                          onChanged: (newValue) {
+                                            if (newValue != null) {
+                                              setState(() {
+                                                sexoSeleccionado = newValue;
+                                                hayModificaciones = true;
+                                              });
+                                            }
+                                          },
+                                        );
+                                      } else if (fieldName ==
+                                          'fechaNacimiento') {
+                                        return Column(
+                                          children: [
+                                            Container(
+                                              margin: EdgeInsets.only(
+                                                  bottom: verticalPadding),
+                                              child: InkWell(
+                                                onTap: () =>
+                                                    _seleccionarFecha(setState),
+                                                borderRadius:
+                                                    BorderRadius.circular(
+                                                        borderRadius),
+                                                child: Container(
+                                                  padding: EdgeInsets.all(
+                                                      horizontalPadding),
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.grey
+                                                        .withOpacity(0.05),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            borderRadius),
+                                                    border: Border.all(
+                                                      color: primaryTeal
+                                                          .withOpacity(0.3),
+                                                      width: 1,
+                                                    ),
+                                                  ),
+                                                  child: Row(
+                                                    children: [
+                                                      Container(
+                                                        padding:
+                                                            EdgeInsets.all(8),
+                                                        decoration:
+                                                            BoxDecoration(
+                                                          color: primaryTeal
+                                                              .withOpacity(0.1),
+                                                          borderRadius:
+                                                              BorderRadius
+                                                                  .circular(8),
+                                                        ),
+                                                        child: Icon(
+                                                          fieldIcon,
+                                                          color: primaryTeal,
+                                                          size: iconSize * 0.8,
+                                                        ),
+                                                      ),
+                                                      SizedBox(width: 12),
+                                                      Expanded(
+                                                        child: Column(
+                                                          crossAxisAlignment:
+                                                              CrossAxisAlignment
+                                                                  .start,
+                                                          children: [
+                                                            Text(
+                                                              'Fecha de Nacimiento',
+                                                              style: GoogleFonts
+                                                                  .poppins(
+                                                                fontSize:
+                                                                    labelFontSize -
+                                                                        2,
+                                                                color: Colors
+                                                                    .grey[600],
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w500,
+                                                              ),
+                                                              maxLines: 1,
+                                                              overflow:
+                                                                  TextOverflow
+                                                                      .ellipsis,
+                                                            ),
+                                                            SizedBox(height: 4),
+                                                            Text(
+                                                              fechaNacimiento !=
+                                                                      null
+                                                                  ? '${fechaNacimiento!.day}/${fechaNacimiento!.month}/${fechaNacimiento!.year}'
+                                                                  : 'Seleccionar fecha',
+                                                              style: GoogleFonts
+                                                                  .poppins(
+                                                                fontSize:
+                                                                    contentFontSize,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w500,
+                                                                color: fechaNacimiento !=
+                                                                        null
+                                                                    ? Colors
+                                                                        .black87
+                                                                    : Colors.grey[
+                                                                        500],
+                                                              ),
+                                                              maxLines: 1,
+                                                              overflow:
+                                                                  TextOverflow
+                                                                      .ellipsis,
+                                                            ),
+                                                          ],
+                                                        ),
+                                                      ),
+                                                      Icon(
+                                                        Icons
+                                                            .keyboard_arrow_down,
+                                                        color: Colors.grey[600],
+                                                        size: iconSize,
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                            if (fechaNacimiento != null)
+                                              Container(
+                                                margin: EdgeInsets.only(
+                                                    bottom: verticalPadding),
+                                                padding: EdgeInsets.all(
+                                                    horizontalPadding),
+                                                decoration: BoxDecoration(
+                                                  gradient: LinearGradient(
+                                                    colors: [
+                                                      Color(0xFF1B998B)
+                                                          .withOpacity(0.1),
+                                                      Color(0xFFFF7E00)
+                                                          .withOpacity(0.1),
+                                                    ],
+                                                    begin: Alignment.topLeft,
+                                                    end: Alignment.bottomRight,
+                                                  ),
+                                                  borderRadius:
+                                                      BorderRadius.circular(
+                                                          borderRadius),
+                                                  border: Border.all(
+                                                    color: Color(0xFF1B998B)
+                                                        .withOpacity(0.3),
+                                                    width: 1,
+                                                  ),
+                                                ),
+                                                child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    Row(
+                                                      children: [
+                                                        Container(
+                                                          padding:
+                                                              EdgeInsets.all(8),
+                                                          decoration:
+                                                              BoxDecoration(
+                                                            color: Color(
+                                                                    0xFF1B998B)
+                                                                .withOpacity(
+                                                                    0.2),
+                                                            borderRadius:
+                                                                BorderRadius
+                                                                    .circular(
+                                                                        8),
+                                                          ),
+                                                          child: Icon(
+                                                            Icons.celebration,
+                                                            color: Color(
+                                                                0xFF1B998B),
+                                                            size:
+                                                                iconSize * 0.8,
+                                                          ),
+                                                        ),
+                                                        SizedBox(width: 12),
+                                                        Expanded(
+                                                          child: Text(
+                                                            'Información de Cumpleaños',
+                                                            style: GoogleFonts
+                                                                .poppins(
+                                                              fontSize:
+                                                                  labelFontSize,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold,
+                                                              color: Color(
+                                                                  0xFF1B998B),
+                                                            ),
+                                                            maxLines: 1,
+                                                            overflow:
+                                                                TextOverflow
+                                                                    .ellipsis,
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                    SizedBox(height: 12),
+                                                    isSmallScreen
+                                                        ? Column(
+                                                            children: [
+                                                              Container(
+                                                                width: double
+                                                                    .infinity,
+                                                                padding:
+                                                                    EdgeInsets
+                                                                        .all(
+                                                                            12),
+                                                                decoration:
+                                                                    BoxDecoration(
+                                                                  color: Colors
+                                                                      .white
+                                                                      .withOpacity(
+                                                                          0.7),
+                                                                  borderRadius:
+                                                                      BorderRadius
+                                                                          .circular(
+                                                                              8),
+                                                                ),
+                                                                child: Column(
+                                                                  crossAxisAlignment:
+                                                                      CrossAxisAlignment
+                                                                          .start,
+                                                                  children: [
+                                                                    Text(
+                                                                      'Edad Actual',
+                                                                      style: GoogleFonts
+                                                                          .poppins(
+                                                                        fontSize:
+                                                                            labelFontSize -
+                                                                                2,
+                                                                        color: Colors
+                                                                            .grey[600],
+                                                                        fontWeight:
+                                                                            FontWeight.w500,
+                                                                      ),
+                                                                    ),
+                                                                    Text(
+                                                                      '${_calcularEdad(fechaNacimiento!)} años',
+                                                                      style: GoogleFonts
+                                                                          .poppins(
+                                                                        fontSize:
+                                                                            contentFontSize,
+                                                                        fontWeight:
+                                                                            FontWeight.bold,
+                                                                        color: Color(
+                                                                            0xFF1B998B),
+                                                                      ),
+                                                                    ),
+                                                                  ],
+                                                                ),
+                                                              ),
+                                                              SizedBox(
+                                                                  height: 12),
+                                                              Container(
+                                                                width: double
+                                                                    .infinity,
+                                                                padding:
+                                                                    EdgeInsets
+                                                                        .all(
+                                                                            12),
+                                                                decoration:
+                                                                    BoxDecoration(
+                                                                  color: Colors
+                                                                      .white
+                                                                      .withOpacity(
+                                                                          0.7),
+                                                                  borderRadius:
+                                                                      BorderRadius
+                                                                          .circular(
+                                                                              8),
+                                                                ),
+                                                                child: Column(
+                                                                  crossAxisAlignment:
+                                                                      CrossAxisAlignment
+                                                                          .start,
+                                                                  children: [
+                                                                    Text(
+                                                                      'Próximo Cumpleaños',
+                                                                      style: GoogleFonts
+                                                                          .poppins(
+                                                                        fontSize:
+                                                                            labelFontSize -
+                                                                                2,
+                                                                        color: Colors
+                                                                            .grey[600],
+                                                                        fontWeight:
+                                                                            FontWeight.w500,
+                                                                      ),
+                                                                    ),
+                                                                    Text(
+                                                                      _calcularProximoCumpleanos(
+                                                                          fechaNacimiento!),
+                                                                      style: GoogleFonts
+                                                                          .poppins(
+                                                                        fontSize:
+                                                                            labelFontSize,
+                                                                        fontWeight:
+                                                                            FontWeight.bold,
+                                                                        color: Color(
+                                                                            0xFFFF7E00),
+                                                                      ),
+                                                                    ),
+                                                                  ],
+                                                                ),
+                                                              ),
+                                                            ],
+                                                          )
+                                                        : Row(
+                                                            children: [
+                                                              Expanded(
+                                                                child:
+                                                                    Container(
+                                                                  padding:
+                                                                      EdgeInsets
+                                                                          .all(
+                                                                              12),
+                                                                  decoration:
+                                                                      BoxDecoration(
+                                                                    color: Colors
+                                                                        .white
+                                                                        .withOpacity(
+                                                                            0.7),
+                                                                    borderRadius:
+                                                                        BorderRadius
+                                                                            .circular(8),
+                                                                  ),
+                                                                  child: Column(
+                                                                    crossAxisAlignment:
+                                                                        CrossAxisAlignment
+                                                                            .start,
+                                                                    children: [
+                                                                      Text(
+                                                                        'Edad Actual',
+                                                                        style: GoogleFonts
+                                                                            .poppins(
+                                                                          fontSize:
+                                                                              labelFontSize - 2,
+                                                                          color:
+                                                                              Colors.grey[600],
+                                                                          fontWeight:
+                                                                              FontWeight.w500,
+                                                                        ),
+                                                                      ),
+                                                                      Text(
+                                                                        '${_calcularEdad(fechaNacimiento!)} años',
+                                                                        style: GoogleFonts
+                                                                            .poppins(
+                                                                          fontSize:
+                                                                              contentFontSize,
+                                                                          fontWeight:
+                                                                              FontWeight.bold,
+                                                                          color:
+                                                                              Color(0xFF1B998B),
+                                                                        ),
+                                                                      ),
+                                                                    ],
+                                                                  ),
+                                                                ),
+                                                              ),
+                                                              SizedBox(
+                                                                  width: 12),
+                                                              Expanded(
+                                                                flex: 2,
+                                                                child:
+                                                                    Container(
+                                                                  padding:
+                                                                      EdgeInsets
+                                                                          .all(
+                                                                              12),
+                                                                  decoration:
+                                                                      BoxDecoration(
+                                                                    color: Colors
+                                                                        .white
+                                                                        .withOpacity(
+                                                                            0.7),
+                                                                    borderRadius:
+                                                                        BorderRadius
+                                                                            .circular(8),
+                                                                  ),
+                                                                  child: Column(
+                                                                    crossAxisAlignment:
+                                                                        CrossAxisAlignment
+                                                                            .start,
+                                                                    children: [
+                                                                      Text(
+                                                                        'Próximo Cumpleaños',
+                                                                        style: GoogleFonts
+                                                                            .poppins(
+                                                                          fontSize:
+                                                                              labelFontSize - 2,
+                                                                          color:
+                                                                              Colors.grey[600],
+                                                                          fontWeight:
+                                                                              FontWeight.w500,
+                                                                        ),
+                                                                      ),
+                                                                      Text(
+                                                                        _calcularProximoCumpleanos(
+                                                                            fechaNacimiento!),
+                                                                        style: GoogleFonts
+                                                                            .poppins(
+                                                                          fontSize:
+                                                                              labelFontSize,
+                                                                          fontWeight:
+                                                                              FontWeight.bold,
+                                                                          color:
+                                                                              Color(0xFFFF7E00),
+                                                                        ),
+                                                                      ),
+                                                                    ],
+                                                                  ),
+                                                                ),
+                                                              ),
+                                                            ],
+                                                          ),
+                                                  ],
+                                                ),
+                                              ),
+                                          ],
+                                        );
+                                      } else if (fieldName == 'nombrePareja') {
+                                        if (mostrarNombrePareja() &&
+                                            controller != null) {
+                                          return _buildAnimatedTextFieldResponsive(
+                                            label: 'Nombre de Pareja',
+                                            icon: fieldIcon,
+                                            controller: controller,
+                                            focusNode: focusNode!,
+                                            primaryColor: primaryTeal,
+                                            fontSize: contentFontSize,
+                                            iconSize: iconSize,
+                                            borderRadius: borderRadius,
+                                            onChanged: (value) {
+                                              hayModificaciones = true;
+                                            },
+                                            onSubmitted: (value) {
+                                              _irAlSiguienteCampo(fieldName);
+                                            },
+                                          );
+                                        } else {
+                                          return SizedBox.shrink();
+                                        }
+                                      } else if (fieldName == 'estadoProceso') {
+                                        return _buildAnimatedTextFieldConOpcionesResponsive(
+                                          label: 'Estado del Proceso',
+                                          icon: fieldIcon,
+                                          controller: controller!,
+                                          focusNode: focusNode!,
+                                          primaryColor: primaryTeal,
+                                          fontSize: contentFontSize,
+                                          iconSize: iconSize,
+                                          borderRadius: borderRadius,
+                                          opciones: [
+                                            'Pendiente',
+                                            'Discipulado 1',
+                                            'Discipulado 2',
+                                            'Discipulado 3',
+                                            'Consolidación',
+                                            'Estudio Bíblico',
+                                            'Escuela de Líderes'
+                                          ],
+                                          onChanged: (value) {
+                                            hayModificaciones = true;
+                                          },
+                                          onSubmitted: (value) {
+                                            _irAlSiguienteCampo(fieldName);
+                                          },
+                                        );
+                                      } else if (controller != null &&
+                                          focusNode != null) {
+                                        return _buildAnimatedTextFieldResponsive(
+                                          label: _formatFieldName(fieldName),
+                                          icon: fieldIcon,
+                                          controller: controller,
+                                          focusNode: focusNode,
+                                          primaryColor: primaryTeal,
+                                          fontSize: contentFontSize,
+                                          iconSize: iconSize,
+                                          borderRadius: borderRadius,
+                                          onChanged: (value) {
+                                            hayModificaciones = true;
+                                          },
+                                          onSubmitted: (value) {
+                                            _irAlSiguienteCampo(fieldName);
+                                          },
+                                        );
+                                      } else {
+                                        return SizedBox.shrink();
+                                      }
+                                    }).toList(),
+
+                                    SizedBox(height: verticalPadding),
+                                    Divider(
+                                        color: primaryTeal.withOpacity(0.2),
+                                        thickness: 1),
+                                    SizedBox(height: verticalPadding),
+
+                                    // ✅ BOTONES AL FINAL DEL SCROLL (NO FIJOS)
+                                    isSmallScreen
+                                        ? Column(
+                                            children: [
+                                              SizedBox(
+                                                width: double.infinity,
+                                                child: ElevatedButton.icon(
+                                                  style:
+                                                      ElevatedButton.styleFrom(
+                                                    backgroundColor:
+                                                        secondaryOrange,
+                                                    foregroundColor:
+                                                        Colors.white,
+                                                    padding:
+                                                        EdgeInsets.symmetric(
+                                                            vertical: 14),
+                                                    shape: RoundedRectangleBorder(
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                                borderRadius)),
+                                                    elevation: 2,
+                                                  ),
+                                                  icon: Icon(Icons.save_rounded,
+                                                      size: iconSize * 0.8),
+                                                  label: Text('Guardar Cambios',
+                                                      style: GoogleFonts.poppins(
+                                                          fontSize:
+                                                              buttonFontSize,
+                                                          fontWeight:
+                                                              FontWeight.bold)),
+                                                  onPressed: () async {
+                                                    try {
+                                                      final Map<String, dynamic>
+                                                          updateData = {};
+
+                                                      updateData[
+                                                              'estadoCivil'] =
+                                                          estadoCivilSeleccionado;
+                                                      updateData['sexo'] =
+                                                          sexoSeleccionado;
+
+                                                      if (fechaNacimiento !=
+                                                          null) {
+                                                        updateData[
+                                                                'fechaNacimiento'] =
+                                                            Timestamp.fromDate(
+                                                                fechaNacimiento!);
+                                                      }
+
+                                                      updateData['activo'] =
+                                                          estadoActivo;
+                                                      if (!estadoActivo) {
+                                                        updateData[
+                                                                'coordinadorAsignado'] =
+                                                            null;
+                                                        updateData[
+                                                                'coordinadorNombre'] =
+                                                            null;
+                                                        updateData[
+                                                                'timoteoAsignado'] =
+                                                            null;
+                                                        updateData[
+                                                                'nombreTimoteo'] =
+                                                            null;
+                                                      }
+
+                                                      controllers.forEach(
+                                                          (key, controller) {
+                                                        if (controller !=
+                                                            null) {
+                                                          final fieldType =
+                                                              camposDefinicion[
+                                                                  key]?['type'];
+                                                          if (fieldType ==
+                                                              'list') {
+                                                            updateData[
+                                                                key] = controller
+                                                                    .text
+                                                                    .isEmpty
+                                                                ? []
+                                                                : controller
+                                                                    .text
+                                                                    .split(',')
+                                                                    .map((e) =>
+                                                                        e.trim())
+                                                                    .toList();
+                                                          } else if (fieldType ==
+                                                              'int') {
+                                                            int? parsedValue =
+                                                                int.tryParse(
+                                                                    controller
+                                                                        .text);
+                                                            updateData[key] =
+                                                                parsedValue ??
+                                                                    0;
+                                                          } else {
+                                                            updateData[key] =
+                                                                controller.text;
+                                                          }
+                                                        }
+                                                      });
+
+                                                      final data =
+                                                          registro.data();
+                                                      if (data != null &&
+                                                          data is Map<String,
+                                                              dynamic>) {
+                                                        if (data.containsKey(
+                                                                'descripcionOcupaciones') &&
+                                                            !data.containsKey(
+                                                                'descripcionOcupacion')) {
+                                                          if (updateData
+                                                              .containsKey(
+                                                                  'descripcionOcupacion')) {
+                                                            updateData[
+                                                                    'descripcionOcupaciones'] =
+                                                                updateData[
+                                                                    'descripcionOcupacion'];
+                                                            updateData.remove(
+                                                                'descripcionOcupacion');
+                                                          }
+                                                        }
+                                                      }
+
+                                                      if (FirebaseFirestore
+                                                              .instance !=
+                                                          null) {
+                                                        await FirebaseFirestore
+                                                            .instance
+                                                            .collection(
+                                                                'registros')
+                                                            .doc(registro.id)
+                                                            .update(updateData);
+
+                                                        focusNodes.values
+                                                            .forEach((fn) =>
+                                                                fn.dispose());
+
+                                                        if (dialogContext
+                                                            .mounted) {
+                                                          Navigator.pop(
+                                                              dialogContext);
+                                                        }
+
+                                                        if (context.mounted) {
+                                                          ScaffoldMessenger.of(
+                                                                  context)
+                                                              .showSnackBar(
+                                                            SnackBar(
+                                                              content: Row(
+                                                                children: const [
+                                                                  Icon(
+                                                                      Icons
+                                                                          .check_circle,
+                                                                      color: Colors
+                                                                          .white),
+                                                                  SizedBox(
+                                                                      width:
+                                                                          12),
+                                                                  Text(
+                                                                    'Registro actualizado correctamente',
+                                                                    style: TextStyle(
+                                                                        fontSize:
+                                                                            16),
+                                                                  ),
+                                                                ],
+                                                              ),
+                                                              backgroundColor:
+                                                                  Colors.green,
+                                                              behavior:
+                                                                  SnackBarBehavior
+                                                                      .floating,
+                                                              shape:
+                                                                  RoundedRectangleBorder(
+                                                                borderRadius:
+                                                                    BorderRadius
+                                                                        .circular(
+                                                                            10),
+                                                              ),
+                                                              margin: EdgeInsets
+                                                                  .all(12),
+                                                              padding: EdgeInsets
+                                                                  .symmetric(
+                                                                      vertical:
+                                                                          14,
+                                                                      horizontal:
+                                                                          20),
+                                                              duration:
+                                                                  Duration(
+                                                                      seconds:
+                                                                          3),
+                                                            ),
+                                                          );
+                                                        }
+                                                      } else {
+                                                        throw Exception(
+                                                            "No se pudo conectar con Firestore");
+                                                      }
+                                                    } catch (e) {
+                                                      focusNodes.values.forEach(
+                                                          (fn) => fn.dispose());
+
+                                                      if (dialogContext
+                                                          .mounted) {
+                                                        Navigator.pop(
+                                                            dialogContext);
+                                                      }
+                                                      if (context.mounted) {
+                                                        ScaffoldMessenger.of(
+                                                                context)
+                                                            .showSnackBar(
+                                                          SnackBar(
+                                                            content: Row(
+                                                              children: [
+                                                                Icon(
+                                                                    Icons.error,
+                                                                    color: Colors
+                                                                        .white),
+                                                                SizedBox(
+                                                                    width: 12),
+                                                                Expanded(
+                                                                  child: Text(
+                                                                    'Error al actualizar: ${e.toString()}',
+                                                                    style: TextStyle(
+                                                                        fontSize:
+                                                                            16),
+                                                                  ),
+                                                                ),
+                                                              ],
+                                                            ),
+                                                            backgroundColor:
+                                                                Colors.red,
+                                                            behavior:
+                                                                SnackBarBehavior
+                                                                    .floating,
+                                                            shape:
+                                                                RoundedRectangleBorder(
+                                                              borderRadius:
+                                                                  BorderRadius
+                                                                      .circular(
+                                                                          10),
+                                                            ),
+                                                            margin:
+                                                                EdgeInsets.all(
+                                                                    12),
+                                                            padding: EdgeInsets
+                                                                .symmetric(
+                                                                    vertical:
+                                                                        14,
+                                                                    horizontal:
+                                                                        20),
+                                                            duration: Duration(
+                                                                seconds: 5),
+                                                          ),
+                                                        );
+                                                      }
+                                                    }
+                                                  },
+                                                ),
+                                              ),
+                                              SizedBox(height: 12),
+                                              SizedBox(
+                                                width: double.infinity,
+                                                child: TextButton.icon(
+                                                  onPressed: () async {
+                                                    focusNodes.values.forEach(
+                                                        (fn) => fn.dispose());
+
+                                                    bool confirmar =
+                                                        await confirmarSalida();
+                                                    if (confirmar &&
+                                                        dialogContext.mounted) {
+                                                      Navigator.pop(
+                                                          dialogContext);
+                                                    }
+                                                  },
+                                                  icon: Icon(
+                                                      Icons.cancel_rounded,
+                                                      size: iconSize * 0.8),
+                                                  label: Text('Cancelar',
+                                                      style: GoogleFonts.poppins(
+                                                          fontSize:
+                                                              buttonFontSize,
+                                                          fontWeight:
+                                                              FontWeight.w600)),
+                                                  style: TextButton.styleFrom(
+                                                    foregroundColor:
+                                                        Colors.grey[700],
+                                                    padding:
+                                                        EdgeInsets.symmetric(
+                                                            vertical: 14),
+                                                    shape:
+                                                        RoundedRectangleBorder(
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                              borderRadius),
+                                                      side: BorderSide(
+                                                          color: Colors
+                                                              .grey.shade300,
+                                                          width: 2),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          )
+                                        : Row(
+                                            children: [
+                                              Expanded(
+                                                child: TextButton.icon(
+                                                  onPressed: () async {
+                                                    focusNodes.values.forEach(
+                                                        (fn) => fn.dispose());
+
+                                                    bool confirmar =
+                                                        await confirmarSalida();
+                                                    if (confirmar &&
+                                                        dialogContext.mounted) {
+                                                      Navigator.pop(
+                                                          dialogContext);
+                                                    }
+                                                  },
+                                                  icon: Icon(
+                                                      Icons.cancel_rounded,
+                                                      size: iconSize * 0.8),
+                                                  label: Text('Cancelar',
+                                                      style: GoogleFonts.poppins(
+                                                          fontSize:
+                                                              buttonFontSize,
+                                                          fontWeight:
+                                                              FontWeight.w600)),
+                                                  style: TextButton.styleFrom(
+                                                    foregroundColor:
+                                                        Colors.grey[700],
+                                                    padding:
+                                                        EdgeInsets.symmetric(
+                                                            vertical: 16),
+                                                    shape:
+                                                        RoundedRectangleBorder(
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                              borderRadius),
+                                                      side: BorderSide(
+                                                          color: Colors
+                                                              .grey.shade300,
+                                                          width: 2),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                              SizedBox(width: 16),
+                                              Expanded(
+                                                flex: 2,
+                                                child: ElevatedButton.icon(
+                                                  style:
+                                                      ElevatedButton.styleFrom(
+                                                    backgroundColor:
+                                                        secondaryOrange,
+                                                    foregroundColor:
+                                                        Colors.white,
+                                                    padding:
+                                                        EdgeInsets.symmetric(
+                                                            vertical: 16),
+                                                    shape: RoundedRectangleBorder(
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                                borderRadius)),
+                                                    elevation: 2,
+                                                  ),
+                                                  icon: Icon(Icons.save_rounded,
+                                                      size: iconSize * 0.8),
+                                                  label: Text('Guardar Cambios',
+                                                      style: GoogleFonts.poppins(
+                                                          fontSize:
+                                                              buttonFontSize,
+                                                          fontWeight:
+                                                              FontWeight.bold)),
+                                                  onPressed: () async {
+                                                    // [Mismo código de guardar que arriba]
+                                                    try {
+                                                      final Map<String, dynamic>
+                                                          updateData = {};
+
+                                                      updateData[
+                                                              'estadoCivil'] =
+                                                          estadoCivilSeleccionado;
+                                                      updateData['sexo'] =
+                                                          sexoSeleccionado;
+
+                                                      if (fechaNacimiento !=
+                                                          null) {
+                                                        updateData[
+                                                                'fechaNacimiento'] =
+                                                            Timestamp.fromDate(
+                                                                fechaNacimiento!);
+                                                      }
+
+                                                      updateData['activo'] =
+                                                          estadoActivo;
+                                                      if (!estadoActivo) {
+                                                        updateData[
+                                                                'coordinadorAsignado'] =
+                                                            null;
+                                                        updateData[
+                                                                'coordinadorNombre'] =
+                                                            null;
+                                                        updateData[
+                                                                'timoteoAsignado'] =
+                                                            null;
+                                                        updateData[
+                                                                'nombreTimoteo'] =
+                                                            null;
+                                                      }
+
+                                                      controllers.forEach(
+                                                          (key, controller) {
+                                                        if (controller !=
+                                                            null) {
+                                                          final fieldType =
+                                                              camposDefinicion[
+                                                                  key]?['type'];
+                                                          if (fieldType ==
+                                                              'list') {
+                                                            updateData[
+                                                                key] = controller
+                                                                    .text
+                                                                    .isEmpty
+                                                                ? []
+                                                                : controller
+                                                                    .text
+                                                                    .split(',')
+                                                                    .map((e) =>
+                                                                        e.trim())
+                                                                    .toList();
+                                                          } else if (fieldType ==
+                                                              'int') {
+                                                            int? parsedValue =
+                                                                int.tryParse(
+                                                                    controller
+                                                                        .text);
+                                                            updateData[key] =
+                                                                parsedValue ??
+                                                                    0;
+                                                          } else {
+                                                            updateData[key] =
+                                                                controller.text;
+                                                          }
+                                                        }
+                                                      });
+
+                                                      final data =
+                                                          registro.data();
+                                                      if (data != null &&
+                                                          data is Map<String,
+                                                              dynamic>) {
+                                                        if (data.containsKey(
+                                                                'descripcionOcupaciones') &&
+                                                            !data.containsKey(
+                                                                'descripcionOcupacion')) {
+                                                          if (updateData
+                                                              .containsKey(
+                                                                  'descripcionOcupacion')) {
+                                                            updateData[
+                                                                    'descripcionOcupaciones'] =
+                                                                updateData[
+                                                                    'descripcionOcupacion'];
+                                                            updateData.remove(
+                                                                'descripcionOcupacion');
+                                                          }
+                                                        }
+                                                      }
+
+                                                      if (FirebaseFirestore
+                                                              .instance !=
+                                                          null) {
+                                                        await FirebaseFirestore
+                                                            .instance
+                                                            .collection(
+                                                                'registros')
+                                                            .doc(registro.id)
+                                                            .update(updateData);
+
+                                                        focusNodes.values
+                                                            .forEach((fn) =>
+                                                                fn.dispose());
+
+                                                        if (dialogContext
+                                                            .mounted) {
+                                                          Navigator.pop(
+                                                              dialogContext);
+                                                        }
+
+                                                        if (context.mounted) {
+                                                          ScaffoldMessenger.of(
+                                                                  context)
+                                                              .showSnackBar(
+                                                            SnackBar(
+                                                              content: Row(
+                                                                children: const [
+                                                                  Icon(
+                                                                      Icons
+                                                                          .check_circle,
+                                                                      color: Colors
+                                                                          .white),
+                                                                  SizedBox(
+                                                                      width:
+                                                                          12),
+                                                                  Text(
+                                                                    'Registro actualizado correctamente',
+                                                                    style: TextStyle(
+                                                                        fontSize:
+                                                                            16),
+                                                                  ),
+                                                                ],
+                                                              ),
+                                                              backgroundColor:
+                                                                  Colors.green,
+                                                              behavior:
+                                                                  SnackBarBehavior
+                                                                      .floating,
+                                                              shape:
+                                                                  RoundedRectangleBorder(
+                                                                borderRadius:
+                                                                    BorderRadius
+                                                                        .circular(
+                                                                            10),
+                                                              ),
+                                                              margin: EdgeInsets
+                                                                  .all(12),
+                                                              padding: EdgeInsets
+                                                                  .symmetric(
+                                                                      vertical:
+                                                                          14,
+                                                                      horizontal:
+                                                                          20),
+                                                              duration:
+                                                                  Duration(
+                                                                      seconds:
+                                                                          3),
+                                                            ),
+                                                          );
+                                                        }
+                                                      } else {
+                                                        throw Exception(
+                                                            "No se pudo conectar con Firestore");
+                                                      }
+                                                    } catch (e) {
+                                                      focusNodes.values.forEach(
+                                                          (fn) => fn.dispose());
+
+                                                      if (dialogContext
+                                                          .mounted) {
+                                                        Navigator.pop(
+                                                            dialogContext);
+                                                      }
+                                                      if (context.mounted) {
+                                                        ScaffoldMessenger.of(
+                                                                context)
+                                                            .showSnackBar(
+                                                          SnackBar(
+                                                            content: Row(
+                                                              children: [
+                                                                Icon(
+                                                                    Icons.error,
+                                                                    color: Colors
+                                                                        .white),
+                                                                SizedBox(
+                                                                    width: 12),
+                                                                Expanded(
+                                                                  child: Text(
+                                                                    'Error al actualizar: ${e.toString()}',
+                                                                    style: TextStyle(
+                                                                        fontSize:
+                                                                            16),
+                                                                  ),
+                                                                ),
+                                                              ],
+                                                            ),
+                                                            backgroundColor:
+                                                                Colors.red,
+                                                            behavior:
+                                                                SnackBarBehavior
+                                                                    .floating,
+                                                            shape:
+                                                                RoundedRectangleBorder(
+                                                              borderRadius:
+                                                                  BorderRadius
+                                                                      .circular(
+                                                                          10),
+                                                            ),
+                                                            margin:
+                                                                EdgeInsets.all(
+                                                                    12),
+                                                            padding: EdgeInsets
+                                                                .symmetric(
+                                                                    vertical:
+                                                                        14,
+                                                                    horizontal:
+                                                                        20),
+                                                            duration: Duration(
+                                                                seconds: 5),
+                                                          ),
+                                                        );
+                                                      }
+                                                    }
+                                                  },
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+
+                                    SizedBox(height: verticalPadding),
                                   ],
                                 ),
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 24),
+                      );
+                    },
+                  ),
+                ),
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
 
-                        // Datos del formulario
-                        // Campos normales
-                        ...camposDefinicion.entries.map((entry) {
-                          final fieldName = entry.key;
-                          final fieldData = entry.value;
-                          final controller = controllers[fieldName];
-                          final fieldIcon =
-                              fieldData['icon'] ?? Icons.help_outline;
+// ✅ MÉTODOS AUXILIARES RESPONSIVE ACTUALIZADOS
+  Widget _buildAnimatedTextFieldResponsive({
+    required String label,
+    required IconData icon,
+    required TextEditingController controller,
+    required FocusNode focusNode,
+    required Color primaryColor,
+    required double fontSize,
+    required double iconSize,
+    required double borderRadius,
+    required Function(String) onChanged,
+    required Function(String) onSubmitted,
+  }) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: 16.0),
+      child: AnimatedContainer(
+        duration: Duration(milliseconds: 300),
+        child: Builder(
+          builder: (fieldContext) {
+            return TextField(
+              controller: controller,
+              focusNode: focusNode,
+              textInputAction: TextInputAction.next,
+              onTap: () {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  Scrollable.ensureVisible(
+                    fieldContext,
+                    duration: const Duration(milliseconds: 250),
+                    curve: Curves.easeInOut,
+                    alignment: 0.2,
+                  );
+                });
+              },
+              onChanged: onChanged,
+              onSubmitted: onSubmitted,
+              style: GoogleFonts.poppins(fontSize: fontSize),
+              decoration: InputDecoration(
+                labelText: label,
+                labelStyle: GoogleFonts.poppins(
+                  color: primaryColor.withOpacity(0.8),
+                  fontWeight: FontWeight.w500,
+                  fontSize: fontSize - 2,
+                ),
+                prefixIcon: Container(
+                  margin: EdgeInsets.all(10),
+                  padding: EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: primaryColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(icon, color: primaryColor, size: iconSize * 0.8),
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(borderRadius),
+                  borderSide: BorderSide(color: primaryColor.withOpacity(0.3)),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(borderRadius),
+                  borderSide: BorderSide(color: primaryColor.withOpacity(0.5)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(borderRadius),
+                  borderSide: BorderSide(color: primaryColor, width: 2),
+                ),
+                filled: true,
+                fillColor: Colors.white,
+                contentPadding:
+                    EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
 
-                          // Manejar dropdown para estado civil
-                          if (fieldName == 'estadoCivil') {
-                            return _buildDropdownField(
-                              label: 'Estado Civil',
-                              icon: fieldIcon,
-                              value: estadoCivilSeleccionado,
-                              items: opcionesEstadoCivil,
-                              primaryColor: primaryTeal,
-                              onChanged: (newValue) {
-                                if (newValue != null) {
-                                  setState(() {
-                                    estadoCivilSeleccionado = newValue;
-                                    hayModificaciones = true;
-                                  });
-                                }
-                              },
-                            );
-                          }
-
-                          // Manejar dropdown para sexo
-                          else if (fieldName == 'sexo') {
-                            return _buildDropdownField(
-                              label: 'Sexo',
-                              icon: fieldIcon,
-                              value: sexoSeleccionado,
-                              items: opcionesSexo,
-                              primaryColor: primaryTeal,
-                              onChanged: (newValue) {
-                                if (newValue != null) {
-                                  setState(() {
-                                    sexoSeleccionado = newValue;
-                                    hayModificaciones = true;
-                                  });
-                                }
-                              },
-                            );
-                          }
-
-                          // NUEVO: Manejar campo de fecha de nacimiento
-                          else if (fieldName == 'fechaNacimiento') {
-                            return Column(
-                              children: [
-                                // Campo de fecha de nacimiento
-                                Container(
-                                  margin: const EdgeInsets.only(bottom: 16),
-                                  child: InkWell(
-                                    onTap: () => _seleccionarFecha(setState),
-                                    child: Container(
-                                      padding: const EdgeInsets.all(16),
-                                      decoration: BoxDecoration(
-                                        color: Colors.grey.withOpacity(0.05),
-                                        borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(
-                                          color: primaryTeal.withOpacity(0.3),
-                                          width: 1,
-                                        ),
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          Container(
-                                            padding: const EdgeInsets.all(8),
-                                            decoration: BoxDecoration(
-                                              color:
-                                                  primaryTeal.withOpacity(0.1),
-                                              borderRadius:
-                                                  BorderRadius.circular(8),
-                                            ),
-                                            child: Icon(
-                                              fieldIcon,
-                                              color: primaryTeal,
-                                              size: 20,
-                                            ),
-                                          ),
-                                          SizedBox(width: 12),
-                                          Expanded(
-                                            child: Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                Text(
-                                                  'Fecha de Nacimiento',
-                                                  style: TextStyle(
-                                                    fontSize: 12,
-                                                    color: Colors.grey[600],
-                                                    fontWeight: FontWeight.w500,
-                                                  ),
-                                                ),
-                                                SizedBox(height: 4),
-                                                Text(
-                                                  fechaNacimiento != null
-                                                      ? '${fechaNacimiento!.day}/${fechaNacimiento!.month}/${fechaNacimiento!.year}'
-                                                      : 'Seleccionar fecha',
-                                                  style: TextStyle(
-                                                    fontSize: 16,
-                                                    fontWeight: FontWeight.w500,
-                                                    color:
-                                                        fechaNacimiento != null
-                                                            ? Colors.black87
-                                                            : Colors.grey[500],
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                          Icon(
-                                            Icons.keyboard_arrow_down,
-                                            color: Colors.grey[600],
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ),
-
-                                // MOSTRAR INFORMACIÓN DE CUMPLEAÑOS SI EXISTE FECHA DE NACIMIENTO
-                                if (fechaNacimiento != null)
-                                  Container(
-                                    margin: const EdgeInsets.only(bottom: 16),
-                                    padding: const EdgeInsets.all(16),
-                                    decoration: BoxDecoration(
-                                      gradient: LinearGradient(
-                                        colors: [
-                                          Color(0xFF1B998B).withOpacity(0.1),
-                                          Color(0xFFFF7E00).withOpacity(0.1),
-                                        ],
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight,
-                                      ),
-                                      borderRadius: BorderRadius.circular(16),
-                                      border: Border.all(
-                                        color:
-                                            Color(0xFF1B998B).withOpacity(0.3),
-                                        width: 1,
-                                      ),
-                                    ),
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Row(
-                                          children: [
-                                            Container(
-                                              padding: const EdgeInsets.all(8),
-                                              decoration: BoxDecoration(
-                                                color: Color(0xFF1B998B)
-                                                    .withOpacity(0.2),
-                                                borderRadius:
-                                                    BorderRadius.circular(8),
-                                              ),
-                                              child: Icon(
-                                                Icons.celebration,
-                                                color: Color(0xFF1B998B),
-                                                size: 20,
-                                              ),
-                                            ),
-                                            SizedBox(width: 12),
-                                            Text(
-                                              'Información de Cumpleaños',
-                                              style: TextStyle(
-                                                fontSize: 16,
-                                                fontWeight: FontWeight.bold,
-                                                color: Color(0xFF1B998B),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        SizedBox(height: 12),
-                                        Row(
-                                          children: [
-                                            Expanded(
-                                              child: Container(
-                                                padding:
-                                                    const EdgeInsets.all(12),
-                                                decoration: BoxDecoration(
-                                                  color: Colors.white
-                                                      .withOpacity(0.7),
-                                                  borderRadius:
-                                                      BorderRadius.circular(8),
-                                                ),
-                                                child: Column(
-                                                  crossAxisAlignment:
-                                                      CrossAxisAlignment.start,
-                                                  children: [
-                                                    Text(
-                                                      'Edad Actual',
-                                                      style: TextStyle(
-                                                        fontSize: 12,
-                                                        color: Colors.grey[600],
-                                                        fontWeight:
-                                                            FontWeight.w500,
-                                                      ),
-                                                    ),
-                                                    Text(
-                                                      '${_calcularEdad(fechaNacimiento!)} años',
-                                                      style: TextStyle(
-                                                        fontSize: 16,
-                                                        fontWeight:
-                                                            FontWeight.bold,
-                                                        color:
-                                                            Color(0xFF1B998B),
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                            ),
-                                            SizedBox(width: 12),
-                                            Expanded(
-                                              flex: 2,
-                                              child: Container(
-                                                padding:
-                                                    const EdgeInsets.all(12),
-                                                decoration: BoxDecoration(
-                                                  color: Colors.white
-                                                      .withOpacity(0.7),
-                                                  borderRadius:
-                                                      BorderRadius.circular(8),
-                                                ),
-                                                child: Column(
-                                                  crossAxisAlignment:
-                                                      CrossAxisAlignment.start,
-                                                  children: [
-                                                    Text(
-                                                      'Próximo Cumpleaños',
-                                                      style: TextStyle(
-                                                        fontSize: 12,
-                                                        color: Colors.grey[600],
-                                                        fontWeight:
-                                                            FontWeight.w500,
-                                                      ),
-                                                    ),
-                                                    Text(
-                                                      _calcularProximoCumpleanos(
-                                                          fechaNacimiento!),
-                                                      style: TextStyle(
-                                                        fontSize: 14,
-                                                        fontWeight:
-                                                            FontWeight.bold,
-                                                        color:
-                                                            Color(0xFFFF7E00),
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                              ],
-                            );
-                          }
-
-                          // Solo mostrar campo de nombre de pareja si es necesario
-                          else if (fieldName == 'nombrePareja') {
-                            if (mostrarNombrePareja() && controller != null) {
-                              return _buildAnimatedTextField(
-                                label: 'Nombre de Pareja',
-                                icon: fieldIcon,
-                                controller: controller,
-                                primaryColor: primaryTeal,
-                                onChanged: (value) {
-                                  hayModificaciones = true;
-                                },
-                              );
-                            } else {
-                              return SizedBox.shrink();
-                            }
-                          }
-
-                          // Campo para Estado en la Iglesia (estadoProceso) con opciones
-                          else if (fieldName == 'estadoProceso') {
-                            // Obtener el valor actual del controlador
-                            String estadoActual = controller?.text ?? '';
-
-                            return Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                _buildAnimatedTextField(
-                                  label: 'Estado en la Iglesia',
-                                  icon: fieldIcon,
-                                  controller: controller!,
-                                  primaryColor: primaryTeal,
-                                  onChanged: (value) {
-                                    hayModificaciones = true;
-                                    // Actualizar la variable local para los chips
-                                    setState(() {
-                                      estadoActual = value;
-                                    });
-                                  },
-                                ),
-                                SizedBox(height: 8),
-                                Text(
-                                  'Opciones rápidas:',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                    color: primaryTeal,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                                SizedBox(height: 8),
-                                Wrap(
-                                  spacing: 8,
-                                  runSpacing: 8,
-                                  children: [
-                                    'Pendiente',
-                                    'Discipulado 1',
-                                    'Discipulado 2',
-                                    'Discipulado 3',
-                                    'Consolidación',
-                                    'Estudio Bíblico',
-                                    'Escuela de Líderes'
-                                  ].map((estado) {
-                                    final isSelected =
-                                        controller.text == estado;
-                                    return FilterChip(
-                                      label: Text(estado),
-                                      selected: isSelected,
-                                      onSelected: (selected) {
-                                        setState(() {
-                                          controller.text =
-                                              selected ? estado : '';
-                                          hayModificaciones = true;
-                                        });
-                                      },
-                                      selectedColor:
-                                          primaryTeal.withOpacity(0.2),
-                                      checkmarkColor: primaryTeal,
-                                      backgroundColor: Colors.white,
-                                      side: BorderSide(
-                                        color: isSelected
-                                            ? primaryTeal
-                                            : Colors.grey.withOpacity(0.5),
-                                      ),
-                                      labelStyle: TextStyle(
-                                        color: isSelected
-                                            ? primaryTeal
-                                            : Colors.black87,
-                                        fontWeight: isSelected
-                                            ? FontWeight.w600
-                                            : FontWeight.normal,
-                                        fontSize: 13,
-                                      ),
-                                    );
-                                  }).toList(),
-                                ),
-                                SizedBox(height: 16),
-                              ],
-                            );
-                          }
-
-                          // Otros campos de texto normales
-                          else if (controller != null) {
-                            return _buildAnimatedTextField(
-                              label: _formatFieldName(fieldName),
-                              icon: fieldIcon,
-                              controller: controller,
-                              primaryColor: primaryTeal,
-                              onChanged: (value) {
-                                hayModificaciones = true;
-                              },
-                            );
-                          } else {
-                            return SizedBox.shrink();
-                          }
-                        }).toList(),
-
-                        const SizedBox(height: 24),
-
-                        // Botones de acción
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            TextButton.icon(
-                              onPressed: () async {
-                                bool confirmar = await confirmarSalida();
-                                if (confirmar && dialogContext.mounted) {
-                                  Navigator.pop(dialogContext);
-                                }
-                              },
-                              icon: Icon(Icons.cancel, color: Colors.grey[700]),
-                              label: Text('Cancelar',
-                                  style: TextStyle(
-                                      color: Colors.grey[700], fontSize: 16)),
-                              style: TextButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 16, vertical: 12),
-                              ),
-                            ),
-                            ElevatedButton.icon(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: secondaryOrange,
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 24, vertical: 12),
-                                shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12)),
-                                elevation: 2,
-                              ),
-                              icon: const Icon(Icons.save, color: Colors.white),
-                              label: const Text('Guardar Cambios',
-                                  style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold)),
-                              onPressed: () async {
-                                try {
-                                  // Crear mapa para actualización con solo los campos que existen
-                                  final Map<String, dynamic> updateData = {};
-
-                                  // Agregar campos de dropdown
-                                  updateData['estadoCivil'] =
-                                      estadoCivilSeleccionado;
-                                  updateData['sexo'] = sexoSeleccionado;
-
-                                  // NUEVO: Agregar fecha de nacimiento
-                                  if (fechaNacimiento != null) {
-                                    updateData['fechaNacimiento'] =
-                                        Timestamp.fromDate(fechaNacimiento!);
-                                  }
-
-                                  // Agregar otros campos de texto con manejo seguro
-                                  controllers.forEach((key, controller) {
-                                    if (controller != null) {
-                                      final fieldType =
-                                          camposDefinicion[key]?['type'];
-                                      if (fieldType == 'list') {
-                                        updateData[key] =
-                                            controller.text.isEmpty
-                                                ? []
-                                                : controller.text
-                                                    .split(',')
-                                                    .map((e) => e.trim())
-                                                    .toList();
-                                      } else if (fieldType == 'int') {
-                                        // Manejo seguro para valores numéricos
-                                        int? parsedValue =
-                                            int.tryParse(controller.text);
-                                        updateData[key] = parsedValue ?? 0;
-                                      } else {
-                                        updateData[key] = controller.text;
-                                      }
-                                    }
-                                  });
-
-                                  // ✅ LÓGICA ESPECIAL: Al guardar, detectar cuál campo usar para descripcionOcupacion
-                                  // Si tenemos datos para descripcionOcupacion, podemos decidir en cuál campo guardarlo
-                                  final data = registro.data();
-                                  if (data != null &&
-                                      data is Map<String, dynamic>) {
-                                    // Si ya existe descripcionOcupaciones en los datos originales, guardamos ahí
-                                    if (data.containsKey(
-                                            'descripcionOcupaciones') &&
-                                        !data.containsKey(
-                                            'descripcionOcupacion')) {
-                                      if (updateData.containsKey(
-                                          'descripcionOcupacion')) {
-                                        updateData['descripcionOcupaciones'] =
-                                            updateData['descripcionOcupacion'];
-                                        updateData
-                                            .remove('descripcionOcupacion');
-                                      }
-                                    }
-                                    // Si existe descripcionOcupacion original, mantenemos ese campo
-                                    // No hacemos nada adicional, el campo se actualiza normalmente
-                                  }
-
-                                  // Verificar que tenemos una referencia válida a Firestore
-                                  if (FirebaseFirestore.instance != null) {
-                                    // Actualizar en Firestore de manera segura
-                                    await FirebaseFirestore.instance
-                                        .collection('registros')
-                                        .doc(registro.id)
-                                        .update(updateData);
-
-                                    // Cerrar el diálogo si el contexto sigue siendo válido
-                                    if (dialogContext.mounted) {
-                                      Navigator.pop(dialogContext);
-                                    }
-
-                                    // Mostrar notificación de éxito si el contexto sigue siendo válido
-                                    if (context.mounted) {
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(
-                                        SnackBar(
-                                          content: Row(
-                                            children: const [
-                                              Icon(Icons.check_circle,
-                                                  color: Colors.white),
-                                              SizedBox(width: 12),
-                                              Text(
-                                                'Registro actualizado correctamente',
-                                                style: TextStyle(fontSize: 16),
-                                              ),
-                                            ],
-                                          ),
-                                          backgroundColor: Colors.green,
-                                          behavior: SnackBarBehavior.floating,
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius:
-                                                BorderRadius.circular(10),
-                                          ),
-                                          margin: const EdgeInsets.all(12),
-                                          padding: const EdgeInsets.symmetric(
-                                              vertical: 14, horizontal: 20),
-                                          duration: const Duration(seconds: 3),
-                                        ),
-                                      );
-                                    }
-                                  } else {
-                                    throw Exception(
-                                        "No se pudo conectar con Firestore");
-                                  }
-                                } catch (e) {
-                                  // Mostrar error si el contexto sigue siendo válido
-                                  if (dialogContext.mounted) {
-                                    Navigator.pop(dialogContext);
-                                  }
-
-                                  if (context.mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Row(
-                                          children: [
-                                            const Icon(Icons.error,
-                                                color: Colors.white),
-                                            const SizedBox(width: 12),
-                                            Expanded(
-                                              child: Text(
-                                                'Error al actualizar: ${e.toString()}',
-                                                style: const TextStyle(
-                                                    fontSize: 16),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        backgroundColor: Colors.red,
-                                        behavior: SnackBarBehavior.floating,
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(10),
-                                        ),
-                                        margin: const EdgeInsets.all(12),
-                                        padding: const EdgeInsets.symmetric(
-                                            vertical: 14, horizontal: 20),
-                                        duration: const Duration(seconds: 5),
-                                      ),
-                                    );
-                                  }
-                                }
-                              },
-                            ),
-                          ],
-                        ),
-                      ],
+  Widget _buildAnimatedTextFieldConOpcionesResponsive({
+    required String label,
+    required IconData icon,
+    required TextEditingController controller,
+    required FocusNode focusNode,
+    required Color primaryColor,
+    required double fontSize,
+    required double iconSize,
+    required double borderRadius,
+    required List<String> opciones,
+    required Function(String) onChanged,
+    required Function(String) onSubmitted,
+  }) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: 16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          AnimatedContainer(
+            duration: Duration(milliseconds: 300),
+            child: Builder(
+              builder: (fieldContext) {
+                return TextField(
+                  controller: controller,
+                  focusNode: focusNode,
+                  textInputAction: TextInputAction.next,
+                  onTap: () {
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      Scrollable.ensureVisible(
+                        fieldContext,
+                        duration: const Duration(milliseconds: 250),
+                        curve: Curves.easeInOut,
+                        alignment: 0.2,
+                      );
+                    });
+                  },
+                  onChanged: onChanged,
+                  onSubmitted: onSubmitted,
+                  style: GoogleFonts.poppins(fontSize: fontSize),
+                  decoration: InputDecoration(
+                    labelText: label,
+                    labelStyle: GoogleFonts.poppins(
+                      color: primaryColor.withOpacity(0.8),
+                      fontWeight: FontWeight.w500,
+                      fontSize: fontSize - 2,
                     ),
+                    prefixIcon: Container(
+                      margin: EdgeInsets.all(10),
+                      padding: EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: primaryColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child:
+                          Icon(icon, color: primaryColor, size: iconSize * 0.8),
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(borderRadius),
+                      borderSide:
+                          BorderSide(color: primaryColor.withOpacity(0.3)),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(borderRadius),
+                      borderSide:
+                          BorderSide(color: primaryColor.withOpacity(0.5)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(borderRadius),
+                      borderSide: BorderSide(color: primaryColor, width: 2),
+                    ),
+                    filled: true,
+                    fillColor: Colors.white,
+                    contentPadding:
+                        EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                  ),
+                );
+              },
+            ),
+          ),
+          SizedBox(height: 12),
+          Container(
+            padding: EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: primaryColor.withOpacity(0.05),
+              borderRadius: BorderRadius.circular(borderRadius),
+              border: Border.all(
+                color: primaryColor.withOpacity(0.2),
+                width: 1,
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      Icons.touch_app_outlined,
+                      size: iconSize * 0.6,
+                      color: primaryColor,
+                    ),
+                    SizedBox(width: 6),
+                    Text(
+                      'Opciones rápidas:',
+                      style: GoogleFonts.poppins(
+                        fontWeight: FontWeight.w500,
+                        color: primaryColor,
+                        fontSize: fontSize - 3,
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 8),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: opciones.map((opcion) {
+                    return ActionChip(
+                      label: Text(
+                        opcion,
+                        style: GoogleFonts.poppins(
+                          color: primaryColor,
+                          fontWeight: FontWeight.w500,
+                          fontSize: fontSize - 4,
+                        ),
+                      ),
+                      onPressed: () {
+                        controller.text = opcion;
+                        onChanged(opcion);
+                      },
+                      backgroundColor: Colors.white,
+                      side: BorderSide(
+                        color: primaryColor.withOpacity(0.3),
+                        width: 1.5,
+                      ),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      elevation: 0,
+                      pressElevation: 2,
+                      shadowColor: primaryColor.withOpacity(0.3),
+                    );
+                  }).toList(),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDropdownFieldResponsive({
+    required String label,
+    required IconData icon,
+    required String? value,
+    required List<String> items,
+    required Color primaryColor,
+    required double fontSize,
+    required double iconSize,
+    required double borderRadius,
+    required Function(String?) onChanged,
+  }) {
+    final String safeValue = value ?? (items.isNotEmpty ? items[0] : '');
+    return Padding(
+      padding: EdgeInsets.only(bottom: 16.0),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(borderRadius),
+          border: Border.all(color: primaryColor.withOpacity(0.5)),
+        ),
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
+          child: Row(
+            children: [
+              Container(
+                margin: EdgeInsets.only(right: 12),
+                padding: EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: primaryColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, color: primaryColor, size: iconSize * 0.8),
+              ),
+              Expanded(
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: items.contains(safeValue)
+                        ? safeValue
+                        : (items.isNotEmpty ? items[0] : null),
+                    hint: Text(
+                      'Seleccionar $label',
+                      style: GoogleFonts.poppins(
+                          color: Colors.grey, fontSize: fontSize),
+                    ),
+                    icon: Icon(Icons.arrow_drop_down,
+                        color: primaryColor, size: iconSize),
+                    isExpanded: true,
+                    onChanged: onChanged,
+                    style: GoogleFonts.poppins(
+                      color: Colors.black87,
+                      fontSize: fontSize,
+                    ),
+                    dropdownColor: Colors.white,
+                    items: items.map<DropdownMenuItem<String>>((String value) {
+                      return DropdownMenuItem<String>(
+                        value: value,
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(vertical: 8.0),
+                          child: Text(value),
+                        ),
+                      );
+                    }).toList(),
                   ),
                 ),
               ),
-            ),
-          );
-        });
-      },
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -7732,8 +9198,6 @@ Future<List<Map<String, dynamic>>> _obtenerTimoteosConConteo(
     }
   }
 
-// REEMPLAZAR COMPLETAMENTE el método _registrarNuevoMiembro en PersonasAsignadasTab
-
   Future<void> _registrarNuevoMiembro(BuildContext context) async {
     // Colores del diseño original
     final primaryTeal = Color(0xFF038C7F);
@@ -7823,744 +9287,34 @@ Future<List<Map<String, dynamic>>> _obtenerTimoteosConConteo(
         } else {
           nombreTribu = 'Sin tribu asignada';
         }
-
-        print('Coordinador ID: $coordinadorId');
-        print('Tribu ID: $tribuId');
-        print('Nombre Tribu: $nombreTribu');
       } else {
-        print('Coordinador no encontrado');
         nombreTribu = 'Coordinador no encontrado';
       }
     } catch (e) {
       print('Error obteniendo datos del coordinador: $e');
       nombreTribu = 'Error al obtener tribu';
     }
-
     if (!context.mounted) return;
 
-    showDialog(
+    showModalBottomSheet(
       context: context,
-      barrierDismissible: true,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      enableDrag: false,
+      isDismissible: true,
       builder: (BuildContext dialogContext) {
-        final Map<String, TextEditingController> _controllers = {
-          'nombre': TextEditingController(text: nombre),
-          'apellido': TextEditingController(text: apellido),
-          'telefono': TextEditingController(text: telefono),
-          'direccion': TextEditingController(text: direccion),
-          'barrio': TextEditingController(text: barrio),
-          'nombrePareja': TextEditingController(text: nombrePareja ?? ''),
-          'descripcionOcupaciones':
-              TextEditingController(text: descripcionOcupaciones),
-          'referenciaInvitacion':
-              TextEditingController(text: referenciaInvitacion),
-          'observaciones': TextEditingController(text: observaciones ?? ''),
-          'estadoProceso': TextEditingController(text: estadoProceso),
-          'edad': TextEditingController(text: edad > 0 ? edad.toString() : ''),
-        };
-
-        // ✅ ScrollController para mantener posición del scroll
-        final ScrollController _scrollController = ScrollController();
-
-        return StatefulBuilder(
-          builder: (stateContext, setState) {
-            return Dialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              elevation: 5,
-              backgroundColor: Colors.transparent,
-              insetPadding: EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 24,
-              ),
-              child: Container(
-                constraints: BoxConstraints(
-                  maxWidth: 500,
-                  maxHeight: MediaQuery.of(dialogContext).size.height * 0.92,
-                ),
-                decoration: BoxDecoration(
-                  color: backgroundGrey,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // ============================================================
-                    // ENCABEZADO FIJO
-                    // ============================================================
-                    Container(
-                      padding: EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [primaryTeal, primaryTeal.withOpacity(0.8)],
-                        ),
-                        borderRadius: BorderRadius.only(
-                          topLeft: Radius.circular(20),
-                          topRight: Radius.circular(20),
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.2),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              Icons.person_add,
-                              color: Colors.white,
-                              size: 28,
-                            ),
-                          ),
-                          SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Registrar Nuevo Miembro',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 20,
-                                  ),
-                                ),
-                                if (nombreTribu.isNotEmpty)
-                                  Text(
-                                    'Tribu: $nombreTribu',
-                                    style: TextStyle(
-                                      color: Colors.white.withOpacity(0.9),
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ),
-                          Material(
-                            color: Colors.transparent,
-                            child: InkWell(
-                              onTap: () {
-                                // Limpiar controladores antes de cerrar
-                                _controllers.forEach((key, controller) {
-                                  controller.dispose();
-                                });
-                                _scrollController.dispose();
-                                Navigator.pop(dialogContext);
-                              },
-                              borderRadius: BorderRadius.circular(50),
-                              child: Padding(
-                                padding: const EdgeInsets.all(8.0),
-                                child: Icon(
-                                  Icons.close,
-                                  color: Colors.white,
-                                  size: 24,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    // ============================================================
-                    // CONTENIDO SCROLLEABLE CON FORMULARIO Y BOTONES AL FINAL
-                    // ============================================================
-                    Expanded(
-                      child: SingleChildScrollView(
-                        controller: _scrollController,
-                        physics: ClampingScrollPhysics(), // ✅ Evita rebotes
-                        padding: EdgeInsets.all(20),
-                        child: Form(
-                          key: _formKey,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Información Personal
-                              _buildSectionTitle('Información Personal',
-                                  Icons.person_outline, primaryTeal),
-
-                              _buildTextFieldWithController(
-                                'Nombre',
-                                Icons.person,
-                                _controllers['nombre']!,
-                                (value) => nombre = value,
-                              ),
-                              _buildTextFieldWithController(
-                                'Apellido',
-                                Icons.person_outline,
-                                _controllers['apellido']!,
-                                (value) => apellido = value,
-                              ),
-                              _buildTextFieldWithController(
-                                'Teléfono',
-                                Icons.phone,
-                                _controllers['telefono']!,
-                                (value) => telefono = value,
-                              ),
-                              _buildDropdown(
-                                  'Sexo',
-                                  ['Masculino', 'Femenino'],
-                                  sexo,
-                                  (value) => setState(() => sexo = value)),
-                              _buildTextFieldWithController(
-                                'Edad',
-                                Icons.cake,
-                                _controllers['edad']!,
-                                (value) => edad = int.tryParse(value) ?? 0,
-                                keyboardType: TextInputType.number,
-                              ),
-
-                              SizedBox(height: 16),
-
-                              // Ubicación
-                              _buildSectionTitle('Ubicación',
-                                  Icons.location_on_outlined, primaryTeal),
-
-                              _buildTextFieldWithController(
-                                'Dirección',
-                                Icons.location_on,
-                                _controllers['direccion']!,
-                                (value) => direccion = value,
-                              ),
-                              _buildTextFieldWithController(
-                                'Barrio',
-                                Icons.home,
-                                _controllers['barrio']!,
-                                (value) => barrio = value,
-                              ),
-
-                              SizedBox(height: 16),
-
-                              // Estado Civil y Familia
-                              _buildSectionTitle('Estado Civil y Familia',
-                                  Icons.family_restroom, primaryTeal),
-
-                              _buildDropdown(
-                                  'Estado Civil', _estadosCiviles, estadoCivil,
-                                  (value) {
-                                setState(() {
-                                  estadoCivil = value;
-                                  if (estadoCivil == 'Casado(a)' ||
-                                      estadoCivil == 'Unión Libre') {
-                                    nombrePareja = '';
-                                  } else {
-                                    nombrePareja = 'No aplica';
-                                  }
-                                });
-                              }),
-
-                              if (estadoCivil == 'Casado(a)' ||
-                                  estadoCivil == 'Unión Libre')
-                                _buildTextFieldWithController(
-                                  'Nombre de la Pareja',
-                                  Icons.favorite,
-                                  _controllers['nombrePareja']!,
-                                  (value) => nombrePareja = value,
-                                ),
-
-                              _buildDropdown(
-                                  'Tiene Hijos',
-                                  ['Sí', 'No'],
-                                  tieneHijos == null
-                                      ? null
-                                      : (tieneHijos! ? 'Sí' : 'No'),
-                                  (value) => setState(
-                                      () => tieneHijos = (value == 'Sí'))),
-
-                              SizedBox(height: 16),
-
-                              // Ocupación
-                              _buildSectionTitle(
-                                  'Ocupación', Icons.work_outline, primaryTeal),
-
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Ocupaciones',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                      color: primaryTeal,
-                                      fontSize: 16,
-                                    ),
-                                  ),
-                                  SizedBox(height: 8),
-                                  Wrap(
-                                    spacing: 8,
-                                    runSpacing: 8,
-                                    children: _ocupaciones.map((ocupacion) {
-                                      final isSelected =
-                                          ocupacionesSeleccionadas
-                                              .contains(ocupacion);
-                                      return FilterChip(
-                                        label: Text(ocupacion),
-                                        selected: isSelected,
-                                        onSelected: (selected) {
-                                          setState(() {
-                                            if (selected) {
-                                              ocupacionesSeleccionadas
-                                                  .add(ocupacion);
-                                            } else {
-                                              ocupacionesSeleccionadas
-                                                  .remove(ocupacion);
-                                            }
-                                          });
-                                        },
-                                        selectedColor:
-                                            primaryTeal.withOpacity(0.2),
-                                        checkmarkColor: primaryTeal,
-                                        backgroundColor: Colors.white,
-                                        side: BorderSide(
-                                          color: isSelected
-                                              ? primaryTeal
-                                              : Colors.grey.withOpacity(0.5),
-                                        ),
-                                        labelStyle: TextStyle(
-                                          color: isSelected
-                                              ? primaryTeal
-                                              : Colors.black87,
-                                          fontWeight: isSelected
-                                              ? FontWeight.w600
-                                              : FontWeight.normal,
-                                        ),
-                                      );
-                                    }).toList(),
-                                  ),
-                                  if (ocupacionesSeleccionadas.isNotEmpty)
-                                    Padding(
-                                      padding: const EdgeInsets.only(top: 12),
-                                      child: _buildTextFieldWithController(
-                                        'Descripción de Ocupaciones',
-                                        Icons.work_outline,
-                                        _controllers['descripcionOcupaciones']!,
-                                        (value) =>
-                                            descripcionOcupaciones = value,
-                                        isRequired: false,
-                                      ),
-                                    ),
-                                ],
-                              ),
-
-                              SizedBox(height: 16),
-
-                              // Información Ministerial
-                              _buildSectionTitle('Información Ministerial',
-                                  Icons.groups_outlined, primaryTeal),
-
-                              _buildTextFieldWithController(
-                                'Referencia de Invitación',
-                                Icons.link,
-                                _controllers['referenciaInvitacion']!,
-                                (value) => referenciaInvitacion = value,
-                              ),
-                              _buildTextFieldWithController(
-                                'Observaciones',
-                                Icons.note,
-                                _controllers['observaciones']!,
-                                (value) => observaciones = value,
-                                isRequired: false,
-                              ),
-
-                              // Estado en la Iglesia
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  _buildTextFieldWithController(
-                                    'Estado en la Iglesia',
-                                    Icons.track_changes_outlined,
-                                    _controllers['estadoProceso']!,
-                                    (value) {
-                                      estadoProceso = value;
-                                    },
-                                    isRequired: false,
-                                  ),
-                                  SizedBox(height: 8),
-                                  Text(
-                                    'Opciones rápidas:',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                      color: primaryTeal,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                  SizedBox(height: 8),
-                                  Wrap(
-                                    spacing: 8,
-                                    runSpacing: 8,
-                                    children: [
-                                      'Pendiente',
-                                      'Discipulado 1',
-                                      'Discipulado 2',
-                                      'Discipulado 3',
-                                      'Consolidación',
-                                      'Estudio Bíblico',
-                                      'Escuela de Líderes'
-                                    ].map((estado) {
-                                      final isSelected =
-                                          estadoProceso == estado;
-                                      return FilterChip(
-                                        label: Text(estado),
-                                        selected: isSelected,
-                                        onSelected: (selected) {
-                                          setState(() {
-                                            estadoProceso =
-                                                selected ? estado : '';
-                                            _controllers['estadoProceso']!
-                                                .text = estadoProceso;
-                                          });
-                                        },
-                                        selectedColor:
-                                            primaryTeal.withOpacity(0.2),
-                                        checkmarkColor: primaryTeal,
-                                        backgroundColor: Colors.white,
-                                        side: BorderSide(
-                                          color: isSelected
-                                              ? primaryTeal
-                                              : Colors.grey.withOpacity(0.5),
-                                        ),
-                                        labelStyle: TextStyle(
-                                          color: isSelected
-                                              ? primaryTeal
-                                              : Colors.black87,
-                                          fontWeight: isSelected
-                                              ? FontWeight.w600
-                                              : FontWeight.normal,
-                                          fontSize: 13,
-                                        ),
-                                      );
-                                    }).toList(),
-                                  ),
-                                ],
-                              ),
-
-                              // Fecha de Asignación
-                              Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 8),
-                                child: TextFormField(
-                                  readOnly: true,
-                                  decoration: InputDecoration(
-                                    labelText:
-                                        'Fecha de Asignación de la Tribu',
-                                    labelStyle: TextStyle(
-                                      color: primaryTeal.withOpacity(0.8),
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                    prefixIcon: Icon(Icons.calendar_today,
-                                        color: primaryTeal),
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                      borderSide: BorderSide(
-                                          color: primaryTeal.withOpacity(0.3)),
-                                    ),
-                                    enabledBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                      borderSide: BorderSide(
-                                          color: primaryTeal.withOpacity(0.5)),
-                                    ),
-                                    focusedBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                      borderSide: BorderSide(
-                                          color: primaryTeal, width: 2),
-                                    ),
-                                    filled: true,
-                                    fillColor: Colors.white,
-                                    contentPadding: EdgeInsets.symmetric(
-                                        horizontal: 16, vertical: 16),
-                                  ),
-                                  validator: (value) =>
-                                      fechaAsignacionTribu == null
-                                          ? 'Campo obligatorio'
-                                          : null,
-                                  onTap: () async {
-                                    final DateTime? pickedDate =
-                                        await showDatePicker(
-                                      context: dialogContext,
-                                      initialDate: DateTime.now(),
-                                      firstDate: DateTime(2000),
-                                      lastDate: DateTime(2101),
-                                      builder: (context, child) {
-                                        return Theme(
-                                          data: Theme.of(context).copyWith(
-                                            colorScheme: ColorScheme.light(
-                                              primary: primaryTeal,
-                                              onPrimary: Colors.white,
-                                              onSurface: Colors.black,
-                                            ),
-                                            textButtonTheme:
-                                                TextButtonThemeData(
-                                              style: TextButton.styleFrom(
-                                                foregroundColor:
-                                                    secondaryOrange,
-                                              ),
-                                            ),
-                                          ),
-                                          child: child!,
-                                        );
-                                      },
-                                    );
-
-                                    if (pickedDate != null) {
-                                      setState(() {
-                                        fechaAsignacionTribu = pickedDate;
-                                      });
-                                    }
-                                  },
-                                  controller: TextEditingController(
-                                    text: fechaAsignacionTribu != null
-                                        ? DateFormat('dd/MM/yyyy')
-                                            .format(fechaAsignacionTribu!)
-                                        : '',
-                                  ),
-                                ),
-                              ),
-
-                              SizedBox(height: 16),
-
-                              // Nota informativa
-                              Container(
-                                padding: EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: primaryTeal.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                    color: primaryTeal.withOpacity(0.3),
-                                  ),
-                                ),
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      Icons.info_outline,
-                                      color: primaryTeal,
-                                      size: 20,
-                                    ),
-                                    SizedBox(width: 8),
-                                    Expanded(
-                                      child: Text(
-                                        'Este miembro será asignado automáticamente al coordinador.',
-                                        style: TextStyle(
-                                          color: primaryTeal,
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-
-                              SizedBox(height: 24),
-
-                              // ============================================================
-                              // BOTONES AL FINAL DEL SCROLL
-                              // ============================================================
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: TextButton.icon(
-                                      onPressed: () {
-                                        _controllers.forEach((key, controller) {
-                                          controller.dispose();
-                                        });
-                                        _scrollController.dispose();
-                                        Navigator.pop(dialogContext);
-                                      },
-                                      icon: Icon(Icons.cancel_outlined,
-                                          color: accentGrey),
-                                      label: Text(
-                                        'Cancelar',
-                                        style: TextStyle(
-                                          color: accentGrey,
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                      style: TextButton.styleFrom(
-                                        padding:
-                                            EdgeInsets.symmetric(vertical: 12),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(12),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  SizedBox(width: 12),
-                                  Expanded(
-                                    flex: 2,
-                                    child: ElevatedButton.icon(
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: secondaryOrange,
-                                        foregroundColor: Colors.white,
-                                        padding:
-                                            EdgeInsets.symmetric(vertical: 16),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(12),
-                                        ),
-                                        elevation: 3,
-                                      ),
-                                      icon: Icon(Icons.save_outlined, size: 20),
-                                      label: Text(
-                                        'Registrar Miembro',
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                      onPressed: () async {
-                                        if (_formKey.currentState!.validate()) {
-                                          nombre = _controllers['nombre']!.text;
-                                          apellido =
-                                              _controllers['apellido']!.text;
-                                          telefono =
-                                              _controllers['telefono']!.text;
-                                          direccion =
-                                              _controllers['direccion']!.text;
-                                          barrio = _controllers['barrio']!.text;
-                                          nombrePareja =
-                                              _controllers['nombrePareja']!
-                                                  .text;
-                                          descripcionOcupaciones = _controllers[
-                                                  'descripcionOcupaciones']!
-                                              .text;
-                                          referenciaInvitacion = _controllers[
-                                                  'referenciaInvitacion']!
-                                              .text;
-                                          observaciones =
-                                              _controllers['observaciones']!
-                                                  .text;
-                                          estadoProceso =
-                                              _controllers['estadoProceso']!
-                                                  .text;
-                                          edad = int.tryParse(
-                                                  _controllers['edad']!.text) ??
-                                              0;
-
-                                          final registro = {
-                                            'fechaAsignacionTribu':
-                                                fechaAsignacionTribu != null
-                                                    ? Timestamp.fromDate(
-                                                        fechaAsignacionTribu!)
-                                                    : null,
-                                            'nombre': nombre,
-                                            'apellido': apellido,
-                                            'telefono': telefono,
-                                            'sexo': sexo,
-                                            'edad': edad,
-                                            'direccion': direccion,
-                                            'barrio': barrio,
-                                            'estadoCivil': estadoCivil,
-                                            'nombrePareja': nombrePareja,
-                                            'ocupaciones':
-                                                ocupacionesSeleccionadas,
-                                            'descripcionOcupaciones':
-                                                descripcionOcupaciones,
-                                            'tieneHijos': tieneHijos,
-                                            'referenciaInvitacion':
-                                                referenciaInvitacion,
-                                            'observaciones': observaciones,
-                                            'tribuAsignada': tribuId,
-                                            'nombreTribu': nombreTribu,
-                                            'ministerioAsignado':
-                                                ministerioAsignado,
-                                            'coordinadorAsignado':
-                                                coordinadorId,
-                                            'fechaRegistro':
-                                                FieldValue.serverTimestamp(),
-                                            'activo': true,
-                                            'tribuId': tribuId,
-                                            'categoria': categoriaTribu,
-                                            'estadoProceso': estadoProceso,
-                                          };
-
-                                          // Limpiar controladores
-                                          _controllers
-                                              .forEach((key, controller) {
-                                            controller.dispose();
-                                          });
-                                          _scrollController.dispose();
-
-                                          await _guardarRegistroEnFirebase(
-                                              dialogContext, registro, tribuId);
-                                        }
-                                      },
-                                    ),
-                                  ),
-                                ],
-                              ),
-
-                              // Padding extra para evitar que el teclado tape contenido
-                              SizedBox(
-                                  height: MediaQuery.of(dialogContext)
-                                              .viewInsets
-                                              .bottom >
-                                          0
-                                      ? 20
-                                      : 0),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
+        return _RegistroNuevoMiembroStateful(
+          coordinadorId: coordinadorId,
+          tribuId: tribuId,
+          categoriaTribu: categoriaTribu,
+          nombreTribu: nombreTribu,
+          ministerioAsignado: ministerioAsignado,
+          primaryTeal: primaryTeal,
+          secondaryOrange: secondaryOrange,
+          accentGrey: accentGrey,
+          backgroundGrey: backgroundGrey,
         );
       },
-    );
-  }
-
-  Widget _buildTextFieldWithController(
-    String label,
-    IconData icon,
-    TextEditingController controller,
-    Function(String) onChanged, {
-    bool isRequired = true,
-    TextInputType keyboardType = TextInputType.text,
-  }) {
-    final primaryTeal = Color(0xFF038C7F);
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16.0),
-      child: TextFormField(
-        controller: controller,
-        onChanged: onChanged,
-        keyboardType: keyboardType,
-        validator: isRequired
-            ? (value) =>
-                value == null || value.isEmpty ? 'Campo obligatorio' : null
-            : null,
-        decoration: InputDecoration(
-          labelText: label,
-          labelStyle: TextStyle(
-            color: primaryTeal.withOpacity(0.8),
-            fontWeight: FontWeight.w500,
-          ),
-          prefixIcon: Icon(icon, color: primaryTeal),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: primaryTeal.withOpacity(0.3)),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: primaryTeal.withOpacity(0.5)),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: primaryTeal, width: 2),
-          ),
-          filled: true,
-          fillColor: Colors.white,
-          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        ),
-        style: TextStyle(fontSize: 16),
-      ),
     );
   }
 
@@ -8658,27 +9412,6 @@ Future<List<Map<String, dynamic>>> _obtenerTimoteosConConteo(
         );
       }
     }
-  }
-
-// Widget para títulos de sección
-  Widget _buildSectionTitle(String title, IconData icon, Color color) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12.0),
-      child: Row(
-        children: [
-          Icon(icon, color: color, size: 20),
-          SizedBox(width: 8),
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: color,
-            ),
-          ),
-        ],
-      ),
-    );
   }
 
 // Widget para campos de texto
@@ -10082,6 +10815,2108 @@ class _PersonasAsignadasContentState extends State<_PersonasAsignadasContent> {
           elevation: 0,
         ),
         onPressed: onPressed,
+      ),
+    );
+  }
+}
+
+// ✅ NUEVA CLASE AUXILIAR PARA EVITAR RECONSTRUCCIÓN COMPLETA
+class _RegistroNuevoMiembroModal extends StatefulWidget {
+  final BuildContext dialogContext;
+  final Color backgroundGrey;
+  final Color primaryTeal;
+  final String nombreTribu;
+  final GlobalKey<FormState> formKey;
+  final Map<String, TextEditingController> controllers;
+  final Map<String, FocusNode> focusNodes;
+  final ScrollController scrollController;
+  final Map<String, GlobalKey> fieldKeys;
+  final List<String> estadosCiviles;
+  final List<String> ocupaciones;
+  final String? sexo;
+  final String? estadoCivil;
+  final String? nombrePareja;
+  final List<String> ocupacionesSeleccionadas;
+  final bool? tieneHijos;
+  final DateTime? fechaAsignacionTribu;
+  final String estadoProceso;
+  final Color accentGrey;
+  final Color secondaryOrange;
+  final Function(String?) onSexoChanged;
+  final Function(String?) onEstadoCivilChanged;
+  final Function(List<String>) onOcupacionesChanged;
+  final Function(bool?) onTieneHijosChanged;
+  final Function(DateTime?) onFechaAsignacionChanged;
+  final Function(String) onEstadoProcesoChanged;
+  final VoidCallback onGuardar;
+  final VoidCallback onCancelar;
+
+  const _RegistroNuevoMiembroModal({
+    Key? key,
+    required this.dialogContext,
+    required this.backgroundGrey,
+    required this.primaryTeal,
+    required this.nombreTribu,
+    required this.formKey,
+    required this.controllers,
+    required this.focusNodes,
+    required this.scrollController,
+    required this.fieldKeys,
+    required this.estadosCiviles,
+    required this.ocupaciones,
+    required this.sexo,
+    required this.estadoCivil,
+    required this.nombrePareja,
+    required this.ocupacionesSeleccionadas,
+    required this.tieneHijos,
+    required this.fechaAsignacionTribu,
+    required this.estadoProceso,
+    required this.accentGrey,
+    required this.secondaryOrange,
+    required this.onSexoChanged,
+    required this.onEstadoCivilChanged,
+    required this.onOcupacionesChanged,
+    required this.onTieneHijosChanged,
+    required this.onFechaAsignacionChanged,
+    required this.onEstadoProcesoChanged,
+    required this.onGuardar,
+    required this.onCancelar,
+  }) : super(key: key);
+
+  @override
+  _RegistroNuevoMiembroModalState createState() =>
+      _RegistroNuevoMiembroModalState();
+}
+
+class _RegistroNuevoMiembroModalState
+    extends State<_RegistroNuevoMiembroModal> {
+  late String? _sexoLocal;
+  late String? _estadoCivilLocal;
+  late List<String> _ocupacionesLocal;
+  late bool? _tieneHijosLocal;
+  late DateTime? _fechaLocal;
+  late String _estadoProcesoLocal;
+
+  @override
+  void initState() {
+    super.initState();
+    _sexoLocal = widget.sexo;
+    _estadoCivilLocal = widget.estadoCivil;
+    _ocupacionesLocal = List.from(widget.ocupacionesSeleccionadas);
+    _tieneHijosLocal = widget.tieneHijos;
+    _fechaLocal = widget.fechaAsignacionTribu;
+    _estadoProcesoLocal = widget.estadoProceso;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: MediaQuery.of(widget.dialogContext).size.height * 0.95,
+      decoration: BoxDecoration(
+        color: widget.backgroundGrey,
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(20),
+          topRight: Radius.circular(20),
+        ),
+      ),
+      child: Column(
+        children: [
+          // ENCABEZADO FIJO
+          Container(
+            padding: EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  widget.primaryTeal,
+                  widget.primaryTeal.withOpacity(0.8)
+                ],
+              ),
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(20),
+                topRight: Radius.circular(20),
+              ),
+            ),
+            child: SafeArea(
+              bottom: false,
+              child: Row(
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      shape: BoxShape.circle,
+                    ),
+                    child:
+                        Icon(Icons.person_add, color: Colors.white, size: 24),
+                  ),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Registrar Nuevo Miembro',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                          ),
+                        ),
+                        if (widget.nombreTribu.isNotEmpty)
+                          Text(
+                            'Tribu: ${widget.nombreTribu}',
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.9),
+                              fontSize: 13,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                      ],
+                    ),
+                  ),
+                  Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: widget.onCancelar,
+                      borderRadius: BorderRadius.circular(50),
+                      child: Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Icon(Icons.close, color: Colors.white, size: 24),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // CONTENIDO SCROLLEABLE
+          Expanded(
+            child: SingleChildScrollView(
+              controller: widget.scrollController,
+              padding: EdgeInsets.only(
+                left: 16,
+                right: 16,
+                top: 16,
+                bottom:
+                    MediaQuery.of(widget.dialogContext).viewInsets.bottom + 20,
+              ),
+              physics: const ClampingScrollPhysics(),
+              child: Form(
+                key: widget.formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildSectionTitle('Información Personal',
+                        Icons.person_outline, widget.primaryTeal, false),
+                    _buildResponsiveTextField(
+                        'Nombre',
+                        Icons.person,
+                        widget.controllers['nombre']!,
+                        widget.focusNodes['nombre']!,
+                        (value) {},
+                        nextFocus: widget.focusNodes['apellido'],
+                        context: widget.dialogContext,
+                        fieldKey: widget.fieldKeys['nombre']),
+                    _buildResponsiveTextField(
+                        'Apellido',
+                        Icons.person_outline,
+                        widget.controllers['apellido']!,
+                        widget.focusNodes['apellido']!,
+                        (value) {},
+                        nextFocus: widget.focusNodes['telefono'],
+                        context: widget.dialogContext,
+                        fieldKey: widget.fieldKeys['apellido']),
+                    _buildResponsiveTextField(
+                        'Teléfono',
+                        Icons.phone,
+                        widget.controllers['telefono']!,
+                        widget.focusNodes['telefono']!,
+                        (value) {},
+                        nextFocus: widget.focusNodes['edad'],
+                        keyboardType: TextInputType.phone,
+                        context: widget.dialogContext,
+                        fieldKey: widget.fieldKeys['telefono']),
+                    _buildDropdown(
+                        'Sexo', ['Masculino', 'Femenino'], _sexoLocal, (value) {
+                      setState(() => _sexoLocal = value);
+                      widget.onSexoChanged(value);
+                    }),
+                    _buildResponsiveTextField(
+                        'Edad',
+                        Icons.cake,
+                        widget.controllers['edad']!,
+                        widget.focusNodes['edad']!,
+                        (value) {},
+                        keyboardType: TextInputType.number,
+                        nextFocus: widget.focusNodes['direccion'],
+                        context: widget.dialogContext,
+                        fieldKey: widget.fieldKeys['edad']),
+                    SizedBox(height: 16),
+                    _buildSectionTitle('Ubicación', Icons.location_on_outlined,
+                        widget.primaryTeal, false),
+                    _buildResponsiveTextField(
+                        'Dirección',
+                        Icons.location_on,
+                        widget.controllers['direccion']!,
+                        widget.focusNodes['direccion']!,
+                        (value) {},
+                        nextFocus: widget.focusNodes['barrio'],
+                        context: widget.dialogContext,
+                        fieldKey: widget.fieldKeys['direccion']),
+                    _buildResponsiveTextField(
+                        'Barrio',
+                        Icons.home,
+                        widget.controllers['barrio']!,
+                        widget.focusNodes['barrio']!,
+                        (value) {},
+                        context: widget.dialogContext,
+                        fieldKey: widget.fieldKeys['barrio']),
+                    SizedBox(height: 16),
+                    _buildSectionTitle('Estado Civil y Familia',
+                        Icons.family_restroom, widget.primaryTeal, false),
+                    _buildDropdown('Estado Civil', widget.estadosCiviles,
+                        _estadoCivilLocal, (value) {
+                      setState(() => _estadoCivilLocal = value);
+                      widget.onEstadoCivilChanged(value);
+                    }),
+                    if (_estadoCivilLocal == 'Casado(a)' ||
+                        _estadoCivilLocal == 'Unión Libre')
+                      _buildResponsiveTextField(
+                          'Nombre de la Pareja',
+                          Icons.favorite,
+                          widget.controllers['nombrePareja']!,
+                          widget.focusNodes['nombrePareja']!,
+                          (value) {},
+                          context: widget.dialogContext,
+                          fieldKey: widget.fieldKeys['nombrePareja']),
+                    _buildDropdown(
+                        'Tiene Hijos',
+                        ['Sí', 'No'],
+                        _tieneHijosLocal == null
+                            ? null
+                            : (_tieneHijosLocal! ? 'Sí' : 'No'), (value) {
+                      setState(() => _tieneHijosLocal = (value == 'Sí'));
+                      widget.onTieneHijosChanged(_tieneHijosLocal);
+                    }),
+                    SizedBox(height: 16),
+                    _buildSectionTitle('Ocupación', Icons.work_outline,
+                        widget.primaryTeal, false),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Ocupaciones',
+                            style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                color: widget.primaryTeal,
+                                fontSize: 16)),
+                        SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: widget.ocupaciones.map((ocupacion) {
+                            final isSelected =
+                                _ocupacionesLocal.contains(ocupacion);
+                            return FilterChip(
+                              label: Text(ocupacion),
+                              selected: isSelected,
+                              onSelected: (selected) {
+                                setState(() {
+                                  if (selected) {
+                                    _ocupacionesLocal.add(ocupacion);
+                                  } else {
+                                    _ocupacionesLocal.remove(ocupacion);
+                                  }
+                                });
+                                widget.onOcupacionesChanged(_ocupacionesLocal);
+                              },
+                              selectedColor:
+                                  widget.primaryTeal.withOpacity(0.2),
+                              checkmarkColor: widget.primaryTeal,
+                              backgroundColor: Colors.white,
+                              side: BorderSide(
+                                  color: isSelected
+                                      ? widget.primaryTeal
+                                      : Colors.grey.withOpacity(0.5)),
+                              labelStyle: TextStyle(
+                                  color: isSelected
+                                      ? widget.primaryTeal
+                                      : Colors.black87,
+                                  fontWeight: isSelected
+                                      ? FontWeight.w600
+                                      : FontWeight.normal),
+                            );
+                          }).toList(),
+                        ),
+                        if (_ocupacionesLocal.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 12),
+                            child: _buildResponsiveTextField(
+                                'Descripción de Ocupaciones',
+                                Icons.work_outline,
+                                widget.controllers['descripcionOcupaciones']!,
+                                widget.focusNodes['descripcionOcupaciones']!,
+                                (value) {},
+                                isRequired: false,
+                                context: widget.dialogContext,
+                                fieldKey:
+                                    widget.fieldKeys['descripcionOcupaciones']),
+                          ),
+                      ],
+                    ),
+                    SizedBox(height: 16),
+                    _buildSectionTitle('Información Ministerial',
+                        Icons.groups_outlined, widget.primaryTeal, false),
+                    _buildResponsiveTextField(
+                        'Referencia de Invitación',
+                        Icons.link,
+                        widget.controllers['referenciaInvitacion']!,
+                        widget.focusNodes['referenciaInvitacion']!,
+                        (value) {},
+                        nextFocus: widget.focusNodes['observaciones'],
+                        context: widget.dialogContext,
+                        fieldKey: widget.fieldKeys['referenciaInvitacion']),
+                    _buildResponsiveTextField(
+                        'Observaciones',
+                        Icons.note,
+                        widget.controllers['observaciones']!,
+                        widget.focusNodes['observaciones']!,
+                        (value) {},
+                        isRequired: false,
+                        nextFocus: widget.focusNodes['estadoProceso'],
+                        context: widget.dialogContext,
+                        fieldKey: widget.fieldKeys['observaciones']),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildResponsiveTextField(
+                            'Estado del Proceso',
+                            Icons.track_changes_outlined,
+                            widget.controllers['estadoProceso']!,
+                            widget.focusNodes['estadoProceso']!,
+                            (value) {},
+                            isRequired: false,
+                            context: widget.dialogContext,
+                            fieldKey: widget.fieldKeys['estadoProceso']),
+                        SizedBox(height: 8),
+                        Text('Opciones rápidas:',
+                            style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                color: widget.primaryTeal,
+                                fontSize: 14)),
+                        SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            'Pendiente',
+                            'Discipulado 1',
+                            'Discipulado 2',
+                            'Discipulado 3',
+                            'Consolidación',
+                            'Estudio Bíblico',
+                            'Escuela de Líderes'
+                          ].map((estado) {
+                            final isSelected = _estadoProcesoLocal == estado;
+                            return FilterChip(
+                              label: Text(estado),
+                              selected: isSelected,
+                              onSelected: (selected) {
+                                setState(() {
+                                  _estadoProcesoLocal = selected ? estado : '';
+                                  widget.controllers['estadoProceso']!.text =
+                                      _estadoProcesoLocal;
+                                });
+                                widget.onEstadoProcesoChanged(
+                                    _estadoProcesoLocal);
+                              },
+                              selectedColor:
+                                  widget.primaryTeal.withOpacity(0.2),
+                              checkmarkColor: widget.primaryTeal,
+                              backgroundColor: Colors.white,
+                              side: BorderSide(
+                                  color: isSelected
+                                      ? widget.primaryTeal
+                                      : Colors.grey.withOpacity(0.5)),
+                              labelStyle: TextStyle(
+                                  color: isSelected
+                                      ? widget.primaryTeal
+                                      : Colors.black87,
+                                  fontWeight: isSelected
+                                      ? FontWeight.w600
+                                      : FontWeight.normal),
+                            );
+                          }).toList(),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 16),
+                    _buildResponsiveDateField(
+                        'Fecha de Asignación de la Tribu',
+                        Icons.calendar_today,
+                        _fechaLocal,
+                        widget.primaryTeal,
+                        widget.secondaryOrange, (pickedDate) {
+                      setState(() => _fechaLocal = pickedDate);
+                      widget.onFechaAsignacionChanged(pickedDate);
+                    }, widget.dialogContext),
+                    SizedBox(height: 16),
+                    Container(
+                      padding: EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: widget.primaryTeal.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                            color: widget.primaryTeal.withOpacity(0.3)),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.info_outline,
+                              color: widget.primaryTeal, size: 20),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                                'Este miembro será asignado automáticamente al coordinador.',
+                                style: TextStyle(
+                                    color: widget.primaryTeal,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500)),
+                          ),
+                        ],
+                      ),
+                    ),
+                    SizedBox(height: 24),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextButton.icon(
+                            onPressed: widget.onCancelar,
+                            icon: Icon(Icons.cancel_outlined,
+                                color: widget.accentGrey),
+                            label: Text('Cancelar',
+                                style: TextStyle(
+                                    color: widget.accentGrey,
+                                    fontWeight: FontWeight.w500)),
+                            style: TextButton.styleFrom(
+                                padding: EdgeInsets.symmetric(vertical: 12),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12))),
+                          ),
+                        ),
+                        SizedBox(width: 12),
+                        Expanded(
+                          flex: 2,
+                          child: ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                                backgroundColor: widget.secondaryOrange,
+                                foregroundColor: Colors.white,
+                                padding: EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12)),
+                                elevation: 3),
+                            icon: Icon(Icons.save_outlined),
+                            label: Text('Registrar',
+                                style: TextStyle(fontWeight: FontWeight.bold)),
+                            onPressed: widget.onGuardar,
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 20),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionTitle(
+      String title, IconData icon, Color color, bool isSmall) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12.0),
+      child: Row(
+        children: [
+          Icon(icon, color: color, size: isSmall ? 18 : 20),
+          SizedBox(width: 8),
+          Flexible(
+              child: Text(title,
+                  style: TextStyle(
+                      fontSize: isSmall ? 16 : 18,
+                      fontWeight: FontWeight.bold,
+                      color: color),
+                  overflow: TextOverflow.ellipsis)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildResponsiveTextField(
+    String label,
+    IconData icon,
+    TextEditingController controller,
+    FocusNode focusNode,
+    Function(String) onChanged, {
+    bool isRequired = true,
+    TextInputType keyboardType = TextInputType.text,
+    FocusNode? nextFocus,
+    VoidCallback? onFieldFocus,
+    required BuildContext context,
+    GlobalKey? fieldKey,
+  }) {
+    final primaryTeal = Color(0xFF038C7F);
+    final isSmallScreen = MediaQuery.of(context).size.width < 360;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16.0),
+      child: Container(
+        key: fieldKey,
+        child: TextFormField(
+          controller: controller,
+          focusNode: focusNode,
+          onChanged: onChanged,
+          keyboardType: keyboardType,
+          textInputAction:
+              nextFocus != null ? TextInputAction.next : TextInputAction.done,
+          onFieldSubmitted: (_) {
+            if (nextFocus != null) {
+              Future.delayed(Duration(milliseconds: 100), () {
+                if (context.mounted) {
+                  FocusScope.of(context).requestFocus(nextFocus);
+                }
+              });
+            }
+          },
+          validator: isRequired
+              ? (value) =>
+                  value == null || value.isEmpty ? 'Campo obligatorio' : null
+              : null,
+          style: TextStyle(fontSize: isSmallScreen ? 14 : 16),
+          decoration: InputDecoration(
+            labelText: label,
+            labelStyle: TextStyle(
+              color: primaryTeal.withOpacity(0.8),
+              fontWeight: FontWeight.w500,
+              fontSize: isSmallScreen ? 13 : 14,
+            ),
+            prefixIcon:
+                Icon(icon, color: primaryTeal, size: isSmallScreen ? 20 : 24),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: primaryTeal.withOpacity(0.3)),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: primaryTeal.withOpacity(0.5)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: primaryTeal, width: 2),
+            ),
+            filled: true,
+            fillColor: Colors.white,
+            contentPadding: EdgeInsets.symmetric(
+              horizontal: isSmallScreen ? 12 : 16,
+              vertical: isSmallScreen ? 12 : 16,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDropdown(String label, List<String> items, String? selectedValue,
+      Function(String?) onChanged) {
+    final primaryTeal = Color(0xFF038C7F);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16.0),
+      child: DropdownButtonFormField<String>(
+        value: selectedValue,
+        hint: Text('Seleccionar $label',
+            style: TextStyle(
+                color: primaryTeal.withOpacity(0.6),
+                fontWeight: FontWeight.w400)),
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: TextStyle(
+              color: primaryTeal.withOpacity(0.8), fontWeight: FontWeight.w500),
+          border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: primaryTeal.withOpacity(0.3))),
+          enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: primaryTeal.withOpacity(0.5))),
+          focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: primaryTeal, width: 2)),
+          filled: true,
+          fillColor: Colors.white,
+          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        ),
+        items: items.map((String value) {
+          return DropdownMenuItem<String>(
+              value: value,
+              child: Padding(
+                  padding: EdgeInsets.symmetric(vertical: 8.0),
+                  child: Text(value)));
+        }).toList(),
+        onChanged: onChanged,
+        validator: (value) => value == null || value.isEmpty
+            ? 'Debe seleccionar una opción'
+            : null,
+        isExpanded: true,
+        icon: Icon(Icons.arrow_drop_down, color: primaryTeal),
+        style: TextStyle(fontSize: 16, color: Colors.black87),
+        dropdownColor: Colors.white,
+      ),
+    );
+  }
+
+  Widget _buildResponsiveDateField(
+      String label,
+      IconData icon,
+      DateTime? selectedDate,
+      Color primaryColor,
+      Color secondaryColor,
+      Function(DateTime?) onDateSelected,
+      BuildContext context) {
+    final isSmallScreen = MediaQuery.of(context).size.width < 360;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: TextFormField(
+        readOnly: true,
+        style: TextStyle(fontSize: isSmallScreen ? 14 : 16),
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: TextStyle(
+              color: primaryColor.withOpacity(0.8),
+              fontWeight: FontWeight.w500,
+              fontSize: isSmallScreen ? 13 : 14),
+          prefixIcon:
+              Icon(icon, color: primaryColor, size: isSmallScreen ? 20 : 24),
+          border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: primaryColor.withOpacity(0.3))),
+          enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: primaryColor.withOpacity(0.5))),
+          focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: primaryColor, width: 2)),
+          filled: true,
+          fillColor: Colors.white,
+          contentPadding: EdgeInsets.symmetric(
+              horizontal: isSmallScreen ? 12 : 16,
+              vertical: isSmallScreen ? 12 : 16),
+        ),
+        validator: (value) => selectedDate == null ? 'Campo obligatorio' : null,
+        onTap: () async {
+          final DateTime? pickedDate = await showDatePicker(
+            context: context,
+            initialDate: DateTime.now(),
+            firstDate: DateTime(2000),
+            lastDate: DateTime(2101),
+            builder: (context, child) {
+              return Theme(
+                data: Theme.of(context).copyWith(
+                  colorScheme: ColorScheme.light(
+                      primary: primaryColor,
+                      onPrimary: Colors.white,
+                      onSurface: Colors.black),
+                  textButtonTheme: TextButtonThemeData(
+                      style: TextButton.styleFrom(
+                          foregroundColor: secondaryColor)),
+                ),
+                child: child!,
+              );
+            },
+          );
+          if (pickedDate != null) {
+            onDateSelected(pickedDate);
+          }
+        },
+        controller: TextEditingController(
+            text: selectedDate != null
+                ? DateFormat('dd/MM/yyyy').format(selectedDate)
+                : ''),
+      ),
+    );
+  }
+}
+
+// ✅ REEMPLAZA COMPLETAMENTE la clase _RegistroNuevoMiembroStateful
+// Desde la línea que dice "class _RegistroNuevoMiembroStateful extends StatefulWidget"
+// Hasta el final de su correspondiente State (antes de la última llave de cierre)
+
+class _RegistroNuevoMiembroStateful extends StatefulWidget {
+  final String coordinadorId;
+  final String tribuId;
+  final String categoriaTribu;
+  final String nombreTribu;
+  final String ministerioAsignado;
+  final Color primaryTeal;
+  final Color secondaryOrange;
+  final Color accentGrey;
+  final Color backgroundGrey;
+
+  const _RegistroNuevoMiembroStateful({
+    Key? key,
+    required this.coordinadorId,
+    required this.tribuId,
+    required this.categoriaTribu,
+    required this.nombreTribu,
+    required this.ministerioAsignado,
+    required this.primaryTeal,
+    required this.secondaryOrange,
+    required this.accentGrey,
+    required this.backgroundGrey,
+  }) : super(key: key);
+
+  @override
+  _RegistroNuevoMiembroStatefulState createState() =>
+      _RegistroNuevoMiembroStatefulState();
+}
+
+class _RegistroNuevoMiembroStatefulState
+    extends State<_RegistroNuevoMiembroStateful> with TickerProviderStateMixin {
+  final _formKey = GlobalKey<FormState>();
+  final _scrollController = ScrollController();
+
+  // Controladores
+  final Map<String, TextEditingController> _controllers = {};
+  final Map<String, FocusNode> _focusNodes = {};
+  final Map<String, GlobalKey> _fieldKeys = {};
+
+  // Estados
+  String? _sexo;
+  String? _estadoCivil;
+  List<String> _ocupacionesSeleccionadas = [];
+  bool? _tieneHijos;
+  DateTime? _fechaAsignacionTribu;
+  String _estadoProceso = '';
+
+  // Estados de expansión de secciones
+  bool _seccionPersonalExpanded = true;
+  bool _seccionUbicacionExpanded = true;
+  bool _seccionFamiliaExpanded = true;
+  bool _seccionOcupacionExpanded = true;
+  bool _seccionMinisterialExpanded = true;
+
+  final List<String> _estadosCiviles = [
+    'Casado(a)',
+    'Soltero(a)',
+    'Unión Libre',
+    'Separado(a)',
+    'Viudo(a)'
+  ];
+
+  final List<String> _ocupaciones = [
+    'Estudiante',
+    'Profesional',
+    'Trabaja',
+    'Ama de Casa',
+    'Otro'
+  ];
+
+  // ✅ Opciones completas de Estado del Proceso
+  final List<String> _estadosProceso = [
+    'Pendiente',
+    'Discipulado 1',
+    'Discipulado 2',
+    'Discipulado 3',
+    'Consolidación',
+    'Estudio Bíblico',
+    'Escuela de Líderes'
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+
+    final fields = [
+      'nombre',
+      'apellido',
+      'telefono',
+      'direccion',
+      'barrio',
+      'nombrePareja',
+      'descripcionOcupaciones',
+      'referenciaInvitacion',
+      'observaciones',
+      'estadoProceso',
+      'edad'
+    ];
+
+    for (var field in fields) {
+      _controllers[field] = TextEditingController();
+      _focusNodes[field] = FocusNode();
+      _fieldKeys[field] = GlobalKey();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controllers.forEach((key, controller) => controller.dispose());
+    _focusNodes.forEach((key, node) => node.dispose());
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  // Calcular progreso del formulario
+  double _calcularProgreso() {
+    int camposLlenos = 0;
+    int totalCampos = 11; // Campos obligatorios
+
+    if (_controllers['nombre']!.text.isNotEmpty) camposLlenos++;
+    if (_controllers['apellido']!.text.isNotEmpty) camposLlenos++;
+    if (_controllers['telefono']!.text.isNotEmpty) camposLlenos++;
+    if (_sexo != null) camposLlenos++;
+    if (_controllers['edad']!.text.isNotEmpty) camposLlenos++;
+    if (_controllers['direccion']!.text.isNotEmpty) camposLlenos++;
+    if (_controllers['barrio']!.text.isNotEmpty) camposLlenos++;
+    if (_estadoCivil != null) camposLlenos++;
+    if (_tieneHijos != null) camposLlenos++;
+    if (_controllers['referenciaInvitacion']!.text.isNotEmpty) camposLlenos++;
+    if (_fechaAsignacionTribu != null) camposLlenos++;
+
+    return camposLlenos / totalCampos;
+  }
+
+  Future<void> _guardarRegistro() async {
+    if (!_formKey.currentState!.validate()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.warning_amber_rounded, color: Colors.white),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text('Por favor completa todos los campos obligatorios'),
+              ),
+            ],
+          ),
+          backgroundColor: widget.secondaryOrange,
+          behavior: SnackBarBehavior.floating,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          margin: EdgeInsets.all(16),
+        ),
+      );
+      return;
+    }
+
+    final registro = {
+      'fechaAsignacionTribu': _fechaAsignacionTribu != null
+          ? Timestamp.fromDate(_fechaAsignacionTribu!)
+          : null,
+      'nombre': _controllers['nombre']!.text,
+      'apellido': _controllers['apellido']!.text,
+      'telefono': _controllers['telefono']!.text,
+      'sexo': _sexo,
+      'edad': int.tryParse(_controllers['edad']!.text) ?? 0,
+      'direccion': _controllers['direccion']!.text,
+      'barrio': _controllers['barrio']!.text,
+      'estadoCivil': _estadoCivil,
+      'nombrePareja': _controllers['nombrePareja']!.text,
+      'ocupaciones': _ocupacionesSeleccionadas,
+      'descripcionOcupaciones': _controllers['descripcionOcupaciones']!.text,
+      'tieneHijos': _tieneHijos,
+      'referenciaInvitacion': _controllers['referenciaInvitacion']!.text,
+      'observaciones': _controllers['observaciones']!.text,
+      'tribuAsignada': widget.tribuId,
+      'nombreTribu': widget.nombreTribu,
+      'ministerioAsignado': widget.ministerioAsignado,
+      'coordinadorAsignado': widget.coordinadorId,
+      'fechaRegistro': FieldValue.serverTimestamp(),
+      'fechaAsignacionCoordinador': FieldValue.serverTimestamp(),
+      'activo': true,
+      'tribuId': widget.tribuId,
+      'categoria': widget.categoriaTribu,
+      'estadoProceso': _controllers['estadoProceso']!.text,
+    };
+
+    if (!mounted) return;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (loadingContext) => WillPopScope(
+        onWillPop: () async => false,
+        child: Center(
+          child: Container(
+            padding: EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: widget.primaryTeal.withOpacity(0.3),
+                  blurRadius: 20,
+                  offset: Offset(0, 10),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: widget.primaryTeal.withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: CircularProgressIndicator(
+                    color: widget.primaryTeal,
+                    strokeWidth: 3,
+                  ),
+                ),
+                SizedBox(height: 20),
+                Text(
+                  'Guardando registro...',
+                  style: TextStyle(
+                    color: widget.primaryTeal,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  'Por favor espera',
+                  style: TextStyle(
+                    color: widget.accentGrey,
+                    fontSize: 13,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    try {
+      await FirebaseFirestore.instance.collection('registros').add(registro);
+
+      if (!mounted) return;
+      Navigator.of(context, rootNavigator: true).pop();
+      await Future.delayed(Duration(milliseconds: 150));
+
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      await Future.delayed(Duration(milliseconds: 100));
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Container(
+                padding: EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.check_circle, color: Colors.white, size: 20),
+              ),
+              SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      '¡Registro exitoso!',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                      ),
+                    ),
+                    Text(
+                      'El miembro ha sido registrado correctamente',
+                      style: TextStyle(fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.green,
+          behavior: SnackBarBehavior.floating,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          margin: EdgeInsets.all(16),
+          duration: Duration(seconds: 3),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.of(context, rootNavigator: true).pop();
+      await Future.delayed(Duration(milliseconds: 100));
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.error_outline, color: Colors.white),
+              SizedBox(width: 12),
+              Expanded(child: Text('Error al guardar: $e')),
+            ],
+          ),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          margin: EdgeInsets.all(16),
+          duration: Duration(seconds: 5),
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenWidth < 360;
+
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.95,
+      decoration: BoxDecoration(
+        color: widget.backgroundGrey,
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(20),
+          topRight: Radius.circular(20),
+        ),
+      ),
+      child: Column(
+        children: [
+          // Encabezado Premium
+          Container(
+            padding: EdgeInsets.all(isSmallScreen ? 14 : 16),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  widget.primaryTeal,
+                  widget.primaryTeal.withOpacity(0.85)
+                ],
+              ),
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(20),
+                topRight: Radius.circular(20),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: widget.primaryTeal.withOpacity(0.3),
+                  blurRadius: 12,
+                  offset: Offset(0, 4),
+                ),
+              ],
+            ),
+            child: SafeArea(
+              bottom: false,
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: EdgeInsets.all(isSmallScreen ? 10 : 12),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              Colors.white.withOpacity(0.3),
+                              Colors.white.withOpacity(0.1)
+                            ],
+                          ),
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.1),
+                              blurRadius: 8,
+                              offset: Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Icon(Icons.person_add_rounded,
+                            color: Colors.white, size: isSmallScreen ? 22 : 24),
+                      ),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Nuevo Miembro',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: isSmallScreen ? 17 : 19,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                            if (widget.nombreTribu.isNotEmpty)
+                              Container(
+                                margin: EdgeInsets.only(top: 4),
+                                padding: EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  widget.nombreTribu,
+                                  style: TextStyle(
+                                    color: Colors.white.withOpacity(0.95),
+                                    fontSize: isSmallScreen ? 11 : 12,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                      Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: () => Navigator.pop(context),
+                          borderRadius: BorderRadius.circular(12),
+                          child: Container(
+                            padding: EdgeInsets.all(isSmallScreen ? 6 : 8),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Icon(Icons.close_rounded,
+                                color: Colors.white,
+                                size: isSmallScreen ? 20 : 22),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 12),
+                  // Barra de progreso
+                  Container(
+                    height: 6,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        return AnimatedContainer(
+                          duration: Duration(milliseconds: 300),
+                          width: constraints.maxWidth * _calcularProgreso(),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                widget.secondaryOrange,
+                                Colors.orange.shade300
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(3),
+                            boxShadow: [
+                              BoxShadow(
+                                color: widget.secondaryOrange.withOpacity(0.5),
+                                blurRadius: 4,
+                                offset: Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  SizedBox(height: 6),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Progreso del formulario',
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.8),
+                          fontSize: isSmallScreen ? 10 : 11,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      Text(
+                        '${(_calcularProgreso() * 100).toInt()}%',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: isSmallScreen ? 11 : 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // Contenido con scroll
+          Expanded(
+            child: Form(
+              key: _formKey,
+              child: ListView(
+                controller: _scrollController,
+                padding: EdgeInsets.only(
+                  left: isSmallScreen ? 12 : 16,
+                  right: isSmallScreen ? 12 : 16,
+                  top: isSmallScreen ? 12 : 16,
+                  bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+                ),
+                children: [
+                  // Sección Personal
+                  _buildExpandableSection(
+                    title: 'Información Personal',
+                    icon: Icons.person_outline_rounded,
+                    isExpanded: _seccionPersonalExpanded,
+                    onToggle: () => setState(() =>
+                        _seccionPersonalExpanded = !_seccionPersonalExpanded),
+                    children: [
+                      _buildTextField('Nombre', Icons.badge_rounded, 'nombre'),
+                      _buildTextField(
+                          'Apellido', Icons.person_outline_rounded, 'apellido'),
+                      _buildTextField(
+                          'Teléfono', Icons.phone_rounded, 'telefono',
+                          keyboardType: TextInputType.phone),
+                      _buildEnhancedDropdown('Sexo', ['Masculino', 'Femenino'],
+                          _sexo, (value) => setState(() => _sexo = value)),
+                      _buildTextField('Edad', Icons.cake_rounded, 'edad',
+                          keyboardType: TextInputType.number),
+                    ],
+                  ),
+
+                  SizedBox(height: isSmallScreen ? 12 : 16),
+
+                  // Sección Ubicación
+                  _buildExpandableSection(
+                    title: 'Ubicación',
+                    icon: Icons.location_on_rounded,
+                    isExpanded: _seccionUbicacionExpanded,
+                    onToggle: () => setState(() =>
+                        _seccionUbicacionExpanded = !_seccionUbicacionExpanded),
+                    children: [
+                      _buildTextField(
+                          'Dirección', Icons.home_rounded, 'direccion'),
+                      _buildTextField(
+                          'Barrio', Icons.location_city_rounded, 'barrio'),
+                    ],
+                  ),
+
+                  SizedBox(height: isSmallScreen ? 12 : 16),
+
+                  // Sección Familia
+                  _buildExpandableSection(
+                    title: 'Estado Civil y Familia',
+                    icon: Icons.family_restroom_rounded,
+                    isExpanded: _seccionFamiliaExpanded,
+                    onToggle: () => setState(() =>
+                        _seccionFamiliaExpanded = !_seccionFamiliaExpanded),
+                    children: [
+                      _buildEnhancedDropdown(
+                          'Estado Civil',
+                          _estadosCiviles,
+                          _estadoCivil,
+                          (value) => setState(() => _estadoCivil = value)),
+                      if (_estadoCivil == 'Casado(a)' ||
+                          _estadoCivil == 'Unión Libre')
+                        _buildTextField('Nombre de Pareja',
+                            Icons.favorite_rounded, 'nombrePareja'),
+                      _buildEnhancedDropdown(
+                        'Tiene Hijos',
+                        ['Sí', 'No'],
+                        _tieneHijos == null
+                            ? null
+                            : (_tieneHijos! ? 'Sí' : 'No'),
+                        (value) =>
+                            setState(() => _tieneHijos = (value == 'Sí')),
+                      ),
+                    ],
+                  ),
+
+                  SizedBox(height: isSmallScreen ? 12 : 16),
+
+                  // Sección Ocupación
+                  _buildExpandableSection(
+                    title: 'Ocupación',
+                    icon: Icons.work_rounded,
+                    isExpanded: _seccionOcupacionExpanded,
+                    onToggle: () => setState(() =>
+                        _seccionOcupacionExpanded = !_seccionOcupacionExpanded),
+                    children: [
+                      _buildOcupacionesChips(),
+                      if (_ocupacionesSeleccionadas.isNotEmpty)
+                        _buildTextField('Descripción',
+                            Icons.description_rounded, 'descripcionOcupaciones',
+                            isRequired: false),
+                    ],
+                  ),
+
+                  SizedBox(height: isSmallScreen ? 12 : 16),
+
+                  // Sección Ministerial
+                  _buildExpandableSection(
+                    title: 'Información Ministerial',
+                    icon: Icons.groups_rounded,
+                    isExpanded: _seccionMinisterialExpanded,
+                    onToggle: () => setState(() => _seccionMinisterialExpanded =
+                        !_seccionMinisterialExpanded),
+                    children: [
+                      _buildTextField('Referencia de Invitación',
+                          Icons.link_rounded, 'referenciaInvitacion'),
+                      _buildTextField(
+                          'Observaciones', Icons.note_rounded, 'observaciones',
+                          isRequired: false, maxLines: 3),
+                      _buildEstadoProcesoField(),
+                      _buildEnhancedDateField(),
+                    ],
+                  ),
+
+                  SizedBox(height: isSmallScreen ? 16 : 20),
+
+                  // Info Card
+                  Container(
+                    padding: EdgeInsets.all(isSmallScreen ? 12 : 14),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          widget.primaryTeal.withOpacity(0.08),
+                          widget.primaryTeal.withOpacity(0.05),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: widget.primaryTeal.withOpacity(0.2),
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: widget.primaryTeal.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(
+                            Icons.info_outline_rounded,
+                            color: widget.primaryTeal,
+                            size: isSmallScreen ? 18 : 20,
+                          ),
+                        ),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'Este miembro será asignado automáticamente al coordinador.',
+                            style: TextStyle(
+                              color: widget.primaryTeal,
+                              fontSize: isSmallScreen ? 12 : 13,
+                              fontWeight: FontWeight.w500,
+                              height: 1.3,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  SizedBox(height: isSmallScreen ? 20 : 24),
+
+                  // Botones de acción
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.pop(context),
+                          style: OutlinedButton.styleFrom(
+                            padding: EdgeInsets.symmetric(
+                                vertical: isSmallScreen ? 12 : 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            side: BorderSide(
+                                color: widget.accentGrey, width: 1.5),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.close_rounded,
+                                  size: isSmallScreen ? 18 : 20),
+                              SizedBox(width: 6),
+                              Text(
+                                'Cancelar',
+                                style: TextStyle(
+                                  fontSize: isSmallScreen ? 14 : 15,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 12),
+                      Expanded(
+                        flex: 2,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                            gradient: LinearGradient(
+                              colors: [
+                                widget.secondaryOrange,
+                                widget.secondaryOrange.withOpacity(0.8),
+                              ],
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: widget.secondaryOrange.withOpacity(0.4),
+                                blurRadius: 12,
+                                offset: Offset(0, 6),
+                              ),
+                            ],
+                          ),
+                          child: ElevatedButton(
+                            onPressed: _guardarRegistro,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.transparent,
+                              foregroundColor: Colors.white,
+                              shadowColor: Colors.transparent,
+                              padding: EdgeInsets.symmetric(
+                                  vertical: isSmallScreen ? 12 : 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.check_circle_rounded,
+                                    size: isSmallScreen ? 20 : 22),
+                                SizedBox(width: 8),
+                                Text(
+                                  'Registrar',
+                                  style: TextStyle(
+                                    fontSize: isSmallScreen ? 15 : 16,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  SizedBox(height: 20),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Widget para secciones expandibles
+  Widget _buildExpandableSection({
+    required String title,
+    required IconData icon,
+    required bool isExpanded,
+    required VoidCallback onToggle,
+    required List<Widget> children,
+  }) {
+    final isSmallScreen = MediaQuery.of(context).size.width < 360;
+
+    return AnimatedContainer(
+      duration: Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isExpanded
+              ? widget.primaryTeal.withOpacity(0.3)
+              : Colors.grey.withOpacity(0.2),
+          width: isExpanded ? 2 : 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: isExpanded
+                ? widget.primaryTeal.withOpacity(0.1)
+                : Colors.black.withOpacity(0.03),
+            blurRadius: isExpanded ? 12 : 6,
+            offset: Offset(0, isExpanded ? 4 : 2),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: onToggle,
+              borderRadius: BorderRadius.vertical(
+                top: Radius.circular(16),
+                bottom: isExpanded ? Radius.zero : Radius.circular(16),
+              ),
+              child: Container(
+                padding: EdgeInsets.all(isSmallScreen ? 14 : 16),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: EdgeInsets.all(isSmallScreen ? 8 : 10),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            widget.primaryTeal.withOpacity(0.15),
+                            widget.primaryTeal.withOpacity(0.08),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(
+                        icon,
+                        color: widget.primaryTeal,
+                        size: isSmallScreen ? 20 : 22,
+                      ),
+                    ),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        title,
+                        style: TextStyle(
+                          fontSize: isSmallScreen ? 15 : 17,
+                          fontWeight: FontWeight.bold,
+                          color: widget.primaryTeal,
+                          letterSpacing: 0.3,
+                        ),
+                      ),
+                    ),
+                    AnimatedRotation(
+                      turns: isExpanded ? 0.5 : 0,
+                      duration: Duration(milliseconds: 300),
+                      child: Container(
+                        padding: EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: widget.primaryTeal.withOpacity(0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.keyboard_arrow_down_rounded,
+                          color: widget.primaryTeal,
+                          size: isSmallScreen ? 20 : 22,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          if (isExpanded)
+            Container(
+              padding: EdgeInsets.fromLTRB(
+                isSmallScreen ? 12 : 16,
+                0,
+                isSmallScreen ? 12 : 16,
+                isSmallScreen ? 12 : 16,
+              ),
+              child: Column(
+                children: children,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  // TextField mejorado
+  Widget _buildTextField(
+    String label,
+    IconData icon,
+    String field, {
+    bool isRequired = true,
+    TextInputType keyboardType = TextInputType.text,
+    int maxLines = 1,
+  }) {
+    final isSmallScreen = MediaQuery.of(context).size.width < 360;
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: isSmallScreen ? 14 : 16),
+      child: TextFormField(
+        controller: _controllers[field],
+        focusNode: _focusNodes[field],
+        keyboardType: keyboardType,
+        maxLines: maxLines,
+        textInputAction: TextInputAction.next,
+        onChanged: (_) => setState(() {}),
+        validator: isRequired
+            ? (value) =>
+                value == null || value.isEmpty ? 'Campo obligatorio' : null
+            : null,
+        style: TextStyle(fontSize: isSmallScreen ? 14 : 15),
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: TextStyle(
+            color: widget.primaryTeal.withOpacity(0.7),
+            fontWeight: FontWeight.w500,
+            fontSize: isSmallScreen ? 13 : 14,
+          ),
+          prefixIcon: Container(
+            margin: EdgeInsets.all(isSmallScreen ? 10 : 12),
+            padding: EdgeInsets.all(isSmallScreen ? 6 : 8),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  widget.primaryTeal.withOpacity(0.15),
+                  widget.primaryTeal.withOpacity(0.08),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon,
+                color: widget.primaryTeal, size: isSmallScreen ? 18 : 20),
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Colors.grey.withOpacity(0.3)),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Colors.grey.withOpacity(0.3)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: widget.primaryTeal, width: 2),
+          ),
+          errorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Colors.red.shade300, width: 1.5),
+          ),
+          focusedErrorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Colors.red, width: 2),
+          ),
+          filled: true,
+          fillColor: Colors.grey.shade50,
+          contentPadding: EdgeInsets.symmetric(
+            horizontal: isSmallScreen ? 14 : 16,
+            vertical: isSmallScreen ? 14 : 16,
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Dropdown mejorado
+  Widget _buildEnhancedDropdown(
+    String label,
+    List<String> items,
+    String? value,
+    Function(String?) onChanged,
+  ) {
+    final isSmallScreen = MediaQuery.of(context).size.width < 360;
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: isSmallScreen ? 14 : 16),
+      child: DropdownButtonFormField<String>(
+        value: value,
+        hint: Text(
+          'Seleccionar $label',
+          style: TextStyle(
+            color: Colors.grey.shade500,
+            fontSize: isSmallScreen ? 13 : 14,
+          ),
+        ),
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: TextStyle(
+            color: widget.primaryTeal.withOpacity(0.7),
+            fontWeight: FontWeight.w500,
+            fontSize: isSmallScreen ? 13 : 14,
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Colors.grey.withOpacity(0.3)),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Colors.grey.withOpacity(0.3)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: widget.primaryTeal, width: 2),
+          ),
+          errorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Colors.red.shade300, width: 1.5),
+          ),
+          filled: true,
+          fillColor: Colors.grey.shade50,
+          contentPadding: EdgeInsets.symmetric(
+            horizontal: isSmallScreen ? 14 : 16,
+            vertical: isSmallScreen ? 14 : 16,
+          ),
+        ),
+        items: items.map((item) {
+          return DropdownMenuItem(
+            value: item,
+            child: Text(
+              item,
+              style: TextStyle(fontSize: isSmallScreen ? 14 : 15),
+            ),
+          );
+        }).toList(),
+        onChanged: (newValue) {
+          onChanged(newValue);
+          setState(() {});
+        },
+        validator: (value) => value == null ? 'Campo obligatorio' : null,
+        icon: Icon(Icons.arrow_drop_down_rounded,
+            color: widget.primaryTeal, size: isSmallScreen ? 24 : 26),
+        dropdownColor: Colors.white,
+        isExpanded: true,
+      ),
+    );
+  }
+
+  // Chips de ocupaciones mejorados
+  Widget _buildOcupacionesChips() {
+    final isSmallScreen = MediaQuery.of(context).size.width < 360;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: EdgeInsets.only(bottom: 10),
+          child: Row(
+            children: [
+              Icon(Icons.work_outline_rounded,
+                  color: widget.primaryTeal, size: isSmallScreen ? 16 : 18),
+              SizedBox(width: 8),
+              Text(
+                'Selecciona ocupaciones',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: widget.primaryTeal,
+                  fontSize: isSmallScreen ? 13 : 14,
+                ),
+              ),
+            ],
+          ),
+        ),
+        Wrap(
+          spacing: isSmallScreen ? 6 : 8,
+          runSpacing: isSmallScreen ? 6 : 8,
+          children: _ocupaciones.map((ocupacion) {
+            final isSelected = _ocupacionesSeleccionadas.contains(ocupacion);
+            return AnimatedContainer(
+              duration: Duration(milliseconds: 200),
+              child: FilterChip(
+                label: Text(
+                  ocupacion,
+                  style: TextStyle(fontSize: isSmallScreen ? 12 : 13),
+                ),
+                selected: isSelected,
+                onSelected: (selected) {
+                  setState(() {
+                    if (selected) {
+                      _ocupacionesSeleccionadas.add(ocupacion);
+                    } else {
+                      _ocupacionesSeleccionadas.remove(ocupacion);
+                    }
+                  });
+                },
+                selectedColor: widget.primaryTeal.withOpacity(0.2),
+                backgroundColor: Colors.white,
+                checkmarkColor: widget.primaryTeal,
+                side: BorderSide(
+                  color: isSelected
+                      ? widget.primaryTeal
+                      : Colors.grey.withOpacity(0.3),
+                  width: isSelected ? 2 : 1,
+                ),
+                labelStyle: TextStyle(
+                  color: isSelected ? widget.primaryTeal : Colors.grey.shade700,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                ),
+                padding: EdgeInsets.symmetric(
+                  horizontal: isSmallScreen ? 10 : 12,
+                  vertical: isSmallScreen ? 6 : 8,
+                ),
+                elevation: isSelected ? 2 : 0,
+                pressElevation: 4,
+              ),
+            );
+          }).toList(),
+        ),
+        SizedBox(height: isSmallScreen ? 12 : 16),
+      ],
+    );
+  }
+
+  // Campo de Estado del Proceso mejorado
+  Widget _buildEstadoProcesoField() {
+    final isSmallScreen = MediaQuery.of(context).size.width < 360;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildTextField(
+            'Estado del Proceso', Icons.track_changes_rounded, 'estadoProceso',
+            isRequired: false),
+        Container(
+          padding: EdgeInsets.all(isSmallScreen ? 12 : 14),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                widget.primaryTeal.withOpacity(0.05),
+                widget.primaryTeal.withOpacity(0.02),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: widget.primaryTeal.withOpacity(0.15),
+              width: 1,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.touch_app_rounded,
+                      color: widget.primaryTeal, size: isSmallScreen ? 16 : 18),
+                  SizedBox(width: 8),
+                  Text(
+                    'Opciones rápidas',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: widget.primaryTeal,
+                      fontSize: isSmallScreen ? 13 : 14,
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 10),
+              Wrap(
+                spacing: isSmallScreen ? 6 : 8,
+                runSpacing: isSmallScreen ? 6 : 8,
+                children: _estadosProceso.map((estado) {
+                  final isSelected =
+                      _controllers['estadoProceso']!.text == estado;
+                  return AnimatedContainer(
+                    duration: Duration(milliseconds: 200),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () {
+                          setState(() {
+                            _controllers['estadoProceso']!.text = estado;
+                          });
+                          HapticFeedback.lightImpact();
+                        },
+                        borderRadius: BorderRadius.circular(10),
+                        child: Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: isSmallScreen ? 12 : 14,
+                            vertical: isSmallScreen ? 8 : 10,
+                          ),
+                          decoration: BoxDecoration(
+                            gradient: isSelected
+                                ? LinearGradient(
+                                    colors: [
+                                      widget.primaryTeal,
+                                      widget.primaryTeal.withOpacity(0.8),
+                                    ],
+                                  )
+                                : null,
+                            color: isSelected ? null : Colors.white,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: isSelected
+                                  ? widget.primaryTeal
+                                  : Colors.grey.withOpacity(0.3),
+                              width: isSelected ? 2 : 1,
+                            ),
+                            boxShadow: isSelected
+                                ? [
+                                    BoxShadow(
+                                      color:
+                                          widget.primaryTeal.withOpacity(0.3),
+                                      blurRadius: 8,
+                                      offset: Offset(0, 4),
+                                    ),
+                                  ]
+                                : null,
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (isSelected)
+                                Padding(
+                                  padding: EdgeInsets.only(right: 6),
+                                  child: Icon(
+                                    Icons.check_circle_rounded,
+                                    color: Colors.white,
+                                    size: isSmallScreen ? 14 : 16,
+                                  ),
+                                ),
+                              Text(
+                                estado,
+                                style: TextStyle(
+                                  color: isSelected
+                                      ? Colors.white
+                                      : Colors.grey.shade700,
+                                  fontWeight: isSelected
+                                      ? FontWeight.bold
+                                      : FontWeight.w500,
+                                  fontSize: isSmallScreen ? 12 : 13,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ],
+          ),
+        ),
+        SizedBox(height: isSmallScreen ? 14 : 16),
+      ],
+    );
+  }
+
+  // Campo de fecha mejorado
+  Widget _buildEnhancedDateField() {
+    final isSmallScreen = MediaQuery.of(context).size.width < 360;
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: isSmallScreen ? 14 : 16),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () async {
+            final picked = await showDatePicker(
+              context: context,
+              initialDate: _fechaAsignacionTribu ?? DateTime.now(),
+              firstDate: DateTime(2000),
+              lastDate: DateTime(2101),
+              builder: (context, child) {
+                return Theme(
+                  data: Theme.of(context).copyWith(
+                    colorScheme: ColorScheme.light(
+                      primary: widget.primaryTeal,
+                      onPrimary: Colors.white,
+                      surface: Colors.white,
+                      onSurface: Colors.black87,
+                    ),
+                    dialogBackgroundColor: Colors.white,
+                  ),
+                  child: child!,
+                );
+              },
+            );
+            if (picked != null) {
+              setState(() => _fechaAsignacionTribu = picked);
+            }
+          },
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            padding: EdgeInsets.all(isSmallScreen ? 14 : 16),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade50,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: _fechaAsignacionTribu != null
+                    ? widget.primaryTeal.withOpacity(0.5)
+                    : Colors.grey.withOpacity(0.3),
+                width: _fechaAsignacionTribu != null ? 2 : 1,
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(isSmallScreen ? 8 : 10),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        widget.secondaryOrange.withOpacity(0.15),
+                        widget.secondaryOrange.withOpacity(0.08),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    Icons.calendar_today_rounded,
+                    color: widget.secondaryOrange,
+                    size: isSmallScreen ? 20 : 22,
+                  ),
+                ),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Fecha de Asignación de Tribu',
+                        style: TextStyle(
+                          color: widget.primaryTeal.withOpacity(0.7),
+                          fontSize: isSmallScreen ? 12 : 13,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        _fechaAsignacionTribu != null
+                            ? DateFormat('dd/MM/yyyy')
+                                .format(_fechaAsignacionTribu!)
+                            : 'Seleccionar fecha',
+                        style: TextStyle(
+                          color: _fechaAsignacionTribu != null
+                              ? Colors.black87
+                              : Colors.grey.shade500,
+                          fontSize: isSmallScreen ? 15 : 16,
+                          fontWeight: _fechaAsignacionTribu != null
+                              ? FontWeight.w600
+                              : FontWeight.normal,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: widget.secondaryOrange.withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.arrow_forward_ios_rounded,
+                    color: widget.secondaryOrange,
+                    size: isSmallScreen ? 14 : 16,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
