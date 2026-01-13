@@ -7766,456 +7766,886 @@ class _AdminPanelState extends State<AdminPanel>
   Widget _buildPerfilesSocialesTab() {
     const Color primaryTeal = Color(0xFF038C7F);
 
-    return SingleChildScrollView(
-      child: FadeTransition(
-        opacity: _fadeAnimation,
-        child: Column(
-          children: [
-            Card(
-              margin: const EdgeInsets.all(16),
-              elevation: 8,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(20),
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [Colors.white, primaryTeal.withOpacity(0.1)],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isSmallScreen = constraints.maxWidth < 600;
+        final isMediumScreen =
+            constraints.maxWidth >= 600 && constraints.maxWidth < 900;
+
+        return SingleChildScrollView(
+          child: FadeTransition(
+            opacity: _fadeAnimation,
+            child: Column(
+              children: [
+                // Card de Filtro por Fecha - MEJORADO
+                Card(
+                  margin: EdgeInsets.all(isSmallScreen ? 12 : 16),
+                  elevation: 8,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
                   ),
-                ),
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(Icons.date_range,
-                            size: 28, color: secondaryOrange),
-                        const SizedBox(width: 12),
-                        Text(
-                          'Filtrar por Fecha',
-                          style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: primaryTeal,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-                    _buildDateRangeSelector(),
-                  ],
-                ),
-              ),
-            ),
-            StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance
-                  .collection('social_profiles')
-                  .snapshots(),
-              builder: (context, snapshot) {
-                if (!snapshot.hasData) {
-                  return const Center(
-                    child: CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(primaryTeal),
-                    ),
-                  );
-                }
-
-                List<SocialProfile> allPerfiles =
-                    snapshot.data!.docs.map((doc) {
-                  return SocialProfile.fromMap(
-                      doc.data() as Map<String, dynamic>, doc.id);
-                }).toList();
-
-                // Filter perfiles based on date range if selected
-                List<SocialProfile> filteredPerfiles = allPerfiles;
-                if (_startDate != null && _endDate != null) {
-                  filteredPerfiles = allPerfiles.where((perfil) {
-                    DateTime createdAt = perfil.createdAt;
-                    return createdAt.isAfter(
-                            _startDate!.subtract(const Duration(seconds: 1))) &&
-                        createdAt.isBefore(
-                            _endDate!.add(const Duration(seconds: 1)));
-                  }).toList();
-                }
-
-                if (filteredPerfiles.isEmpty) {
-                  return Card(
-                    margin: const EdgeInsets.all(16),
-                    elevation: 4,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(15),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Column(
-                        children: [
-                          Icon(
-                            Icons.search_off,
-                            size: 48,
-                            color: secondaryOrange.withOpacity(0.7),
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            _startDate != null && _endDate != null
-                                ? 'No hay perfiles sociales para el rango de fechas seleccionado'
-                                : 'No hay perfiles sociales disponibles',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: 18,
-                              color: Colors.grey[700],
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(20),
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [Colors.white, primaryTeal.withOpacity(0.08)],
                       ),
                     ),
-                  );
-                }
+                    padding: EdgeInsets.all(isSmallScreen ? 16 : 20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: EdgeInsets.all(isSmallScreen ? 8 : 10),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    secondaryOrange,
+                                    secondaryOrange.withOpacity(0.7)
+                                  ],
+                                ),
+                                borderRadius: BorderRadius.circular(12),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: secondaryOrange.withOpacity(0.3),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 3),
+                                  ),
+                                ],
+                              ),
+                              child: Icon(
+                                Icons.date_range_rounded,
+                                size: isSmallScreen ? 22 : 28,
+                                color: Colors.white,
+                              ),
+                            ),
+                            SizedBox(width: isSmallScreen ? 10 : 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Filtrar por Fecha',
+                                    style: TextStyle(
+                                      fontSize: isSmallScreen ? 18 : 24,
+                                      fontWeight: FontWeight.bold,
+                                      color: primaryTeal,
+                                    ),
+                                  ),
+                                  if (_startDate != null && _endDate != null)
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 4),
+                                      child: Text(
+                                        '${DateFormat('dd/MM/yyyy').format(_startDate!)} - ${DateFormat('dd/MM/yyyy').format(_endDate!)}',
+                                        style: TextStyle(
+                                          fontSize: isSmallScreen ? 11 : 13,
+                                          color: Colors.grey[600],
+                                          fontStyle: FontStyle.italic,
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: isSmallScreen ? 16 : 20),
+                        _buildDateRangeSelector(),
+                      ],
+                    ),
+                  ),
+                ),
 
-                // Agrupar perfiles por año, mes, semana y día
-                Map<int, Map<int, Map<int, Map<String, List<SocialProfile>>>>>
-                    groupedPerfiles = {};
+                // StreamBuilder con diseño mejorado
+                StreamBuilder<QuerySnapshot>(
+                  stream: FirebaseFirestore.instance
+                      .collection('social_profiles')
+                      .snapshots(),
+                  builder: (context, snapshot) {
+                    if (!snapshot.hasData) {
+                      return Container(
+                        height: 200,
+                        child: Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              CircularProgressIndicator(
+                                valueColor:
+                                    AlwaysStoppedAnimation<Color>(primaryTeal),
+                                strokeWidth: 3,
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                'Cargando perfiles...',
+                                style: TextStyle(
+                                  color: primaryTeal,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }
 
-                // Obtener los años únicos para inicializar
-                Set<int> years = {};
+                    List<SocialProfile> allPerfiles =
+                        snapshot.data!.docs.map((doc) {
+                      return SocialProfile.fromMap(
+                          doc.data() as Map<String, dynamic>, doc.id);
+                    }).toList();
 
-                for (var perfil in filteredPerfiles) {
-                  final DateTime date = perfil.createdAt;
-                  final int year = date.year;
-                  final int month = date.month;
-                  final int weekNumber = _getWeekNumber(date);
-                  final String weekday = _getWeekdayName(date.weekday);
+                    // Filtrar por rango de fechas si está seleccionado
+                    List<SocialProfile> filteredPerfiles = allPerfiles;
+                    if (_startDate != null && _endDate != null) {
+                      filteredPerfiles = allPerfiles.where((perfil) {
+                        DateTime createdAt = perfil.createdAt;
+                        return createdAt.isAfter(_startDate!
+                                .subtract(const Duration(seconds: 1))) &&
+                            createdAt.isBefore(
+                                _endDate!.add(const Duration(seconds: 1)));
+                      }).toList();
+                    }
 
-                  years.add(year);
+                    if (filteredPerfiles.isEmpty) {
+                      return Card(
+                        margin: EdgeInsets.all(isSmallScreen ? 12 : 16),
+                        elevation: 4,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Container(
+                          padding: EdgeInsets.all(isSmallScreen ? 20 : 32),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                padding:
+                                    EdgeInsets.all(isSmallScreen ? 16 : 20),
+                                decoration: BoxDecoration(
+                                  color: secondaryOrange.withOpacity(0.1),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  Icons.search_off_rounded,
+                                  size: isSmallScreen ? 40 : 56,
+                                  color: secondaryOrange.withOpacity(0.7),
+                                ),
+                              ),
+                              SizedBox(height: isSmallScreen ? 16 : 20),
+                              Text(
+                                _startDate != null && _endDate != null
+                                    ? 'No hay perfiles sociales en el rango seleccionado'
+                                    : 'No hay perfiles sociales disponibles',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: isSmallScreen ? 15 : 18,
+                                  color: Colors.grey[700],
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              if (_startDate != null && _endDate != null) ...[
+                                const SizedBox(height: 12),
+                                TextButton.icon(
+                                  onPressed: () {
+                                    setState(() {
+                                      _startDate = null;
+                                      _endDate = null;
+                                    });
+                                  },
+                                  icon: const Icon(Icons.clear_all),
+                                  label: const Text('Limpiar filtro'),
+                                  style: TextButton.styleFrom(
+                                    foregroundColor: primaryTeal,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      );
+                    }
 
-                  // Inicializar estructuras anidadas si no existen
-                  groupedPerfiles[year] ??= {};
-                  groupedPerfiles[year]![month] ??= {};
-                  groupedPerfiles[year]![month]![weekNumber] ??= {};
-                  groupedPerfiles[year]![month]![weekNumber]![weekday] ??= [];
+                    // Agrupar perfiles por año, mes y semana
+                    Map<int, Map<int, Map<int, List<SocialProfile>>>>
+                        groupedPerfiles = {};
+                    Set<int> years = {};
 
-                  // Agregar perfil al grupo correspondiente
-                  groupedPerfiles[year]![month]![weekNumber]![weekday]!
-                      .add(perfil);
-                }
+                    for (var perfil in filteredPerfiles) {
+                      final DateTime date = perfil.createdAt;
+                      final int year = date.year;
+                      final int month = date.month;
+                      final int weekNumber = _getWeekNumber(date);
 
-                // Convertir a lista ordenada por año
-                List<int> orderedYears = years.toList()
-                  ..sort((a, b) => b.compareTo(a)); // Orden descendente
+                      years.add(year);
+                      groupedPerfiles[year] ??= {};
+                      groupedPerfiles[year]![month] ??= {};
+                      groupedPerfiles[year]![month]![weekNumber] ??= [];
+                      groupedPerfiles[year]![month]![weekNumber]!.add(perfil);
+                    }
 
-                return _buildGroupedPerfilesView(
-                  context,
-                  groupedPerfiles,
-                  orderedYears,
-                  primaryTeal,
-                  secondaryOrange,
-                );
-              },
+                    List<int> orderedYears = years.toList()
+                      ..sort((a, b) => b.compareTo(a));
+
+                    return _buildGroupedPerfilesView(
+                      context,
+                      groupedPerfiles,
+                      orderedYears,
+                      primaryTeal,
+                      secondaryOrange,
+                      isSmallScreen,
+                      isMediumScreen,
+                    );
+                  },
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
   Widget _buildGroupedPerfilesView(
     BuildContext context,
-    Map<int, Map<int, Map<int, Map<String, List<SocialProfile>>>>>
-        groupedPerfiles,
+    Map<int, Map<int, Map<int, List<SocialProfile>>>> groupedPerfiles,
     List<int> years,
     Color primaryTeal,
     Color secondaryOrange,
+    bool isSmallScreen,
+    bool isMediumScreen,
   ) {
     return Column(
       children: years.map((year) {
-        return _buildYearGroup(context, year, groupedPerfiles[year]!,
-            primaryTeal, secondaryOrange);
-      }).toList(),
-    );
-  }
-
-  Widget _buildYearGroup(
-    BuildContext context,
-    int year,
-    Map<int, Map<int, Map<String, List<SocialProfile>>>> yearData,
-    Color primaryTeal,
-    Color secondaryOrange,
-  ) {
-    // Calcular el total de perfiles en este año
-    int totalProfilesInYear = 0;
-    yearData.forEach((month, monthData) {
-      monthData.forEach((week, weekData) {
-        weekData.forEach((day, profiles) {
-          totalProfilesInYear += profiles.length;
-        });
-      });
-    });
-
-    // Obtener los meses en orden cronológico
-    List<int> months = yearData.keys.toList()..sort();
-
-    return ExpansionCard(
-      title: 'Año $year',
-      subtitle: '$totalProfilesInYear perfiles',
-      icon: Icons.calendar_today_rounded,
-      iconColor: secondaryOrange,
-      textColor: primaryTeal,
-      expandedColor: primaryTeal.withOpacity(0.1),
-      children: months.map((month) {
-        return _buildMonthGroup(
+        return _buildYearGroupModern(
           context,
-          month,
           year,
-          yearData[month]!,
+          groupedPerfiles[year]!,
           primaryTeal,
           secondaryOrange,
+          isSmallScreen,
+          isMediumScreen,
         );
       }).toList(),
     );
   }
 
-  Widget _buildMonthGroup(
+// ============================================================================
+// REEMPLAZAR EL MÉTODO _buildYearGroup() COMPLETO
+// Ubicación: Línea aproximada 2760
+// ============================================================================
+
+  Widget _buildYearGroupModern(
     BuildContext context,
-    int month,
     int year,
-    Map<int, Map<String, List<SocialProfile>>> monthData,
+    Map<int, Map<int, List<SocialProfile>>> yearData,
     Color primaryTeal,
     Color secondaryOrange,
+    bool isSmallScreen,
+    bool isMediumScreen,
   ) {
-    // Calcular el total de perfiles en este mes
-    int totalProfilesInMonth = 0;
-    monthData.forEach((week, weekData) {
-      weekData.forEach((day, profiles) {
-        totalProfilesInMonth += profiles.length;
+    int totalProfilesInYear = 0;
+    yearData.forEach((month, monthData) {
+      monthData.forEach((week, profiles) {
+        totalProfilesInYear += profiles.length;
       });
     });
 
-    // Obtener las semanas en orden cronológico
-    List<int> weeks = monthData.keys.toList()..sort();
+    List<int> months = yearData.keys.toList()..sort();
 
-    return Padding(
-      padding: const EdgeInsets.only(left: 16.0),
-      child: ExpansionCard(
-        title: _getMonthName(month),
-        subtitle: '$totalProfilesInMonth perfiles',
-        icon: Icons.event,
-        iconColor: secondaryOrange,
-        textColor: primaryTeal,
-        expandedColor: primaryTeal.withOpacity(0.05),
-        children: weeks.map((week) {
-          return _buildWeekGroup(
-            context,
-            week,
-            month,
-            year,
-            monthData[week]!,
-            primaryTeal,
-            secondaryOrange,
-          );
-        }).toList(),
+    return Card(
+      margin: EdgeInsets.symmetric(
+        horizontal: isSmallScreen ? 8 : 16,
+        vertical: isSmallScreen ? 6 : 8,
+      ),
+      elevation: 6,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          tilePadding: EdgeInsets.symmetric(
+            horizontal: isSmallScreen ? 12 : 16,
+            vertical: isSmallScreen ? 8 : 12,
+          ),
+          leading: Container(
+            padding: EdgeInsets.all(isSmallScreen ? 10 : 12),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [secondaryOrange, secondaryOrange.withOpacity(0.7)],
+              ),
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: secondaryOrange.withOpacity(0.3),
+                  blurRadius: 6,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            child: Icon(
+              Icons.calendar_today_rounded,
+              color: Colors.white,
+              size: isSmallScreen ? 20 : 24,
+            ),
+          ),
+          title: Text(
+            'Año $year',
+            style: TextStyle(
+              fontSize: isSmallScreen ? 16 : 20,
+              fontWeight: FontWeight.bold,
+              color: primaryTeal,
+            ),
+          ),
+          subtitle: Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.people_rounded,
+                  size: isSmallScreen ? 14 : 16,
+                  color: secondaryOrange,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  '$totalProfilesInYear perfiles registrados',
+                  style: TextStyle(
+                    fontSize: isSmallScreen ? 12 : 14,
+                    color: Colors.grey[600],
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          children: months.map((month) {
+            return _buildMonthGroupModern(
+              context,
+              month,
+              year,
+              yearData[month]!,
+              primaryTeal,
+              secondaryOrange,
+              isSmallScreen,
+              isMediumScreen,
+            );
+          }).toList(),
+        ),
       ),
     );
   }
 
-  Widget _buildWeekGroup(
+// ============================================================================
+// REEMPLAZAR EL MÉTODO _buildMonthGroup() COMPLETO
+// Ubicación: Línea aproximada 2790
+// ============================================================================
+
+  Widget _buildMonthGroupModern(
+    BuildContext context,
+    int month,
+    int year,
+    Map<int, List<SocialProfile>> monthData,
+    Color primaryTeal,
+    Color secondaryOrange,
+    bool isSmallScreen,
+    bool isMediumScreen,
+  ) {
+    int totalProfilesInMonth = 0;
+    monthData.forEach((week, profiles) {
+      totalProfilesInMonth += profiles.length;
+    });
+
+    List<int> weeks = monthData.keys.toList()..sort();
+
+    return Container(
+      margin: EdgeInsets.symmetric(
+        horizontal: isSmallScreen ? 8 : 16,
+        vertical: isSmallScreen ? 4 : 6,
+      ),
+      child: Card(
+        elevation: 3,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Theme(
+          data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+          child: ExpansionTile(
+            tilePadding: EdgeInsets.symmetric(
+              horizontal: isSmallScreen ? 10 : 14,
+              vertical: isSmallScreen ? 6 : 8,
+            ),
+            leading: Container(
+              padding: EdgeInsets.all(isSmallScreen ? 8 : 10),
+              decoration: BoxDecoration(
+                color: primaryTeal.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: primaryTeal.withOpacity(0.3),
+                  width: 1.5,
+                ),
+              ),
+              child: Icon(
+                Icons.event_rounded,
+                color: primaryTeal,
+                size: isSmallScreen ? 18 : 22,
+              ),
+            ),
+            title: Text(
+              _getMonthName(month),
+              style: TextStyle(
+                fontSize: isSmallScreen ? 15 : 18,
+                fontWeight: FontWeight.bold,
+                color: primaryTeal,
+              ),
+            ),
+            subtitle: Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(
+                '$totalProfilesInMonth perfiles',
+                style: TextStyle(
+                  fontSize: isSmallScreen ? 11 : 13,
+                  color: Colors.grey[600],
+                ),
+              ),
+            ),
+            children: weeks.map((week) {
+              return _buildWeekGroupModern(
+                context,
+                week,
+                month,
+                year,
+                monthData[week]!,
+                primaryTeal,
+                secondaryOrange,
+                isSmallScreen,
+                isMediumScreen,
+              );
+            }).toList(),
+          ),
+        ),
+      ),
+    );
+  }
+
+// ============================================================================
+// REEMPLAZAR EL MÉTODO _buildWeekGroup() COMPLETO
+// Ubicación: Línea aproximada 2820
+// ============================================================================
+
+  Widget _buildWeekGroupModern(
     BuildContext context,
     int week,
     int month,
     int year,
-    Map<String, List<SocialProfile>> weekData,
+    List<SocialProfile> profiles,
     Color primaryTeal,
     Color secondaryOrange,
+    bool isSmallScreen,
+    bool isMediumScreen,
   ) {
-    // Calcular el total de perfiles en esta semana
-    int totalProfilesInWeek = 0;
-    weekData.forEach((day, profiles) {
-      totalProfilesInWeek += profiles.length;
-    });
-
-    // Ordenar los días según el orden de la semana (lunes a domingo)
-    List<String> weekdayOrder = [
-      'Lunes',
-      'Martes',
-      'Miércoles',
-      'Jueves',
-      'Viernes',
-      'Sábado',
-      'Domingo'
-    ];
-    List<String> days = weekData.keys.toList()
-      ..sort(
-          (a, b) => weekdayOrder.indexOf(a).compareTo(weekdayOrder.indexOf(b)));
-
     DateTime startDate = _getFirstDayOfWeek(year, month, week);
     DateTime endDate = startDate.add(const Duration(days: 6));
 
-    return Padding(
-      padding: const EdgeInsets.only(left: 16.0),
-      child: ExpansionCard(
-        title: 'Semana $week',
-        subtitle:
-            '$totalProfilesInWeek perfiles · ${DateFormat('dd/MM').format(startDate)} - ${DateFormat('dd/MM').format(endDate)}',
-        icon: Icons.view_week_rounded,
-        iconColor: secondaryOrange,
-        textColor: primaryTeal,
-        expandedColor: primaryTeal.withOpacity(0.02),
-        children: days.map((day) {
-          return _buildDayGroup(
-            context,
-            day,
-            weekData[day]!,
-            primaryTeal,
-            secondaryOrange,
-          );
-        }).toList(),
+    final totalProfiles = profiles.length;
+
+    return Container(
+      margin: EdgeInsets.symmetric(
+        horizontal: isSmallScreen ? 6 : 12,
+        vertical: isSmallScreen ? 4 : 6,
+      ),
+      child: Card(
+        elevation: 2,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Theme(
+          data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+          child: ExpansionTile(
+            tilePadding: EdgeInsets.symmetric(
+              horizontal: isSmallScreen ? 8 : 12,
+              vertical: isSmallScreen ? 4 : 6,
+            ),
+            leading: Container(
+              padding: EdgeInsets.all(isSmallScreen ? 6 : 8),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    secondaryOrange.withOpacity(0.2),
+                    secondaryOrange.withOpacity(0.1),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: secondaryOrange.withOpacity(0.4),
+                  width: 1.5,
+                ),
+              ),
+              child: Icon(
+                Icons.view_week_rounded,
+                color: secondaryOrange,
+                size: isSmallScreen ? 16 : 20,
+              ),
+            ),
+            title: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        week == 0 ? 'Inicio del Mes' : 'Semana $week',
+                        style: TextStyle(
+                          fontSize: isSmallScreen ? 14 : 16,
+                          fontWeight: FontWeight.bold,
+                          color: primaryTeal,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${DateFormat('dd/MM').format(startDate)} - ${DateFormat('dd/MM').format(endDate)}',
+                        style: TextStyle(
+                          fontSize: isSmallScreen ? 10 : 12,
+                          color: Colors.grey[600],
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isSmallScreen ? 8 : 10,
+                    vertical: isSmallScreen ? 4 : 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: secondaryOrange.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: secondaryOrange.withOpacity(0.3),
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.person_rounded,
+                        size: isSmallScreen ? 12 : 14,
+                        color: secondaryOrange,
+                      ),
+                      SizedBox(width: isSmallScreen ? 3 : 4),
+                      Text(
+                        '$totalProfiles',
+                        style: TextStyle(
+                          fontSize: isSmallScreen ? 11 : 13,
+                          fontWeight: FontWeight.bold,
+                          color: secondaryOrange,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            children: [
+              Container(
+                constraints: BoxConstraints(
+                  maxHeight: isSmallScreen ? 400 : 500,
+                ),
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  physics: const BouncingScrollPhysics(),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isSmallScreen ? 8 : 12,
+                    vertical: isSmallScreen ? 6 : 8,
+                  ),
+                  itemCount: profiles.length,
+                  itemBuilder: (context, index) {
+                    final perfil = profiles[index];
+                    return _buildPerfilTileModern(
+                      context,
+                      perfil,
+                      primaryTeal,
+                      secondaryOrange,
+                      isSmallScreen,
+                      isMediumScreen,
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
 
-  Widget _buildDayGroup(
+  Widget _buildPerfilTileModern(
     BuildContext context,
-    String day,
-    List<SocialProfile> profiles,
+    SocialProfile perfil,
     Color primaryTeal,
     Color secondaryOrange,
+    bool isSmallScreen,
+    bool isMediumScreen,
   ) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 16.0),
-      child: ExpansionCard(
-        title: day,
-        subtitle: '${profiles.length} perfiles',
-        icon: _getDayIcon(day),
-        iconColor: secondaryOrange,
-        textColor: primaryTeal,
-        expandedColor: Colors.transparent,
-        children: [
-          ListView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-            itemCount: profiles.length,
-            itemBuilder: (context, index) {
-              final perfil = profiles[index];
+    final perfilId = perfil.id ?? '';
 
-              // ✅ CORRECCIÓN: Usar perfil.id (que nunca será null después de fromMap)
-              final perfilId = perfil.id ?? '';
-
-              return Card(
-                margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 0),
-                elevation: 2,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: ListTile(
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  leading: CircleAvatar(
-                    radius: 22,
-                    backgroundColor: secondaryOrange.withOpacity(0.2),
-                    child: Text(
-                      perfil.name.isNotEmpty
-                          ? perfil.name[0].toUpperCase()
-                          : '?',
-                      style: TextStyle(
-                        fontSize: 18,
-                        color: secondaryOrange,
-                        fontWeight: FontWeight.bold,
+    return Card(
+      margin: EdgeInsets.symmetric(
+        vertical: isSmallScreen ? 4 : 6,
+        horizontal: 0,
+      ),
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(
+          color: primaryTeal.withOpacity(0.1),
+          width: 1,
+        ),
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () => _mostrarDetallesPerfil(context, perfil),
+        child: Padding(
+          padding: EdgeInsets.all(isSmallScreen ? 10 : 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  // Avatar
+                  Hero(
+                    tag: 'avatar_${perfil.id}',
+                    child: Container(
+                      width: isSmallScreen ? 44 : 52,
+                      height: isSmallScreen ? 44 : 52,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            secondaryOrange.withOpacity(0.8),
+                            secondaryOrange.withOpacity(0.6),
+                          ],
+                        ),
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: secondaryOrange.withOpacity(0.3),
+                            blurRadius: 8,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: Center(
+                        child: Text(
+                          perfil.name.isNotEmpty
+                              ? perfil.name[0].toUpperCase()
+                              : '?',
+                          style: TextStyle(
+                            fontSize: isSmallScreen ? 18 : 22,
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
                     ),
                   ),
-                  title: Text(
-                    '${perfil.name} ${perfil.lastName}',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.bold,
-                      color: primaryTeal,
+                  SizedBox(width: isSmallScreen ? 10 : 12),
+
+                  // Información
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${perfil.name} ${perfil.lastName}',
+                          style: TextStyle(
+                            fontSize: isSmallScreen ? 14 : 16,
+                            fontWeight: FontWeight.bold,
+                            color: primaryTeal,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Icon(
+                              _getSocialNetworkIcon(perfil.socialNetwork),
+                              size: isSmallScreen ? 12 : 14,
+                              color: secondaryOrange,
+                            ),
+                            const SizedBox(width: 4),
+                            Flexible(
+                              child: Text(
+                                perfil.socialNetwork,
+                                style: TextStyle(
+                                  fontSize: isSmallScreen ? 11 : 12,
+                                  color: Colors.grey[600],
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Icon(
+                              Icons.access_time_rounded,
+                              size: isSmallScreen ? 12 : 14,
+                              color: Colors.grey[600],
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              DateFormat('HH:mm').format(perfil.createdAt),
+                              style: TextStyle(
+                                fontSize: isSmallScreen ? 11 : 12,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
-                  subtitle: Row(
-                    children: [
-                      Icon(_getSocialNetworkIcon(perfil.socialNetwork),
-                          size: 14, color: Colors.grey[600]),
-                      const SizedBox(width: 4),
-                      Text(perfil.socialNetwork,
-                          style: TextStyle(fontSize: 13)),
-                      const SizedBox(width: 8),
-                      Icon(Icons.schedule, size: 14, color: Colors.grey[600]),
-                      const SizedBox(width: 4),
-                      Text(DateFormat('HH:mm').format(perfil.createdAt),
-                          style: TextStyle(fontSize: 13)),
-                    ],
+                ],
+              ),
+
+              const SizedBox(height: 10),
+              const Divider(height: 1),
+              const SizedBox(height: 8),
+
+              // Botones de acción
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  // Botón editar
+                  _buildActionButton(
+                    icon: Icons.edit_rounded,
+                    label: isSmallScreen ? '' : 'Editar',
+                    color: primaryTeal,
+                    onPressed: () => _editarPerfilSocial(context, perfil),
+                    isSmallScreen: isSmallScreen,
                   ),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // Botón de editar
-                      IconButton(
-                        icon: Icon(Icons.edit, color: primaryTeal, size: 20),
-                        tooltip: 'Editar perfil',
-                        onPressed: () => _editarPerfilSocial(context, perfil),
-                      ),
 
-                      // ✅ CORRECCIÓN: Validar que perfilId no esté vacío
-                      if (perfilId.isNotEmpty)
-                        StreamBuilder<DocumentSnapshot>(
-                          stream: FirebaseFirestore.instance
-                              .collection('social_profiles')
-                              .doc(perfilId)
-                              .snapshots(),
-                          builder: (context, snapshot) {
-                            if (!snapshot.hasData) return SizedBox(width: 40);
+                  const SizedBox(width: 8),
 
-                            final perfilData =
-                                snapshot.data!.data() as Map<String, dynamic>?;
+                  // Botón asignar/cambiar
+                  if (perfilId.isNotEmpty)
+                    StreamBuilder<DocumentSnapshot>(
+                      stream: FirebaseFirestore.instance
+                          .collection('social_profiles')
+                          .doc(perfilId)
+                          .snapshots(),
+                      builder: (context, snapshot) {
+                        if (!snapshot.hasData) {
+                          return SizedBox(
+                            width: isSmallScreen ? 36 : 80,
+                            height: isSmallScreen ? 36 : 36,
+                          );
+                        }
 
-                            // ✅ CORRECCIÓN: Manejo seguro de datos nulos
-                            final tribuAsignada = perfilData?['tribuAsignada'];
-                            final ministerioAsignado =
-                                perfilData?['ministerioAsignado'];
+                        final perfilData =
+                            snapshot.data!.data() as Map<String, dynamic>?;
+                        final tribuAsignada = perfilData?['tribuAsignada'];
+                        final ministerioAsignado =
+                            perfilData?['ministerioAsignado'];
 
-                            if (tribuAsignada == null &&
-                                ministerioAsignado == null) {
-                              return IconButton(
-                                icon: const Icon(Icons.group_add,
-                                    color: Colors.blue, size: 20),
-                                tooltip: 'Asignar a tribu o ministerio',
-                                onPressed: () => _asignarPerfilAtribu(perfil),
-                              );
-                            } else {
-                              return IconButton(
-                                icon: const Icon(Icons.swap_horiz,
-                                    color: Colors.orange, size: 20),
-                                tooltip: 'Cambiar asignación',
-                                onPressed: () =>
-                                    _mostrarConfirmacionCambioSocial(
-                                        context, perfil),
-                              );
-                            }
-                          },
-                        ),
+                        if (tribuAsignada == null &&
+                            ministerioAsignado == null) {
+                          return _buildActionButton(
+                            icon: Icons.group_add_rounded,
+                            label: isSmallScreen ? '' : 'Asignar',
+                            color: Colors.blue,
+                            onPressed: () => _asignarPerfilAtribu(perfil),
+                            isSmallScreen: isSmallScreen,
+                          );
+                        } else {
+                          return _buildActionButton(
+                            icon: Icons.swap_horiz_rounded,
+                            label: isSmallScreen ? '' : 'Cambiar',
+                            color: Colors.orange,
+                            onPressed: () => _mostrarConfirmacionCambioSocial(
+                                context, perfil),
+                            isSmallScreen: isSmallScreen,
+                          );
+                        }
+                      },
+                    ),
 
-                      // Botón de ver detalles
-                      IconButton(
-                        icon: Icon(
-                          Icons.visibility,
-                          color: primaryTeal,
-                          size: 20,
-                        ),
-                        tooltip: 'Ver detalles',
-                        onPressed: () =>
-                            _mostrarDetallesPerfil(context, perfil),
-                      ),
-                    ],
+                  const SizedBox(width: 8),
+
+                  // Botón ver
+                  _buildActionButton(
+                    icon: Icons.visibility_rounded,
+                    label: isSmallScreen ? '' : 'Ver',
+                    color: primaryTeal,
+                    onPressed: () => _mostrarDetallesPerfil(context, perfil),
+                    isSmallScreen: isSmallScreen,
                   ),
-                ),
-              );
-            },
+                ],
+              ),
+            ],
           ),
-        ],
+        ),
+      ),
+    );
+  }
+
+// ============================================================================
+// NUEVO MÉTODO: Botón de acción reutilizable
+// Agregar DESPUÉS del método _buildPerfilTileModern
+// ============================================================================
+
+  Widget _buildActionButton({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onPressed,
+    required bool isSmallScreen,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          padding: EdgeInsets.symmetric(
+            horizontal: isSmallScreen ? 8 : 12,
+            vertical: isSmallScreen ? 8 : 8,
+          ),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: color.withOpacity(0.3),
+              width: 1,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                color: color,
+                size: isSmallScreen ? 16 : 18,
+              ),
+              if (label.isNotEmpty && !isSmallScreen) ...[
+                const SizedBox(width: 6),
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
       ),
     );
   }
