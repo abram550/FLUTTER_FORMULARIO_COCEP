@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class SocialProfile {
   final String? id;
   final String name;
@@ -7,7 +9,7 @@ class SocialProfile {
   final String phone;
   final String address;
   final String city;
-  final String prayerRequest;
+  final String? prayerRequest;
   final String socialNetwork;
   final DateTime createdAt;
 
@@ -20,7 +22,7 @@ class SocialProfile {
     required this.phone,
     required this.address,
     required this.city,
-    required this.prayerRequest,
+    this.prayerRequest,
     required this.socialNetwork,
     required this.createdAt,
   });
@@ -34,25 +36,55 @@ class SocialProfile {
       'phone': phone,
       'address': address,
       'city': city,
-      'prayerRequest': prayerRequest,
+      'prayerRequest': prayerRequest ?? '',
       'socialNetwork': socialNetwork,
       'createdAt': createdAt.toIso8601String(),
     };
   }
 
+  // ✅ CORRECCIÓN: Manejo robusto de datos desde Firestore
   factory SocialProfile.fromMap(Map<String, dynamic> map, String id) {
+    DateTime parsedDate;
+
+    try {
+      // Intentar parsear desde String ISO8601
+      if (map['createdAt'] is String) {
+        parsedDate = DateTime.parse(map['createdAt']);
+      }
+      // Si es un Timestamp de Firestore
+      else if (map['createdAt'] is Timestamp) {
+        parsedDate = (map['createdAt'] as Timestamp).toDate();
+      }
+      // Fallback a fecha actual
+      else {
+        parsedDate = DateTime.now();
+      }
+    } catch (e) {
+      print('⚠️ Error parseando fecha en SocialProfile: $e');
+      parsedDate = DateTime.now();
+    }
+
     return SocialProfile(
       id: id,
-      name: map['name'] ?? '',
-      lastName: map['lastName'] ?? '',
-      age: map['age']?.toInt() ?? 0,
-      gender: map['gender'] ?? '',
-      phone: map['phone'] ?? '',
-      address: map['address'] ?? '',
-      city: map['city'] ?? '',
-      prayerRequest: map['prayerRequest'] ?? '',
-      socialNetwork: map['socialNetwork'] ?? '',
-      createdAt: DateTime.parse(map['createdAt']),
+      name: map['name']?.toString() ?? '',
+      lastName: map['lastName']?.toString() ?? '',
+      age: _parseToInt(map['age']),
+      gender: map['gender']?.toString() ?? '',
+      phone: map['phone']?.toString() ?? '',
+      address: map['address']?.toString() ?? '',
+      city: map['city']?.toString() ?? '',
+      prayerRequest: map['prayerRequest']?.toString(),
+      socialNetwork: map['socialNetwork']?.toString() ?? '',
+      createdAt: parsedDate,
     );
+  }
+
+  // Método auxiliar para parseo seguro de enteros
+  static int _parseToInt(dynamic value) {
+    if (value == null) return 0;
+    if (value is int) return value;
+    if (value is String) return int.tryParse(value) ?? 0;
+    if (value is double) return value.toInt();
+    return 0;
   }
 }

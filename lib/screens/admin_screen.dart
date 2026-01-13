@@ -8100,6 +8100,10 @@ class _AdminPanelState extends State<AdminPanel>
             itemCount: profiles.length,
             itemBuilder: (context, index) {
               final perfil = profiles[index];
+
+              // ✅ CORRECCIÓN: Usar perfil.id (que nunca será null después de fromMap)
+              final perfilId = perfil.id ?? '';
+
               return Card(
                 margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 0),
                 elevation: 2,
@@ -8113,7 +8117,9 @@ class _AdminPanelState extends State<AdminPanel>
                     radius: 22,
                     backgroundColor: secondaryOrange.withOpacity(0.2),
                     child: Text(
-                      perfil.name[0].toUpperCase(),
+                      perfil.name.isNotEmpty
+                          ? perfil.name[0].toUpperCase()
+                          : '?',
                       style: TextStyle(
                         fontSize: 18,
                         color: secondaryOrange,
@@ -8143,14 +8149,67 @@ class _AdminPanelState extends State<AdminPanel>
                           style: TextStyle(fontSize: 13)),
                     ],
                   ),
-                  trailing: IconButton(
-                    icon: Icon(
-                      Icons.visibility,
-                      color: primaryTeal,
-                      size: 20,
-                    ),
-                    tooltip: 'Ver detalles',
-                    onPressed: () => _mostrarDetallesPerfil(context, perfil),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Botón de editar
+                      IconButton(
+                        icon: Icon(Icons.edit, color: primaryTeal, size: 20),
+                        tooltip: 'Editar perfil',
+                        onPressed: () => _editarPerfilSocial(context, perfil),
+                      ),
+
+                      // ✅ CORRECCIÓN: Validar que perfilId no esté vacío
+                      if (perfilId.isNotEmpty)
+                        StreamBuilder<DocumentSnapshot>(
+                          stream: FirebaseFirestore.instance
+                              .collection('social_profiles')
+                              .doc(perfilId)
+                              .snapshots(),
+                          builder: (context, snapshot) {
+                            if (!snapshot.hasData) return SizedBox(width: 40);
+
+                            final perfilData =
+                                snapshot.data!.data() as Map<String, dynamic>?;
+
+                            // ✅ CORRECCIÓN: Manejo seguro de datos nulos
+                            final tribuAsignada = perfilData?['tribuAsignada'];
+                            final ministerioAsignado =
+                                perfilData?['ministerioAsignado'];
+
+                            if (tribuAsignada == null &&
+                                ministerioAsignado == null) {
+                              return IconButton(
+                                icon: const Icon(Icons.group_add,
+                                    color: Colors.blue, size: 20),
+                                tooltip: 'Asignar a tribu o ministerio',
+                                onPressed: () => _asignarPerfilAtribu(perfil),
+                              );
+                            } else {
+                              return IconButton(
+                                icon: const Icon(Icons.swap_horiz,
+                                    color: Colors.orange, size: 20),
+                                tooltip: 'Cambiar asignación',
+                                onPressed: () =>
+                                    _mostrarConfirmacionCambioSocial(
+                                        context, perfil),
+                              );
+                            }
+                          },
+                        ),
+
+                      // Botón de ver detalles
+                      IconButton(
+                        icon: Icon(
+                          Icons.visibility,
+                          color: primaryTeal,
+                          size: 20,
+                        ),
+                        tooltip: 'Ver detalles',
+                        onPressed: () =>
+                            _mostrarDetallesPerfil(context, perfil),
+                      ),
+                    ],
                   ),
                 ),
               );
@@ -8476,6 +8535,773 @@ class _AdminPanelState extends State<AdminPanel>
         );
       },
     );
+  }
+
+  void _editarPerfilSocial(BuildContext context, SocialProfile perfil) async {
+    // ✅ OBTENER DATOS ACTUALES DEL PERFIL SOCIAL
+    final perfilDoc = await FirebaseFirestore.instance
+        .collection('social_profiles')
+        .doc(perfil.id)
+        .get();
+
+    final perfilData =
+        perfilDoc.exists ? perfilDoc.data() as Map<String, dynamic>? : null;
+
+    // Controllers con valores actualizados desde Firestore
+    final nombreController =
+        TextEditingController(text: perfilData?['name'] ?? perfil.name);
+    final apellidoController =
+        TextEditingController(text: perfilData?['lastName'] ?? perfil.lastName);
+    final telefonoController =
+        TextEditingController(text: perfilData?['phone'] ?? perfil.phone);
+    final direccionController =
+        TextEditingController(text: perfilData?['address'] ?? perfil.address);
+    final ciudadController =
+        TextEditingController(text: perfilData?['city'] ?? perfil.city);
+    final edadController = TextEditingController(
+        text: (perfilData?['age'] ?? perfil.age).toString());
+    final sexoController =
+        TextEditingController(text: perfilData?['gender'] ?? perfil.gender);
+    final peticionesController = TextEditingController(
+        text: perfilData?['prayerRequest'] ?? perfil.prayerRequest ?? '');
+
+    // ✅ CONTROLADORES PARA CAMPOS NUEVOS
+    final estadoFonovisitaController =
+        TextEditingController(text: perfilData?['estadoFonovisita'] ?? '');
+    final observacionesController =
+        TextEditingController(text: perfilData?['observaciones'] ?? '');
+
+    // ✅ VARIABLE PARA DROPDOWN
+    String? estadoFonovisitaSeleccionado = perfilData?['estadoFonovisita'];
+
+    print('🔍 DEBUG: Valores cargados en el diálogo de edición:');
+    print('  - estadoFonovisita: ${estadoFonovisitaController.text}');
+    print('  - observaciones: ${observacionesController.text}');
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              title: Row(
+                children: [
+                  Icon(Icons.edit, color: primaryTeal),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Editar Perfil Social',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildSectionTitle('Información Personal'),
+                    _buildEditTextField(
+                      controller: nombreController,
+                      label: 'Nombre',
+                      icon: Icons.person,
+                    ),
+                    const SizedBox(height: 16),
+                    _buildEditTextField(
+                      controller: apellidoController,
+                      label: 'Apellido',
+                      icon: Icons.person_outline,
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildEditTextField(
+                            controller: edadController,
+                            label: 'Edad',
+                            icon: Icons.cake,
+                            keyboardType: TextInputType.number,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: _buildEditTextField(
+                            controller: sexoController,
+                            label: 'Sexo/Género',
+                            icon: Icons.wc,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    _buildEditTextField(
+                      controller: telefonoController,
+                      label: 'Teléfono',
+                      icon: Icons.phone,
+                      keyboardType: TextInputType.phone,
+                    ),
+                    const SizedBox(height: 16),
+                    _buildEditTextField(
+                      controller: direccionController,
+                      label: 'Dirección',
+                      icon: Icons.home,
+                    ),
+                    const SizedBox(height: 16),
+                    _buildEditTextField(
+                      controller: ciudadController,
+                      label: 'Ciudad',
+                      icon: Icons.location_city,
+                    ),
+                    const SizedBox(height: 16),
+                    _buildEditTextField(
+                      controller: peticionesController,
+                      label: 'Petición de Oración',
+                      icon: Icons.favorite_border,
+                      maxLines: 2,
+                    ),
+
+                    const SizedBox(height: 20),
+                    _buildSectionTitle('Seguimiento'),
+
+                    // ✅ Dropdown de Estado de Fonovisita
+                    Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(10),
+                        color: Colors.grey[50],
+                        border: Border.all(color: Colors.grey.shade400),
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: DropdownButtonFormField<String>(
+                        value: estadoFonovisitaSeleccionado,
+                        decoration: InputDecoration(
+                          labelText: 'Estado de Fonovisita',
+                          labelStyle: TextStyle(color: primaryTeal),
+                          border: InputBorder.none,
+                          prefixIcon: Icon(Icons.call, color: primaryTeal),
+                        ),
+                        items: [
+                          'Contactada',
+                          'No Contactada',
+                          '# Errado',
+                          'Apagado',
+                          'Buzón',
+                          'Número No Activado',
+                          '# Equivocado',
+                          'Difícil contacto'
+                        ]
+                            .map((estado) => DropdownMenuItem(
+                                  value: estado,
+                                  child: Text(estado),
+                                ))
+                            .toList(),
+                        onChanged: (valor) {
+                          setDialogState(() {
+                            estadoFonovisitaSeleccionado = valor;
+                            estadoFonovisitaController.text = valor ?? '';
+                          });
+                        },
+                      ),
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // ✅ Campo de Observaciones
+                    _buildEditTextField(
+                      controller: observacionesController,
+                      label: 'Observaciones',
+                      icon: Icons.note,
+                      maxLines: 3,
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text(
+                    'Cancelar',
+                    style: TextStyle(color: Colors.grey[600]),
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    _guardarEdicionPerfilSocial(
+                      context,
+                      perfil,
+                      nombreController,
+                      apellidoController,
+                      telefonoController,
+                      direccionController,
+                      ciudadController,
+                      edadController,
+                      sexoController,
+                      peticionesController,
+                      estadoFonovisitaController,
+                      observacionesController,
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: primaryTeal,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  child: const Text('Guardar'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _guardarEdicionPerfilSocial(
+    BuildContext context,
+    SocialProfile perfil,
+    TextEditingController nombreController,
+    TextEditingController apellidoController,
+    TextEditingController telefonoController,
+    TextEditingController direccionController,
+    TextEditingController ciudadController,
+    TextEditingController edadController,
+    TextEditingController sexoController,
+    TextEditingController peticionesController,
+    TextEditingController estadoFonovisitaController,
+    TextEditingController observacionesController,
+  ) async {
+    if (perfil.id == null || perfil.id!.isEmpty) {
+      _mostrarError('El perfil no tiene un ID válido');
+      return;
+    }
+
+    try {
+      setState(() => _isLoading = true);
+
+      // ✅ PREPARAR DATOS PARA ACTUALIZAR
+      Map<String, dynamic> updateDataSocial = {
+        'name': nombreController.text.trim(),
+        'lastName': apellidoController.text.trim(),
+        'phone': telefonoController.text.trim(),
+        'address': direccionController.text.trim(),
+        'city': ciudadController.text.trim(),
+        'age': int.tryParse(edadController.text) ?? perfil.age,
+        'gender': sexoController.text.trim(),
+        'prayerRequest': peticionesController.text.trim().isEmpty
+            ? null
+            : peticionesController.text.trim(),
+        'estadoFonovisita': estadoFonovisitaController.text.trim(),
+        'observaciones': observacionesController.text.trim(),
+      };
+
+      // ✅ ACTUALIZAR PERFIL SOCIAL
+      await FirebaseFirestore.instance
+          .collection('social_profiles')
+          .doc(perfil.id!)
+          .update(updateDataSocial);
+
+      print('✅ Perfil social actualizado en Firestore: ${perfil.id}');
+
+      // ✅ VERIFICAR SI TIENE REGISTRO ASOCIADO
+      final perfilDoc = await FirebaseFirestore.instance
+          .collection('social_profiles')
+          .doc(perfil.id!)
+          .get();
+
+      if (!perfilDoc.exists) {
+        throw Exception('El perfil social no existe');
+      }
+
+      final perfilData = perfilDoc.data() as Map<String, dynamic>?;
+      final registroAsociadoId = perfilData?['registroAsociadoId'];
+
+      bool registroSincronizado = false;
+
+      // ✅ SINCRONIZAR CON REGISTRO SI EXISTE
+      if (registroAsociadoId != null &&
+          registroAsociadoId.toString().trim().isNotEmpty) {
+        final registroId = registroAsociadoId.toString().trim();
+
+        final registroDoc = await FirebaseFirestore.instance
+            .collection('registros')
+            .doc(registroId)
+            .get();
+
+        if (registroDoc.exists) {
+          Map<String, dynamic> updateDataRegistro = {
+            'nombre': nombreController.text.trim(),
+            'apellido': apellidoController.text.trim(),
+            'telefono': telefonoController.text.trim(),
+            'direccion': direccionController.text.trim(),
+            'barrio': ciudadController.text.trim(),
+            'edad': int.tryParse(edadController.text) ?? perfil.age,
+            'sexo': sexoController.text.trim(),
+            'peticiones': peticionesController.text.trim(),
+            'estadoFonovisita': estadoFonovisitaController.text.trim(),
+            'observaciones': observacionesController.text.trim(),
+          };
+
+          await FirebaseFirestore.instance
+              .collection('registros')
+              .doc(registroId)
+              .update(updateDataRegistro);
+
+          print('✅ Registro sincronizado: $registroId');
+          registroSincronizado = true;
+        }
+      }
+
+      // ✅ CERRAR DIÁLOGO Y MOSTRAR MENSAJE
+      if (mounted) {
+        setState(() => _isLoading = false);
+        Navigator.pop(context);
+
+        String mensajeExito = 'Perfil actualizado correctamente';
+        if (registroSincronizado) {
+          mensajeExito += ' (registro sincronizado)';
+        }
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(mensajeExito),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e, stackTrace) {
+      print('❌ Error: $e');
+      print('Stack: $stackTrace');
+
+      if (mounted) {
+        setState(() => _isLoading = false);
+        Navigator.pop(context);
+        _mostrarError('Error al actualizar: ${e.toString()}');
+      }
+    }
+  }
+
+  Future<void> _asignarPerfilAtribu(SocialProfile perfil) async {
+    if (!mounted) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      final tribusSnapshot = await FirebaseFirestore.instance
+          .collection('tribus')
+          .where('categoria', isEqualTo: 'Ministerio Juvenil')
+          .get();
+
+      final ministerios = ['Ministerio de Damas', 'Ministerio de Caballeros'];
+
+      if (tribusSnapshot.docs.isEmpty && ministerios.isEmpty) {
+        if (!mounted) return;
+        setState(() => _isLoading = false);
+        _mostrarError('No hay tribus o ministerios disponibles para asignar.');
+        return;
+      }
+
+      List<DropdownMenuItem<String>> opciones = [];
+
+      // Agregar las opciones de ministerios con diseño
+      for (var min in ministerios) {
+        opciones.add(DropdownMenuItem(
+          value: min,
+          child: Row(
+            children: [
+              Icon(
+                min.contains('Damas') ? Icons.female : Icons.male,
+                color: primaryTeal,
+                size: 18,
+              ),
+              SizedBox(width: 8),
+              Text(min),
+            ],
+          ),
+        ));
+      }
+
+      // Agregar un separador visual
+      opciones.add(DropdownMenuItem(
+        value: 'separator',
+        enabled: false,
+        child: Divider(thickness: 2, color: Colors.grey),
+      ));
+
+      // Agregar título para tribus juveniles
+      opciones.add(DropdownMenuItem(
+        value: 'juveniles_title',
+        enabled: false,
+        child: Text(
+          'Tribus Juveniles',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Colors.grey,
+          ),
+        ),
+      ));
+
+      // Agregar tribus juveniles
+      for (var doc in tribusSnapshot.docs) {
+        final nombre = doc['nombre'] ?? 'Sin nombre';
+        opciones.add(DropdownMenuItem(
+          value: doc.id,
+          child: Text(nombre),
+        ));
+      }
+
+      String? opcionSeleccionada;
+
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+
+      // Mostrar diálogo para seleccionar tribu o ministerio
+      await showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) {
+          return StatefulBuilder(
+            builder: (context, setDialogState) {
+              return AlertDialog(
+                title: Text(
+                  'Asignar a Ministerio o Tribu',
+                  style: TextStyle(
+                    color: primaryTeal,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    DropdownButtonFormField<String>(
+                      value: opcionSeleccionada,
+                      items: opciones,
+                      onChanged: (value) {
+                        // Ignorar selecciones de separadores y títulos
+                        if (value != 'separator' &&
+                            value != 'juveniles_title') {
+                          setDialogState(() {
+                            opcionSeleccionada = value;
+                          });
+                        }
+                      },
+                      decoration: const InputDecoration(
+                        labelText: 'Seleccione una opción',
+                        border: OutlineInputBorder(),
+                      ),
+                      isExpanded: true,
+                    ),
+                  ],
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child:
+                        Text('Cancelar', style: TextStyle(color: Colors.grey)),
+                  ),
+                  ElevatedButton(
+                    onPressed: opcionSeleccionada == null
+                        ? null
+                        : () async {
+                            try {
+                              if (!mounted) return;
+                              setState(() => _isLoading = true);
+
+                              // Cerrar diálogo ANTES de iniciar operaciones async
+                              Navigator.pop(context);
+
+                              String? ministerioAsignado;
+                              String? tribuAsignada;
+                              String? nombreTribu;
+
+                              if (opcionSeleccionada!.contains('Ministerio')) {
+                                ministerioAsignado = opcionSeleccionada;
+                                tribuAsignada = null;
+                                nombreTribu = null;
+                              } else {
+                                tribuAsignada = opcionSeleccionada;
+                                ministerioAsignado = 'Ministerio Juvenil';
+
+                                final tribuDoc = tribusSnapshot.docs.firstWhere(
+                                  (doc) => doc.id == opcionSeleccionada,
+                                  orElse: () =>
+                                      throw Exception('Tribu no encontrada'),
+                                );
+                                nombreTribu =
+                                    tribuDoc['nombre'] ?? 'Tribu sin nombre';
+                              }
+
+                              print('=== DEBUG ASIGNACIÓN ===');
+                              print('Selección: $opcionSeleccionada');
+                              print('Ministerio asignado: $ministerioAsignado');
+                              print('Tribu asignada: $tribuAsignada');
+                              print('Nombre tribu: $nombreTribu');
+                              print('=======================');
+
+                              // ✅ OBTENER DATOS ACTUALIZADOS DEL PERFIL SOCIAL
+                              final perfilActualizadoDoc =
+                                  await FirebaseFirestore.instance
+                                      .collection('social_profiles')
+                                      .doc(perfil.id)
+                                      .get();
+
+                              if (!perfilActualizadoDoc.exists) {
+                                throw Exception('El perfil social no existe');
+                              }
+
+                              final perfilData = perfilActualizadoDoc.data()
+                                  as Map<String, dynamic>;
+
+                              // ✅ CREAR REGISTRO CON DATOS ACTUALIZADOS
+                              final nuevoRegistro = {
+                                'nombre': perfilData['name'] ?? perfil.name,
+                                'apellido':
+                                    perfilData['lastName'] ?? perfil.lastName,
+                                'telefono': perfilData['phone'] ?? perfil.phone,
+                                'edad': perfilData['age'] ?? perfil.age ?? 0,
+                                'sexo': perfilData['gender'] ??
+                                    perfil.gender ??
+                                    'No especificado',
+                                'direccion': perfilData['address'] ??
+                                    perfil.address ??
+                                    '',
+                                'barrio':
+                                    perfilData['city'] ?? perfil.city ?? '',
+                                'estadoCivil': 'No especificado',
+                                'nombrePareja': 'No aplica',
+                                'tieneHijos': false,
+                                'ocupaciones': ['No especificado'],
+                                'descripcionOcupaciones': '',
+                                'peticiones': perfilData['prayerRequest'] ??
+                                    perfil.prayerRequest ??
+                                    '',
+                                'referenciaInvitacion':
+                                    perfilData['socialNetwork'] ??
+                                        perfil.socialNetwork ??
+                                        'Redes Sociales',
+                                'servicio': 'Perfil Social',
+                                'tipo': 'Nuevo',
+                                'estadoProceso': 'En Proceso',
+                                'observaciones':
+                                    perfilData['observaciones'] ?? '',
+                                'observaciones2': '',
+                                'estadoFonovisita':
+                                    perfilData['estadoFonovisita'] ?? '',
+                                'activo': true,
+                                'faltasConsecutivas': 0,
+                                'ministerioAsignado': ministerioAsignado,
+                                'tribuAsignada': tribuAsignada,
+                                'nombreTribu': nombreTribu,
+                                'fechaAsignacion': FieldValue.serverTimestamp(),
+                                'fechaAsignacionTribu': tribuAsignada != null
+                                    ? FieldValue.serverTimestamp()
+                                    : null,
+                                'fecha': Timestamp.fromDate(perfil.createdAt),
+                                'fechaRegistro':
+                                    Timestamp.fromDate(perfil.createdAt),
+                                'coordinadorAsignado': null,
+                                'timoteoAsignado': null,
+                                'nombreTimoteo': null,
+                                'fechaAsignacionCoordinador': null,
+                                'origenPerfilSocial': true,
+                                'perfilSocialId': perfil.id,
+                              };
+
+                              print(
+                                  '🔍 DEBUG: Creando registro con datos ACTUALIZADOS:');
+                              print(
+                                  '  - estadoFonovisita: ${nuevoRegistro['estadoFonovisita']}');
+                              print(
+                                  '  - observaciones: ${nuevoRegistro['observaciones']}');
+                              print(nuevoRegistro);
+
+                              final docRef = await FirebaseFirestore.instance
+                                  .collection('registros')
+                                  .add(nuevoRegistro);
+
+                              print('✅ Registro creado con ID: ${docRef.id}');
+
+                              // ✅ ACTUALIZAR PERFIL SOCIAL CON REFERENCIA AL REGISTRO
+                              await FirebaseFirestore.instance
+                                  .collection('social_profiles')
+                                  .doc(perfil.id)
+                                  .update({
+                                'ministerioAsignado': ministerioAsignado,
+                                'tribuAsignada': tribuAsignada,
+                                'nombreTribu': nombreTribu,
+                                'fechaAsignacion': FieldValue.serverTimestamp(),
+                                'registroAsociadoId': docRef.id,
+                                'yaAsignado': true,
+                              });
+
+                              print(
+                                  '✅ Perfil social actualizado con registroAsociadoId: ${docRef.id}');
+
+                              // ✅ DETENER LOADING
+                              if (!mounted) return;
+                              setState(() => _isLoading = false);
+
+                              // Esperar un frame
+                              await Future.delayed(
+                                  const Duration(milliseconds: 100));
+
+                              String mensajeExito;
+                              if (ministerioAsignado != null &&
+                                  tribuAsignada != null) {
+                                mensajeExito =
+                                    'Asignado a tribu "$nombreTribu" del $ministerioAsignado';
+                              } else if (ministerioAsignado != null) {
+                                mensajeExito =
+                                    'Asignado al $ministerioAsignado';
+                              } else {
+                                mensajeExito = 'Perfil asignado exitosamente';
+                              }
+
+                              if (!mounted) return;
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(mensajeExito),
+                                  backgroundColor: Colors.green,
+                                  behavior: SnackBarBehavior.floating,
+                                  duration: const Duration(seconds: 3),
+                                ),
+                              );
+                            } catch (e, stackTrace) {
+                              print('❌ Error detallado: $e');
+                              print('Stack trace: $stackTrace');
+
+                              if (!mounted) return;
+                              setState(() => _isLoading = false);
+                              _mostrarError(
+                                  'Error al asignar: ${e.toString()}');
+                            }
+                          },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: secondaryOrange,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: Text('Asignar'),
+                  ),
+                ],
+              );
+            },
+          );
+        },
+      );
+    } catch (e, stackTrace) {
+      print('❌ Error general: $e');
+      print('Stack trace: $stackTrace');
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      _mostrarError('Error al cargar opciones: $e');
+    }
+  }
+
+  void _mostrarConfirmacionCambioSocial(
+      BuildContext context, SocialProfile perfil) {
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: Text('Confirmar Cambio',
+              style:
+                  TextStyle(color: primaryTeal, fontWeight: FontWeight.bold)),
+          content: Text(
+              '¿Está seguro de cambiar la asignación de este perfil? La asignación actual será eliminada.',
+              style: TextStyle(fontSize: 15)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: Text('Cancelar', style: TextStyle(color: Colors.grey)),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(dialogContext);
+                _cambiarAsignacionPerfilSocial(perfil);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: secondaryOrange,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8)),
+              ),
+              child: const Text('Confirmar'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _cambiarAsignacionPerfilSocial(SocialProfile perfil) async {
+    try {
+      setState(() => _isLoading = true);
+
+      // ✅ PRIMERO: Obtener el ID del registro asociado (si existe)
+      final perfilDoc = await FirebaseFirestore.instance
+          .collection('social_profiles')
+          .doc(perfil.id)
+          .get();
+
+      final perfilData = perfilDoc.data() as Map<String, dynamic>?;
+      final registroAsociadoId = perfilData?['registroAsociadoId'];
+
+      // ✅ Eliminar el registro asociado de la colección "registros" (si existe)
+      if (registroAsociadoId != null) {
+        await FirebaseFirestore.instance
+            .collection('registros')
+            .doc(registroAsociadoId)
+            .delete();
+
+        print('✅ Registro asociado eliminado: $registroAsociadoId');
+      }
+
+      // ✅ Limpiar la asignación en el perfil social
+      await FirebaseFirestore.instance
+          .collection('social_profiles')
+          .doc(perfil.id)
+          .update({
+        'nombreTribu': null,
+        'tribuAsignada': null,
+        'ministerioAsignado': null,
+        'coordinadorAsignado': null,
+        'timoteoAsignado': null,
+        'nombreTimoteo': null,
+        'fechaAsignacion': null,
+        'registroAsociadoId': null,
+        'yaAsignado': false,
+      });
+
+      setState(() => _isLoading = false);
+
+      // Llamar a la función de asignación nuevamente
+      _asignarPerfilAtribu(perfil);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text(
+                'Asignación anterior eliminada. Ahora puede asignar nuevamente.'),
+            backgroundColor: Colors.orange),
+      );
+    } catch (e) {
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content: Text('Error al cambiar asignación: $e'),
+            backgroundColor: Colors.red),
+      );
+      print('❌ Error al cambiar asignación: $e');
+    }
   }
 
 // Funciones auxiliares para el diálogo de detalles

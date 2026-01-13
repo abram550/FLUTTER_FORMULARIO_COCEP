@@ -4684,6 +4684,9 @@ class _TribusScreenState extends State<TribusScreen>
   }
 }
 
+
+
+
 // Componente de ejemplo para mostrar animación de carga
 class AnimatedLoadingIndicator extends StatefulWidget {
   @override
@@ -10257,6 +10260,7 @@ class _AsistenciasTabState extends State<AsistenciasTab>
     return es[key] ?? en[key] ?? 13;
   }
 }
+
 
 //--Clase de la pestaña de Personas
 class RegistrosAsignadosTab extends StatefulWidget {
@@ -17654,6 +17658,8 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
     return filtros.join(' • ');
   }
 }
+
+
 
 //----------------------------------------------------------------------------------------------
 
