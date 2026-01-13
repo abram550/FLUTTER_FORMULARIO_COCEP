@@ -1057,33 +1057,307 @@ class _FormularioPageState extends State<FormularioPage> {
           children: [
             _buildQuestionTitle(
               'Consolidador',
-              'Por favor, selecciona o ingresa el nombre de tu consolidador',
+              'Por favor, selecciona el nombre de tu consolidador',
             ),
-            DropdownButtonFormField<String>(
-              value: _consolidadorSeleccionado,
-              decoration: _getInputDecoration('Selecciona tu consolidador'),
-              items: _consolidadores
-                  .map((consolidador) => DropdownMenuItem(
-                        value: consolidador,
-                        child: Text(consolidador, style: GoogleFonts.poppins()),
-                      ))
-                  .toList(),
-              onChanged: (value) =>
-                  setState(() => _consolidadorSeleccionado = value),
-              validator: (value) => value == null
-                  ? 'Por favor, selecciona un consolidador'
-                  : null,
+
+            // Botón principal que abre el diálogo
+            InkWell(
+              onTap: () async {
+                final selected = await showDialog<String>(
+                  context: context,
+                  builder: (BuildContext context) {
+                    return Dialog(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Container(
+                        constraints: BoxConstraints(
+                          maxHeight: MediaQuery.of(context).size.height * 0.7,
+                          maxWidth: MediaQuery.of(context).size.width * 0.9,
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // Encabezado del diálogo
+                            Container(
+                              padding: const EdgeInsets.all(20),
+                              decoration: BoxDecoration(
+                                color: Colors.teal.shade700,
+                                borderRadius: const BorderRadius.only(
+                                  topLeft: Radius.circular(20),
+                                  topRight: Radius.circular(20),
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.people_rounded,
+                                    color: Colors.white,
+                                    size: 28,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Selecciona tu Consolidador',
+                                          style: GoogleFonts.poppins(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                        Text(
+                                          '${_consolidadores.length} disponibles',
+                                          style: GoogleFonts.poppins(
+                                            fontSize: 13,
+                                            color:
+                                                Colors.white.withOpacity(0.9),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.close,
+                                        color: Colors.white),
+                                    onPressed: () =>
+                                        Navigator.of(context).pop(),
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                            // Lista de consolidadores
+                            Flexible(
+                              child: _consolidadores.isEmpty
+                                  ? Center(
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(32.0),
+                                        child: Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(
+                                              Icons.person_off_rounded,
+                                              size: 48,
+                                              color: Colors.grey.shade400,
+                                            ),
+                                            const SizedBox(height: 16),
+                                            Text(
+                                              'No hay consolidadores disponibles',
+                                              style: GoogleFonts.poppins(
+                                                fontSize: 14,
+                                                color: Colors.grey.shade600,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    )
+                                  : ListView.builder(
+                                      shrinkWrap: true,
+                                      padding: const EdgeInsets.symmetric(
+                                          vertical: 8),
+                                      itemCount: _consolidadores.length,
+                                      itemBuilder: (context, index) {
+                                        // Ordenar alfabéticamente
+                                        final consolidadoresOrdenados =
+                                            List<String>.from(_consolidadores)
+                                              ..sort((a, b) => a
+                                                  .toLowerCase()
+                                                  .compareTo(b.toLowerCase()));
+                                        final consolidador =
+                                            consolidadoresOrdenados[index];
+                                        final isSelected =
+                                            _consolidadorSeleccionado ==
+                                                consolidador;
+
+                                        return InkWell(
+                                          onTap: () {
+                                            Navigator.of(context)
+                                                .pop(consolidador);
+                                          },
+                                          child: Container(
+                                            margin: const EdgeInsets.symmetric(
+                                              horizontal: 12,
+                                              vertical: 4,
+                                            ),
+                                            padding: const EdgeInsets.all(16),
+                                            decoration: BoxDecoration(
+                                              color: isSelected
+                                                  ? Colors.teal.shade50
+                                                  : Colors.transparent,
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                              border: Border.all(
+                                                color: isSelected
+                                                    ? Colors.teal.shade400
+                                                    : Colors.grey.shade200,
+                                                width: isSelected ? 2 : 1,
+                                              ),
+                                            ),
+                                            child: Row(
+                                              children: [
+                                                Container(
+                                                  padding:
+                                                      const EdgeInsets.all(10),
+                                                  decoration: BoxDecoration(
+                                                    color: isSelected
+                                                        ? Colors.teal.shade700
+                                                        : Colors.grey.shade100,
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            10),
+                                                  ),
+                                                  child: Icon(
+                                                    isSelected
+                                                        ? Icons.check_circle
+                                                        : Icons.person_outline,
+                                                    color: isSelected
+                                                        ? Colors.white
+                                                        : Colors.teal.shade600,
+                                                    size: 22,
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 16),
+                                                Expanded(
+                                                  child: Text(
+                                                    consolidador,
+                                                    style: GoogleFonts.poppins(
+                                                      fontSize: 15,
+                                                      fontWeight: isSelected
+                                                          ? FontWeight.w600
+                                                          : FontWeight.w500,
+                                                      color: isSelected
+                                                          ? Colors.teal.shade900
+                                                          : Colors
+                                                              .grey.shade800,
+                                                    ),
+                                                    maxLines: 2,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                  ),
+                                                ),
+                                                if (isSelected)
+                                                  Icon(
+                                                    Icons.check,
+                                                    color: Colors.teal.shade700,
+                                                    size: 24,
+                                                  ),
+                                              ],
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                );
+
+                if (selected != null) {
+                  setState(() {
+                    _consolidadorSeleccionado = selected;
+                  });
+                }
+              },
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: _consolidadorSeleccionado != null
+                      ? Colors.teal.shade50
+                      : Colors.grey.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: _consolidadorSeleccionado != null
+                        ? Colors.teal.shade400
+                        : Colors.grey.shade300,
+                    width: _consolidadorSeleccionado != null ? 2 : 1,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: _consolidadorSeleccionado != null
+                            ? Colors.teal.shade700
+                            : Colors.grey.shade200,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(
+                        _consolidadorSeleccionado != null
+                            ? Icons.person
+                            : Icons.person_outline,
+                        color: _consolidadorSeleccionado != null
+                            ? Colors.white
+                            : Colors.grey.shade600,
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _consolidadorSeleccionado ??
+                                'Seleccionar consolidador',
+                            style: GoogleFonts.poppins(
+                              fontSize: 15,
+                              fontWeight: _consolidadorSeleccionado != null
+                                  ? FontWeight.w600
+                                  : FontWeight.w500,
+                              color: _consolidadorSeleccionado != null
+                                  ? Colors.teal.shade900
+                                  : Colors.grey.shade600,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          if (_consolidadorSeleccionado == null)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 4),
+                              child: Text(
+                                'Toca aquí para ver la lista',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 12,
+                                  color: Colors.grey.shade500,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    Icon(
+                      _consolidadorSeleccionado != null
+                          ? Icons.check_circle
+                          : Icons.arrow_forward_ios,
+                      color: _consolidadorSeleccionado != null
+                          ? Colors.teal.shade700
+                          : Colors.grey.shade400,
+                      size: _consolidadorSeleccionado != null ? 24 : 18,
+                    ),
+                  ],
+                ),
+              ),
             ),
-            if (_consolidadorSeleccionado == 'Otro')
+
+            // Mostrar mensaje de validación si no se ha seleccionado
+            if (_consolidadorSeleccionado == null)
               Padding(
-                padding: const EdgeInsets.only(top: 16.0),
-                child: TextFormField(
-                  controller: _otroConsolidadorController,
-                  decoration: _getInputDecoration(
-                      'Especifica el nombre del consolidador'),
-                  validator: (value) => value!.isEmpty
-                      ? 'Por favor, ingresa el nombre del consolidador'
-                      : null,
+                padding: const EdgeInsets.only(top: 8, left: 12),
+                child: Text(
+                  '* Campo obligatorio',
+                  style: GoogleFonts.poppins(
+                    fontSize: 12,
+                    color: Colors.grey.shade600,
+                  ),
                 ),
               ),
           ],
