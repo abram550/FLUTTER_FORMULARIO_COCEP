@@ -9142,14 +9142,7 @@ class _AdminPanelState extends State<AdminPanel>
                               print(
                                   '✅ Perfil social actualizado con registroAsociadoId: ${docRef.id}');
 
-                              // ✅ DETENER LOADING
-                              if (!mounted) return;
-                              setState(() => _isLoading = false);
-
-                              // Esperar un frame
-                              await Future.delayed(
-                                  const Duration(milliseconds: 100));
-
+                              // ✅ PREPARAR MENSAJE DE ÉXITO
                               String mensajeExito;
                               if (ministerioAsignado != null &&
                                   tribuAsignada != null) {
@@ -9162,15 +9155,25 @@ class _AdminPanelState extends State<AdminPanel>
                                 mensajeExito = 'Perfil asignado exitosamente';
                               }
 
-                              if (!mounted) return;
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(mensajeExito),
-                                  backgroundColor: Colors.green,
-                                  behavior: SnackBarBehavior.floating,
-                                  duration: const Duration(seconds: 3),
-                                ),
-                              );
+                              // ✅ DETENER LOADING Y MOSTRAR MENSAJE SOLO SI MOUNTED
+                              if (mounted) {
+                                setState(() => _isLoading = false);
+
+                                // Usar addPostFrameCallback para asegurar que el contexto esté disponible
+                                WidgetsBinding.instance
+                                    .addPostFrameCallback((_) {
+                                  if (mounted && context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(mensajeExito),
+                                        backgroundColor: Colors.green,
+                                        behavior: SnackBarBehavior.floating,
+                                        duration: const Duration(seconds: 3),
+                                      ),
+                                    );
+                                  }
+                                });
+                              }
                             } catch (e, stackTrace) {
                               print('❌ Error detallado: $e');
                               print('Stack trace: $stackTrace');
