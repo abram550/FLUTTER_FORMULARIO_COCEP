@@ -3213,6 +3213,8 @@ class _TribusScreenState extends State<TribusScreen>
     );
   }
 
+
+
 // Métodos auxiliares
 
   Widget _buildSectionHeader(String title, IconData icon, double fontSize,
@@ -4683,9 +4685,6 @@ class _TribusScreenState extends State<TribusScreen>
     );
   }
 }
-
-
-
 
 // Componente de ejemplo para mostrar animación de carga
 class AnimatedLoadingIndicator extends StatefulWidget {
@@ -10261,7 +10260,6 @@ class _AsistenciasTabState extends State<AsistenciasTab>
   }
 }
 
-
 //--Clase de la pestaña de Personas
 class RegistrosAsignadosTab extends StatefulWidget {
   final String tribuId;
@@ -10649,24 +10647,25 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
 
 //logica para editar los registro
 
-  // ✅ NUEVA FUNCIÓN: Método para obtener el valor de un campo con detección de variantes
   dynamic obtenerValorCampoEdicion(Map<String, dynamic> data, String campo) {
-    // Si el campo existe directamente, lo devolvemos
-    if (data.containsKey(campo)) {
+    // Si el campo existe directamente, lo devolvemos (con validación null)
+    if (data.containsKey(campo) && data[campo] != null) {
       return data[campo];
     }
 
-    // ✅ MODIFICACIÓN: Detección especial para descripcionOcupacion
+    // ✅ CORRECCIÓN CRÍTICA: Detección especial para descripcionOcupacion
     if (campo == 'descripcionOcupacion') {
       // Buscar primero 'descripcionOcupacion', luego 'descripcionOcupaciones'
-      if (data.containsKey('descripcionOcupacion')) {
+      if (data.containsKey('descripcionOcupacion') &&
+          data['descripcionOcupacion'] != null) {
         return data['descripcionOcupacion'];
-      } else if (data.containsKey('descripcionOcupaciones')) {
+      } else if (data.containsKey('descripcionOcupaciones') &&
+          data['descripcionOcupaciones'] != null) {
         return data['descripcionOcupaciones'];
       }
     }
 
-    // Si no se encuentra el campo, devolver null
+    // Si no se encuentra el campo o es null, devolver null
     return null;
   }
 
@@ -10778,6 +10777,7 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
           fechaNacimiento = DateTime.parse(fechaNacimientoValue);
         } catch (e) {
           print('Error parsing date string: $e');
+          fechaNacimiento = null; // ✅ ASEGURAR que quede null en caso de error
         }
       }
     }
@@ -10899,7 +10899,7 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
                 onSurface: Colors.black,
               ),
             ),
-            child: child!,
+            child: child ?? const SizedBox.shrink(),
           );
         },
       );
@@ -12137,6 +12137,7 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
                                     SizedBox(height: verticalPadding),
 
                                     // ✅ BOTONES AL FINAL DEL SCROLL (NO FIJOS)
+
                                     isSmallScreen
                                         ? Column(
                                             children: [
@@ -12171,18 +12172,24 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
                                                       final Map<String, dynamic>
                                                           updateData = {};
 
+                                                      // Recopilar datos de los campos
                                                       updateData[
                                                               'estadoCivil'] =
                                                           estadoCivilSeleccionado;
                                                       updateData['sexo'] =
                                                           sexoSeleccionado;
 
+                                                      // ✅ CORRECCIÓN CRÍTICA: Manejo seguro de fecha de nacimiento
                                                       if (fechaNacimiento !=
                                                           null) {
                                                         updateData[
                                                                 'fechaNacimiento'] =
                                                             Timestamp.fromDate(
                                                                 fechaNacimiento!);
+                                                      } else {
+                                                        // ✅ Si no hay fecha, NO incluirla en la actualización
+                                                        // Esto evita sobrescribir con null si ya existía una fecha
+                                                        // updateData['fechaNacimiento'] = null; // ❌ NO hacer esto
                                                       }
 
                                                       updateData['activo'] =
@@ -12238,6 +12245,7 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
                                                         }
                                                       });
 
+                                                      // Manejar campo descripcionOcupacion vs descripcionOcupaciones
                                                       final data =
                                                           registro.data();
                                                       if (data != null &&
@@ -12263,6 +12271,7 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
                                                       if (FirebaseFirestore
                                                               .instance !=
                                                           null) {
+                                                        // ✅ 1. ACTUALIZAR REGISTRO
                                                         await FirebaseFirestore
                                                             .instance
                                                             .collection(
@@ -12270,6 +12279,151 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
                                                             .doc(registro.id)
                                                             .update(updateData);
 
+                                                        print(
+                                                            '✅ Registro actualizado');
+
+                                                        // ✅ 2. VERIFICAR SI HAY PERFIL SOCIAL ASOCIADO Y SINCRONIZARLO
+                                                        final registroActualizado =
+                                                            await FirebaseFirestore
+                                                                .instance
+                                                                .collection(
+                                                                    'registros')
+                                                                .doc(
+                                                                    registro.id)
+                                                                .get();
+
+                                                        if (registroActualizado
+                                                            .exists) {
+                                                          final registroData =
+                                                              registroActualizado
+                                                                      .data()
+                                                                  as Map<String,
+                                                                      dynamic>?;
+                                                          final perfilSocialId =
+                                                              registroData?[
+                                                                  'perfilSocialId'];
+
+                                                          if (perfilSocialId !=
+                                                                  null &&
+                                                              perfilSocialId
+                                                                  .toString()
+                                                                  .trim()
+                                                                  .isNotEmpty) {
+                                                            try {
+                                                              final perfilDoc = await FirebaseFirestore
+                                                                  .instance
+                                                                  .collection(
+                                                                      'social_profiles')
+                                                                  .doc(perfilSocialId
+                                                                      .toString())
+                                                                  .get();
+
+                                                              if (perfilDoc
+                                                                  .exists) {
+                                                                print(
+                                                                    '📝 Sincronizando con perfil social: $perfilSocialId');
+
+                                                                // ✅ MAPEO COMPLETO (registro → perfil)
+                                                                Map<String,
+                                                                        dynamic>
+                                                                    updateDataPerfil =
+                                                                    {
+                                                                  'name': updateData[
+                                                                      'nombre'],
+                                                                  'lastName':
+                                                                      updateData[
+                                                                          'apellido'],
+                                                                  'phone':
+                                                                      updateData[
+                                                                          'telefono'],
+                                                                  'address':
+                                                                      updateData[
+                                                                          'direccion'],
+                                                                  'city': updateData[
+                                                                      'barrio'],
+                                                                  'age':
+                                                                      updateData[
+                                                                          'edad'],
+                                                                  'gender':
+                                                                      updateData[
+                                                                          'sexo'],
+                                                                  'prayerRequest':
+                                                                      updateData[
+                                                                          'peticiones'],
+                                                                  'estadoFonovisita':
+                                                                      updateData[
+                                                                          'estadoFonovisita'],
+                                                                  'observaciones':
+                                                                      updateData[
+                                                                          'observaciones'],
+                                                                  'estadoProceso':
+                                                                      updateData[
+                                                                          'estadoProceso'],
+                                                                };
+
+                                                                // Manejar descripcionOcupacion
+                                                                if (updateData
+                                                                    .containsKey(
+                                                                        'descripcionOcupacion')) {
+                                                                  updateDataPerfil[
+                                                                          'descripcionOcupacion'] =
+                                                                      updateData[
+                                                                          'descripcionOcupacion'];
+                                                                } else if (updateData
+                                                                    .containsKey(
+                                                                        'descripcionOcupaciones')) {
+                                                                  updateDataPerfil[
+                                                                          'descripcionOcupacion'] =
+                                                                      updateData[
+                                                                          'descripcionOcupaciones'];
+                                                                }
+
+                                                                // Remover valores null
+                                                                updateDataPerfil
+                                                                    .removeWhere((key,
+                                                                            value) =>
+                                                                        value ==
+                                                                        null);
+
+                                                                await FirebaseFirestore
+                                                                    .instance
+                                                                    .collection(
+                                                                        'social_profiles')
+                                                                    .doc(perfilSocialId
+                                                                        .toString())
+                                                                    .update(
+                                                                        updateDataPerfil);
+
+                                                                print(
+                                                                    '✅ Perfil social sincronizado');
+                                                              } else {
+                                                                print(
+                                                                    '⚠️ El perfil social no existe: $perfilSocialId');
+
+                                                                // Limpiar referencia inválida
+                                                                await FirebaseFirestore
+                                                                    .instance
+                                                                    .collection(
+                                                                        'registros')
+                                                                    .doc(
+                                                                        registro
+                                                                            .id)
+                                                                    .update({
+                                                                  'perfilSocialId':
+                                                                      null
+                                                                });
+                                                              }
+                                                            } catch (e) {
+                                                              print(
+                                                                  '⚠️ Error al sincronizar perfil social: $e');
+                                                            }
+                                                          } else {
+                                                            print(
+                                                                'ℹ️ No hay perfil social asociado para sincronizar');
+                                                          }
+                                                        }
+
+                                                        // ✅ Limpiar recursos
                                                         focusNodes.values
                                                             .forEach((fn) =>
                                                                 fn.dispose());
@@ -12514,7 +12668,6 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
                                                           fontWeight:
                                                               FontWeight.bold)),
                                                   onPressed: () async {
-                                                    // [Mismo código de guardar que arriba]
                                                     try {
                                                       final Map<String, dynamic>
                                                           updateData = {};
@@ -12617,6 +12770,145 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
                                                                 'registros')
                                                             .doc(registro.id)
                                                             .update(updateData);
+
+                                                        print(
+                                                            '✅ Registro actualizado');
+
+                                                        final registroActualizado =
+                                                            await FirebaseFirestore
+                                                                .instance
+                                                                .collection(
+                                                                    'registros')
+                                                                .doc(
+                                                                    registro.id)
+                                                                .get();
+
+                                                        if (registroActualizado
+                                                            .exists) {
+                                                          final registroData =
+                                                              registroActualizado
+                                                                      .data()
+                                                                  as Map<String,
+                                                                      dynamic>?;
+                                                          final perfilSocialId =
+                                                              registroData?[
+                                                                  'perfilSocialId'];
+
+                                                          if (perfilSocialId !=
+                                                                  null &&
+                                                              perfilSocialId
+                                                                  .toString()
+                                                                  .trim()
+                                                                  .isNotEmpty) {
+                                                            try {
+                                                              final perfilDoc = await FirebaseFirestore
+                                                                  .instance
+                                                                  .collection(
+                                                                      'social_profiles')
+                                                                  .doc(perfilSocialId
+                                                                      .toString())
+                                                                  .get();
+
+                                                              if (perfilDoc
+                                                                  .exists) {
+                                                                print(
+                                                                    '📝 Sincronizando con perfil social: $perfilSocialId');
+
+                                                                Map<String,
+                                                                        dynamic>
+                                                                    updateDataPerfil =
+                                                                    {
+                                                                  'name': updateData[
+                                                                      'nombre'],
+                                                                  'lastName':
+                                                                      updateData[
+                                                                          'apellido'],
+                                                                  'phone':
+                                                                      updateData[
+                                                                          'telefono'],
+                                                                  'address':
+                                                                      updateData[
+                                                                          'direccion'],
+                                                                  'city': updateData[
+                                                                      'barrio'],
+                                                                  'age':
+                                                                      updateData[
+                                                                          'edad'],
+                                                                  'gender':
+                                                                      updateData[
+                                                                          'sexo'],
+                                                                  'prayerRequest':
+                                                                      updateData[
+                                                                          'peticiones'],
+                                                                  'estadoFonovisita':
+                                                                      updateData[
+                                                                          'estadoFonovisita'],
+                                                                  'observaciones':
+                                                                      updateData[
+                                                                          'observaciones'],
+                                                                  'estadoProceso':
+                                                                      updateData[
+                                                                          'estadoProceso'],
+                                                                };
+
+                                                                if (updateData
+                                                                    .containsKey(
+                                                                        'descripcionOcupacion')) {
+                                                                  updateDataPerfil[
+                                                                          'descripcionOcupacion'] =
+                                                                      updateData[
+                                                                          'descripcionOcupacion'];
+                                                                } else if (updateData
+                                                                    .containsKey(
+                                                                        'descripcionOcupaciones')) {
+                                                                  updateDataPerfil[
+                                                                          'descripcionOcupacion'] =
+                                                                      updateData[
+                                                                          'descripcionOcupaciones'];
+                                                                }
+
+                                                                updateDataPerfil
+                                                                    .removeWhere((key,
+                                                                            value) =>
+                                                                        value ==
+                                                                        null);
+
+                                                                await FirebaseFirestore
+                                                                    .instance
+                                                                    .collection(
+                                                                        'social_profiles')
+                                                                    .doc(perfilSocialId
+                                                                        .toString())
+                                                                    .update(
+                                                                        updateDataPerfil);
+
+                                                                print(
+                                                                    '✅ Perfil social sincronizado');
+                                                              } else {
+                                                                print(
+                                                                    '⚠️ El perfil social no existe: $perfilSocialId');
+
+                                                                await FirebaseFirestore
+                                                                    .instance
+                                                                    .collection(
+                                                                        'registros')
+                                                                    .doc(
+                                                                        registro
+                                                                            .id)
+                                                                    .update({
+                                                                  'perfilSocialId':
+                                                                      null
+                                                                });
+                                                              }
+                                                            } catch (e) {
+                                                              print(
+                                                                  '⚠️ Error al sincronizar perfil social: $e');
+                                                            }
+                                                          } else {
+                                                            print(
+                                                                'ℹ️ No hay perfil social asociado para sincronizar');
+                                                          }
+                                                        }
 
                                                         focusNodes.values
                                                             .forEach((fn) =>
@@ -12765,6 +13057,8 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
       },
     );
   }
+
+
 
 // ✅ MÉTODOS AUXILIARES RESPONSIVE ACTUALIZADOS
   Widget _buildAnimatedTextFieldResponsive({
@@ -16218,16 +16512,6 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
     return 'Tribu sin nombre';
   }
 
-// ✅ FUNCIÓN AUXILIAR: Para construir opciones del dropdown
-/*Widget _buildOption(String text, IconData icon, Color color) {
-  return Row(
-    children: [
-      Icon(icon, color: color, size: 18),
-      SizedBox(width: 8),
-      Expanded(child: Text(text)),
-    ],
-  );
-}*/
 
   Future<void> _procesarCambioAsignacion(
     BuildContext context,
@@ -16795,13 +17079,17 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
       }
     }
 
-    // Función para calcular la edad a partir de fecha de nacimiento
     int? calcularEdadDesdeData(Map<String, dynamic> data) {
       try {
-        var fechaNacimiento;
+        DateTime? fechaNacimiento;
 
         if (data.containsKey('fechaNacimiento')) {
           var value = data['fechaNacimiento'];
+
+          // ✅ VALIDACIÓN: Si es null, retornar null inmediatamente
+          if (value == null) {
+            return null;
+          }
 
           if (value is Timestamp) {
             fechaNacimiento = value.toDate();
@@ -16818,34 +17106,49 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
                 }
               }
             } else {
-              fechaNacimiento = DateTime.parse(value);
+              try {
+                fechaNacimiento = DateTime.parse(value);
+              } catch (e) {
+                print('⚠️ Error al parsear fecha: $e');
+                return null;
+              }
             }
           }
 
+          // ✅ VALIDACIÓN ADICIONAL: Verificar que fechaNacimiento no sea null
           if (fechaNacimiento != null) {
             final hoy = DateTime.now();
-            int edad = (hoy.year - fechaNacimiento.year).toInt();
+            int edad = hoy.year - fechaNacimiento.year;
+
+            // Ajustar si aún no ha cumplido años este año
             if (hoy.month < fechaNacimiento.month ||
                 (hoy.month == fechaNacimiento.month &&
                     hoy.day < fechaNacimiento.day)) {
               edad--;
             }
+
             return edad;
           }
         }
         return null;
       } catch (e) {
+        print('❌ Error en calcularEdadDesdeData: $e');
         return null;
       }
     }
 
-    // Función para calcular próximo cumpleaños
+// ✅ FUNCIÓN CORREGIDA 2: Calcular próximo cumpleaños con manejo robusto de null
     String? calcularProximoCumpleanosDesdeData(Map<String, dynamic> data) {
       try {
-        var fechaNacimiento;
+        DateTime? fechaNacimiento;
 
         if (data.containsKey('fechaNacimiento')) {
           var value = data['fechaNacimiento'];
+
+          // ✅ VALIDACIÓN: Si es null, retornar null inmediatamente
+          if (value == null) {
+            return null;
+          }
 
           if (value is Timestamp) {
             fechaNacimiento = value.toDate();
@@ -16862,10 +17165,16 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
                 }
               }
             } else {
-              fechaNacimiento = DateTime.parse(value);
+              try {
+                fechaNacimiento = DateTime.parse(value);
+              } catch (e) {
+                print('⚠️ Error al parsear fecha: $e');
+                return null;
+              }
             }
           }
 
+          // ✅ VALIDACIÓN ADICIONAL: Verificar que fechaNacimiento no sea null
           if (fechaNacimiento != null) {
             final hoy = DateTime.now();
             DateTime proximoCumpleanos =
@@ -16884,22 +17193,23 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
             } else if (diferencia == 1) {
               return 'Mañana (1 día)';
             } else if (diferencia <= 7) {
-              return 'En ${diferencia} días';
+              return 'En $diferencia días';
             } else if (diferencia <= 30) {
-              return 'En ${diferencia} días';
+              return 'En $diferencia días';
             } else {
               final double mesesDouble = diferencia / 30;
-              final int meses = mesesDouble.floor().toInt(); // CORRECCIÓN AQUÍ
+              final int meses = mesesDouble.floor();
               if (meses == 1) {
                 return 'En aproximadamente 1 mes';
               } else {
-                return 'En aproximadamente ${meses} meses';
+                return 'En aproximadamente $meses meses';
               }
             }
           }
         }
         return null;
       } catch (e) {
+        print('❌ Error en calcularProximoCumpleanosDesdeData: $e');
         return null;
       }
     }
@@ -17659,8 +17969,6 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
   }
 }
 
-
-
 //----------------------------------------------------------------------------------------------
 
 // la clase InscripcionesTab existente
@@ -18218,13 +18526,21 @@ class _InscripcionesTabState extends State<InscripcionesTab> {
 
         final docs = snapshot.data!.docs;
 
-        // Filtrar registros con cumpleaños en el mes actual
+// Filtrar registros con cumpleaños en el mes actual
         final cumpleanieros = docs.where((doc) {
           final data = doc.data() as Map<String, dynamic>;
-          if (data['fechaNacimiento'] == null) return false;
+          final raw = data['fechaNacimiento'];
 
-          final fechaNacimiento =
-              (data['fechaNacimiento'] as Timestamp).toDate();
+          DateTime? fechaNacimiento;
+          if (raw is Timestamp) {
+            fechaNacimiento = raw.toDate();
+          } else if (raw is DateTime) {
+            fechaNacimiento = raw;
+          } else if (raw is String && raw.trim().isNotEmpty) {
+            fechaNacimiento = DateTime.tryParse(raw.trim());
+          }
+
+          if (fechaNacimiento == null) return false;
           return fechaNacimiento.month == currentMonth;
         }).toList();
 
@@ -18254,12 +18570,35 @@ class _InscripcionesTabState extends State<InscripcionesTab> {
           );
         }
 
-        // Ordenar por día de cumpleaños
+// Ordenar por día de cumpleaños
         cumpleanieros.sort((a, b) {
           final aData = a.data() as Map<String, dynamic>;
           final bData = b.data() as Map<String, dynamic>;
-          final aDate = (aData['fechaNacimiento'] as Timestamp).toDate();
-          final bDate = (bData['fechaNacimiento'] as Timestamp).toDate();
+
+          DateTime? aDate;
+          final aRaw = aData['fechaNacimiento'];
+          if (aRaw is Timestamp) {
+            aDate = aRaw.toDate();
+          } else if (aRaw is DateTime) {
+            aDate = aRaw;
+          } else if (aRaw is String && aRaw.trim().isNotEmpty) {
+            aDate = DateTime.tryParse(aRaw.trim());
+          }
+
+          DateTime? bDate;
+          final bRaw = bData['fechaNacimiento'];
+          if (bRaw is Timestamp) {
+            bDate = bRaw.toDate();
+          } else if (bRaw is DateTime) {
+            bDate = bRaw;
+          } else if (bRaw is String && bRaw.trim().isNotEmpty) {
+            bDate = DateTime.tryParse(bRaw.trim());
+          }
+
+          if (aDate == null && bDate == null) return 0;
+          if (aDate == null) return 1;
+          if (bDate == null) return -1;
+
           return aDate.day.compareTo(bDate.day);
         });
 
@@ -18342,7 +18681,21 @@ class _InscripcionesTabState extends State<InscripcionesTab> {
   }
 
   Widget _buildCumpleanosCard(Map<String, dynamic> data) {
-    final fechaNacimiento = (data['fechaNacimiento'] as Timestamp).toDate();
+    final raw = data['fechaNacimiento'];
+    DateTime? fechaNacimiento;
+
+    if (raw is Timestamp) {
+      fechaNacimiento = raw.toDate();
+    } else if (raw is DateTime) {
+      fechaNacimiento = raw;
+    } else if (raw is String && raw.trim().isNotEmpty) {
+      fechaNacimiento = DateTime.tryParse(raw.trim());
+    }
+
+    if (fechaNacimiento == null) {
+      return const SizedBox.shrink();
+    }
+
     final now = DateTime.now();
     final diaCumple = fechaNacimiento.day;
 

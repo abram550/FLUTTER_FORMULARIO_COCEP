@@ -24,9 +24,6 @@ import 'package:formulario_app/models/social_profile.dart';
 import 'package:formulario_app/services/firestore_service.dart';
 import 'package:formulario_app/services/excel_service.dart';
 
-// Locales
-import 'TribusScreen.dart';
-
 class AdminPanel extends StatefulWidget {
   const AdminPanel({super.key});
 
@@ -471,6 +468,20 @@ class _AdminPanelState extends State<AdminPanel>
     Map<int, Map<int, Map<DateTime, List<Registro>>>> agrupados = {};
 
     for (var registro in registros) {
+      // ✅ FILTRO CRÍTICO: Ignorar registros de perfiles sociales
+      // Verificar si el registro proviene de un perfil social
+      final origenPerfilSocial = registro.origenPerfilSocial ?? false;
+      final perfilSocialId = registro.perfilSocialId;
+
+      // Si tiene alguno de estos campos, NO incluirlo en la agrupación
+      if (origenPerfilSocial == true ||
+          (perfilSocialId != null &&
+              perfilSocialId.toString().trim().isNotEmpty)) {
+        print(
+            '⚠️ Registro ignorado en agrupación (origen perfil social): ${registro.id}');
+        continue; // Saltar este registro
+      }
+
       // ✅ Validar que el registro tenga una fecha válida
       if (registro.fecha == null) {
         print(
@@ -1473,156 +1484,6 @@ class _AdminPanelState extends State<AdminPanel>
     );
   }
 
-  Widget _buildGrafica(StateSetter setDialogState) {
-    return FutureBuilder<Map<String, List<ChartData>>>(
-      future: _obtenerDatosParaGrafica(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CircularProgressIndicator(color: secondaryOrange),
-                const SizedBox(height: 8),
-                Text(
-                  "Cargando datos...",
-                  style: TextStyle(
-                    color: primaryTeal,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                  ),
-                ),
-              ],
-            ),
-          );
-        }
-
-        if (snapshot.hasError) {
-          return Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.error_outline, color: Colors.red, size: 32),
-                const SizedBox(height: 6),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Text(
-                    "Error al cargar datos: ${snapshot.error}",
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(color: Colors.red, fontSize: 13),
-                  ),
-                ),
-              ],
-            ),
-          );
-        }
-
-        if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.info_outline, color: primaryTeal, size: 32),
-                const SizedBox(height: 6),
-                Text(
-                  "No hay datos disponibles",
-                  style: TextStyle(
-                    color: primaryTeal,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
-                  ),
-                ),
-              ],
-            ),
-          );
-        }
-
-        final datos = snapshot.data!;
-        final tipoActual = datos[_tipoGrafica] ?? [];
-
-        return Screenshot(
-          controller: _screenshotController,
-          child: RepaintBoundary(
-            key: _chartKey,
-            child: Container(
-              color: Colors.white,
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  // Título de la gráfica
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 6.0),
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Text(
-                        "${_tipoGrafica == 'consolidacion' ? 'Consolidación' : 'Redes Sociales'} - ${_filtroSeleccionado.substring(0, 1).toUpperCase() + _filtroSeleccionado.substring(1)}",
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: primaryTeal,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                  ),
-                  const Divider(thickness: 1),
-                  const SizedBox(height: 5),
-
-                  // Selector de tipo de visualización
-                  if (!_isCapturing)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          _buildVisualizationToggle('barras', Icons.bar_chart),
-                          _buildVisualizationToggle('lineal', Icons.show_chart),
-                          _buildVisualizationToggle(
-                              'circular', Icons.pie_chart),
-                        ],
-                      ),
-                    ),
-                  if (!_isCapturing) const SizedBox(height: 5),
-
-                  // Gráfica principal - RESPONSIVA CON AJUSTE CIRCULAR
-                  Expanded(
-                    child: LayoutBuilder(
-                      builder: (context, constraints) {
-                        double availableHeight = constraints.maxHeight;
-                        double availableWidth = constraints.maxWidth;
-
-                        // ✅ AJUSTE ESPECÍFICO PARA GRÁFICA CIRCULAR
-                        if (_tipoVisualizacion == 'circular') {
-                          // Calcular tamaño máximo permitido (más pequeño)
-                          double maxDimension =
-                              min(availableHeight * 0.65, availableWidth * 0.7);
-
-                          return Center(
-                            child: SizedBox(
-                              height: maxDimension,
-                              width: maxDimension,
-                              child: _renderizarGrafica(tipoActual),
-                            ),
-                          );
-                        }
-
-                        // Para barras y líneas, usar todo el espacio
-                        return _renderizarGrafica(tipoActual);
-                      },
-                    ),
-                  ),
-
-                  // Leyenda
-                  _buildLeyendaCompacta(tipoActual),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
   /// ✅ NUEVO MÉTODO: Gráfica con tabla desplegable integrada
 
   Widget _buildGraficaConTabla(
@@ -2575,133 +2436,6 @@ class _AdminPanelState extends State<AdminPanel>
     );
   }
 
-  /// Construye la leyenda optimizada para exportación
-  Widget _buildExportLegend(List<ChartData> datos) {
-    if (datos.isEmpty) return const SizedBox();
-
-    final total =
-        _tipoVisualizacion == "circular" ? _calcularTotal(datos) : 0.0;
-
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.grey[50],
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade300),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.legend_toggle, color: primaryTeal, size: 24),
-              const SizedBox(width: 8),
-              Text(
-                'Leyenda',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: primaryTeal,
-                ),
-              ),
-              if (_tipoVisualizacion == "circular") ...[
-                const Spacer(),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: secondaryOrange.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: secondaryOrange),
-                  ),
-                  child: Text(
-                    "Total: ${total.toInt()} registros",
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: secondaryOrange,
-                    ),
-                  ),
-                ),
-              ],
-            ],
-          ),
-          const SizedBox(height: 16),
-          Wrap(
-            spacing: 20,
-            runSpacing: 12,
-            children: datos.map((data) {
-              final porcentaje = _tipoVisualizacion == "circular"
-                  ? ((data.value / total) * 100).toStringAsFixed(1)
-                  : null;
-
-              return Container(
-                constraints: const BoxConstraints(minWidth: 200),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: data.color.withOpacity(0.3)),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 20,
-                      height: 20,
-                      decoration: BoxDecoration(
-                        color: data.color,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: data.color.withOpacity(0.4),
-                            blurRadius: 4,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Flexible(
-                      child: Text(
-                        data.label,
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.black87,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: data.color.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        porcentaje != null
-                            ? '${data.value} ($porcentaje%)'
-                            : data.value.toString(),
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: data.color,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }).toList(),
-          ),
-        ],
-      ),
-    );
-  }
-
   /// Construye el pie de página con información adicional
   Widget _buildExportFooter() {
     final now = DateTime.now();
@@ -2884,55 +2618,6 @@ class _AdminPanelState extends State<AdminPanel>
           fontSize: isHeader ? 16 : 15,
           fontWeight: isHeader ? FontWeight.bold : FontWeight.normal,
           color: color ?? (isHeader ? Colors.white : Colors.black87),
-        ),
-      ),
-    );
-  }
-
-// Widget para cambiar tipo de visualización de forma interactiva
-  Widget _buildVisualizationToggle(String tipo, IconData icono) {
-    bool isSelected = _tipoVisualizacion == tipo;
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _tipoVisualizacion = tipo;
-        });
-      },
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 4),
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        decoration: BoxDecoration(
-          color: isSelected ? primaryTeal : Colors.grey.shade200,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: primaryTeal.withOpacity(0.4),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
-                  )
-                ]
-              : null,
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icono,
-              size: 16,
-              color: isSelected ? Colors.white : Colors.grey.shade700,
-            ),
-            if (isSelected) const SizedBox(width: 4),
-            if (isSelected)
-              Text(
-                tipo[0].toUpperCase() + tipo.substring(1),
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-          ],
         ),
       ),
     );
@@ -3528,80 +3213,6 @@ class _AdminPanelState extends State<AdminPanel>
     );
   }
 
-// Versión más compacta de la leyenda
-  Widget _buildLeyendaCompacta(List<ChartData> datos) {
-    if (datos.isEmpty) return const SizedBox();
-
-    // Para gráficas circulares, mostrar el total
-    double total = 0;
-    if (_tipoVisualizacion == "circular") {
-      total = _calcularTotal(datos);
-    }
-
-    return Container(
-      padding:
-          const EdgeInsets.symmetric(horizontal: 8, vertical: 4), // Reducido
-      width: double.infinity,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min, // Ajustar al contenido
-        children: [
-          if (_tipoVisualizacion == "circular")
-            Padding(
-              padding: const EdgeInsets.only(bottom: 4.0), // Reducido de 8 a 4
-              child: Text(
-                "Total: ${total.toInt()} valores",
-                style: TextStyle(
-                  fontSize: 14, // Reducido de 16 a 14
-                  fontWeight: FontWeight.bold,
-                  color: primaryTeal,
-                ),
-              ),
-            ),
-
-          // ✅ Mantiene el mismo tamaño, pero permite ver TODO con scroll interno
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxHeight: 70),
-            child: Scrollbar(
-              child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                child: Wrap(
-                  spacing: 8, // Reducido de 12 a 8
-                  runSpacing: 4, // Reducido de 8 a 4
-                  children: datos.map((data) {
-                    return Container(
-                      margin: const EdgeInsets.only(right: 4, bottom: 4),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 10, // Reducido de 14 a 10
-                            height: 10, // Reducido de 14 a 10
-                            decoration: BoxDecoration(
-                              color: data.color,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          const SizedBox(width: 4), // Reducido de 6 a 4
-                          Text(
-                            data.label,
-                            style: const TextStyle(
-                              fontSize: 10, // Reducido de 12 a 10
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildLeyendaUltraCompacta(List<ChartData> datos, bool isSmall) {
     if (datos.isEmpty) return const SizedBox();
 
@@ -3679,109 +3290,6 @@ class _AdminPanelState extends State<AdminPanel>
   }
 
 // Variables para guardar el estado de interactividad
-
-  Widget _buildLeyenda(List<ChartData> datos) {
-    if (datos.isEmpty) return const SizedBox();
-
-    // Para gráficas circulares, mostrar el total
-    double total = 0;
-    if (_tipoVisualizacion == "circular") {
-      total = _calcularTotal(datos);
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      width: double.infinity,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (_tipoVisualizacion == "circular")
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8.0),
-              child: Text(
-                "Total: ${total.toInt()} valores",
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: primaryTeal,
-                ),
-              ),
-            ),
-          // Título de la leyenda
-          Text(
-            "Leyenda:",
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-              color: Colors.grey.shade700,
-            ),
-          ),
-          const SizedBox(height: 4),
-          // Leyenda en forma de Wrap para adaptarse a diferentes anchos
-          Wrap(
-            spacing: 12,
-            runSpacing: 8,
-            children: datos.map((data) {
-              return Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 14,
-                    height: 14,
-                    decoration: BoxDecoration(
-                      color: data.color,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    data.label,
-                    style: const TextStyle(
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-              );
-            }).toList(),
-          ),
-        ],
-      ),
-    );
-  }
-
-// Función para crear un widget principal de gráfica
-  Widget _buildChartWidget(String titulo, Widget chart, List<ChartData> datos) {
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(4.0),
-              child: Text(
-                titulo,
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.blueGrey[800],
-                ),
-              ),
-            ),
-            const Divider(),
-            const SizedBox(height: 8),
-            chart,
-            const SizedBox(height: 8),
-            _buildLeyenda(datos),
-          ],
-        ),
-      ),
-    );
-  }
 
   Future<Map<String, List<ChartData>>> _obtenerDatosParaGrafica() async {
     // ✅ AGREGAR ESTOS PRINTS AL INICIO
@@ -4034,21 +3542,6 @@ class _AdminPanelState extends State<AdminPanel>
       'Diciembre'
     ];
     return meses.indexOf(mes) + 1; // enero = 1
-  }
-
-// Método para actualizar la gráfica cuando cambian los selectores
-  void _actualizarGrafica() {
-    setState(() {
-      // Actualiza el estado para forzar la reconstrucción de la gráfica
-      _cargando = true;
-    });
-
-    _obtenerDatosParaGrafica().then((datos) {
-      setState(() {
-        _datosFiltrados = datos;
-        _cargando = false;
-      });
-    });
   }
 
   List<ChartData> _procesarDatosPorPeriodo(
@@ -4699,209 +4192,6 @@ class _AdminPanelState extends State<AdminPanel>
     }
   }
 
-  Future<void> _assignRegistroToTribu(String registroId) async {
-    // Verificar si el registro existe
-    final registroDoc = await FirebaseFirestore.instance
-        .collection('registros')
-        .doc(registroId)
-        .get();
-
-    if (!registroDoc.exists) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('El registro no existe o ha sido eliminado.')),
-      );
-      return;
-    }
-
-    // Inicializar opciones
-    final List<DropdownMenuItem<String>> opciones = [];
-    String? opcionSeleccionada;
-
-    try {
-      // Agregar opciones directas para ministerios primero
-      opciones.add(const DropdownMenuItem(
-        value: 'Ministerio de Damas',
-        child: Text('Ministerio de Damas'),
-      ));
-      opciones.add(const DropdownMenuItem(
-        value: 'Ministerio de Caballeros',
-        child: Text('Ministerio de Caballeros'),
-      ));
-
-      // Agregar un separador visual
-      opciones.add(DropdownMenuItem(
-        value: 'separator',
-        enabled: false,
-        child: Divider(thickness: 2, color: Colors.grey),
-      ));
-
-      // Agregar título para tribus juveniles
-      opciones.add(DropdownMenuItem(
-        value: 'juveniles_title',
-        enabled: false,
-        child: Text('Tribus Juveniles',
-            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
-      ));
-
-      // Cargar las tribus juveniles - SOLUCIÓN MODIFICADA: Eliminamos el orderBy
-      final tribusSnapshot = await FirebaseFirestore.instance
-          .collection('tribus')
-          .where('categoria', isEqualTo: 'Ministerio Juvenil')
-          .get();
-
-      // Ordenar las tribus por nombre en memoria para evitar necesitar índices compuestos
-      final sortedDocs = tribusSnapshot.docs
-        ..sort((a, b) => (a.data()['nombre'] as String? ?? '')
-            .compareTo(b.data()['nombre'] as String? ?? ''));
-
-      // Agregar tribus juveniles al dropdown
-      for (var doc in sortedDocs) {
-        final nombre = doc['nombre'] ?? 'Sin nombre';
-
-        opciones.add(DropdownMenuItem(
-          value: doc.id,
-          child: Text(nombre),
-        ));
-      }
-
-      if (opciones.length <= 4) {
-        // Si solo tenemos los ministerios y separadores
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content:
-                  Text('No hay tribus juveniles disponibles para asignar.')),
-        );
-        // Continuamos de todos modos porque podemos asignar a los ministerios principales
-      }
-
-      // Mostrar diálogo para seleccionar
-      await showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) {
-          return StatefulBuilder(
-            builder: (context, setState) {
-              return AlertDialog(
-                title: const Text('Asignar a Ministerio o Tribu'),
-                content: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    DropdownButtonFormField<String>(
-                      value: opcionSeleccionada,
-                      items: opciones,
-                      onChanged: (value) {
-                        // Ignorar selecciones de separadores y títulos
-                        if (value != 'separator' &&
-                            value != 'juveniles_title') {
-                          setState(() {
-                            opcionSeleccionada = value;
-                          });
-                        }
-                      },
-                      decoration: const InputDecoration(
-                        labelText: 'Seleccione una opción',
-                        border: OutlineInputBorder(),
-                      ),
-                      isExpanded: true,
-                    ),
-                  ],
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text('Cancelar'),
-                  ),
-                  ElevatedButton(
-                    onPressed: opcionSeleccionada == null
-                        ? null
-                        : () async {
-                            if (opcionSeleccionada == 'Ministerio de Damas' ||
-                                opcionSeleccionada ==
-                                    'Ministerio de Caballeros') {
-                              // 🔹 Aquí se llama la función para asignar al ministerio correctamente
-                              await asignarRegistroAMinisterio(
-                                  registroId, opcionSeleccionada!);
-                              Navigator.pop(context);
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    'Registro asignado a "$opcionSeleccionada" correctamente',
-                                  ),
-                                  backgroundColor: Colors.green,
-                                ),
-                              );
-                            } else {
-                              try {
-                                // Obtener información de la tribu seleccionada
-                                final docTribu = await FirebaseFirestore
-                                    .instance
-                                    .collection('tribus')
-                                    .doc(opcionSeleccionada)
-                                    .get();
-
-                                if (!docTribu.exists) {
-                                  throw Exception(
-                                      'La tribu seleccionada ya no existe');
-                                }
-
-                                final dataTribu =
-                                    docTribu.data() as Map<String, dynamic>;
-                                final ministerioAsignado =
-                                    dataTribu['categoria'] ?? '';
-                                final nombreTribu = dataTribu['nombre'] ?? '';
-
-                                // Actualizar registro con tribu y ministerio
-                                await FirebaseFirestore.instance
-                                    .collection('registros')
-                                    .doc(registroId)
-                                    .update({
-                                  'tribuAsignada': opcionSeleccionada,
-                                  'nombreTribu': nombreTribu,
-                                  'ministerioAsignado': ministerioAsignado,
-                                  'fechaAsignacionTribu':
-                                      FieldValue.serverTimestamp(),
-                                });
-
-                                Navigator.pop(context);
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                      'Registro asignado a "$nombreTribu" correctamente',
-                                    ),
-                                    backgroundColor: Colors.green,
-                                  ),
-                                );
-                              } catch (e) {
-                                Navigator.pop(context);
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                        'Error al asignar: ${e.toString()}'),
-                                    backgroundColor: Colors.red,
-                                  ),
-                                );
-                              }
-                            }
-                          },
-                    child: const Text('Asignar'),
-                  ),
-                ],
-              );
-            },
-          );
-        },
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error al cargar las opciones: ${e.toString()}'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
-
   void _mostrarExito(String mensaje) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -5346,7 +4636,6 @@ class _AdminPanelState extends State<AdminPanel>
         ),
         child: Column(
           children: [
-            // ELIMINADO: _buildBuscadorFechas() - Ya no se necesita aquí
             _buildFiltroTipoRegistro(),
             StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance
@@ -5360,6 +4649,41 @@ class _AdminPanelState extends State<AdminPanel>
                 if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
                   return const Center(
                       child: Text('No hay registros disponibles.'));
+                }
+
+                // ✅ FILTRO CRÍTICO: Excluir registros provenientes de perfiles sociales
+                final registrosFiltrados = snapshot.data!.docs.where((doc) {
+                  final data = doc.data() as Map<String, dynamic>?;
+
+                  // ✅ CRITERIO 1: Excluir si tiene origenPerfilSocial = true
+                  final origenPerfilSocial =
+                      data?['origenPerfilSocial'] ?? false;
+                  if (origenPerfilSocial == true) {
+                    return false; // NO mostrar en pestaña Registros
+                  }
+
+                  // ✅ CRITERIO 2: Excluir si tiene perfilSocialId (vinculado a perfil social)
+                  final perfilSocialId = data?['perfilSocialId'];
+                  if (perfilSocialId != null &&
+                      perfilSocialId.toString().trim().isNotEmpty) {
+                    return false; // NO mostrar en pestaña Registros
+                  }
+
+                  // ✅ Si no cumple ninguno de los criterios anteriores, SÍ mostrarlo
+                  return true; // Mostrar solo registros directos
+                }).toList();
+
+                if (registrosFiltrados.isEmpty) {
+                  return const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(20),
+                      child: Text(
+                        'No hay registros directos disponibles.\nLos registros de perfiles sociales se muestran en su pestaña.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 14, color: Colors.grey),
+                      ),
+                    ),
+                  );
                 }
 
                 return ListView.builder(
@@ -5382,39 +4706,6 @@ class _AdminPanelState extends State<AdminPanel>
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildBuscadorFechas() {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Row(
-        children: [
-          Expanded(
-            child: ElevatedButton.icon(
-              icon: const Icon(Icons.search),
-              label: Text(_startDate != null && _endDate != null
-                  ? '${DateFormat('dd/MM/yyyy').format(_startDate!)} - ${DateFormat('dd/MM/yyyy').format(_endDate!)}'
-                  : 'Buscar por fechas'),
-              onPressed: () => _selectDateRange(context).then((value) {
-                if (_startDate != null && _endDate != null) {
-                  _filtrarRegistros();
-                }
-              }),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: primaryTeal,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-              ),
-            ),
-          ),
-          if (_mostrarFiltrados)
-            IconButton(
-              icon: const Icon(Icons.clear),
-              onPressed: _limpiarFiltro,
-              color: secondaryOrange,
-            ),
-        ],
       ),
     );
   }
@@ -8034,11 +7325,6 @@ class _AdminPanelState extends State<AdminPanel>
     );
   }
 
-// ============================================================================
-// REEMPLAZAR EL MÉTODO _buildYearGroup() COMPLETO
-// Ubicación: Línea aproximada 2760
-// ============================================================================
-
   Widget _buildYearGroupModern(
     BuildContext context,
     int year,
@@ -8140,11 +7426,6 @@ class _AdminPanelState extends State<AdminPanel>
     );
   }
 
-// ============================================================================
-// REEMPLAZAR EL MÉTODO _buildMonthGroup() COMPLETO
-// Ubicación: Línea aproximada 2790
-// ============================================================================
-
   Widget _buildMonthGroupModern(
     BuildContext context,
     int month,
@@ -8231,11 +7512,6 @@ class _AdminPanelState extends State<AdminPanel>
       ),
     );
   }
-
-// ============================================================================
-// REEMPLAZAR EL MÉTODO _buildWeekGroup() COMPLETO
-// Ubicación: Línea aproximada 2820
-// ============================================================================
 
   Widget _buildWeekGroupModern(
     BuildContext context,
@@ -8594,11 +7870,6 @@ class _AdminPanelState extends State<AdminPanel>
     );
   }
 
-// ============================================================================
-// NUEVO MÉTODO: Botón de acción reutilizable
-// Agregar DESPUÉS del método _buildPerfilTileModern
-// ============================================================================
-
   Widget _buildActionButton({
     required IconData icon,
     required String label,
@@ -8682,48 +7953,6 @@ class _AdminPanelState extends State<AdminPanel>
     }
   }
 
-  String _getWeekdayName(int weekday) {
-    switch (weekday) {
-      case 1: // DateTime.monday
-        return 'Lunes';
-      case 2:
-        return 'Martes';
-      case 3:
-        return 'Miércoles';
-      case 4:
-        return 'Jueves';
-      case 5:
-        return 'Viernes';
-      case 6:
-        return 'Sábado';
-      case 7: // DateTime.sunday
-        return 'Domingo';
-      default:
-        return 'Desconocido';
-    }
-  }
-
-  IconData _getDayIcon(String day) {
-    switch (day) {
-      case 'Lunes':
-        return Icons.start;
-      case 'Martes':
-        return Icons.looks_two;
-      case 'Miércoles':
-        return Icons.looks_3;
-      case 'Jueves':
-        return Icons.looks_4;
-      case 'Viernes':
-        return Icons.weekend;
-      case 'Sábado':
-        return Icons.sports_bar;
-      case 'Domingo':
-        return Icons.brightness_5;
-      default:
-        return Icons.calendar_today;
-    }
-  }
-
 // Obtener el número de semana (asumiendo que la semana comienza el lunes)
   int _getWeekNumber(DateTime date) {
     // Encontrar el primer día del mes
@@ -8769,7 +7998,127 @@ class _AdminPanelState extends State<AdminPanel>
     return firstMonday.add(Duration(days: (weekNumber - 1) * 7));
   }
 
-  void _mostrarDetallesPerfil(BuildContext context, SocialProfile perfil) {
+  void _mostrarDetallesPerfil(
+      BuildContext context, SocialProfile perfil) async {
+    // ✅ OBTENER DATOS DEL PERFIL Y REGISTRO ASOCIADO
+    final perfilDoc = await FirebaseFirestore.instance
+        .collection('social_profiles')
+        .doc(perfil.id)
+        .get();
+
+    final perfilData =
+        perfilDoc.exists ? perfilDoc.data() as Map<String, dynamic>? : null;
+
+    final registroAsociadoId = perfilData?['registroAsociadoId'];
+    Map<String, dynamic>? registroData;
+
+    if (registroAsociadoId != null &&
+        registroAsociadoId.toString().trim().isNotEmpty) {
+      try {
+        final registroDoc = await FirebaseFirestore.instance
+            .collection('registros')
+            .doc(registroAsociadoId.toString())
+            .get();
+
+        if (registroDoc.exists) {
+          registroData = registroDoc.data() as Map<String, dynamic>?;
+        }
+      } catch (e) {
+        print('⚠️ Error al cargar registro: $e');
+      }
+    }
+
+    // ✅ FUNCIÓN PARA OBTENER VALOR (prioriza registro, luego perfil)
+    String obtenerValor(String campoPerfil, String campoRegistro) {
+      if (registroData != null && registroData![campoRegistro] != null) {
+        final valor = registroData![campoRegistro];
+        if (valor.toString().trim().isNotEmpty) {
+          return valor.toString();
+        }
+      }
+
+      if (perfilData != null && perfilData![campoPerfil] != null) {
+        final valor = perfilData![campoPerfil];
+        if (valor.toString().trim().isNotEmpty) {
+          return valor.toString();
+        }
+      }
+
+      return 'No especificado';
+    }
+
+    // ✅ FUNCIÓN PARA VERIFICAR SI UN CAMPO TIENE VALOR
+    bool tieneValor(String campoPerfil, String campoRegistro) {
+      if (registroData != null && registroData![campoRegistro] != null) {
+        final valor = registroData![campoRegistro];
+        if (valor.toString().trim().isNotEmpty) {
+          return true;
+        }
+      }
+
+      if (perfilData != null && perfilData![campoPerfil] != null) {
+        final valor = perfilData![campoPerfil];
+        if (valor.toString().trim().isNotEmpty) {
+          return true;
+        }
+      }
+
+      return false;
+    }
+
+    // ✅ FUNCIÓN PARA OBTENER FECHA DE NACIMIENTO
+    String obtenerFechaNacimiento() {
+      DateTime? fecha;
+
+      // Buscar primero en registro
+      if (registroData != null &&
+          registroData!.containsKey('fechaNacimiento')) {
+        final fechaValue = registroData!['fechaNacimiento'];
+        if (fechaValue is Timestamp) {
+          fecha = fechaValue.toDate();
+        } else if (fechaValue is String) {
+          try {
+            fecha = DateTime.parse(fechaValue);
+          } catch (e) {
+            print('Error parsing fechaNacimiento from registro: $e');
+          }
+        }
+      }
+
+      // Luego buscar en perfil social
+      if (fecha == null &&
+          perfilData != null &&
+          perfilData!.containsKey('fechaNacimiento')) {
+        final fechaValue = perfilData!['fechaNacimiento'];
+        if (fechaValue is Timestamp) {
+          fecha = fechaValue.toDate();
+        } else if (fechaValue is String) {
+          try {
+            fecha = DateTime.parse(fechaValue);
+          } catch (e) {
+            print('Error parsing fechaNacimiento from perfil: $e');
+          }
+        }
+      }
+
+      if (fecha != null) {
+        return DateFormat('dd/MM/yyyy').format(fecha);
+      }
+
+      return 'No especificada';
+    }
+
+    // ✅ FUNCIÓN PARA OBTENER OCUPACIONES (lista → string)
+    String obtenerOcupaciones() {
+      if (registroData != null && registroData!.containsKey('ocupaciones')) {
+        final ocupaciones = registroData!['ocupaciones'];
+        if (ocupaciones is List && ocupaciones.isNotEmpty) {
+          return ocupaciones.join(', ');
+        }
+      }
+      return 'No especificadas';
+    }
+
     showDialog(
       context: context,
       barrierColor: Colors.black54,
@@ -8848,7 +8197,7 @@ class _AdminPanelState extends State<AdminPanel>
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              '${perfil.name} ${perfil.lastName}',
+                              '${obtenerValor('name', 'nombre')} ${obtenerValor('lastName', 'apellido')}',
                               style: const TextStyle(
                                 fontSize: 20,
                                 fontWeight: FontWeight.bold,
@@ -8878,22 +8227,44 @@ class _AdminPanelState extends State<AdminPanel>
                   ),
                 ),
 
-                // Contenido principal
+                // Contenido
                 Flexible(
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     child: Column(
                       children: [
-                        // Sección de Información Personal
+                        // Información Personal
                         _buildDetailSection(
                           'Información Personal',
                           [
+                            _buildDetailItem(Icons.cake, 'Edad',
+                                '${obtenerValor('age', 'edad')} años'),
                             _buildDetailItem(
-                                Icons.cake, 'Edad', '${perfil.age} años'),
-                            _buildDetailItem(_getGenderIcon(perfil.gender),
-                                'Género', _formatGender(perfil.gender)),
-                            _buildDetailItem(Icons.phone, 'Teléfono',
-                                _formatPhone(perfil.phone)),
+                                _getGenderIcon(obtenerValor('gender', 'sexo')),
+                                'Género',
+                                _formatGender(obtenerValor('gender', 'sexo'))),
+                            _buildDetailItem(
+                                Icons.phone,
+                                'Teléfono',
+                                _formatPhone(
+                                    obtenerValor('phone', 'telefono'))),
+                            // ✅ CAMPOS OPCIONALES
+                            if (tieneValor('estadoCivil', 'estadoCivil'))
+                              _buildDetailItem(
+                                  Icons.family_restroom,
+                                  'Estado Civil',
+                                  obtenerValor('estadoCivil', 'estadoCivil')),
+                            if (tieneValor('nombrePareja', 'nombrePareja'))
+                              _buildDetailItem(
+                                  Icons.favorite,
+                                  'Nombre de Pareja',
+                                  obtenerValor('nombrePareja', 'nombrePareja')),
+                            // ✅ FECHA DE NACIMIENTO
+                            if (obtenerFechaNacimiento() != 'No especificada')
+                              _buildDetailItem(
+                                  Icons.calendar_today,
+                                  'Fecha de Nacimiento',
+                                  obtenerFechaNacimiento()),
                           ],
                         ),
 
@@ -8901,14 +8272,14 @@ class _AdminPanelState extends State<AdminPanel>
                         const Divider(indent: 20, endIndent: 20),
                         const SizedBox(height: 4),
 
-                        // Sección de Ubicación
+                        // Ubicación
                         _buildDetailSection(
                           'Ubicación',
                           [
-                            _buildDetailItem(
-                                Icons.home, 'Dirección', perfil.address),
-                            _buildDetailItem(
-                                Icons.location_city, 'Ciudad', perfil.city),
+                            _buildDetailItem(Icons.home, 'Dirección',
+                                obtenerValor('address', 'direccion')),
+                            _buildDetailItem(Icons.location_city, 'Ciudad',
+                                obtenerValor('city', 'barrio')),
                           ],
                         ),
 
@@ -8916,14 +8287,81 @@ class _AdminPanelState extends State<AdminPanel>
                         const Divider(indent: 20, endIndent: 20),
                         const SizedBox(height: 4),
 
-                        // Sección de Información Adicional
+                        // ✅ Ocupaciones (SOLO SI HAY DATOS)
+                        if (obtenerOcupaciones() != 'No especificadas') ...[
+                          _buildDetailSection(
+                            'Ocupaciones',
+                            [
+                              _buildDetailItem(Icons.work, 'Ocupaciones',
+                                  obtenerOcupaciones()),
+                              if (tieneValor('descripcionOcupacion',
+                                  'descripcionOcupacion'))
+                                _buildDetailItem(
+                                    Icons.work_outline,
+                                    'Descripción',
+                                    obtenerValor('descripcionOcupacion',
+                                        'descripcionOcupacion')),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          const Divider(indent: 20, endIndent: 20),
+                          const SizedBox(height: 4),
+                        ],
+
+                        // ✅ Seguimiento (SOLO SI HAY DATOS)
+                        if (tieneValor(
+                                'estadoFonovisita', 'estadoFonovisita') ||
+                            tieneValor('estadoProceso', 'estadoProceso')) ...[
+                          _buildDetailSection(
+                            'Seguimiento',
+                            [
+                              if (tieneValor(
+                                  'estadoFonovisita', 'estadoFonovisita'))
+                                _buildDetailItem(
+                                    Icons.call,
+                                    'Estado de Fonovisita',
+                                    obtenerValor('estadoFonovisita',
+                                        'estadoFonovisita')),
+                              if (tieneValor('estadoProceso', 'estadoProceso'))
+                                _buildDetailItem(
+                                    Icons.track_changes,
+                                    'Estado del Proceso',
+                                    obtenerValor(
+                                        'estadoProceso', 'estadoProceso')),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          const Divider(indent: 20, endIndent: 20),
+                          const SizedBox(height: 4),
+                        ],
+
+                        // Información Adicional
                         _buildDetailSection(
                           'Información Adicional',
                           [
                             _buildDetailItem(
                                 Icons.favorite,
                                 'Petición de Oración',
-                                perfil.prayerRequest ?? 'No especificada'),
+                                obtenerValor('prayerRequest', 'peticiones')),
+                            if (tieneValor('observaciones', 'observaciones'))
+                              _buildDetailItem(
+                                  Icons.note,
+                                  'Observaciones',
+                                  obtenerValor(
+                                      'observaciones', 'observaciones')),
+                            if (tieneValor('observaciones2', 'observaciones2'))
+                              _buildDetailItem(
+                                  Icons.notes,
+                                  'Observaciones 2',
+                                  obtenerValor(
+                                      'observaciones2', 'observaciones2')),
+                            if (tieneValor(
+                                'referenciaInvitacion', 'referenciaInvitacion'))
+                              _buildDetailItem(
+                                  Icons.link,
+                                  'Referencia de Invitación',
+                                  obtenerValor('referenciaInvitacion',
+                                      'referenciaInvitacion')),
                             _buildDetailItem(
                                 Icons.calendar_today,
                                 'Fecha de Registro',
@@ -8936,7 +8374,7 @@ class _AdminPanelState extends State<AdminPanel>
                   ),
                 ),
 
-                // Botones de acción
+                // Botones
                 Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: Row(
@@ -8968,7 +8406,7 @@ class _AdminPanelState extends State<AdminPanel>
   }
 
   void _editarPerfilSocial(BuildContext context, SocialProfile perfil) async {
-    // ✅ OBTENER DATOS ACTUALES DEL PERFIL SOCIAL
+    // Obtener datos actuales
     final perfilDoc = await FirebaseFirestore.instance
         .collection('social_profiles')
         .doc(perfil.id)
@@ -8977,214 +8415,866 @@ class _AdminPanelState extends State<AdminPanel>
     final perfilData =
         perfilDoc.exists ? perfilDoc.data() as Map<String, dynamic>? : null;
 
-    // Controllers con valores actualizados desde Firestore
+    final registroAsociadoId = perfilData?['registroAsociadoId'];
+    Map<String, dynamic>? registroData;
+
+    if (registroAsociadoId != null &&
+        registroAsociadoId.toString().trim().isNotEmpty) {
+      try {
+        final registroDoc = await FirebaseFirestore.instance
+            .collection('registros')
+            .doc(registroAsociadoId.toString())
+            .get();
+
+        if (registroDoc.exists) {
+          registroData = registroDoc.data() as Map<String, dynamic>?;
+        }
+      } catch (e) {
+        print('⚠️ Error al cargar registro asociado: $e');
+      }
+    }
+
+    // Función para obtener valor inicial
+    String obtenerValorInicial(String campoPerfil, String campoRegistro) {
+      if (registroData != null && registroData![campoRegistro] != null) {
+        final valor = registroData![campoRegistro];
+        if (valor.toString().trim().isNotEmpty) {
+          return valor.toString();
+        }
+      }
+
+      if (perfilData != null && perfilData![campoPerfil] != null) {
+        final valor = perfilData![campoPerfil];
+        if (valor.toString().trim().isNotEmpty) {
+          return valor.toString();
+        }
+      }
+
+      return '';
+    }
+
+    bool campoTieneValor(String campoPerfil, String campoRegistro) {
+      final valor = obtenerValorInicial(campoPerfil, campoRegistro);
+      return valor.trim().isNotEmpty;
+    }
+
+    DateTime? obtenerFechaNacimiento() {
+      if (registroData != null &&
+          registroData!.containsKey('fechaNacimiento')) {
+        final fechaValue = registroData!['fechaNacimiento'];
+        if (fechaValue is Timestamp) {
+          return fechaValue.toDate();
+        } else if (fechaValue is String) {
+          try {
+            return DateTime.parse(fechaValue);
+          } catch (e) {
+            print('Error parsing fechaNacimiento from registro: $e');
+          }
+        }
+      }
+
+      if (perfilData != null && perfilData!.containsKey('fechaNacimiento')) {
+        final fechaValue = perfilData!['fechaNacimiento'];
+        if (fechaValue is Timestamp) {
+          return fechaValue.toDate();
+        } else if (fechaValue is String) {
+          try {
+            return DateTime.parse(fechaValue);
+          } catch (e) {
+            print('Error parsing fechaNacimiento from perfil: $e');
+          }
+        }
+      }
+
+      return null;
+    }
+
+    // Controllers
     final nombreController =
-        TextEditingController(text: perfilData?['name'] ?? perfil.name);
-    final apellidoController =
-        TextEditingController(text: perfilData?['lastName'] ?? perfil.lastName);
+        TextEditingController(text: obtenerValorInicial('name', 'nombre'));
+    final apellidoController = TextEditingController(
+        text: obtenerValorInicial('lastName', 'apellido'));
     final telefonoController =
-        TextEditingController(text: perfilData?['phone'] ?? perfil.phone);
-    final direccionController =
-        TextEditingController(text: perfilData?['address'] ?? perfil.address);
+        TextEditingController(text: obtenerValorInicial('phone', 'telefono'));
+    final direccionController = TextEditingController(
+        text: obtenerValorInicial('address', 'direccion'));
     final ciudadController =
-        TextEditingController(text: perfilData?['city'] ?? perfil.city);
-    final edadController = TextEditingController(
-        text: (perfilData?['age'] ?? perfil.age).toString());
+        TextEditingController(text: obtenerValorInicial('city', 'barrio'));
+    final edadController =
+        TextEditingController(text: obtenerValorInicial('age', 'edad'));
     final sexoController =
-        TextEditingController(text: perfilData?['gender'] ?? perfil.gender);
+        TextEditingController(text: obtenerValorInicial('gender', 'sexo'));
     final peticionesController = TextEditingController(
-        text: perfilData?['prayerRequest'] ?? perfil.prayerRequest ?? '');
+        text: obtenerValorInicial('prayerRequest', 'peticiones'));
+    final estadoFonovisitaController = TextEditingController(
+        text: obtenerValorInicial('estadoFonovisita', 'estadoFonovisita'));
+    final observacionesController = TextEditingController(
+        text: obtenerValorInicial('observaciones', 'observaciones'));
+    final estadoProcesoController = TextEditingController(
+        text: obtenerValorInicial('estadoProceso', 'estadoProceso'));
+    final descripcionOcupacionController = TextEditingController(
+        text: obtenerValorInicial(
+            'descripcionOcupacion', 'descripcionOcupacion'));
+    final estadoCivilController = TextEditingController(
+        text: registroData?['estadoCivil']?.toString() ?? '');
+    final nombreParejaController = TextEditingController(
+        text: registroData?['nombrePareja']?.toString() ?? '');
+    final observaciones2Controller = TextEditingController(
+        text: registroData?['observaciones2']?.toString() ?? '');
+    final referenciaInvitacionController = TextEditingController(
+        text: registroData?['referenciaInvitacion']?.toString() ?? '');
+    final ocupacionesController = TextEditingController(
+        text: (registroData?['ocupaciones'] as List?)?.join(', ') ?? '');
 
-    // ✅ CONTROLADORES PARA CAMPOS NUEVOS
-    final estadoFonovisitaController =
-        TextEditingController(text: perfilData?['estadoFonovisita'] ?? '');
-    final observacionesController =
-        TextEditingController(text: perfilData?['observaciones'] ?? '');
-
-    // ✅ VARIABLE PARA DROPDOWN
-    String? estadoFonovisitaSeleccionado = perfilData?['estadoFonovisita'];
-
-    print('🔍 DEBUG: Valores cargados en el diálogo de edición:');
-    print('  - estadoFonovisita: ${estadoFonovisitaController.text}');
-    print('  - observaciones: ${observacionesController.text}');
+    String? estadoFonovisitaSeleccionado =
+        obtenerValorInicial('estadoFonovisita', 'estadoFonovisita');
+    DateTime? fechaNacimiento = obtenerFechaNacimiento();
 
     showDialog(
       context: context,
+      barrierColor: Colors.black.withOpacity(0.6),
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
-            return AlertDialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              title: Row(
-                children: [
-                  Icon(Icons.edit, color: primaryTeal),
-                  const SizedBox(width: 8),
-                  const Text(
-                    'Editar Perfil Social',
-                    style: TextStyle(fontWeight: FontWeight.bold),
+            return LayoutBuilder(
+              builder: (context, constraints) {
+                final screenWidth = constraints.maxWidth;
+                final screenHeight = constraints.maxHeight;
+                final isVerySmallScreen = screenWidth < 400;
+                final isSmallScreen = screenWidth < 600;
+                final isMediumScreen = screenWidth >= 600 && screenWidth < 900;
+
+                final dialogWidth = isVerySmallScreen
+                    ? screenWidth * 0.95
+                    : isSmallScreen
+                        ? screenWidth * 0.90
+                        : isMediumScreen
+                            ? screenWidth * 0.75
+                            : screenWidth * 0.60;
+
+                final titleFontSize = isVerySmallScreen
+                    ? 18.0
+                    : isSmallScreen
+                        ? 20.0
+                        : 24.0;
+                final sectionFontSize = isVerySmallScreen
+                    ? 14.0
+                    : isSmallScreen
+                        ? 15.0
+                        : 16.0;
+                final iconSize = isVerySmallScreen
+                    ? 20.0
+                    : isSmallScreen
+                        ? 22.0
+                        : 24.0;
+                final padding = isVerySmallScreen
+                    ? 12.0
+                    : isSmallScreen
+                        ? 16.0
+                        : 20.0;
+
+                return Dialog(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(24),
                   ),
-                ],
-              ),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _buildSectionTitle('Información Personal'),
-                    _buildEditTextField(
-                      controller: nombreController,
-                      label: 'Nombre',
-                      icon: Icons.person,
+                  elevation: 12,
+                  insetPadding: EdgeInsets.symmetric(
+                    horizontal: isSmallScreen ? 10 : 20,
+                    vertical: isSmallScreen ? 10 : 24,
+                  ),
+                  child: Container(
+                    width: dialogWidth,
+                    constraints: BoxConstraints(
+                      maxHeight: screenHeight * 0.95,
+                      maxWidth: 700,
                     ),
-                    const SizedBox(height: 16),
-                    _buildEditTextField(
-                      controller: apellidoController,
-                      label: 'Apellido',
-                      icon: Icons.person_outline,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          Colors.white,
+                          secondaryOrange.withOpacity(0.03),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(24),
+                      boxShadow: [
+                        BoxShadow(
+                          color: secondaryOrange.withOpacity(0.2),
+                          blurRadius: 20,
+                          offset: const Offset(0, 10),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 16),
-                    Row(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Expanded(
-                          child: _buildEditTextField(
-                            controller: edadController,
-                            label: 'Edad',
-                            icon: Icons.cake,
-                            keyboardType: TextInputType.number,
+                        // Header con degradado
+                        Container(
+                          padding: EdgeInsets.all(padding),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                secondaryOrange,
+                                secondaryOrange.withOpacity(0.85)
+                              ],
+                            ),
+                            borderRadius: const BorderRadius.only(
+                              topLeft: Radius.circular(24),
+                              topRight: Radius.circular(24),
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: secondaryOrange.withOpacity(0.3),
+                                blurRadius: 8,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding:
+                                    EdgeInsets.all(isVerySmallScreen ? 8 : 10),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Icon(
+                                  Icons.edit_rounded,
+                                  color: Colors.white,
+                                  size: iconSize,
+                                ),
+                              ),
+                              SizedBox(width: isSmallScreen ? 10 : 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Editar Perfil Social',
+                                      style: TextStyle(
+                                        fontSize: titleFontSize,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                    if (!isVerySmallScreen)
+                                      Text(
+                                        'Actualiza la información del perfil',
+                                        style: TextStyle(
+                                          fontSize: sectionFontSize - 3,
+                                          color: Colors.white.withOpacity(0.9),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                              Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  onTap: () => Navigator.pop(context),
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(8),
+                                    child: Icon(
+                                      Icons.close_rounded,
+                                      color: Colors.white,
+                                      size: iconSize,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        const SizedBox(width: 16),
+
+                        // Contenido scrollable
                         Expanded(
-                          child: _buildEditTextField(
-                            controller: sexoController,
-                            label: 'Sexo/Género',
-                            icon: Icons.wc,
+                          child: SingleChildScrollView(
+                            child: Padding(
+                              padding: EdgeInsets.all(padding),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // Información Personal
+                                  _buildEditSectionHeader(
+                                    'Información Personal',
+                                    Icons.person_rounded,
+                                    primaryTeal,
+                                    sectionFontSize,
+                                    iconSize,
+                                  ),
+                                  const SizedBox(height: 12),
+
+                                  _buildModernTextField(
+                                    controller: nombreController,
+                                    label: 'Nombre',
+                                    icon: Icons.badge_rounded,
+                                    isSmallScreen: isSmallScreen,
+                                  ),
+                                  const SizedBox(height: 12),
+
+                                  _buildModernTextField(
+                                    controller: apellidoController,
+                                    label: 'Apellido',
+                                    icon: Icons.person_outline_rounded,
+                                    isSmallScreen: isSmallScreen,
+                                  ),
+
+                                  if (campoTieneValor('age', 'edad') ||
+                                      campoTieneValor('gender', 'sexo')) ...[
+                                    const SizedBox(height: 12),
+                                    if (!isVerySmallScreen &&
+                                        campoTieneValor('age', 'edad') &&
+                                        campoTieneValor('gender', 'sexo'))
+                                      Row(
+                                        children: [
+                                          Expanded(
+                                            child: _buildModernTextField(
+                                              controller: edadController,
+                                              label: 'Edad',
+                                              icon: Icons.cake_rounded,
+                                              keyboardType:
+                                                  TextInputType.number,
+                                              isSmallScreen: isSmallScreen,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Expanded(
+                                            child: _buildModernTextField(
+                                              controller: sexoController,
+                                              label: 'Sexo/Género',
+                                              icon: Icons.wc_rounded,
+                                              isSmallScreen: isSmallScreen,
+                                            ),
+                                          ),
+                                        ],
+                                      )
+                                    else ...[
+                                      if (campoTieneValor('age', 'edad'))
+                                        _buildModernTextField(
+                                          controller: edadController,
+                                          label: 'Edad',
+                                          icon: Icons.cake_rounded,
+                                          keyboardType: TextInputType.number,
+                                          isSmallScreen: isSmallScreen,
+                                        ),
+                                      if (campoTieneValor('age', 'edad') &&
+                                          campoTieneValor('gender', 'sexo'))
+                                        const SizedBox(height: 12),
+                                      if (campoTieneValor('gender', 'sexo'))
+                                        _buildModernTextField(
+                                          controller: sexoController,
+                                          label: 'Sexo/Género',
+                                          icon: Icons.wc_rounded,
+                                          isSmallScreen: isSmallScreen,
+                                        ),
+                                    ],
+                                  ],
+
+                                  if (campoTieneValor('phone', 'telefono')) ...[
+                                    const SizedBox(height: 12),
+                                    _buildModernTextField(
+                                      controller: telefonoController,
+                                      label: 'Teléfono',
+                                      icon: Icons.phone_rounded,
+                                      keyboardType: TextInputType.phone,
+                                      isSmallScreen: isSmallScreen,
+                                    ),
+                                  ],
+
+                                  if (campoTieneValor(
+                                      'address', 'direccion')) ...[
+                                    const SizedBox(height: 12),
+                                    _buildModernTextField(
+                                      controller: direccionController,
+                                      label: 'Dirección',
+                                      icon: Icons.home_rounded,
+                                      isSmallScreen: isSmallScreen,
+                                    ),
+                                  ],
+
+                                  if (campoTieneValor('city', 'barrio')) ...[
+                                    const SizedBox(height: 12),
+                                    _buildModernTextField(
+                                      controller: ciudadController,
+                                      label: 'Ciudad',
+                                      icon: Icons.location_city_rounded,
+                                      isSmallScreen: isSmallScreen,
+                                    ),
+                                  ],
+
+                                  if (campoTieneValor(
+                                      'prayerRequest', 'peticiones')) ...[
+                                    const SizedBox(height: 12),
+                                    _buildModernTextField(
+                                      controller: peticionesController,
+                                      label: 'Petición de Oración',
+                                      icon: Icons.favorite_border_rounded,
+                                      maxLines: 2,
+                                      isSmallScreen: isSmallScreen,
+                                    ),
+                                  ],
+
+                                  // Campos adicionales de registro
+                                  if (registroData != null) ...[
+                                    if (estadoCivilController.text
+                                        .trim()
+                                        .isNotEmpty) ...[
+                                      const SizedBox(height: 12),
+                                      _buildModernTextField(
+                                        controller: estadoCivilController,
+                                        label: 'Estado Civil',
+                                        icon: Icons.family_restroom_rounded,
+                                        isSmallScreen: isSmallScreen,
+                                      ),
+                                    ],
+                                    if (nombreParejaController.text
+                                        .trim()
+                                        .isNotEmpty) ...[
+                                      const SizedBox(height: 12),
+                                      _buildModernTextField(
+                                        controller: nombreParejaController,
+                                        label: 'Nombre de Pareja',
+                                        icon: Icons.favorite_rounded,
+                                        isSmallScreen: isSmallScreen,
+                                      ),
+                                    ],
+                                    if (ocupacionesController.text
+                                        .trim()
+                                        .isNotEmpty) ...[
+                                      const SizedBox(height: 12),
+                                      _buildModernTextField(
+                                        controller: ocupacionesController,
+                                        label: 'Ocupaciones',
+                                        icon: Icons.work_rounded,
+                                        isSmallScreen: isSmallScreen,
+                                      ),
+                                    ],
+                                    if (referenciaInvitacionController.text
+                                        .trim()
+                                        .isNotEmpty) ...[
+                                      const SizedBox(height: 12),
+                                      _buildModernTextField(
+                                        controller:
+                                            referenciaInvitacionController,
+                                        label: 'Referencia de Invitación',
+                                        icon: Icons.link_rounded,
+                                        isSmallScreen: isSmallScreen,
+                                      ),
+                                    ],
+                                  ],
+
+                                  // Fecha de nacimiento
+                                  if (fechaNacimiento != null ||
+                                      registroData != null) ...[
+                                    const SizedBox(height: 12),
+                                    _buildDateSelector(
+                                      context: context,
+                                      selectedDate: fechaNacimiento,
+                                      onDateSelected: (DateTime? picked) {
+                                        setDialogState(() {
+                                          fechaNacimiento = picked;
+                                        });
+                                      },
+                                      isSmallScreen: isSmallScreen,
+                                    ),
+                                  ],
+
+                                  const SizedBox(height: 20),
+
+                                  // Seguimiento
+                                  _buildEditSectionHeader(
+                                    'Seguimiento',
+                                    Icons.track_changes_rounded,
+                                    secondaryOrange,
+                                    sectionFontSize,
+                                    iconSize,
+                                  ),
+                                  const SizedBox(height: 12),
+
+                                  _buildModernDropdown(
+                                    value:
+                                        estadoFonovisitaSeleccionado?.isEmpty ??
+                                                true
+                                            ? null
+                                            : estadoFonovisitaSeleccionado,
+                                    label: 'Estado de Fonovisita',
+                                    icon: Icons.call_rounded,
+                                    items: [
+                                      'Contactada',
+                                      'No Contactada',
+                                      '# Errado',
+                                      'Apagado',
+                                      'Buzón',
+                                      'Número No Activado',
+                                      '# Equivocado',
+                                      'Difícil contacto'
+                                    ],
+                                    onChanged: (valor) {
+                                      setDialogState(() {
+                                        estadoFonovisitaSeleccionado = valor;
+                                        estadoFonovisitaController.text =
+                                            valor ?? '';
+                                      });
+                                    },
+                                    isSmallScreen: isSmallScreen,
+                                  ),
+
+                                  if (campoTieneValor(
+                                      'estadoProceso', 'estadoProceso')) ...[
+                                    const SizedBox(height: 12),
+                                    _buildModernTextField(
+                                      controller: estadoProcesoController,
+                                      label: 'Estado del Proceso',
+                                      icon: Icons.trending_up_rounded,
+                                      isSmallScreen: isSmallScreen,
+                                    ),
+                                  ],
+
+                                  if (campoTieneValor('descripcionOcupacion',
+                                      'descripcionOcupacion')) ...[
+                                    const SizedBox(height: 12),
+                                    _buildModernTextField(
+                                      controller:
+                                          descripcionOcupacionController,
+                                      label: 'Descripción de Ocupación',
+                                      icon: Icons.work_outline_rounded,
+                                      maxLines: 2,
+                                      isSmallScreen: isSmallScreen,
+                                    ),
+                                  ],
+
+                                  const SizedBox(height: 12),
+                                  _buildModernTextField(
+                                    controller: observacionesController,
+                                    label: 'Observaciones',
+                                    icon: Icons.note_rounded,
+                                    maxLines: 3,
+                                    isSmallScreen: isSmallScreen,
+                                  ),
+
+                                  if (registroData != null &&
+                                      observaciones2Controller.text
+                                          .trim()
+                                          .isNotEmpty) ...[
+                                    const SizedBox(height: 12),
+                                    _buildModernTextField(
+                                      controller: observaciones2Controller,
+                                      label: 'Observaciones 2',
+                                      icon: Icons.notes_rounded,
+                                      maxLines: 3,
+                                      isSmallScreen: isSmallScreen,
+                                    ),
+                                  ],
+
+                                  const SizedBox(height: 30),
+
+                                  // Botones al final del contenido scrollable
+                                  Container(
+                                    padding: EdgeInsets.all(padding),
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey.shade50,
+                                      borderRadius: BorderRadius.circular(16),
+                                      border: Border.all(
+                                        color: Colors.grey.shade200,
+                                        width: 1,
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.end,
+                                      children: [
+                                        TextButton(
+                                          onPressed: () =>
+                                              Navigator.pop(context),
+                                          style: TextButton.styleFrom(
+                                            padding: EdgeInsets.symmetric(
+                                              horizontal:
+                                                  isSmallScreen ? 16 : 24,
+                                              vertical: isSmallScreen ? 12 : 14,
+                                            ),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                            ),
+                                          ),
+                                          child: Text(
+                                            'Cancelar',
+                                            style: TextStyle(
+                                              color: Colors.grey[700],
+                                              fontSize: isSmallScreen ? 14 : 16,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        ElevatedButton.icon(
+                                          onPressed: () {
+                                            _guardarEdicionPerfilSocialSincronizado(
+                                              context,
+                                              perfil,
+                                              nombreController,
+                                              apellidoController,
+                                              telefonoController,
+                                              direccionController,
+                                              ciudadController,
+                                              edadController,
+                                              sexoController,
+                                              peticionesController,
+                                              estadoFonovisitaController,
+                                              observacionesController,
+                                              estadoProcesoController,
+                                              descripcionOcupacionController,
+                                              estadoCivilController,
+                                              nombreParejaController,
+                                              observaciones2Controller,
+                                              referenciaInvitacionController,
+                                              ocupacionesController,
+                                              fechaNacimiento,
+                                              registroAsociadoId?.toString(),
+                                            );
+                                          },
+                                          icon: Icon(
+                                            Icons.save_rounded,
+                                            size: isSmallScreen ? 18 : 20,
+                                          ),
+                                          label: Text(
+                                            'Guardar',
+                                            style: TextStyle(
+                                              fontSize: isSmallScreen ? 14 : 16,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: primaryTeal,
+                                            foregroundColor: Colors.white,
+                                            padding: EdgeInsets.symmetric(
+                                              horizontal:
+                                                  isSmallScreen ? 20 : 28,
+                                              vertical: isSmallScreen ? 12 : 14,
+                                            ),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                            ),
+                                            elevation: 4,
+                                            shadowColor:
+                                                primaryTeal.withOpacity(0.4),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+
+                                  // Espacio final adicional
+                                  SizedBox(height: isSmallScreen ? 40 : 20),
+                                ],
+                              ),
+                            ),
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 16),
-                    _buildEditTextField(
-                      controller: telefonoController,
-                      label: 'Teléfono',
-                      icon: Icons.phone,
-                      keyboardType: TextInputType.phone,
-                    ),
-                    const SizedBox(height: 16),
-                    _buildEditTextField(
-                      controller: direccionController,
-                      label: 'Dirección',
-                      icon: Icons.home,
-                    ),
-                    const SizedBox(height: 16),
-                    _buildEditTextField(
-                      controller: ciudadController,
-                      label: 'Ciudad',
-                      icon: Icons.location_city,
-                    ),
-                    const SizedBox(height: 16),
-                    _buildEditTextField(
-                      controller: peticionesController,
-                      label: 'Petición de Oración',
-                      icon: Icons.favorite_border,
-                      maxLines: 2,
-                    ),
-
-                    const SizedBox(height: 20),
-                    _buildSectionTitle('Seguimiento'),
-
-                    // ✅ Dropdown de Estado de Fonovisita
-                    Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(10),
-                        color: Colors.grey[50],
-                        border: Border.all(color: Colors.grey.shade400),
-                      ),
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      child: DropdownButtonFormField<String>(
-                        value: estadoFonovisitaSeleccionado,
-                        decoration: InputDecoration(
-                          labelText: 'Estado de Fonovisita',
-                          labelStyle: TextStyle(color: primaryTeal),
-                          border: InputBorder.none,
-                          prefixIcon: Icon(Icons.call, color: primaryTeal),
-                        ),
-                        items: [
-                          'Contactada',
-                          'No Contactada',
-                          '# Errado',
-                          'Apagado',
-                          'Buzón',
-                          'Número No Activado',
-                          '# Equivocado',
-                          'Difícil contacto'
-                        ]
-                            .map((estado) => DropdownMenuItem(
-                                  value: estado,
-                                  child: Text(estado),
-                                ))
-                            .toList(),
-                        onChanged: (valor) {
-                          setDialogState(() {
-                            estadoFonovisitaSeleccionado = valor;
-                            estadoFonovisitaController.text = valor ?? '';
-                          });
-                        },
-                      ),
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // ✅ Campo de Observaciones
-                    _buildEditTextField(
-                      controller: observacionesController,
-                      label: 'Observaciones',
-                      icon: Icons.note,
-                      maxLines: 3,
-                    ),
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: Text(
-                    'Cancelar',
-                    style: TextStyle(color: Colors.grey[600]),
                   ),
-                ),
-                ElevatedButton(
-                  onPressed: () {
-                    _guardarEdicionPerfilSocial(
-                      context,
-                      perfil,
-                      nombreController,
-                      apellidoController,
-                      telefonoController,
-                      direccionController,
-                      ciudadController,
-                      edadController,
-                      sexoController,
-                      peticionesController,
-                      estadoFonovisitaController,
-                      observacionesController,
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: primaryTeal,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  child: const Text('Guardar'),
-                ),
-              ],
+                );
+              },
             );
           },
         );
       },
     );
+  }
+
+  Future<void> _guardarEdicionPerfilSocialSincronizado(
+    BuildContext context,
+    SocialProfile perfil,
+    TextEditingController nombreController,
+    TextEditingController apellidoController,
+    TextEditingController telefonoController,
+    TextEditingController direccionController,
+    TextEditingController ciudadController,
+    TextEditingController edadController,
+    TextEditingController sexoController,
+    TextEditingController peticionesController,
+    TextEditingController estadoFonovisitaController,
+    TextEditingController observacionesController,
+    TextEditingController estadoProcesoController,
+    TextEditingController descripcionOcupacionController,
+    TextEditingController estadoCivilController,
+    TextEditingController nombreParejaController,
+    TextEditingController observaciones2Controller,
+    TextEditingController referenciaInvitacionController,
+    TextEditingController ocupacionesController,
+    DateTime? fechaNacimiento,
+    String? registroAsociadoId,
+  ) async {
+    if (perfil.id == null || perfil.id!.isEmpty) {
+      _mostrarError('El perfil no tiene un ID válido');
+      return;
+    }
+
+    try {
+      setState(() => _isLoading = true);
+
+      print('\n💾 === INICIANDO GUARDADO SINCRONIZADO ===');
+      print('📋 Perfil ID: ${perfil.id}');
+      print('📋 Registro Asociado ID: $registroAsociadoId');
+
+      // ✅ PREPARAR DATOS PARA PERFIL SOCIAL
+      Map<String, dynamic> updateDataPerfil = {
+        'name': nombreController.text.trim(),
+        'lastName': apellidoController.text.trim(),
+        'phone': telefonoController.text.trim(),
+        'address': direccionController.text.trim(),
+        'city': ciudadController.text.trim(),
+        'age': int.tryParse(edadController.text) ?? perfil.age,
+        'gender': sexoController.text.trim(),
+        'prayerRequest': peticionesController.text.trim().isEmpty
+            ? null
+            : peticionesController.text.trim(),
+        'estadoFonovisita': estadoFonovisitaController.text.trim(),
+        'observaciones': observacionesController.text.trim(),
+        'estadoProceso': estadoProcesoController.text.trim(),
+        'descripcionOcupacion': descripcionOcupacionController.text.trim(),
+      };
+
+      // ✅ AGREGAR FECHA DE NACIMIENTO SI EXISTE
+      if (fechaNacimiento != null) {
+        updateDataPerfil['fechaNacimiento'] =
+            Timestamp.fromDate(fechaNacimiento);
+      }
+
+      // ✅ 1. ACTUALIZAR PERFIL SOCIAL
+      await FirebaseFirestore.instance
+          .collection('social_profiles')
+          .doc(perfil.id!)
+          .update(updateDataPerfil);
+
+      print('✅ Perfil social actualizado');
+
+      // ✅ 2. SI EXISTE REGISTRO ASOCIADO, SINCRONIZARLO
+      bool registroSincronizado = false;
+
+      if (registroAsociadoId != null && registroAsociadoId.trim().isNotEmpty) {
+        final registroId = registroAsociadoId.trim();
+
+        try {
+          final registroDoc = await FirebaseFirestore.instance
+              .collection('registros')
+              .doc(registroId)
+              .get();
+
+          if (registroDoc.exists) {
+            print('📝 Sincronizando con registro: $registroId');
+
+            // ✅ MAPEO COMPLETO DE CAMPOS (perfil → registro)
+            Map<String, dynamic> updateDataRegistro = {
+              'nombre': nombreController.text.trim(),
+              'apellido': apellidoController.text.trim(),
+              'telefono': telefonoController.text.trim(),
+              'direccion': direccionController.text.trim(),
+              'barrio': ciudadController.text.trim(),
+              'edad': int.tryParse(edadController.text) ?? perfil.age,
+              'sexo': sexoController.text.trim(),
+              'peticiones': peticionesController.text.trim(),
+              'estadoFonovisita': estadoFonovisitaController.text.trim(),
+              'observaciones': observacionesController.text.trim(),
+              'estadoProceso': estadoProcesoController.text.trim(),
+              'descripcionOcupacion':
+                  descripcionOcupacionController.text.trim(),
+            };
+
+            // ✅ AGREGAR CAMPOS QUE SOLO EXISTEN EN REGISTRO
+            if (estadoCivilController.text.trim().isNotEmpty) {
+              updateDataRegistro['estadoCivil'] =
+                  estadoCivilController.text.trim();
+            }
+            if (nombreParejaController.text.trim().isNotEmpty) {
+              updateDataRegistro['nombrePareja'] =
+                  nombreParejaController.text.trim();
+            }
+            if (observaciones2Controller.text.trim().isNotEmpty) {
+              updateDataRegistro['observaciones2'] =
+                  observaciones2Controller.text.trim();
+            }
+            if (referenciaInvitacionController.text.trim().isNotEmpty) {
+              updateDataRegistro['referenciaInvitacion'] =
+                  referenciaInvitacionController.text.trim();
+            }
+            if (ocupacionesController.text.trim().isNotEmpty) {
+              updateDataRegistro['ocupaciones'] = ocupacionesController.text
+                  .split(',')
+                  .map((e) => e.trim())
+                  .where((e) => e.isNotEmpty)
+                  .toList();
+            }
+            if (fechaNacimiento != null) {
+              updateDataRegistro['fechaNacimiento'] =
+                  Timestamp.fromDate(fechaNacimiento);
+            }
+
+            await FirebaseFirestore.instance
+                .collection('registros')
+                .doc(registroId)
+                .update(updateDataRegistro);
+
+            print('✅ Registro sincronizado exitosamente');
+            registroSincronizado = true;
+          } else {
+            print('⚠️ El registro asociado no existe: $registroId');
+
+            // Limpiar referencia inválida
+            await FirebaseFirestore.instance
+                .collection('social_profiles')
+                .doc(perfil.id!)
+                .update({'registroAsociadoId': null});
+          }
+        } catch (e) {
+          print('⚠️ Error al sincronizar con registro: $e');
+        }
+      } else {
+        print('ℹ️ No hay registro asociado para sincronizar');
+      }
+
+      print('🏁 === FIN GUARDADO ===\n');
+
+      if (mounted) {
+        setState(() => _isLoading = false);
+        Navigator.pop(context);
+
+        String mensajeExito = 'Perfil actualizado correctamente';
+        if (registroSincronizado) {
+          mensajeExito += '\n✓ Sincronizado con registro';
+        }
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.white, size: 20),
+                const SizedBox(width: 12),
+                Expanded(child: Text(mensajeExito)),
+              ],
+            ),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e, stackTrace) {
+      print('❌ Error: $e');
+      print('Stack: $stackTrace');
+
+      if (mounted) {
+        setState(() => _isLoading = false);
+        Navigator.pop(context);
+        _mostrarError('Error al actualizar: ${e.toString()}');
+      }
+    }
   }
 
   Future<void> _guardarEdicionPerfilSocial(
@@ -9200,6 +9290,8 @@ class _AdminPanelState extends State<AdminPanel>
     TextEditingController peticionesController,
     TextEditingController estadoFonovisitaController,
     TextEditingController observacionesController,
+    TextEditingController estadoProcesoController,
+    TextEditingController descripcionOcupacionController,
   ) async {
     if (perfil.id == null || perfil.id!.isEmpty) {
       _mostrarError('El perfil no tiene un ID válido');
@@ -9209,8 +9301,11 @@ class _AdminPanelState extends State<AdminPanel>
     try {
       setState(() => _isLoading = true);
 
+      print('\n💾 === INICIANDO GUARDADO SINCRONIZADO ===');
+      print('📋 Perfil ID: ${perfil.id}');
+
       // ✅ PREPARAR DATOS PARA ACTUALIZAR
-      Map<String, dynamic> updateDataSocial = {
+      Map<String, dynamic> updateData = {
         'name': nombreController.text.trim(),
         'lastName': apellidoController.text.trim(),
         'phone': telefonoController.text.trim(),
@@ -9223,17 +9318,19 @@ class _AdminPanelState extends State<AdminPanel>
             : peticionesController.text.trim(),
         'estadoFonovisita': estadoFonovisitaController.text.trim(),
         'observaciones': observacionesController.text.trim(),
+        'estadoProceso': estadoProcesoController.text.trim(),
+        'descripcionOcupacion': descripcionOcupacionController.text.trim(),
       };
 
-      // ✅ ACTUALIZAR PERFIL SOCIAL
+      // ✅ 1. ACTUALIZAR PERFIL SOCIAL
       await FirebaseFirestore.instance
           .collection('social_profiles')
           .doc(perfil.id!)
-          .update(updateDataSocial);
+          .update(updateData);
 
-      print('✅ Perfil social actualizado en Firestore: ${perfil.id}');
+      print('✅ Perfil social actualizado');
 
-      // ✅ VERIFICAR SI TIENE REGISTRO ASOCIADO
+      // ✅ 2. VERIFICAR Y ACTUALIZAR REGISTRO ASOCIADO
       final perfilDoc = await FirebaseFirestore.instance
           .collection('social_profiles')
           .doc(perfil.id!)
@@ -9248,53 +9345,79 @@ class _AdminPanelState extends State<AdminPanel>
 
       bool registroSincronizado = false;
 
-      // ✅ SINCRONIZAR CON REGISTRO SI EXISTE
       if (registroAsociadoId != null &&
           registroAsociadoId.toString().trim().isNotEmpty) {
         final registroId = registroAsociadoId.toString().trim();
 
-        final registroDoc = await FirebaseFirestore.instance
-            .collection('registros')
-            .doc(registroId)
-            .get();
-
-        if (registroDoc.exists) {
-          Map<String, dynamic> updateDataRegistro = {
-            'nombre': nombreController.text.trim(),
-            'apellido': apellidoController.text.trim(),
-            'telefono': telefonoController.text.trim(),
-            'direccion': direccionController.text.trim(),
-            'barrio': ciudadController.text.trim(),
-            'edad': int.tryParse(edadController.text) ?? perfil.age,
-            'sexo': sexoController.text.trim(),
-            'peticiones': peticionesController.text.trim(),
-            'estadoFonovisita': estadoFonovisitaController.text.trim(),
-            'observaciones': observacionesController.text.trim(),
-          };
-
-          await FirebaseFirestore.instance
+        try {
+          final registroDoc = await FirebaseFirestore.instance
               .collection('registros')
               .doc(registroId)
-              .update(updateDataRegistro);
+              .get();
 
-          print('✅ Registro sincronizado: $registroId');
-          registroSincronizado = true;
+          if (registroDoc.exists) {
+            print('📝 Sincronizando con registro: $registroId');
+
+            // ✅ MAPEO CORRECTO DE CAMPOS
+            Map<String, dynamic> updateDataRegistro = {
+              'nombre': nombreController.text.trim(),
+              'apellido': apellidoController.text.trim(),
+              'telefono': telefonoController.text.trim(),
+              'direccion': direccionController.text.trim(),
+              'barrio': ciudadController.text.trim(),
+              'edad': int.tryParse(edadController.text) ?? perfil.age,
+              'sexo': sexoController.text.trim(),
+              'peticiones': peticionesController.text.trim(),
+              'estadoFonovisita': estadoFonovisitaController.text.trim(),
+              'observaciones': observacionesController.text.trim(),
+              'estadoProceso': estadoProcesoController.text.trim(),
+              'descripcionOcupacion':
+                  descripcionOcupacionController.text.trim(),
+            };
+
+            await FirebaseFirestore.instance
+                .collection('registros')
+                .doc(registroId)
+                .update(updateDataRegistro);
+
+            print('✅ Registro sincronizado exitosamente');
+            registroSincronizado = true;
+          } else {
+            print('⚠️ El registro asociado no existe: $registroId');
+
+            // Limpiar referencia inválida
+            await FirebaseFirestore.instance
+                .collection('social_profiles')
+                .doc(perfil.id!)
+                .update({'registroAsociadoId': null});
+          }
+        } catch (e) {
+          print('⚠️ Error al sincronizar con registro: $e');
         }
+      } else {
+        print('ℹ️ No hay registro asociado para sincronizar');
       }
 
-      // ✅ CERRAR DIÁLOGO Y MOSTRAR MENSAJE
+      print('🏁 === FIN GUARDADO ===\n');
+
       if (mounted) {
         setState(() => _isLoading = false);
         Navigator.pop(context);
 
         String mensajeExito = 'Perfil actualizado correctamente';
         if (registroSincronizado) {
-          mensajeExito += ' (registro sincronizado)';
+          mensajeExito += '\n✓ Sincronizado con registro';
         }
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(mensajeExito),
+            content: Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.white, size: 20),
+                const SizedBox(width: 12),
+                Expanded(child: Text(mensajeExito)),
+              ],
+            ),
             backgroundColor: Colors.green,
             behavior: SnackBarBehavior.floating,
             duration: const Duration(seconds: 3),
@@ -9314,11 +9437,43 @@ class _AdminPanelState extends State<AdminPanel>
   }
 
   Future<void> _asignarPerfilAtribu(SocialProfile perfil) async {
-    if (!mounted) return;
+    // ✅ VALIDACIÓN CRÍTICA: Verificar contexto montado
+    if (!mounted) {
+      print('⚠️ Widget no está montado, cancelando asignación');
+      return;
+    }
 
-    setState(() => _isLoading = true);
+    // ✅ VALIDACIÓN CRÍTICA: Verificar que perfil.id no sea null
+    if (perfil.id == null || perfil.id!.isEmpty) {
+      print('❌ Error: El perfil no tiene un ID válido');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.error_outline, color: Colors.white, size: 20),
+                SizedBox(width: 12),
+                Expanded(child: Text('Error: El perfil no tiene un ID válido')),
+              ],
+            ),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+      return;
+    }
 
     try {
+      print('\n🔄 === INICIANDO PROCESO DE ASIGNACIÓN ===');
+      print('📋 Perfil ID: ${perfil.id}');
+
+      // ✅ Mostrar indicador de carga ANTES de cualquier operación
+      if (mounted) {
+        setState(() => _isLoading = true);
+      }
+
+      // ✅ 1. OBTENER TRIBUS Y MINISTERIOS
       final tribusSnapshot = await FirebaseFirestore.instance
           .collection('tribus')
           .where('categoria', isEqualTo: 'Ministerio Juvenil')
@@ -9327,15 +9482,23 @@ class _AdminPanelState extends State<AdminPanel>
       final ministerios = ['Ministerio de Damas', 'Ministerio de Caballeros'];
 
       if (tribusSnapshot.docs.isEmpty && ministerios.isEmpty) {
-        if (!mounted) return;
-        setState(() => _isLoading = false);
-        _mostrarError('No hay tribus o ministerios disponibles para asignar.');
+        print('⚠️ No hay tribus o ministerios disponibles');
+        if (mounted) {
+          setState(() => _isLoading = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('No hay tribus o ministerios disponibles'),
+              backgroundColor: Colors.orange,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
         return;
       }
 
+      // ✅ 2. PREPARAR OPCIONES PARA EL DROPDOWN
       List<DropdownMenuItem<String>> opciones = [];
 
-      // Agregar las opciones de ministerios con diseño
       for (var min in ministerios) {
         opciones.add(DropdownMenuItem(
           value: min,
@@ -9353,14 +9516,12 @@ class _AdminPanelState extends State<AdminPanel>
         ));
       }
 
-      // Agregar un separador visual
       opciones.add(DropdownMenuItem(
         value: 'separator',
         enabled: false,
         child: Divider(thickness: 2, color: Colors.grey),
       ));
 
-      // Agregar título para tribus juveniles
       opciones.add(DropdownMenuItem(
         value: 'juveniles_title',
         enabled: false,
@@ -9373,7 +9534,6 @@ class _AdminPanelState extends State<AdminPanel>
         ),
       ));
 
-      // Agregar tribus juveniles
       for (var doc in tribusSnapshot.docs) {
         final nombre = doc['nombre'] ?? 'Sin nombre';
         opciones.add(DropdownMenuItem(
@@ -9384,16 +9544,20 @@ class _AdminPanelState extends State<AdminPanel>
 
       String? opcionSeleccionada;
 
-      if (!mounted) return;
-      setState(() => _isLoading = false);
+      // ✅ Ocultar loading antes de mostrar el diálogo
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
 
-      // Mostrar diálogo para seleccionar tribu o ministerio
-      await showDialog(
+      // ✅ 3. MOSTRAR DIÁLOGO Y ESPERAR SELECCIÓN
+      if (!mounted) return;
+
+      final bool? confirmado = await showDialog<bool>(
         context: context,
         barrierDismissible: false,
-        builder: (context) {
+        builder: (BuildContext dialogContext) {
           return StatefulBuilder(
-            builder: (context, setDialogState) {
+            builder: (BuildContext context, StateSetter setDialogState) {
               return AlertDialog(
                 title: Text(
                   'Asignar a Ministerio o Tribu',
@@ -9409,7 +9573,6 @@ class _AdminPanelState extends State<AdminPanel>
                       value: opcionSeleccionada,
                       items: opciones,
                       onChanged: (value) {
-                        // Ignorar selecciones de separadores y títulos
                         if (value != 'separator' &&
                             value != 'juveniles_title') {
                           setDialogState(() {
@@ -9430,190 +9593,14 @@ class _AdminPanelState extends State<AdminPanel>
                 ),
                 actions: [
                   TextButton(
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: () => Navigator.of(dialogContext).pop(false),
                     child:
                         Text('Cancelar', style: TextStyle(color: Colors.grey)),
                   ),
                   ElevatedButton(
                     onPressed: opcionSeleccionada == null
                         ? null
-                        : () async {
-                            try {
-                              if (!mounted) return;
-                              setState(() => _isLoading = true);
-
-                              // Cerrar diálogo ANTES de iniciar operaciones async
-                              Navigator.pop(context);
-
-                              String? ministerioAsignado;
-                              String? tribuAsignada;
-                              String? nombreTribu;
-
-                              if (opcionSeleccionada!.contains('Ministerio')) {
-                                ministerioAsignado = opcionSeleccionada;
-                                tribuAsignada = null;
-                                nombreTribu = null;
-                              } else {
-                                tribuAsignada = opcionSeleccionada;
-                                ministerioAsignado = 'Ministerio Juvenil';
-
-                                final tribuDoc = tribusSnapshot.docs.firstWhere(
-                                  (doc) => doc.id == opcionSeleccionada,
-                                  orElse: () =>
-                                      throw Exception('Tribu no encontrada'),
-                                );
-                                nombreTribu =
-                                    tribuDoc['nombre'] ?? 'Tribu sin nombre';
-                              }
-
-                              print('=== DEBUG ASIGNACIÓN ===');
-                              print('Selección: $opcionSeleccionada');
-                              print('Ministerio asignado: $ministerioAsignado');
-                              print('Tribu asignada: $tribuAsignada');
-                              print('Nombre tribu: $nombreTribu');
-                              print('=======================');
-
-                              // ✅ OBTENER DATOS ACTUALIZADOS DEL PERFIL SOCIAL
-                              final perfilActualizadoDoc =
-                                  await FirebaseFirestore.instance
-                                      .collection('social_profiles')
-                                      .doc(perfil.id)
-                                      .get();
-
-                              if (!perfilActualizadoDoc.exists) {
-                                throw Exception('El perfil social no existe');
-                              }
-
-                              final perfilData = perfilActualizadoDoc.data()
-                                  as Map<String, dynamic>;
-
-                              // ✅ CREAR REGISTRO CON DATOS ACTUALIZADOS
-                              final nuevoRegistro = {
-                                'nombre': perfilData['name'] ?? perfil.name,
-                                'apellido':
-                                    perfilData['lastName'] ?? perfil.lastName,
-                                'telefono': perfilData['phone'] ?? perfil.phone,
-                                'edad': perfilData['age'] ?? perfil.age ?? 0,
-                                'sexo': perfilData['gender'] ??
-                                    perfil.gender ??
-                                    'No especificado',
-                                'direccion': perfilData['address'] ??
-                                    perfil.address ??
-                                    '',
-                                'barrio':
-                                    perfilData['city'] ?? perfil.city ?? '',
-                                'estadoCivil': 'No especificado',
-                                'nombrePareja': 'No aplica',
-                                'tieneHijos': false,
-                                'ocupaciones': ['No especificado'],
-                                'descripcionOcupaciones': '',
-                                'peticiones': perfilData['prayerRequest'] ??
-                                    perfil.prayerRequest ??
-                                    '',
-                                'referenciaInvitacion':
-                                    perfilData['socialNetwork'] ??
-                                        perfil.socialNetwork ??
-                                        'Redes Sociales',
-                                'servicio': 'Perfil Social',
-                                'tipo': 'Nuevo',
-                                'estadoProceso': 'En Proceso',
-                                'observaciones':
-                                    perfilData['observaciones'] ?? '',
-                                'observaciones2': '',
-                                'estadoFonovisita':
-                                    perfilData['estadoFonovisita'] ?? '',
-                                'activo': true,
-                                'faltasConsecutivas': 0,
-                                'ministerioAsignado': ministerioAsignado,
-                                'tribuAsignada': tribuAsignada,
-                                'nombreTribu': nombreTribu,
-                                'fechaAsignacion': FieldValue.serverTimestamp(),
-                                'fechaAsignacionTribu': tribuAsignada != null
-                                    ? FieldValue.serverTimestamp()
-                                    : null,
-                                'fecha': Timestamp.fromDate(perfil.createdAt),
-                                'fechaRegistro':
-                                    Timestamp.fromDate(perfil.createdAt),
-                                'coordinadorAsignado': null,
-                                'timoteoAsignado': null,
-                                'nombreTimoteo': null,
-                                'fechaAsignacionCoordinador': null,
-                                'origenPerfilSocial': true,
-                                'perfilSocialId': perfil.id,
-                              };
-
-                              print(
-                                  '🔍 DEBUG: Creando registro con datos ACTUALIZADOS:');
-                              print(
-                                  '  - estadoFonovisita: ${nuevoRegistro['estadoFonovisita']}');
-                              print(
-                                  '  - observaciones: ${nuevoRegistro['observaciones']}');
-                              print(nuevoRegistro);
-
-                              final docRef = await FirebaseFirestore.instance
-                                  .collection('registros')
-                                  .add(nuevoRegistro);
-
-                              print('✅ Registro creado con ID: ${docRef.id}');
-
-                              // ✅ ACTUALIZAR PERFIL SOCIAL CON REFERENCIA AL REGISTRO
-                              await FirebaseFirestore.instance
-                                  .collection('social_profiles')
-                                  .doc(perfil.id)
-                                  .update({
-                                'ministerioAsignado': ministerioAsignado,
-                                'tribuAsignada': tribuAsignada,
-                                'nombreTribu': nombreTribu,
-                                'fechaAsignacion': FieldValue.serverTimestamp(),
-                                'registroAsociadoId': docRef.id,
-                                'yaAsignado': true,
-                              });
-
-                              print(
-                                  '✅ Perfil social actualizado con registroAsociadoId: ${docRef.id}');
-
-                              // ✅ PREPARAR MENSAJE DE ÉXITO
-                              String mensajeExito;
-                              if (ministerioAsignado != null &&
-                                  tribuAsignada != null) {
-                                mensajeExito =
-                                    'Asignado a tribu "$nombreTribu" del $ministerioAsignado';
-                              } else if (ministerioAsignado != null) {
-                                mensajeExito =
-                                    'Asignado al $ministerioAsignado';
-                              } else {
-                                mensajeExito = 'Perfil asignado exitosamente';
-                              }
-
-                              // ✅ DETENER LOADING Y MOSTRAR MENSAJE SOLO SI MOUNTED
-                              if (mounted) {
-                                setState(() => _isLoading = false);
-
-                                // Usar addPostFrameCallback para asegurar que el contexto esté disponible
-                                WidgetsBinding.instance
-                                    .addPostFrameCallback((_) {
-                                  if (mounted && context.mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text(mensajeExito),
-                                        backgroundColor: Colors.green,
-                                        behavior: SnackBarBehavior.floating,
-                                        duration: const Duration(seconds: 3),
-                                      ),
-                                    );
-                                  }
-                                });
-                              }
-                            } catch (e, stackTrace) {
-                              print('❌ Error detallado: $e');
-                              print('Stack trace: $stackTrace');
-
-                              if (!mounted) return;
-                              setState(() => _isLoading = false);
-                              _mostrarError(
-                                  'Error al asignar: ${e.toString()}');
-                            }
-                          },
+                        : () => Navigator.of(dialogContext).pop(true),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: secondaryOrange,
                       foregroundColor: Colors.white,
@@ -9629,12 +9616,304 @@ class _AdminPanelState extends State<AdminPanel>
           );
         },
       );
+
+      // ✅ VERIFICAR SI SE CANCELÓ O NO HAY CONTEXTO
+      if (confirmado != true || opcionSeleccionada == null) {
+        print('ℹ️ Asignación cancelada por el usuario');
+        return;
+      }
+
+      if (!mounted) {
+        print('⚠️ Widget desmontado después del diálogo');
+        return;
+      }
+
+      // ✅ 4. PROCESAR LA ASIGNACIÓN
+      setState(() => _isLoading = true);
+
+      try {
+        String? ministerioAsignado;
+        String? tribuAsignada;
+        String? nombreTribu;
+
+        if (opcionSeleccionada!.contains('Ministerio')) {
+          ministerioAsignado = opcionSeleccionada;
+          tribuAsignada = null;
+          nombreTribu = null;
+        } else {
+          tribuAsignada = opcionSeleccionada;
+          ministerioAsignado = 'Ministerio Juvenil';
+
+          final tribuDoc = tribusSnapshot.docs.firstWhere(
+            (doc) => doc.id == opcionSeleccionada,
+            orElse: () => throw Exception('Tribu no encontrada'),
+          );
+          nombreTribu = tribuDoc['nombre'] ?? 'Tribu sin nombre';
+        }
+
+        print('\n📝 Preparando asignación:');
+        print('  - Ministerio: $ministerioAsignado');
+        print('  - Tribu: $tribuAsignada');
+        print('  - Nombre Tribu: $nombreTribu');
+
+        // ✅ PREPARAR DATOS DE ASIGNACIÓN
+        Map<String, dynamic> asignacionData = {
+          'ministerioAsignado': ministerioAsignado,
+          'tribuAsignada': tribuAsignada,
+          'nombreTribu': nombreTribu,
+          'fechaAsignacion': FieldValue.serverTimestamp(),
+          'yaAsignado': true,
+        };
+
+        // ✅ 5. ACTUALIZAR PERFIL SOCIAL
+        await FirebaseFirestore.instance
+            .collection('social_profiles')
+            .doc(perfil.id!)
+            .update(asignacionData);
+
+        print('✅ Perfil social actualizado con asignación');
+
+        // ✅ 6. VERIFICAR SI EXISTE REGISTRO ASOCIADO
+        final perfilDoc = await FirebaseFirestore.instance
+            .collection('social_profiles')
+            .doc(perfil.id!)
+            .get();
+
+        if (!perfilDoc.exists) {
+          throw Exception(
+              'El perfil social no existe después de la actualización');
+        }
+
+        final perfilData = perfilDoc.data() as Map<String, dynamic>;
+        final registroAsociadoId = perfilData['registroAsociadoId'];
+
+        bool registroActualizado = false;
+
+        // ✅ 7. SI EXISTE REGISTRO ASOCIADO, ACTUALIZARLO
+        if (registroAsociadoId != null &&
+            registroAsociadoId.toString().trim().isNotEmpty) {
+          final registroId = registroAsociadoId.toString().trim();
+
+          try {
+            final registroDoc = await FirebaseFirestore.instance
+                .collection('registros')
+                .doc(registroId)
+                .get();
+
+            if (registroDoc.exists) {
+              // ✅ ACTUALIZAR REGISTRO EXISTENTE
+              await FirebaseFirestore.instance
+                  .collection('registros')
+                  .doc(registroId)
+                  .update(asignacionData);
+
+              print('✅ Registro asociado actualizado con asignación');
+              registroActualizado = true;
+            } else {
+              print('⚠️ El registro asociado no existe: $registroId');
+              // ✅ CREAR NUEVO REGISTRO A PARTIR DEL PERFIL SOCIAL
+              await _crearRegistroDesdePerfilSocial(perfil, asignacionData);
+              registroActualizado = true;
+            }
+          } catch (e) {
+            print('⚠️ Error al actualizar registro asociado: $e');
+            // ✅ INTENTAR CREAR REGISTRO COMO FALLBACK
+            await _crearRegistroDesdePerfilSocial(perfil, asignacionData);
+            registroActualizado = true;
+          }
+        } else {
+          // ✅ 8. NO HAY REGISTRO ASOCIADO, CREAR UNO NUEVO
+          print('ℹ️ No hay registro asociado, creando uno nuevo...');
+          await _crearRegistroDesdePerfilSocial(perfil, asignacionData);
+          registroActualizado = true;
+        }
+
+        // ✅ 9. VERIFICACIÓN FINAL
+        await Future.delayed(Duration(milliseconds: 300));
+
+        final verificacion = await FirebaseFirestore.instance
+            .collection('social_profiles')
+            .doc(perfil.id!)
+            .get();
+
+        if (verificacion.exists) {
+          final data = verificacion.data() as Map<String, dynamic>;
+          print('\n=== VERIFICACIÓN FINAL ===');
+          print('ministerioAsignado: ${data['ministerioAsignado']}');
+          print('tribuAsignada: ${data['tribuAsignada']}');
+          print('nombreTribu: ${data['nombreTribu']}');
+          print('yaAsignado: ${data['yaAsignado']}');
+          print('registroAsociadoId: ${data['registroAsociadoId']}');
+          print('========================\n');
+        }
+
+        // ✅ 10. MOSTRAR MENSAJE DE ÉXITO
+        if (mounted) {
+          setState(() => _isLoading = false);
+
+          String mensaje = '✓ Asignación completada exitosamente';
+          if (registroActualizado) {
+            mensaje += '\n✓ Registro sincronizado';
+          }
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  Icon(Icons.check_circle, color: Colors.white, size: 20),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      mensaje,
+                      style: TextStyle(fontWeight: FontWeight.w500),
+                    ),
+                  ),
+                ],
+              ),
+              backgroundColor: Colors.green,
+              behavior: SnackBarBehavior.floating,
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
+
+        print('🎉 === ASIGNACIÓN COMPLETADA EXITOSAMENTE ===\n');
+      } catch (e, stackTrace) {
+        print('❌ Error durante la asignación: $e');
+        print('Stack trace: $stackTrace');
+
+        if (mounted) {
+          setState(() => _isLoading = false);
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  Icon(Icons.error_outline, color: Colors.white, size: 20),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Text('Error al asignar: ${e.toString()}'),
+                  ),
+                ],
+              ),
+              backgroundColor: Colors.red,
+              behavior: SnackBarBehavior.floating,
+              duration: Duration(seconds: 5),
+            ),
+          );
+        }
+      }
     } catch (e, stackTrace) {
-      print('❌ Error general: $e');
+      print('❌ Error general en el proceso: $e');
       print('Stack trace: $stackTrace');
-      if (!mounted) return;
-      setState(() => _isLoading = false);
-      _mostrarError('Error al cargar opciones: $e');
+
+      if (mounted) {
+        setState(() => _isLoading = false);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.error_outline, color: Colors.white, size: 20),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Text('Error: ${e.toString()}'),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            duration: Duration(seconds: 5),
+          ),
+        );
+      }
+    }
+  }
+
+  /// Crea un registro en la colección 'registros' a partir de un perfil social
+  Future<void> _crearRegistroDesdePerfilSocial(
+    SocialProfile perfil,
+    Map<String, dynamic> asignacionData,
+  ) async {
+    try {
+      print('\n📝 === CREANDO REGISTRO DESDE PERFIL SOCIAL ===');
+      print('📋 Perfil ID: ${perfil.id}');
+
+      // ✅ OBTENER DATOS COMPLETOS DEL PERFIL SOCIAL
+      final perfilDoc = await FirebaseFirestore.instance
+          .collection('social_profiles')
+          .doc(perfil.id)
+          .get();
+
+      if (!perfilDoc.exists) {
+        throw Exception('El perfil social no existe');
+      }
+
+      final perfilData = perfilDoc.data() as Map<String, dynamic>;
+
+      // ✅ MAPEO COMPLETO: perfil social → registro
+      Map<String, dynamic> nuevoRegistro = {
+        // Datos básicos
+        'nombre': perfilData['name'] ?? '',
+        'apellido': perfilData['lastName'] ?? '',
+        'telefono': perfilData['phone'] ?? '',
+        'direccion': perfilData['address'] ?? '',
+        'barrio': perfilData['city'] ?? '',
+        'edad': perfilData['age'] ?? 0,
+        'sexo': perfilData['gender'] ?? '',
+
+        // Datos adicionales
+        'peticiones': perfilData['prayerRequest'] ?? '',
+        'estadoFonovisita': perfilData['estadoFonovisita'] ?? '',
+        'observaciones': perfilData['observaciones'] ?? '',
+        'estadoProceso': perfilData['estadoProceso'] ?? '',
+        'descripcionOcupacion': perfilData['descripcionOcupacion'] ?? '',
+
+        // Datos de asignación
+        ...asignacionData,
+
+        // Metadatos
+        'fecha': perfilData['createdAt'] != null
+            ? (perfilData['createdAt'] is Timestamp
+                ? perfilData['createdAt']
+                : Timestamp.fromDate(DateTime.parse(perfilData['createdAt'])))
+            : FieldValue.serverTimestamp(),
+        'servicio': perfilData['socialNetwork'] ?? 'Red Social',
+        'tipo': 'nuevo',
+        'activo': true,
+        'origenPerfilSocial': true,
+        'perfilSocialId': perfil.id,
+
+        // Campos opcionales del perfil social
+        'estadoCivil': perfilData['estadoCivil'] ?? '',
+        'nombrePareja': perfilData['nombrePareja'] ?? '',
+        'ocupaciones': [],
+        'referenciaInvitacion': '',
+        'observaciones2': perfilData['observaciones2'] ?? '',
+      };
+
+      // ✅ CREAR NUEVO DOCUMENTO EN REGISTROS
+      final nuevoRegistroRef = await FirebaseFirestore.instance
+          .collection('registros')
+          .add(nuevoRegistro);
+
+      print('✅ Nuevo registro creado con ID: ${nuevoRegistroRef.id}');
+
+      // ✅ ACTUALIZAR PERFIL SOCIAL CON LA REFERENCIA AL REGISTRO
+      await FirebaseFirestore.instance
+          .collection('social_profiles')
+          .doc(perfil.id)
+          .update({
+        'registroAsociadoId': nuevoRegistroRef.id,
+      });
+
+      print(
+          '✅ Perfil social actualizado con registroAsociadoId: ${nuevoRegistroRef.id}');
+      print('🎉 === REGISTRO CREADO Y VINCULADO EXITOSAMENTE ===\n');
+    } catch (e, stackTrace) {
+      print('❌ Error al crear registro desde perfil social: $e');
+      print('Stack trace: $stackTrace');
+      throw e; // Re-lanzar para que el método padre lo maneje
     }
   }
 
@@ -9680,26 +9959,26 @@ class _AdminPanelState extends State<AdminPanel>
     try {
       setState(() => _isLoading = true);
 
-      // ✅ PRIMERO: Obtener el ID del registro asociado (si existe)
+      print('\n🔄 === INICIANDO CAMBIO DE ASIGNACIÓN ===');
+      print('📋 Perfil ID: ${perfil.id}');
+
+      // ✅ OBTENER DATOS DEL PERFIL SOCIAL
       final perfilDoc = await FirebaseFirestore.instance
           .collection('social_profiles')
           .doc(perfil.id)
           .get();
 
-      final perfilData = perfilDoc.data() as Map<String, dynamic>?;
-      final registroAsociadoId = perfilData?['registroAsociadoId'];
-
-      // ✅ Eliminar el registro asociado de la colección "registros" (si existe)
-      if (registroAsociadoId != null) {
-        await FirebaseFirestore.instance
-            .collection('registros')
-            .doc(registroAsociadoId)
-            .delete();
-
-        print('✅ Registro asociado eliminado: $registroAsociadoId');
+      if (!perfilDoc.exists) {
+        throw Exception('El perfil social no existe');
       }
 
-      // ✅ Limpiar la asignación en el perfil social
+      final perfilData = perfilDoc.data() as Map<String, dynamic>;
+      final registroAsociadoId = perfilData['registroAsociadoId'];
+
+      print('📋 RegistroAsociadoId: $registroAsociadoId');
+
+      // ✅ LIMPIAR ASIGNACIÓN EN AMBAS COLECCIONES
+      // 1. Limpiar en perfil social
       await FirebaseFirestore.instance
           .collection('social_profiles')
           .doc(perfil.id)
@@ -9711,9 +9990,60 @@ class _AdminPanelState extends State<AdminPanel>
         'timoteoAsignado': null,
         'nombreTimoteo': null,
         'fechaAsignacion': null,
-        'registroAsociadoId': null,
         'yaAsignado': false,
       });
+
+      print('✅ Asignación limpiada en perfil social');
+
+      // 2. Limpiar en registro asociado si existe
+      if (registroAsociadoId != null &&
+          registroAsociadoId.toString().trim().isNotEmpty) {
+        final registroId = registroAsociadoId.toString().trim();
+
+        try {
+          final registroDoc = await FirebaseFirestore.instance
+              .collection('registros')
+              .doc(registroId)
+              .get();
+
+          if (registroDoc.exists) {
+            // ✅ LIMPIAR SOLO CAMPOS DE ASIGNACIÓN EN EL REGISTRO
+            Map<String, dynamic> camposAResetear = {
+              'nombreTribu': null,
+              'tribuAsignada': null,
+              'ministerioAsignado': null,
+              'coordinadorAsignado': null,
+              'timoteoAsignado': null,
+              'nombreTimoteo': null,
+              'coordinadorNombre': null,
+              'fechaAsignacion': null,
+              'fechaAsignacionTribu': null,
+              'fechaAsignacionCoordinador': null,
+            };
+
+            await FirebaseFirestore.instance
+                .collection('registros')
+                .doc(registroId)
+                .update(camposAResetear);
+
+            print('✅ Campos de asignación limpiados en el registro');
+          } else {
+            print('⚠️ El registro asociado no existe: $registroId');
+
+            // Limpiar referencia inválida
+            await FirebaseFirestore.instance
+                .collection('social_profiles')
+                .doc(perfil.id)
+                .update({'registroAsociadoId': null});
+          }
+        } catch (e) {
+          print('⚠️ Error al verificar/actualizar registro: $e');
+        }
+      } else {
+        print('ℹ️ No hay registro asociado para limpiar');
+      }
+
+      print('🏁 === FIN CAMBIO DE ASIGNACIÓN ===\n');
 
       setState(() => _isLoading = false);
 
@@ -9721,19 +10051,45 @@ class _AdminPanelState extends State<AdminPanel>
       _asignarPerfilAtribu(perfil);
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text(
-                'Asignación anterior eliminada. Ahora puede asignar nuevamente.'),
-            backgroundColor: Colors.orange),
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.check_circle, color: Colors.white, size: 20),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Asignación limpiada correctamente.',
+                  style: TextStyle(color: Colors.white),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.orange,
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 3),
+        ),
       );
-    } catch (e) {
+    } catch (e, stackTrace) {
+      print('❌ Error al cambiar asignación: $e');
+      print('Stack trace: $stackTrace');
       setState(() => _isLoading = false);
+
+      String mensajeError = 'Error al cambiar asignación';
+      if (e.toString().contains('not-found')) {
+        mensajeError = 'No se encontró el registro asociado';
+      } else if (e.toString().contains('permission-denied')) {
+        mensajeError = 'No tienes permisos para realizar esta acción';
+      } else {
+        mensajeError = 'Error: ${e.toString()}';
+      }
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-            content: Text('Error al cambiar asignación: $e'),
-            backgroundColor: Colors.red),
+          content: Text(mensajeError),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+        ),
       );
-      print('❌ Error al cambiar asignación: $e');
     }
   }
 
@@ -10315,7 +10671,7 @@ class _AdminPanelState extends State<AdminPanel>
   }
 
   void _editarRegistro(BuildContext context, Registro registro) {
-    // Controllers from first code
+    // Controllers
     final nombreController = TextEditingController(text: registro.nombre);
     final apellidoController = TextEditingController(text: registro.apellido);
     final telefonoController = TextEditingController(text: registro.telefono);
@@ -10337,218 +10693,513 @@ class _AdminPanelState extends State<AdminPanel>
         TextEditingController(text: registro.estadoFonovisita);
     final observaciones2Controller =
         TextEditingController(text: registro.observaciones2);
-
-    // Additional controllers from second code
     final edadController =
         TextEditingController(text: registro.edad?.toString() ?? '0');
     final peticionesController =
         TextEditingController(text: registro.peticiones ?? '');
     final sexoController = TextEditingController(text: registro.sexo ?? '');
 
+    String? estadoFonovisitaSeleccionado = registro.estadoFonovisita;
+
     showDialog(
       context: context,
+      barrierColor: Colors.black.withOpacity(0.6),
       builder: (context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          title: Row(
-            children: [
-              Icon(Icons.edit, color: Colors.teal),
-              const SizedBox(width: 8),
-              const Text(
-                'Editar Registro',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-            ],
-          ),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _buildSectionTitle('Información Personal'),
-                _buildEditTextField(
-                  controller: nombreController,
-                  label: 'Nombre',
-                  icon: Icons.person,
-                ),
-                const SizedBox(height: 16),
-                _buildEditTextField(
-                  controller: apellidoController,
-                  label: 'Apellido',
-                  icon: Icons.person_outline,
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildEditTextField(
-                        controller: edadController,
-                        label: 'Edad',
-                        icon: Icons.cake,
-                        keyboardType: TextInputType.number,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: _buildEditTextField(
-                        controller: sexoController,
-                        label: 'Sexo',
-                        icon: Icons.wc,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                _buildEditTextField(
-                  controller: telefonoController,
-                  label: 'Teléfono',
-                  icon: Icons.phone,
-                  keyboardType: TextInputType.phone,
-                ),
-                const SizedBox(height: 16),
-                _buildEditTextField(
-                  controller: direccionController,
-                  label: 'Dirección',
-                  icon: Icons.home,
-                ),
-                const SizedBox(height: 16),
-                _buildEditTextField(
-                  controller: barrioController,
-                  label: 'Barrio',
-                  icon: Icons.location_city,
-                ),
-                const SizedBox(height: 16),
-                _buildEditTextField(
-                  controller: estadoCivilController,
-                  label: 'Estado Civil',
-                  icon: Icons.favorite,
-                ),
-                const SizedBox(height: 16),
-                _buildEditTextField(
-                  controller: nombreParejaController,
-                  label: 'Nombre de Pareja',
-                  icon: Icons.people,
-                ),
-                const SizedBox(height: 16),
-                _buildEditTextField(
-                  controller: ocupacionesController,
-                  label: 'Ocupaciones (separadas por coma)',
-                  icon: Icons.work,
-                ),
-                const SizedBox(height: 16),
-                _buildEditTextField(
-                  controller: descripcionOcupacionController,
-                  label: 'Descripción Ocupación',
-                  icon: Icons.description,
-                  maxLines: 2,
-                ),
-                const SizedBox(height: 16),
-                _buildEditTextField(
-                  controller: peticionesController,
-                  label: 'Peticiones',
-                  icon: Icons.favorite_border,
-                  maxLines: 2,
-                ),
-                const SizedBox(height: 16),
-                _buildEditTextField(
-                  controller: referenciaInvitacionController,
-                  label: 'Referencia Invitación',
-                  icon: Icons.link,
-                ),
-                const SizedBox(height: 16),
-                Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(10),
-                    color: Colors.grey[50],
-                    border: Border.all(color: Colors.grey.shade400),
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return LayoutBuilder(
+              builder: (context, constraints) {
+                final screenWidth = constraints.maxWidth;
+                final screenHeight = constraints.maxHeight;
+                final isVerySmallScreen = screenWidth < 400;
+                final isSmallScreen = screenWidth < 600;
+                final isMediumScreen = screenWidth >= 600 && screenWidth < 900;
+
+                // Responsive sizing
+                final dialogWidth = isVerySmallScreen
+                    ? screenWidth * 0.95
+                    : isSmallScreen
+                        ? screenWidth * 0.90
+                        : isMediumScreen
+                            ? screenWidth * 0.75
+                            : screenWidth * 0.60;
+
+                final titleFontSize = isVerySmallScreen
+                    ? 18.0
+                    : isSmallScreen
+                        ? 20.0
+                        : 24.0;
+                final sectionFontSize = isVerySmallScreen
+                    ? 14.0
+                    : isSmallScreen
+                        ? 15.0
+                        : 16.0;
+                final iconSize = isVerySmallScreen
+                    ? 20.0
+                    : isSmallScreen
+                        ? 22.0
+                        : 24.0;
+                final padding = isVerySmallScreen
+                    ? 12.0
+                    : isSmallScreen
+                        ? 16.0
+                        : 20.0;
+
+                return Dialog(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(24),
                   ),
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  child: DropdownButtonFormField<String>(
-                    value: registro.estadoFonovisita,
-                    decoration: const InputDecoration(
-                      labelText: 'Estado de Fonovisita',
-                      labelStyle: TextStyle(color: Colors.teal),
-                      border: InputBorder.none,
-                      prefixIcon: Icon(Icons.call, color: Colors.teal),
-                    ),
-                    items: [
-                      'Contactada',
-                      'No Contactada',
-                      '# Errado',
-                      'Apagado',
-                      'Buzón',
-                      'Número No Activado',
-                      '# Equivocado',
-                      'Difícil contacto'
-                    ]
-                        .map((estado) => DropdownMenuItem(
-                              value: estado,
-                              child: Text(estado),
-                            ))
-                        .toList(),
-                    onChanged: (valor) {
-                      estadoFonovisitaController.text = valor ?? '';
-                    },
+                  elevation: 12,
+                  insetPadding: EdgeInsets.symmetric(
+                    horizontal: isSmallScreen ? 10 : 20,
+                    vertical: isSmallScreen ? 10 : 24,
                   ),
-                ),
-                const SizedBox(height: 16),
-                _buildEditTextField(
-                  controller: observacionesController,
-                  label: 'Observaciones',
-                  icon: Icons.note,
-                  maxLines: 3,
-                ),
-                const SizedBox(height: 16),
-                _buildEditTextField(
-                  controller: observaciones2Controller,
-                  label: 'Observaciones-2',
-                  icon: Icons.note_alt,
-                  maxLines: 3,
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text(
-                'Cancelar',
-                style: TextStyle(color: Colors.grey[600]),
-              ),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                _guardarEdicionRegistro(
-                  context,
-                  registro,
-                  nombreController,
-                  apellidoController,
-                  telefonoController,
-                  direccionController,
-                  barrioController,
-                  estadoCivilController,
-                  nombreParejaController,
-                  ocupacionesController,
-                  descripcionOcupacionController,
-                  referenciaInvitacionController,
-                  observacionesController,
-                  estadoFonovisitaController,
-                  observaciones2Controller,
-                  edadController,
-                  sexoController,
-                  peticionesController,
+                  child: Container(
+                    width: dialogWidth,
+                    constraints: BoxConstraints(
+                      maxHeight: screenHeight * 0.95,
+                      maxWidth: 700,
+                    ),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          Colors.white,
+                          primaryTeal.withOpacity(0.03),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(24),
+                      boxShadow: [
+                        BoxShadow(
+                          color: primaryTeal.withOpacity(0.2),
+                          blurRadius: 20,
+                          offset: const Offset(0, 10),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Header fijo con degradado
+                        Container(
+                          padding: EdgeInsets.all(padding),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                primaryTeal,
+                                primaryTeal.withOpacity(0.85)
+                              ],
+                            ),
+                            borderRadius: const BorderRadius.only(
+                              topLeft: Radius.circular(24),
+                              topRight: Radius.circular(24),
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: primaryTeal.withOpacity(0.3),
+                                blurRadius: 8,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding:
+                                    EdgeInsets.all(isVerySmallScreen ? 8 : 10),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Icon(
+                                  Icons.edit_rounded,
+                                  color: Colors.white,
+                                  size: iconSize,
+                                ),
+                              ),
+                              SizedBox(width: isSmallScreen ? 10 : 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Editar Registro',
+                                      style: TextStyle(
+                                        fontSize: titleFontSize,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                    if (!isVerySmallScreen)
+                                      Text(
+                                        'Actualiza la información del registro',
+                                        style: TextStyle(
+                                          fontSize: sectionFontSize - 3,
+                                          color: Colors.white.withOpacity(0.9),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                              Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  onTap: () => Navigator.pop(context),
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(8),
+                                    child: Icon(
+                                      Icons.close_rounded,
+                                      color: Colors.white,
+                                      size: iconSize,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        // Contenido scrollable
+                        Expanded(
+                          child: SingleChildScrollView(
+                            child: Padding(
+                              padding: EdgeInsets.all(padding),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // Sección: Información Personal
+                                  _buildEditSectionHeader(
+                                    'Información Personal',
+                                    Icons.person_rounded,
+                                    primaryTeal,
+                                    sectionFontSize,
+                                    iconSize,
+                                  ),
+                                  const SizedBox(height: 12),
+
+                                  _buildModernTextField(
+                                    controller: nombreController,
+                                    label: 'Nombre',
+                                    icon: Icons.badge_rounded,
+                                    isSmallScreen: isSmallScreen,
+                                  ),
+                                  const SizedBox(height: 12),
+
+                                  _buildModernTextField(
+                                    controller: apellidoController,
+                                    label: 'Apellido',
+                                    icon: Icons.person_outline_rounded,
+                                    isSmallScreen: isSmallScreen,
+                                  ),
+                                  const SizedBox(height: 12),
+
+                                  // Edad y Sexo en fila (si hay espacio)
+                                  if (!isVerySmallScreen)
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: _buildModernTextField(
+                                            controller: edadController,
+                                            label: 'Edad',
+                                            icon: Icons.cake_rounded,
+                                            keyboardType: TextInputType.number,
+                                            isSmallScreen: isSmallScreen,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: _buildModernTextField(
+                                            controller: sexoController,
+                                            label: 'Sexo',
+                                            icon: Icons.wc_rounded,
+                                            isSmallScreen: isSmallScreen,
+                                          ),
+                                        ),
+                                      ],
+                                    )
+                                  else ...[
+                                    _buildModernTextField(
+                                      controller: edadController,
+                                      label: 'Edad',
+                                      icon: Icons.cake_rounded,
+                                      keyboardType: TextInputType.number,
+                                      isSmallScreen: isSmallScreen,
+                                    ),
+                                    const SizedBox(height: 12),
+                                    _buildModernTextField(
+                                      controller: sexoController,
+                                      label: 'Sexo',
+                                      icon: Icons.wc_rounded,
+                                      isSmallScreen: isSmallScreen,
+                                    ),
+                                  ],
+
+                                  const SizedBox(height: 20),
+
+                                  // Sección: Contacto
+                                  _buildEditSectionHeader(
+                                    'Contacto',
+                                    Icons.contact_phone_rounded,
+                                    secondaryOrange,
+                                    sectionFontSize,
+                                    iconSize,
+                                  ),
+                                  const SizedBox(height: 12),
+
+                                  _buildModernTextField(
+                                    controller: telefonoController,
+                                    label: 'Teléfono',
+                                    icon: Icons.phone_rounded,
+                                    keyboardType: TextInputType.phone,
+                                    isSmallScreen: isSmallScreen,
+                                  ),
+                                  const SizedBox(height: 12),
+
+                                  _buildModernTextField(
+                                    controller: direccionController,
+                                    label: 'Dirección',
+                                    icon: Icons.home_rounded,
+                                    isSmallScreen: isSmallScreen,
+                                  ),
+                                  const SizedBox(height: 12),
+
+                                  _buildModernTextField(
+                                    controller: barrioController,
+                                    label: 'Barrio',
+                                    icon: Icons.location_city_rounded,
+                                    isSmallScreen: isSmallScreen,
+                                  ),
+
+                                  const SizedBox(height: 20),
+
+                                  // Sección: Información Adicional
+                                  _buildEditSectionHeader(
+                                    'Información Adicional',
+                                    Icons.info_rounded,
+                                    primaryTeal,
+                                    sectionFontSize,
+                                    iconSize,
+                                  ),
+                                  const SizedBox(height: 12),
+
+                                  _buildModernTextField(
+                                    controller: estadoCivilController,
+                                    label: 'Estado Civil',
+                                    icon: Icons.favorite_rounded,
+                                    isSmallScreen: isSmallScreen,
+                                  ),
+                                  const SizedBox(height: 12),
+
+                                  _buildModernTextField(
+                                    controller: nombreParejaController,
+                                    label: 'Nombre de Pareja',
+                                    icon: Icons.people_rounded,
+                                    isSmallScreen: isSmallScreen,
+                                  ),
+                                  const SizedBox(height: 12),
+
+                                  _buildModernTextField(
+                                    controller: ocupacionesController,
+                                    label: 'Ocupaciones (separadas por coma)',
+                                    icon: Icons.work_rounded,
+                                    isSmallScreen: isSmallScreen,
+                                  ),
+                                  const SizedBox(height: 12),
+
+                                  _buildModernTextField(
+                                    controller: descripcionOcupacionController,
+                                    label: 'Descripción Ocupación',
+                                    icon: Icons.description_rounded,
+                                    maxLines: 2,
+                                    isSmallScreen: isSmallScreen,
+                                  ),
+                                  const SizedBox(height: 12),
+
+                                  _buildModernTextField(
+                                    controller: peticionesController,
+                                    label: 'Peticiones',
+                                    icon: Icons.favorite_border_rounded,
+                                    maxLines: 2,
+                                    isSmallScreen: isSmallScreen,
+                                  ),
+                                  const SizedBox(height: 12),
+
+                                  _buildModernTextField(
+                                    controller: referenciaInvitacionController,
+                                    label: 'Referencia Invitación',
+                                    icon: Icons.link_rounded,
+                                    isSmallScreen: isSmallScreen,
+                                  ),
+
+                                  const SizedBox(height: 20),
+
+                                  // Sección: Seguimiento
+                                  _buildEditSectionHeader(
+                                    'Seguimiento',
+                                    Icons.track_changes_rounded,
+                                    secondaryOrange,
+                                    sectionFontSize,
+                                    iconSize,
+                                  ),
+                                  const SizedBox(height: 12),
+
+                                  // Dropdown Estado de Fonovisita
+                                  _buildModernDropdown(
+                                    value: estadoFonovisitaSeleccionado,
+                                    label: 'Estado de Fonovisita',
+                                    icon: Icons.call_rounded,
+                                    items: [
+                                      'Contactada',
+                                      'No Contactada',
+                                      '# Errado',
+                                      'Apagado',
+                                      'Buzón',
+                                      'Número No Activado',
+                                      '# Equivocado',
+                                      'Difícil contacto'
+                                    ],
+                                    onChanged: (valor) {
+                                      setDialogState(() {
+                                        estadoFonovisitaSeleccionado = valor;
+                                        estadoFonovisitaController.text =
+                                            valor ?? '';
+                                      });
+                                    },
+                                    isSmallScreen: isSmallScreen,
+                                  ),
+
+                                  const SizedBox(height: 12),
+
+                                  _buildModernTextField(
+                                    controller: observacionesController,
+                                    label: 'Observaciones',
+                                    icon: Icons.note_rounded,
+                                    maxLines: 3,
+                                    isSmallScreen: isSmallScreen,
+                                  ),
+                                  const SizedBox(height: 12),
+
+                                  _buildModernTextField(
+                                    controller: observaciones2Controller,
+                                    label: 'Observaciones 2',
+                                    icon: Icons.notes_rounded,
+                                    maxLines: 3,
+                                    isSmallScreen: isSmallScreen,
+                                  ),
+
+                                  const SizedBox(height: 30),
+
+                                  // Botones al final del contenido scrollable
+                                  Container(
+                                    padding: EdgeInsets.all(padding),
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey.shade50,
+                                      borderRadius: BorderRadius.circular(16),
+                                      border: Border.all(
+                                        color: Colors.grey.shade200,
+                                        width: 1,
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.end,
+                                      children: [
+                                        TextButton(
+                                          onPressed: () =>
+                                              Navigator.pop(context),
+                                          style: TextButton.styleFrom(
+                                            padding: EdgeInsets.symmetric(
+                                              horizontal:
+                                                  isSmallScreen ? 16 : 24,
+                                              vertical: isSmallScreen ? 12 : 14,
+                                            ),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                            ),
+                                          ),
+                                          child: Text(
+                                            'Cancelar',
+                                            style: TextStyle(
+                                              color: Colors.grey[700],
+                                              fontSize: isSmallScreen ? 14 : 16,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        ElevatedButton.icon(
+                                          onPressed: () {
+                                            _guardarEdicionRegistro(
+                                              context,
+                                              registro,
+                                              nombreController,
+                                              apellidoController,
+                                              telefonoController,
+                                              direccionController,
+                                              barrioController,
+                                              estadoCivilController,
+                                              nombreParejaController,
+                                              ocupacionesController,
+                                              descripcionOcupacionController,
+                                              referenciaInvitacionController,
+                                              observacionesController,
+                                              estadoFonovisitaController,
+                                              observaciones2Controller,
+                                              edadController,
+                                              sexoController,
+                                              peticionesController,
+                                            );
+                                          },
+                                          icon: Icon(
+                                            Icons.save_rounded,
+                                            size: isSmallScreen ? 18 : 20,
+                                          ),
+                                          label: Text(
+                                            'Guardar',
+                                            style: TextStyle(
+                                              fontSize: isSmallScreen ? 14 : 16,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: primaryTeal,
+                                            foregroundColor: Colors.white,
+                                            padding: EdgeInsets.symmetric(
+                                              horizontal:
+                                                  isSmallScreen ? 20 : 28,
+                                              vertical: isSmallScreen ? 12 : 14,
+                                            ),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                            ),
+                                            elevation: 4,
+                                            shadowColor:
+                                                primaryTeal.withOpacity(0.4),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+
+                                  // Espacio final adicional
+                                  SizedBox(height: isSmallScreen ? 40 : 20),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 );
               },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.teal,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              child: const Text('Guardar'),
-            ),
-          ],
+            );
+          },
         );
       },
     );
@@ -10592,6 +11243,308 @@ class _AdminPanelState extends State<AdminPanel>
         prefixIcon: Icon(icon, color: Colors.teal),
         filled: true,
         fillColor: Colors.grey[50],
+      ),
+    );
+  }
+
+  Widget _buildEditSectionHeader(
+    String title,
+    IconData icon,
+    Color color,
+    double fontSize,
+    double iconSize,
+  ) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [color.withOpacity(0.1), color.withOpacity(0.05)],
+        ),
+        borderRadius: BorderRadius.circular(12),
+        border: Border(
+          left: BorderSide(
+            color: color,
+            width: 4,
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: color, size: iconSize),
+          const SizedBox(width: 10),
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: fontSize,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildModernTextField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    TextInputType? keyboardType,
+    int maxLines = 1,
+    required bool isSmallScreen,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.08),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: TextField(
+        controller: controller,
+        keyboardType: keyboardType,
+        maxLines: maxLines,
+        style: TextStyle(
+          fontSize: isSmallScreen ? 14 : 15,
+          fontWeight: FontWeight.w500,
+        ),
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: TextStyle(
+            color: primaryTeal,
+            fontSize: isSmallScreen ? 13 : 14,
+          ),
+          prefixIcon: Container(
+            margin: const EdgeInsets.only(right: 12),
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: primaryTeal.withOpacity(0.1),
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(12),
+                bottomLeft: Radius.circular(12),
+              ),
+            ),
+            child: Icon(
+              icon,
+              color: primaryTeal,
+              size: isSmallScreen ? 20 : 22,
+            ),
+          ),
+          filled: true,
+          fillColor: Colors.white,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Colors.grey.shade300),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Colors.grey.shade300),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: primaryTeal, width: 2),
+          ),
+          contentPadding: EdgeInsets.symmetric(
+            horizontal: isSmallScreen ? 12 : 16,
+            vertical: isSmallScreen ? 14 : 16,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildModernDropdown({
+    required String? value,
+    required String label,
+    required IconData icon,
+    required List<String> items,
+    required ValueChanged<String?> onChanged,
+    required bool isSmallScreen,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.08),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: InputDecorator(
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: TextStyle(
+            color: primaryTeal,
+            fontSize: isSmallScreen ? 13 : 14,
+          ),
+          prefixIcon: Container(
+            margin: const EdgeInsets.only(right: 12),
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: primaryTeal.withOpacity(0.1),
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(12),
+                bottomLeft: Radius.circular(12),
+              ),
+            ),
+            child: Icon(
+              icon,
+              color: primaryTeal,
+              size: isSmallScreen ? 20 : 22,
+            ),
+          ),
+          filled: true,
+          fillColor: Colors.white,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Colors.grey.shade300),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Colors.grey.shade300),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: primaryTeal, width: 2),
+          ),
+          contentPadding: EdgeInsets.symmetric(
+            horizontal: isSmallScreen ? 12 : 16,
+            vertical: isSmallScreen ? 8 : 10,
+          ),
+        ),
+        child: DropdownButtonHideUnderline(
+          child: DropdownButton<String>(
+            value: value,
+            isExpanded: true,
+            isDense: true,
+            items: items.map((estado) {
+              return DropdownMenuItem(
+                value: estado,
+                child: Text(
+                  estado,
+                  style: TextStyle(fontSize: isSmallScreen ? 14 : 15),
+                ),
+              );
+            }).toList(),
+            onChanged: onChanged,
+            icon: Icon(
+              Icons.arrow_drop_down_rounded,
+              color: primaryTeal,
+              size: isSmallScreen ? 24 : 28,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDateSelector({
+    required BuildContext context,
+    required DateTime? selectedDate,
+    required ValueChanged<DateTime?> onDateSelected,
+    required bool isSmallScreen,
+  }) {
+    return InkWell(
+      onTap: () async {
+        final DateTime? picked = await showDatePicker(
+          context: context,
+          initialDate:
+              selectedDate ?? DateTime.now().subtract(Duration(days: 365 * 25)),
+          firstDate: DateTime(1900),
+          lastDate: DateTime.now(),
+          builder: (context, child) {
+            return Theme(
+              data: Theme.of(context).copyWith(
+                colorScheme: ColorScheme.light(
+                  primary: primaryTeal,
+                  onPrimary: Colors.white,
+                  surface: Colors.white,
+                  onSurface: Colors.black,
+                ),
+              ),
+              child: child ?? const SizedBox.shrink(),
+            );
+          },
+        );
+
+        if (picked != null) {
+          onDateSelected(picked);
+        }
+      },
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: EdgeInsets.all(isSmallScreen ? 14 : 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: selectedDate != null ? primaryTeal : Colors.grey.shade300,
+            width: selectedDate != null ? 2 : 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.08),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: primaryTeal.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                Icons.calendar_today_rounded,
+                color: primaryTeal,
+                size: isSmallScreen ? 20 : 22,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Fecha de Nacimiento',
+                    style: TextStyle(
+                      fontSize: isSmallScreen ? 12 : 13,
+                      color: Colors.grey[600],
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    selectedDate != null
+                        ? '${selectedDate.day}/${selectedDate.month}/${selectedDate.year}'
+                        : 'Seleccionar fecha',
+                    style: TextStyle(
+                      fontSize: isSmallScreen ? 14 : 15,
+                      fontWeight: FontWeight.w500,
+                      color: selectedDate != null
+                          ? Colors.black87
+                          : Colors.grey[500],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.keyboard_arrow_down_rounded,
+              color: primaryTeal,
+              size: isSmallScreen ? 24 : 28,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -10726,124 +11679,6 @@ class _AdminPanelState extends State<AdminPanel>
       },
     );
   }
-
-  // Método auxiliar para mostrar el mensaje de éxito con animación
-  void _mostrarExitoAnimado(String mensaje) {
-    showGeneralDialog(
-      context: context,
-      pageBuilder: (context, animation1, animation2) => Container(),
-      transitionBuilder: (context, animation1, animation2, child) {
-        return ScaleTransition(
-          scale: Tween<double>(begin: 0.5, end: 1.0).animate(animation1),
-          child: AlertDialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-            ),
-            backgroundColor: Colors.green.shade50,
-            title: Row(
-              children: [
-                const Icon(Icons.check_circle, color: Colors.green, size: 30),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    mensaje,
-                    style: const TextStyle(
-                      color: Colors.green,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            content: const SizedBox(height: 20),
-          ),
-        );
-      },
-      transitionDuration: const Duration(milliseconds: 300),
-      barrierDismissible: true,
-      barrierLabel: '',
-      barrierColor: Colors.black54,
-    );
-
-    Future.delayed(const Duration(seconds: 1), () {
-      Navigator.of(context).pop();
-    });
-  }
-
-  // Método auxiliar para efectos de hover en botones
-  Widget _buildAnimatedButton({
-    required VoidCallback onPressed,
-    required Widget child,
-    required Color baseColor,
-  }) {
-    return StatefulBuilder(
-      builder: (context, setState) {
-        bool isHovered = false;
-
-        return MouseRegion(
-          onEnter: (_) => setState(() => isHovered = true),
-          onExit: (_) => setState(() => isHovered = false),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            transform: isHovered
-                ? (Matrix4.identity()..scale(1.05))
-                : Matrix4.identity(),
-            child: ElevatedButton(
-              onPressed: onPressed,
-              style: ElevatedButton.styleFrom(
-                backgroundColor:
-                    isHovered ? baseColor.withOpacity(0.9) : baseColor,
-                elevation: isHovered ? 8 : 4,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 12,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: child,
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  // Widget para tarjetas con efecto de elevación al hover
-  Widget _buildHoverCard({
-    required Widget child,
-    double initialElevation = 4,
-    double hoverElevation = 8,
-  }) {
-    return StatefulBuilder(
-      builder: (context, setState) {
-        bool isHovered = false;
-
-        return MouseRegion(
-          onEnter: (_) => setState(() => isHovered = true),
-          onExit: (_) => setState(() => isHovered = false),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: isHovered ? hoverElevation : initialElevation,
-                  spreadRadius: isHovered ? 2 : 1,
-                ),
-              ],
-            ),
-            child: child,
-          ),
-        );
-      },
-    );
-  }
-
-  /// ✅ NUEVO: Tabla desplegable de detalles para las gráficas
 
   Widget _buildExpandableDetailsTable(List<ChartData> data,
       bool isVerySmallScreen, StateSetter setDialogState) {
@@ -11094,28 +11929,6 @@ class _AdminPanelState extends State<AdminPanel>
           ),
         );
       },
-    );
-  }
-
-  /// ✅ Método auxiliar para celdas de tabla
-  Widget _buildTableCell(
-    String text, {
-    bool isHeader = false,
-    Color? color,
-    bool isVerySmallScreen = false,
-  }) {
-    return Padding(
-      padding: EdgeInsets.all(isVerySmallScreen ? 8 : 12),
-      child: Text(
-        text,
-        textAlign: isHeader ? TextAlign.center : TextAlign.left,
-        style: TextStyle(
-          fontSize:
-              isVerySmallScreen ? (isHeader ? 11 : 10) : (isHeader ? 14 : 13),
-          fontWeight: isHeader ? FontWeight.bold : FontWeight.normal,
-          color: color ?? (isHeader ? primaryTeal : Colors.black87),
-        ),
-      ),
     );
   }
 }
