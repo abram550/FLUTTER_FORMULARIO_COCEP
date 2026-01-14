@@ -1683,11 +1683,13 @@ class _AdminPastoresState extends State<AdminPastores>
                           if (!isSmallScreen) ...[
                             SizedBox(width: 6),
                             Text(
-                              'Salir',
+                              'Cerrar\nsesión',
+                              textAlign: TextAlign.center,
                               style: GoogleFonts.poppins(
                                 color: Colors.white,
                                 fontSize: 13,
                                 fontWeight: FontWeight.w700,
+                                height: 1.1,
                                 shadows: [
                                   Shadow(
                                     offset: Offset(0, 1),

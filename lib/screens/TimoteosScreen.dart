@@ -416,13 +416,18 @@ class _TimoteoScreenState extends State<TimoteoScreen>
                               size: 16,
                             ),
                             SizedBox(width: 4),
-                            Text(
-                              'Salir',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                letterSpacing: 0.3,
+                            SizedBox(
+                              width: 58,
+                              child: Text(
+                                'Cerrar\nsesión',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  letterSpacing: 0.3,
+                                  height: 1.1,
+                                ),
                               ),
                             ),
                           ],

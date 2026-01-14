@@ -763,12 +763,14 @@ class _AdminPanelState extends State<AdminPanel>
                                     ),
                                     SizedBox(width: 5),
                                     Text(
-                                      'Salir',
+                                      'Cerrar\nsesión',
+                                      textAlign: TextAlign.center,
                                       style: TextStyle(
                                         color: Colors.white,
                                         fontSize: 12,
                                         fontWeight: FontWeight.w700,
                                         letterSpacing: 0.3,
+                                        height: 1.1,
                                         shadows: [
                                           Shadow(
                                             offset: Offset(0, 1),
