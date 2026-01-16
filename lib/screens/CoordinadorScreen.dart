@@ -276,8 +276,6 @@ class _CoordinadorScreenState extends State<CoordinadorScreen>
     return {'tribuId': tribuId, 'categoriaTribu': categoriaTribu};
   }
 
-
-
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<Map<String, dynamic>>(
@@ -490,28 +488,27 @@ class _CoordinadorScreenState extends State<CoordinadorScreen>
                                     size: isVerySmallScreen ? 16 : 18,
                                   ),
                                   SizedBox(width: 4),
-                          SizedBox(
-  width: isVerySmallScreen ? 55 : null,
-  child: Text(
-    'Cerrar\nsesión',
-    textAlign: TextAlign.center,
-    style: TextStyle(
-      color: Colors.white,
-      fontSize: isVerySmallScreen ? 11 : 12,
-      fontWeight: FontWeight.w600,
-      height: 1.1,
-      shadows: [
-        Shadow(
-          offset: Offset(0, 1),
-          blurRadius: 2,
-          color: Colors.black.withOpacity(0.3),
-        ),
-      ],
-    ),
-  ),
-),
-
-
+                                  SizedBox(
+                                    width: isVerySmallScreen ? 55 : null,
+                                    child: Text(
+                                      'Cerrar\nsesión',
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: isVerySmallScreen ? 11 : 12,
+                                        fontWeight: FontWeight.w600,
+                                        height: 1.1,
+                                        shadows: [
+                                          Shadow(
+                                            offset: Offset(0, 1),
+                                            blurRadius: 2,
+                                            color:
+                                                Colors.black.withOpacity(0.3),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
                                 ],
                               ),
                             ),
@@ -634,8 +631,6 @@ class _CoordinadorScreenState extends State<CoordinadorScreen>
       },
     );
   }
-
-
 
   Widget _buildCoordinadorUnaLinea(
       String coordinadorNombre, bool isSmallScreen, bool isMediumScreen) {
@@ -999,18 +994,18 @@ class _AsistenciasCoordinadorTabState extends State<AsistenciasCoordinadorTab> {
   DateTime _selectedDate = DateTime.now();
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
-  bool _isMassiveMode = false;
   bool _isProcessingMassive = false;
   DateTime _massiveSelectedDate = DateTime.now();
-  bool _massiveDefaultAttendance = true;
   Map<String, bool> _selectedAttendances = {};
   List<DocumentSnapshot> _filteredRegistros = [];
   TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
+  final FocusNode _searchFocusNode = FocusNode();
 
   @override
   void dispose() {
     _searchController.dispose();
+    _searchFocusNode.dispose();
     super.dispose();
   }
 
@@ -1045,8 +1040,6 @@ class _AsistenciasCoordinadorTabState extends State<AsistenciasCoordinadorTab> {
     return "Servicio Especial";
   }
 
-  /// Bloquea asistencia si el registro tiene 3+ faltas y existe una alerta no revisada.
-  /// Considera 'pendiente' o 'en_revision' (o 'procesada'==false) como NO revisada.
   Future<bool> _tieneBloqueoPorFaltas(
       String registroId, int faltasActuales) async {
     try {
@@ -1061,7 +1054,6 @@ class _AsistenciasCoordinadorTabState extends State<AsistenciasCoordinadorTab> {
           .get();
 
       if (qs.docs.isEmpty) {
-        // Si no hay 'procesada:false', revisar por estado explícito
         final qs2 = await FirebaseFirestore.instance
             .collection('alertas')
             .where('registroId', isEqualTo: registroId)
@@ -1072,19 +1064,11 @@ class _AsistenciasCoordinadorTabState extends State<AsistenciasCoordinadorTab> {
         return qs2.docs.isNotEmpty;
       }
 
-      return true; // Hay una alerta pendiente/no procesada
+      return true;
     } catch (e) {
-      // En caso de error, por seguridad no bloquear
       print('Error verificando bloqueo por faltas: $e');
       return false;
     }
-  }
-
-  Stream<QuerySnapshot> obtenerAsistenciasPorCoordinador(String coordinadorId) {
-    return FirebaseFirestore.instance
-        .collection('asistencias')
-        .where('coordinadorId', isEqualTo: coordinadorId)
-        .snapshots();
   }
 
   List<DocumentSnapshot> _filtrarRegistros(List<DocumentSnapshot> docs) {
@@ -1114,7 +1098,7 @@ class _AsistenciasCoordinadorTabState extends State<AsistenciasCoordinadorTab> {
         }
       }).toList();
 
-      // Ordenar por nombre para consistencia
+      // Ordenar alfabéticamente (A-Z)
       filtered.sort((a, b) {
         try {
           final dataA = a.data() as Map<String, dynamic>?;
@@ -1138,424 +1122,6 @@ class _AsistenciasCoordinadorTabState extends State<AsistenciasCoordinadorTab> {
     }
   }
 
-  Future<void> _registrarAsistencia(DocumentSnapshot registro) async {
-    try {
-      final data = registro.data() as Map<String, dynamic>?;
-      if (data == null) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error: Datos del registro no válidos')),
-          );
-        }
-        return;
-      }
-
-      final nombre = data['nombre']?.toString() ?? '';
-      final apellido = data['apellido']?.toString() ?? '';
-
-      if (nombre.isEmpty && apellido.isEmpty) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error: Nombre y apellido requeridos')),
-          );
-        }
-        return;
-      }
-
-      // === VERIFICACIÓN DE BLOQUEO MEJORADA ===
-      final int faltasActuales =
-          (data['faltasConsecutivas'] as num?)?.toInt() ?? 0;
-
-      // Solo verificar bloqueo si hay 3 o más faltas
-      if (faltasActuales >= 3) {
-        final bool bloqueo =
-            await _tieneBloqueoPorFaltas(registro.id, faltasActuales);
-        if (bloqueo) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  'Este registro tiene $faltasActuales faltas y una alerta sin revisar. No se puede tomar asistencia hasta que sea revisada.',
-                ),
-                backgroundColor: Colors.red,
-                behavior: SnackBarBehavior.floating,
-                duration: Duration(seconds: 4),
-              ),
-            );
-          }
-          return;
-        }
-      }
-      // === FIN VERIFICACIÓN ===
-
-      DateTime selectedDate = DateTime.now();
-      bool asistio = true;
-      bool isProcessing = false;
-
-      final tribuId = data['tribuId']?.toString() ?? widget.tribuId;
-      String categoriaTribu = data['categoria']?.toString() ??
-          data['ministerioAsignado']?.toString() ??
-          widget.categoriaTribu;
-
-      if (tribuId.isNotEmpty && mounted) {
-        try {
-          final tribuDoc = await FirebaseFirestore.instance
-              .collection('tribus')
-              .doc(tribuId)
-              .get();
-
-          if (tribuDoc.exists && tribuDoc.data() != null) {
-            final tribuData = tribuDoc.data() as Map<String, dynamic>;
-            categoriaTribu =
-                tribuData['categoria']?.toString() ?? categoriaTribu;
-          }
-        } catch (e) {
-          print('Error al obtener tribu: $e');
-        }
-      }
-
-      if (!mounted) return;
-
-      await showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (dialogContext) => StatefulBuilder(
-          builder: (builderContext, dialogSetState) {
-            return WillPopScope(
-              onWillPop: () async => !isProcessing,
-              child: AlertDialog(
-                title: Text('Registrar Asistencia'),
-                content: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'Discípulo: $nombre $apellido',
-                        style: TextStyle(
-                            fontWeight: FontWeight.bold, fontSize: 16),
-                      ),
-                      if (faltasActuales > 0) ...[
-                        SizedBox(height: 8),
-                        Container(
-                          padding: EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: faltasActuales >= 3
-                                ? Colors.red.withOpacity(0.1)
-                                : Colors.orange.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.warning,
-                                color: faltasActuales >= 3
-                                    ? Colors.red
-                                    : Colors.orange,
-                                size: 16,
-                              ),
-                              SizedBox(width: 8),
-                              Text(
-                                'Faltas actuales: $faltasActuales',
-                                style: TextStyle(
-                                  color: faltasActuales >= 3
-                                      ? Colors.red
-                                      : Colors.orange,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                      SizedBox(height: 16),
-                      ElevatedButton.icon(
-                        icon: Icon(Icons.calendar_today),
-                        label: Text('Seleccionar Fecha'),
-                        onPressed: isProcessing
-                            ? null
-                            : () async {
-                                try {
-                                  final DateTime? pickedDate =
-                                      await showDatePicker(
-                                    context: builderContext,
-                                    initialDate: selectedDate,
-                                    firstDate: DateTime.now()
-                                        .subtract(Duration(days: 30)),
-                                    lastDate: DateTime.now(),
-                                  );
-
-                                  if (pickedDate != null &&
-                                      pickedDate != selectedDate) {
-                                    dialogSetState(() {
-                                      selectedDate = pickedDate;
-                                    });
-                                  }
-                                } catch (e) {
-                                  print('Error al seleccionar fecha: $e');
-                                }
-                              },
-                      ),
-                      SizedBox(height: 8),
-                      Text(
-                        'Fecha seleccionada: ${DateFormat('dd/MM/yyyy').format(selectedDate)}',
-                        style: TextStyle(fontWeight: FontWeight.w500),
-                      ),
-                      SizedBox(height: 16),
-                      ListTile(
-                        title: Text('¿Asistió al servicio?'),
-                        subtitle: Text(obtenerNombreServicio(
-                            categoriaTribu, selectedDate)),
-                        trailing: Switch(
-                          value: asistio,
-                          onChanged: isProcessing
-                              ? null
-                              : (value) {
-                                  dialogSetState(() {
-                                    asistio = value;
-                                  });
-                                },
-                        ),
-                      ),
-                      if (isProcessing) ...[
-                        SizedBox(height: 16),
-                        CircularProgressIndicator(),
-                        SizedBox(height: 8),
-                        Text('Procesando...'),
-                      ],
-                    ],
-                  ),
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: isProcessing
-                        ? null
-                        : () => Navigator.of(dialogContext).pop(),
-                    child: Text('Cancelar'),
-                  ),
-                  ElevatedButton(
-                    onPressed: isProcessing
-                        ? null
-                        : () async {
-                            dialogSetState(() {
-                              isProcessing = true;
-                            });
-
-                            try {
-                              // ===== VALIDACIÓN ANTI-DUPLICACIÓN UNIFICADA =====
-                              final DateTime inicioDelDia = DateTime(
-                                selectedDate.year,
-                                selectedDate.month,
-                                selectedDate.day,
-                                0,
-                                0,
-                                0,
-                                0,
-                              );
-                              final DateTime finDelDia = DateTime(
-                                selectedDate.year,
-                                selectedDate.month,
-                                selectedDate.day,
-                                23,
-                                59,
-                                59,
-                                999,
-                              );
-
-                              final yaRegistrada = await FirebaseFirestore
-                                  .instance
-                                  .collection('asistencias')
-                                  .where('jovenId', isEqualTo: registro.id)
-                                  .where('fecha',
-                                      isGreaterThanOrEqualTo:
-                                          Timestamp.fromDate(inicioDelDia))
-                                  .where('fecha',
-                                      isLessThanOrEqualTo:
-                                          Timestamp.fromDate(finDelDia))
-                                  .limit(1)
-                                  .get()
-                                  .timeout(
-                                    Duration(seconds: 10),
-                                    onTimeout: () => throw TimeoutException(
-                                        'Timeout verificando duplicados'),
-                                  );
-
-                              if (yaRegistrada.docs.isNotEmpty) {
-                                Navigator.of(dialogContext).pop();
-
-                                // ✅ CORRECCIÓN: Usar context.mounted del BuildContext exterior
-                                if (builderContext.mounted) {
-                                  final registroExistente =
-                                      yaRegistrada.docs.first.data()
-                                          as Map<String, dynamic>?;
-                                  final nombreServicio =
-                                      registroExistente?['nombreServicio'] ??
-                                          'servicio';
-
-                                  ScaffoldMessenger.of(builderContext)
-                                      .showSnackBar(
-                                    SnackBar(
-                                      content: Row(
-                                        children: [
-                                          Icon(Icons.warning_amber,
-                                              color: Colors.white),
-                                          SizedBox(width: 12),
-                                          Expanded(
-                                            child: Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                Text(
-                                                  'Asistencia ya registrada',
-                                                  style: TextStyle(
-                                                      fontWeight:
-                                                          FontWeight.bold),
-                                                ),
-                                                Text(
-                                                  'Ya existe para "$nombreServicio"',
-                                                  style:
-                                                      TextStyle(fontSize: 12),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      backgroundColor: Color(0xFFFF4B2B),
-                                      behavior: SnackBarBehavior.floating,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      duration: Duration(seconds: 4),
-                                    ),
-                                  );
-                                }
-                                return;
-                              }
-                              // ===== FIN VALIDACIÓN =====
-
-                              final String nombreServicio =
-                                  obtenerNombreServicio(
-                                      categoriaTribu, selectedDate);
-
-                              await FirebaseFirestore.instance
-                                  .collection('asistencias')
-                                  .add({
-                                'jovenId': registro.id,
-                                'nombre': nombre,
-                                'apellido': apellido,
-                                'nombreCompleto': '$nombre $apellido',
-                                'tribuId': tribuId,
-                                'categoriaTribu': categoriaTribu,
-                                'coordinadorId': widget.coordinadorId,
-                                'fecha': Timestamp.fromDate(selectedDate),
-                                'nombreServicio': nombreServicio,
-                                'asistio': asistio,
-                                'diaSemana': DateFormat('EEEE', 'es')
-                                    .format(selectedDate),
-                              });
-
-                              // === LÓGICA CORREGIDA DE FALTAS ===
-                              final int nuevasFaltas =
-                                  asistio ? 0 : faltasActuales + 1;
-
-                              await registro.reference.update({
-                                'ultimaAsistencia':
-                                    Timestamp.fromDate(selectedDate),
-                                'faltasConsecutivas': nuevasFaltas,
-                              });
-
-                              // === GENERAR ALERTA SOLO SI ALCANZA 4 FALTAS ===
-                              if (!asistio && nuevasFaltas >= 4) {
-                                String nombreTimoteo = 'No disponible';
-                                String? timoteoId = data['timoteoAsignado'];
-
-                                if (timoteoId != null && timoteoId.isNotEmpty) {
-                                  final timoteoDoc = await FirebaseFirestore
-                                      .instance
-                                      .collection('timoteos')
-                                      .doc(timoteoId)
-                                      .get();
-
-                                  if (timoteoDoc.exists) {
-                                    final tData = timoteoDoc.data();
-                                    final nombreT = tData?['nombre'] ?? '';
-                                    final apellidoT = tData?['apellido'] ?? '';
-                                    nombreTimoteo =
-                                        '$nombreT $apellidoT'.trim();
-                                  }
-                                }
-
-                                // Verificar si ya existe una alerta no procesada
-                                final alertasExistente = await FirebaseFirestore
-                                    .instance
-                                    .collection('alertas')
-                                    .where('registroId', isEqualTo: registro.id)
-                                    .where('tipo',
-                                        isEqualTo: 'faltasConsecutivas')
-                                    .where('procesada', isEqualTo: false)
-                                    .limit(1)
-                                    .get();
-
-                                if (alertasExistente.docs.isEmpty) {
-                                  await FirebaseFirestore.instance
-                                      .collection('alertas')
-                                      .add({
-                                    'tipo': 'faltasConsecutivas',
-                                    'registroId': registro.id,
-                                    'coordinadorId': widget.coordinadorId,
-                                    'timoteoId': timoteoId ?? 'No asignado',
-                                    'nombreJoven': '$nombre $apellido',
-                                    'nombreTimoteo': nombreTimoteo,
-                                    'cantidadFaltas': nuevasFaltas,
-                                    'fecha': Timestamp.now(),
-                                    'estado': 'pendiente',
-                                    'procesada': false,
-                                    'visible': false,
-                                  });
-                                }
-                              }
-
-                              Navigator.of(dialogContext).pop();
-
-                              if (mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                      content: Text(
-                                          'Asistencia registrada correctamente')),
-                                );
-                              }
-                            } catch (e) {
-                              print('Error al registrar asistencia: $e');
-                              Navigator.of(dialogContext).pop();
-
-                              if (mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                      content: Text(
-                                          'Error al registrar asistencia: ${e.toString()}')),
-                                );
-                              }
-                            }
-                          },
-                    child: Text('Guardar'),
-                  ),
-                ],
-              ),
-            );
-          },
-        ),
-      );
-    } catch (e) {
-      print('Error general en _registrarAsistencia: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error inesperado: ${e.toString()}')),
-        );
-      }
-    }
-  }
-
   Future<void> _procesarAsistenciaMasiva() async {
     if (!mounted || _isProcessingMassive || _selectedAttendances.isEmpty)
       return;
@@ -1569,7 +1135,6 @@ class _AsistenciasCoordinadorTabState extends State<AsistenciasCoordinadorTab> {
     int yaRegistrados = 0;
     int totalProcesos = _selectedAttendances.length;
 
-    // Variables para el diálogo
     bool dialogMounted = true;
     late StateSetter dialogSetState;
 
@@ -1578,7 +1143,6 @@ class _AsistenciasCoordinadorTabState extends State<AsistenciasCoordinadorTab> {
           _massiveSelectedDate.month, _massiveSelectedDate.day);
       final endOfDay = startOfDay.add(Duration(days: 1));
 
-      // Mostrar diálogo de progreso con mejor control
       showDialog(
         context: context,
         barrierDismissible: false,
@@ -1593,9 +1157,11 @@ class _AsistenciasCoordinadorTabState extends State<AsistenciasCoordinadorTab> {
                     children: [
                       Icon(Icons.checklist, color: Color(0xFF147B7C)),
                       SizedBox(width: 8),
-                      Text(
-                        'Procesando Lista de Asistencia',
-                        style: TextStyle(fontSize: 18),
+                      Expanded(
+                        child: Text(
+                          'Procesando Lista de Asistencia',
+                          style: TextStyle(fontSize: 18),
+                        ),
                       ),
                     ],
                   ),
@@ -1685,13 +1251,10 @@ class _AsistenciasCoordinadorTabState extends State<AsistenciasCoordinadorTab> {
         },
       );
 
-      // Función para actualizar el diálogo de forma segura
       void actualizarDialogo() {
         if (dialogMounted) {
           try {
-            dialogSetState(() {
-              // Las variables se actualizan automáticamente
-            });
+            dialogSetState(() {});
           } catch (e) {
             print('Error actualizando diálogo: $e');
             dialogMounted = false;
@@ -1699,7 +1262,6 @@ class _AsistenciasCoordinadorTabState extends State<AsistenciasCoordinadorTab> {
         }
       }
 
-      // Procesar cada asistencia seleccionada
       List<MapEntry<String, bool>> entries =
           _selectedAttendances.entries.toList();
 
@@ -1709,7 +1271,6 @@ class _AsistenciasCoordinadorTabState extends State<AsistenciasCoordinadorTab> {
         final entry = entries[i];
 
         try {
-          // Buscar el registro correspondiente
           late DocumentSnapshot registro;
           try {
             registro = _filteredRegistros.firstWhere(
@@ -1728,23 +1289,19 @@ class _AsistenciasCoordinadorTabState extends State<AsistenciasCoordinadorTab> {
             actualizarDialogo();
             continue;
           }
-          // === BLOQUEO POR FALTAS NO REVISADAS (MODO MASIVO) ===
+
           final int faltasActuales =
               (data['faltasConsecutivas'] as num?)?.toInt() ?? 0;
-          // Solo verificar bloqueo si hay 3 o más faltas
           bool bloqueo = false;
           if (faltasActuales >= 3) {
             bloqueo = await _tieneBloqueoPorFaltas(registro.id, faltasActuales);
           }
           if (bloqueo) {
-            // Lo tratamos como "ya registrado / omitido" para no romper el conteo
             yaRegistrados++;
             actualizarDialogo();
             continue;
           }
-          // === FIN BLOQUEO ===
 
-          // ===== VALIDACIÓN CONSISTENTE CON TIMEOUT =====
           try {
             final yaRegistrada = await FirebaseFirestore.instance
                 .collection('asistencias')
@@ -1767,7 +1324,6 @@ class _AsistenciasCoordinadorTabState extends State<AsistenciasCoordinadorTab> {
               onTimeout: () {
                 print('⚠️ Timeout verificando duplicado para: ${registro.id}');
                 errores++;
-                // ✅ CORRECCIÓN: Retornar un QuerySnapshot vacío en lugar de null
                 return Future.error('Timeout');
               },
             );
@@ -1788,7 +1344,6 @@ class _AsistenciasCoordinadorTabState extends State<AsistenciasCoordinadorTab> {
             actualizarDialogo();
             continue;
           }
-          // ===== FIN VALIDACIÓN =====
 
           final nombre = data['nombre']?.toString() ?? '';
           final apellido = data['apellido']?.toString() ?? '';
@@ -1797,7 +1352,6 @@ class _AsistenciasCoordinadorTabState extends State<AsistenciasCoordinadorTab> {
               data['ministerioAsignado']?.toString() ??
               widget.categoriaTribu;
 
-          // Verificar categoría desde Firestore si es necesario
           if (tribuId.isNotEmpty) {
             try {
               final tribuDoc = await FirebaseFirestore.instance
@@ -1819,7 +1373,6 @@ class _AsistenciasCoordinadorTabState extends State<AsistenciasCoordinadorTab> {
               obtenerNombreServicio(categoriaTribu, _massiveSelectedDate);
           final bool asistio = entry.value;
 
-          // Registrar asistencia
           await FirebaseFirestore.instance.collection('asistencias').add({
             'jovenId': registro.id,
             'nombre': nombre,
@@ -1834,7 +1387,6 @@ class _AsistenciasCoordinadorTabState extends State<AsistenciasCoordinadorTab> {
             'diaSemana': DateFormat('EEEE', 'es').format(_massiveSelectedDate),
           });
 
-          // Actualizar faltas
           final int faltasAnteriores =
               (data['faltasConsecutivas'] as num?)?.toInt() ?? 0;
           final int nuevasFaltas = asistio ? 0 : faltasAnteriores + 1;
@@ -1844,8 +1396,7 @@ class _AsistenciasCoordinadorTabState extends State<AsistenciasCoordinadorTab> {
             'faltasConsecutivas': nuevasFaltas,
           });
 
-          // Generar alerta si es necesario
-          if (!asistio && nuevasFaltas >= 3) {
+          if (!asistio && nuevasFaltas >= 4) {
             String nombreTimoteo = 'No disponible';
             String? timoteoId = data['timoteoAsignado'];
 
@@ -1867,7 +1418,6 @@ class _AsistenciasCoordinadorTabState extends State<AsistenciasCoordinadorTab> {
               }
             }
 
-            // Verificar si ya existe una alerta para este registro
             final alertasExistente = await FirebaseFirestore.instance
                 .collection('alertas')
                 .where('registroId', isEqualTo: registro.id)
@@ -1901,7 +1451,6 @@ class _AsistenciasCoordinadorTabState extends State<AsistenciasCoordinadorTab> {
           actualizarDialogo();
         }
 
-        // Pequeña pausa cada 3 registros para no saturar Firestore
         if (i % 3 == 0) {
           await Future.delayed(Duration(milliseconds: 50));
         }
@@ -1910,10 +1459,8 @@ class _AsistenciasCoordinadorTabState extends State<AsistenciasCoordinadorTab> {
       print('Error crítico en procesamiento masivo: $e');
       errores++;
     } finally {
-      // Marcar diálogo como no montado
       dialogMounted = false;
 
-      // Cerrar diálogo de progreso de forma segura
       if (mounted) {
         try {
           Navigator.of(context, rootNavigator: true).pop();
@@ -1921,18 +1468,14 @@ class _AsistenciasCoordinadorTabState extends State<AsistenciasCoordinadorTab> {
           print('Error cerrando diálogo: $e');
         }
 
-        // Pequeña pausa antes de actualizar el estado
         await Future.delayed(Duration(milliseconds: 100));
 
-        // Limpiar selecciones y salir del modo masivo
         if (mounted) {
           setState(() {
             _selectedAttendances.clear();
-            _isMassiveMode = false;
             _isProcessingMassive = false;
           });
 
-          // Mostrar resultado final
           String mensaje;
           Color color;
 
@@ -1971,503 +1514,13 @@ class _AsistenciasCoordinadorTabState extends State<AsistenciasCoordinadorTab> {
     }
   }
 
-  Widget _buildAsistenciasCalendario(DocumentSnapshot registro) {
-    final data = registro.data() as Map<String, dynamic>?;
-
-    if (data == null) {
-      return Center(
-        child: Text('Error: No se pueden cargar los datos del registro'),
-      );
-    }
-
-    return FutureBuilder<QuerySnapshot>(
-      future: FirebaseFirestore.instance
-          .collection('asistencias')
-          .where('jovenId', isEqualTo: registro.id)
-          .get()
-          .timeout(Duration(seconds: 10)),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CircularProgressIndicator(),
-                SizedBox(height: 8),
-                Text('Cargando calendario...'),
-              ],
-            ),
-          );
-        }
-
-        if (snapshot.hasError) {
-          print('Error al cargar asistencias: ${snapshot.error}');
-          return Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.error_outline, size: 48, color: Colors.red),
-                SizedBox(height: 8),
-                Text(
-                  'Error al cargar asistencias',
-                  style: TextStyle(color: Colors.red),
-                ),
-                SizedBox(height: 4),
-                Text(
-                  'Toca para reintentar',
-                  style: TextStyle(fontSize: 12, color: Colors.grey),
-                ),
-              ],
-            ),
-          );
-        }
-
-        final asistencias = snapshot.data?.docs ?? [];
-        final Map<DateTime, bool> asistenciaMap = {};
-
-        // Procesar asistencias de forma segura
-        for (var asistenciaDoc in asistencias) {
-          try {
-            final asistenciaData = asistenciaDoc.data();
-            if (asistenciaData is Map<String, dynamic>) {
-              final fechaField = asistenciaData['fecha'];
-              if (fechaField is Timestamp) {
-                final fecha = fechaField.toDate();
-                final fechaSinHora =
-                    DateTime(fecha.year, fecha.month, fecha.day);
-                final asistio = asistenciaData['asistio'] is bool
-                    ? asistenciaData['asistio'] as bool
-                    : false;
-                asistenciaMap[fechaSinHora] = asistio;
-              }
-            }
-          } catch (e) {
-            print('Error procesando asistencia: $e');
-            continue;
-          }
-        }
-
-        return SafeArea(
-          child: Column(
-            children: [
-              Text(
-                'Calendario de Asistencias',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF147B7C),
-                ),
-              ),
-              SizedBox(height: 8),
-              Container(
-                padding: EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.grey.withOpacity(0.1),
-                      spreadRadius: 1,
-                      blurRadius: 4,
-                      offset: Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: TableCalendar(
-                  firstDay: DateTime.utc(2020, 1, 1),
-                  lastDay: DateTime.utc(2030, 12, 31),
-                  focusedDay: DateTime.now(),
-                  calendarFormat: CalendarFormat.month,
-                  startingDayOfWeek: StartingDayOfWeek.monday,
-                  locale: 'es_ES',
-                  availableCalendarFormats: const {
-                    CalendarFormat.month: 'Mes',
-                    CalendarFormat.week: 'Semana',
-                  },
-                  headerStyle: HeaderStyle(
-                    titleCentered: true,
-                    formatButtonVisible: true,
-                    formatButtonDecoration: BoxDecoration(
-                      color: Color(0xFF147B7C),
-                      borderRadius: BorderRadius.circular(20.0),
-                    ),
-                    formatButtonTextStyle: TextStyle(color: Colors.white),
-                    titleTextStyle: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  calendarStyle: CalendarStyle(
-                    weekendTextStyle: TextStyle(color: Colors.red),
-                    outsideDaysVisible: false,
-                  ),
-                  calendarBuilders: CalendarBuilders(
-                    markerBuilder: (context, date, events) {
-                      try {
-                        final fechaSinHora =
-                            DateTime(date.year, date.month, date.day);
-                        if (asistenciaMap.containsKey(fechaSinHora)) {
-                          final asistio = asistenciaMap[fechaSinHora] ?? false;
-                          return Positioned(
-                            bottom: 1,
-                            child: Container(
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: asistio
-                                    ? Color(0xFF147B7C)
-                                    : Color(0xFFFF4B2B),
-                              ),
-                              width: 8,
-                              height: 8,
-                            ),
-                          );
-                        }
-                      } catch (e) {
-                        print('Error en markerBuilder: $e');
-                      }
-                      return null;
-                    },
-                  ),
-                ),
-              ),
-              SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        width: 10,
-                        height: 10,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Color(0xFF147B7C),
-                        ),
-                      ),
-                      SizedBox(width: 4),
-                      Text('Asistió'),
-                    ],
-                  ),
-                  SizedBox(width: 24),
-                  Row(
-                    children: [
-                      Container(
-                        width: 10,
-                        height: 10,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Color(0xFFFF4B2B),
-                        ),
-                      ),
-                      SizedBox(width: 4),
-                      Text('No asistió'),
-                    ],
-                  ),
-                ],
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildMassiveAttendanceMode() {
-    return Container(
-      padding: EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            Color(0xFF147B7C).withOpacity(0.1),
-            Color(0xFF147B7C).withOpacity(0.05)
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Color(0xFF147B7C), width: 2),
-      ),
-      child: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Color(0xFF147B7C),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(Icons.checklist, color: Colors.white, size: 24),
-                ),
-                SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Lista de Asistencia Grupal',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF147B7C),
-                        ),
-                      ),
-                      Text(
-                        'Toma asistencia de múltiples personas a la vez',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                IconButton(
-                  icon: Icon(Icons.close, color: Colors.red, size: 28),
-                  onPressed: _isProcessingMassive
-                      ? null
-                      : () {
-                          setState(() {
-                            _isMassiveMode = false;
-                            _selectedAttendances.clear();
-                          });
-                        },
-                ),
-              ],
-            ),
-
-            Divider(
-                height: 24,
-                thickness: 1,
-                color: Color(0xFF147B7C).withOpacity(0.3)),
-
-            // Selector de fecha mejorado
-            Container(
-              padding: EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Color(0xFF147B7C).withOpacity(0.3)),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.event, color: Color(0xFF147B7C)),
-                  SizedBox(width: 8),
-                  Text(
-                    'Fecha del servicio:',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF147B7C),
-                    ),
-                  ),
-                  Spacer(),
-                  ElevatedButton.icon(
-                    icon: Icon(Icons.calendar_today, size: 18),
-                    label: Text(
-                        DateFormat('dd/MM/yyyy').format(_massiveSelectedDate)),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Color(0xFF147B7C),
-                      foregroundColor: Colors.white,
-                      padding:
-                          EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    ),
-                    onPressed: _isProcessingMassive
-                        ? null
-                        : () async {
-                            final DateTime? pickedDate = await showDatePicker(
-                              context: context,
-                              initialDate: _massiveSelectedDate,
-                              firstDate:
-                                  DateTime.now().subtract(Duration(days: 30)),
-                              lastDate: DateTime.now(),
-                              helpText: 'Seleccionar fecha del servicio',
-                              confirmText: 'CONFIRMAR',
-                              cancelText: 'CANCELAR',
-                            );
-
-                            if (pickedDate != null &&
-                                pickedDate != _massiveSelectedDate) {
-                              setState(() {
-                                _massiveSelectedDate = pickedDate;
-                                _selectedAttendances.clear();
-                              });
-                            }
-                          },
-                  ),
-                ],
-              ),
-            ),
-
-            SizedBox(height: 16),
-
-            // Controles masivos mejorados
-            Text(
-              'Acciones rápidas:',
-              style: TextStyle(
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF147B7C),
-                fontSize: 16,
-              ),
-            ),
-            SizedBox(height: 8),
-
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  ElevatedButton.icon(
-                    icon: Icon(Icons.check_circle, size: 18),
-                    label: Text('Todos Presentes'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
-                      foregroundColor: Colors.white,
-                      padding:
-                          EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    ),
-                    onPressed: _isProcessingMassive
-                        ? null
-                        : () {
-                            setState(() {
-                              for (var registro in _filteredRegistros) {
-                                _selectedAttendances[registro.id] = true;
-                              }
-                            });
-                          },
-                  ),
-                  SizedBox(width: 8),
-                  ElevatedButton.icon(
-                    icon: Icon(Icons.cancel, size: 18),
-                    label: Text('Todos Ausentes'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red,
-                      foregroundColor: Colors.white,
-                      padding:
-                          EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    ),
-                    onPressed: _isProcessingMassive
-                        ? null
-                        : () {
-                            setState(() {
-                              for (var registro in _filteredRegistros) {
-                                _selectedAttendances[registro.id] = false;
-                              }
-                            });
-                          },
-                  ),
-                  SizedBox(width: 8),
-                  OutlinedButton.icon(
-                    icon: Icon(Icons.clear_all, size: 18),
-                    label: Text('Limpiar'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.grey[700],
-                      side: BorderSide(color: Colors.grey),
-                      padding:
-                          EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    ),
-                    onPressed: _isProcessingMassive
-                        ? null
-                        : () {
-                            setState(() {
-                              _selectedAttendances.clear();
-                            });
-                          },
-                  ),
-                ],
-              ),
-            ),
-
-            SizedBox(height: 16),
-
-            // Contador y botón de procesamiento mejorado
-            Container(
-              padding: EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Color(0xFF147B7C).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(Icons.people, color: Color(0xFF147B7C)),
-                      SizedBox(width: 8),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Personas seleccionadas: ${_selectedAttendances.length}',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF147B7C),
-                              ),
-                            ),
-                            if (_selectedAttendances.isNotEmpty) ...[
-                              SizedBox(height: 4),
-                              SingleChildScrollView(
-                                scrollDirection: Axis.horizontal,
-                                child: Text(
-                                  'Presentes: ${_selectedAttendances.values.where((v) => v == true).length} | '
-                                  'Ausentes: ${_selectedAttendances.values.where((v) => v == false).length}',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.grey[600],
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      icon: _isProcessingMassive
-                          ? SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                valueColor:
-                                    AlwaysStoppedAnimation<Color>(Colors.white),
-                              ),
-                            )
-                          : Icon(Icons.save_alt, size: 18),
-                      label: Text(_isProcessingMassive
-                          ? 'Guardando...'
-                          : 'Guardar Lista de Asistencia'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Color(0xFF147B7C),
-                        foregroundColor: Colors.white,
-                        padding:
-                            EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                      ),
-                      onPressed:
-                          (_isProcessingMassive || _selectedAttendances.isEmpty)
-                              ? null
-                              : _procesarAsistenciaMasiva,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _buildSearchBar() {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      color: Colors.white,
       child: TextField(
         controller: _searchController,
+        focusNode: _searchFocusNode,
         decoration: InputDecoration(
           hintText: 'Buscar por nombre...',
           prefixIcon: Icon(Icons.search, color: Color(0xFF147B7C)),
@@ -2492,6 +1545,7 @@ class _AsistenciasCoordinadorTabState extends State<AsistenciasCoordinadorTab> {
           ),
           filled: true,
           fillColor: Colors.white,
+          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         ),
         onChanged: (value) {
           setState(() {
@@ -2502,72 +1556,20 @@ class _AsistenciasCoordinadorTabState extends State<AsistenciasCoordinadorTab> {
     );
   }
 
-// 7. MÉTODO BUILD COMPLETO MEJORADO
-// Reemplazar completamente el método build existente con este:
-
   @override
   Widget build(BuildContext context) {
+    final screenHeight = MediaQuery.of(context).size.height;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenWidth < 600;
+
     return Scaffold(
       key: _scaffoldKey,
       body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header fijo - NO se mueve con el scroll
-          Container(
-            padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.grey.withOpacity(0.1),
-                  spreadRadius: 1,
-                  blurRadius: 2,
-                  offset: Offset(0, 1),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                Text(
-                  'Registro de Asistencias',
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF147B7C),
-                  ),
-                ),
-                Spacer(),
-                // Botón para activar modo masivo
-                ElevatedButton.icon(
-                  icon: Icon(_isMassiveMode ? Icons.person : Icons.checklist),
-                  label: Text(
-                      _isMassiveMode ? 'Registro Individual' : 'Lista Grupal'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor:
-                        _isMassiveMode ? Colors.orange : Color(0xFF147B7C),
-                    foregroundColor: Colors.white,
-                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  ),
-                  onPressed: _isProcessingMassive
-                      ? null
-                      : () {
-                          setState(() {
-                            _isMassiveMode = !_isMassiveMode;
-                            _selectedAttendances.clear();
-                          });
-                        },
-                ),
-              ],
-            ),
-          ),
+          // Barra de búsqueda
+          _buildSearchBar(),
 
-          // Barra de búsqueda fija - NO se mueve con el scroll
-          Container(
-            color: Colors.white,
-            child: _buildSearchBar(),
-          ),
-
-          // Contenido con scroll - TODO lo demás puede hacer scroll
+          // Contenido principal con scroll
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance
@@ -2580,7 +1582,6 @@ class _AsistenciasCoordinadorTabState extends State<AsistenciasCoordinadorTab> {
               }),
               builder: (context, snapshot) {
                 if (snapshot.hasError) {
-                  print('StreamBuilder error: ${snapshot.error}');
                   return Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -2655,7 +1656,6 @@ class _AsistenciasCoordinadorTabState extends State<AsistenciasCoordinadorTab> {
                   );
                 }
 
-                // Filtrar documentos
                 _filteredRegistros = _filtrarRegistros(docs);
 
                 if (_filteredRegistros.isEmpty) {
@@ -2698,28 +1698,295 @@ class _AsistenciasCoordinadorTabState extends State<AsistenciasCoordinadorTab> {
                   );
                 }
 
-                // AQUÍ ESTÁ EL CAMBIO PRINCIPAL: SingleChildScrollView que envuelve todo el contenido
                 return SingleChildScrollView(
-                  padding: EdgeInsets.all(16),
-                  physics:
-                      AlwaysScrollableScrollPhysics(), // Permite scroll siempre
+                  padding: EdgeInsets.only(
+                    left: 16,
+                    right: 16,
+                    top: 16,
+                    bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+                  ),
+                  physics: AlwaysScrollableScrollPhysics(),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Modo masivo (si está activado) - DENTRO del scroll
-                      if (_isMassiveMode) ...[
-                        _buildMassiveAttendanceMode(),
-                        SizedBox(height: 16),
-                        // Separador visual
-                        Container(
-                          width: double.infinity,
-                          height: 1,
-                          color: Color(0xFF147B7C).withOpacity(0.3),
+                      // Selector de fecha y controles
+                      Container(
+                        padding: EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              Color(0xFF147B7C).withOpacity(0.1),
+                              Color(0xFF147B7C).withOpacity(0.05)
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                          border:
+                              Border.all(color: Color(0xFF147B7C), width: 2),
                         ),
-                        SizedBox(height: 16),
-                      ],
+                        child: Column(
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  padding: EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: Color(0xFF147B7C),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Icon(Icons.checklist,
+                                      color: Colors.white, size: 24),
+                                ),
+                                SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Lista de Asistencia Grupal',
+                                        style: TextStyle(
+                                          fontSize: isSmallScreen ? 16 : 18,
+                                          fontWeight: FontWeight.bold,
+                                          color: Color(0xFF147B7C),
+                                        ),
+                                      ),
+                                      Text(
+                                        'Toma asistencia de múltiples personas',
+                                        style: TextStyle(
+                                          fontSize: isSmallScreen ? 12 : 14,
+                                          color: Colors.grey[600],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            Divider(height: 24),
+                            // Selector de fecha
+                            Container(
+                              padding: EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                    color: Color(0xFF147B7C).withOpacity(0.3)),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.event, color: Color(0xFF147B7C)),
+                                  SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      'Fecha del servicio:',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        color: Color(0xFF147B7C),
+                                        fontSize: isSmallScreen ? 13 : 14,
+                                      ),
+                                    ),
+                                  ),
+                                  ElevatedButton.icon(
+                                    icon: Icon(Icons.calendar_today, size: 18),
+                                    label: Text(DateFormat('dd/MM/yyyy')
+                                        .format(_massiveSelectedDate)),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Color(0xFF147B7C),
+                                      foregroundColor: Colors.white,
+                                      padding: EdgeInsets.symmetric(
+                                          horizontal: 16, vertical: 8),
+                                    ),
+                                    onPressed: _isProcessingMassive
+                                        ? null
+                                        : () async {
+                                            final DateTime? pickedDate =
+                                                await showDatePicker(
+                                              context: context,
+                                              initialDate: _massiveSelectedDate,
+                                              firstDate: DateTime.now()
+                                                  .subtract(Duration(days: 30)),
+                                              lastDate: DateTime.now(),
+                                            );
 
-                      // Lista de discípulos - DENTRO del scroll
+                                            if (pickedDate != null &&
+                                                pickedDate !=
+                                                    _massiveSelectedDate) {
+                                              setState(() {
+                                                _massiveSelectedDate =
+                                                    pickedDate;
+                                                _selectedAttendances.clear();
+                                              });
+                                            }
+                                          },
+                                  ),
+                                ],
+                              ),
+                            ),
+                            SizedBox(height: 16),
+                            // Botones rápidos
+                            Text(
+                              'Acciones rápidas:',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF147B7C),
+                                fontSize: isSmallScreen ? 14 : 16,
+                              ),
+                            ),
+                            SizedBox(height: 8),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              alignment: WrapAlignment.center,
+                              children: [
+                                ElevatedButton.icon(
+                                  icon: Icon(Icons.check_circle, size: 18),
+                                  label: Text('Todos Presentes'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.green,
+                                    foregroundColor: Colors.white,
+                                    padding: EdgeInsets.symmetric(
+                                        horizontal: 16, vertical: 12),
+                                  ),
+                                  onPressed: _isProcessingMassive
+                                      ? null
+                                      : () {
+                                          setState(() {
+                                            for (var registro
+                                                in _filteredRegistros) {
+                                              _selectedAttendances[
+                                                  registro.id] = true;
+                                            }
+                                          });
+                                        },
+                                ),
+                                ElevatedButton.icon(
+                                  icon: Icon(Icons.cancel, size: 18),
+                                  label: Text('Todos Ausentes'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.red,
+                                    foregroundColor: Colors.white,
+                                    padding: EdgeInsets.symmetric(
+                                        horizontal: 16, vertical: 12),
+                                  ),
+                                  onPressed: _isProcessingMassive
+                                      ? null
+                                      : () {
+                                          setState(() {
+                                            for (var registro
+                                                in _filteredRegistros) {
+                                              _selectedAttendances[
+                                                  registro.id] = false;
+                                            }
+                                          });
+                                        },
+                                ),
+                                OutlinedButton.icon(
+                                  icon: Icon(Icons.clear_all, size: 18),
+                                  label: Text('Limpiar'),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: Colors.grey[700],
+                                    side: BorderSide(color: Colors.grey),
+                                    padding: EdgeInsets.symmetric(
+                                        horizontal: 16, vertical: 12),
+                                  ),
+                                  onPressed: _isProcessingMassive
+                                      ? null
+                                      : () {
+                                          setState(() {
+                                            _selectedAttendances.clear();
+                                          });
+                                        },
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 16),
+                            // Contador y botón de guardar
+                            Container(
+                              padding: EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Color(0xFF147B7C).withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Column(
+                                children: [
+                                  Row(
+                                    children: [
+                                      Icon(Icons.people,
+                                          color: Color(0xFF147B7C)),
+                                      SizedBox(width: 8),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              'Personas seleccionadas: ${_selectedAttendances.length}',
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                color: Color(0xFF147B7C),
+                                                fontSize:
+                                                    isSmallScreen ? 13 : 14,
+                                              ),
+                                            ),
+                                            if (_selectedAttendances
+                                                .isNotEmpty) ...[
+                                              SizedBox(height: 4),
+                                              Text(
+                                                'Presentes: ${_selectedAttendances.values.where((v) => v == true).length} | '
+                                                'Ausentes: ${_selectedAttendances.values.where((v) => v == false).length}',
+                                                style: TextStyle(
+                                                  fontSize:
+                                                      isSmallScreen ? 11 : 12,
+                                                  color: Colors.grey[600],
+                                                ),
+                                              ),
+                                            ],
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  SizedBox(height: 12),
+                                  SizedBox(
+                                    width: double.infinity,
+                                    child: ElevatedButton.icon(
+                                      icon: _isProcessingMassive
+                                          ? SizedBox(
+                                              width: 18,
+                                              height: 18,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                                valueColor:
+                                                    AlwaysStoppedAnimation<
+                                                        Color>(Colors.white),
+                                              ),
+                                            )
+                                          : Icon(Icons.save_alt, size: 18),
+                                      label: Text(_isProcessingMassive
+                                          ? 'Guardando...'
+                                          : 'Guardar Lista de Asistencia'),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Color(0xFF147B7C),
+                                        foregroundColor: Colors.white,
+                                        padding: EdgeInsets.symmetric(
+                                            horizontal: 20, vertical: 16),
+                                      ),
+                                      onPressed: (_isProcessingMassive ||
+                                              _selectedAttendances.isEmpty)
+                                          ? null
+                                          : _procesarAsistenciaMasiva,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      SizedBox(height: 16),
+
+                      // Lista de discípulos (ordenada alfabéticamente)
                       ...List.generate(_filteredRegistros.length, (index) {
                         try {
                           final registro = _filteredRegistros[index];
@@ -2746,396 +2013,275 @@ class _AsistenciasCoordinadorTabState extends State<AsistenciasCoordinadorTab> {
                             cardColor = Color(0xFFFF4B2B).withOpacity(0.1);
                           }
 
-                          // En modo masivo, mostrar versión simplificada
-                          if (_isMassiveMode) {
-                            final isSelected =
-                                _selectedAttendances.containsKey(registro.id);
-                            final attendanceValue =
-                                _selectedAttendances[registro.id];
+                          final isSelected =
+                              _selectedAttendances.containsKey(registro.id);
+                          final attendanceValue =
+                              _selectedAttendances[registro.id];
 
-                            return Container(
-                              margin: EdgeInsets.only(bottom: 8),
-                              child: Card(
-                                elevation: 2,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                color: isSelected
-                                    ? (attendanceValue == true
-                                        ? Colors.green.withOpacity(0.1)
-                                        : Colors.red.withOpacity(0.1))
-                                    : cardColor,
-                                child: ListTile(
-                                  leading: CircleAvatar(
-                                    backgroundColor: faltas >= 3
-                                        ? Color(0xFFFF4B2B)
-                                        : Color(0xFF147B7C),
-                                    foregroundColor: Colors.white,
-                                    child: Text(
-                                      '${nombre.isNotEmpty ? nombre[0] : ''}${apellido.isNotEmpty ? apellido[0] : ''}',
-                                      style: TextStyle(
-                                          fontWeight: FontWeight.bold),
-                                    ),
+                          return FutureBuilder<bool>(
+                            future: _tieneBloqueoPorFaltas(registro.id, faltas),
+                            builder: (context, snap) {
+                              final bool bloqueado = snap.data == true;
+
+                              return Container(
+                                margin: EdgeInsets.only(bottom: 8),
+                                child: Card(
+                                  elevation: 2,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
                                   ),
-                                  title: Text(
-                                    '$nombre $apellido',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 16,
-                                      color: faltas >= 3
-                                          ? Color(0xFFFF4B2B)
-                                          : Color(0xFF147B7C),
-                                    ),
-                                  ),
-                                  subtitle: Row(
+                                  color: isSelected
+                                      ? (attendanceValue == true
+                                          ? Colors.green.withOpacity(0.1)
+                                          : Colors.red.withOpacity(0.1))
+                                      : cardColor,
+                                  child: Column(
                                     children: [
-                                      Icon(
-                                        faltas >= 3
-                                            ? Icons.warning_amber_outlined
-                                            : Icons.check_circle_outline,
-                                        size: 16,
-                                        color: faltas >= 3
-                                            ? Color(0xFFFF4B2B)
-                                            : Colors.grey[600],
-                                      ),
-                                      SizedBox(width: 4),
-                                      Text(
-                                        faltas >= 3
-                                            ? 'Faltas: $faltas'
-                                            : 'Asistencia regular',
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          color: faltas >= 3
+                                      ListTile(
+                                        leading: CircleAvatar(
+                                          backgroundColor: faltas >= 3
                                               ? Color(0xFFFF4B2B)
-                                              : Colors.grey[600],
-                                        ),
-                                      ),
-                                      if (isSelected) ...[
-                                        SizedBox(width: 8),
-                                        Icon(
-                                          attendanceValue == true
-                                              ? Icons.check_circle
-                                              : Icons.cancel,
-                                          size: 16,
-                                          color: attendanceValue == true
-                                              ? Colors.green
-                                              : Colors.red,
-                                        ),
-                                        Text(
-                                          attendanceValue == true
-                                              ? ' Presente'
-                                              : ' Ausente',
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.bold,
-                                            color: attendanceValue == true
-                                                ? Colors.green
-                                                : Colors.red,
+                                              : Color(0xFF147B7C),
+                                          foregroundColor: Colors.white,
+                                          child: Text(
+                                            '${nombre.isNotEmpty ? nombre[0] : ''}${apellido.isNotEmpty ? apellido[0] : ''}',
+                                            style: TextStyle(
+                                                fontWeight: FontWeight.bold),
                                           ),
                                         ),
-                                      ],
-                                    ],
-                                  ),
-                                  trailing: FutureBuilder<bool>(
-                                    future: _tieneBloqueoPorFaltas(
-                                      registro.id,
-                                      (dataMap['faltasConsecutivas'] as num?)
-                                              ?.toInt() ??
-                                          0,
-                                    ),
-                                    builder: (context, snap) {
-                                      final bool bloqueado = snap.data == true;
-
-                                      if (bloqueado) {
-                                        // Mostrar ícono de bloqueo en lugar de botones
-                                        return Tooltip(
-                                          message:
-                                              'Bloqueado: revisar alerta de faltas',
-                                          child: Container(
-                                            padding: EdgeInsets.all(8),
-                                            decoration: BoxDecoration(
-                                              color: Colors.red.shade50,
-                                              borderRadius:
-                                                  BorderRadius.circular(8),
-                                              border: Border.all(
+                                        title: Text(
+                                          '$nombre $apellido',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: isSmallScreen ? 14 : 16,
+                                            color: faltas >= 3
+                                                ? Color(0xFFFF4B2B)
+                                                : Color(0xFF147B7C),
+                                          ),
+                                        ),
+                                        subtitle: Row(
+                                          children: [
+                                            Icon(
+                                              faltas >= 3
+                                                  ? Icons.warning_amber_outlined
+                                                  : Icons.check_circle_outline,
+                                              size: 16,
+                                              color: faltas >= 3
+                                                  ? Color(0xFFFF4B2B)
+                                                  : Colors.grey[600],
+                                            ),
+                                            SizedBox(width: 4),
+                                            Text(
+                                              faltas >= 3
+                                                  ? 'Faltas: $faltas'
+                                                  : 'Asistencia regular',
+                                              style: TextStyle(
+                                                fontSize:
+                                                    isSmallScreen ? 12 : 14,
+                                                color: faltas >= 3
+                                                    ? Color(0xFFFF4B2B)
+                                                    : Colors.grey[600],
+                                              ),
+                                            ),
+                                            if (isSelected) ...[
+                                              SizedBox(width: 8),
+                                              Icon(
+                                                attendanceValue == true
+                                                    ? Icons.check_circle
+                                                    : Icons.cancel,
+                                                size: 16,
+                                                color: attendanceValue == true
+                                                    ? Colors.green
+                                                    : Colors.red,
+                                              ),
+                                              Text(
+                                                attendanceValue == true
+                                                    ? ' Presente'
+                                                    : ' Ausente',
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: attendanceValue == true
+                                                      ? Colors.green
+                                                      : Colors.red,
+                                                ),
+                                              ),
+                                            ],
+                                          ],
+                                        ),
+                                        trailing: bloqueado
+                                            ? Tooltip(
+                                                message:
+                                                    'Bloqueado: revisar alerta de faltas',
+                                                child: Container(
+                                                  padding: EdgeInsets.all(8),
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.red.shade50,
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            8),
+                                                    border: Border.all(
+                                                      color:
+                                                          Colors.red.shade200,
+                                                      width: 1,
+                                                    ),
+                                                  ),
+                                                  child: Icon(
+                                                    Icons.lock_outline,
+                                                    color: Colors.red.shade400,
+                                                    size: 24,
+                                                  ),
+                                                ),
+                                              )
+                                            : Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Material(
+                                                    color: Colors.transparent,
+                                                    child: InkWell(
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                              20),
+                                                      onTap:
+                                                          _isProcessingMassive
+                                                              ? null
+                                                              : () {
+                                                                  setState(() {
+                                                                    _selectedAttendances[
+                                                                        registro
+                                                                            .id] = true;
+                                                                  });
+                                                                },
+                                                      child: Container(
+                                                        padding:
+                                                            EdgeInsets.all(8),
+                                                        child: Icon(
+                                                          Icons.check_circle,
+                                                          color: (isSelected &&
+                                                                  attendanceValue ==
+                                                                      true)
+                                                              ? Colors.green
+                                                              : Colors.grey,
+                                                          size: 28,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  Material(
+                                                    color: Colors.transparent,
+                                                    child: InkWell(
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                              20),
+                                                      onTap:
+                                                          _isProcessingMassive
+                                                              ? null
+                                                              : () {
+                                                                  setState(() {
+                                                                    _selectedAttendances[
+                                                                        registro
+                                                                            .id] = false;
+                                                                  });
+                                                                },
+                                                      child: Container(
+                                                        padding:
+                                                            EdgeInsets.all(8),
+                                                        child: Icon(
+                                                          Icons.cancel,
+                                                          color: (isSelected &&
+                                                                  attendanceValue ==
+                                                                      false)
+                                                              ? Colors.red
+                                                              : Colors.grey,
+                                                          size: 28,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                      ),
+                                      // Mensaje de alerta activa
+                                      if (bloqueado)
+                                        Container(
+                                          width: double.infinity,
+                                          padding: EdgeInsets.all(12),
+                                          decoration: BoxDecoration(
+                                            color: Colors.red.shade50,
+                                            borderRadius: BorderRadius.only(
+                                              bottomLeft: Radius.circular(12),
+                                              bottomRight: Radius.circular(12),
+                                            ),
+                                            border: Border(
+                                              top: BorderSide(
                                                 color: Colors.red.shade200,
                                                 width: 1,
                                               ),
                                             ),
-                                            child: Icon(
-                                              Icons.lock_outline,
-                                              color: Colors.red.shade400,
-                                              size: 24,
-                                            ),
                                           ),
-                                        );
-                                      }
-
-                                      // Botones normales si no está bloqueado
-                                      return Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          // Botón presente
-                                          Material(
-                                            color: Colors.transparent,
-                                            child: InkWell(
-                                              borderRadius:
-                                                  BorderRadius.circular(20),
-                                              onTap: _isProcessingMassive
-                                                  ? null
-                                                  : () {
-                                                      setState(() {
-                                                        _selectedAttendances[
-                                                            registro.id] = true;
-                                                      });
-                                                    },
-                                              child: Container(
-                                                padding: EdgeInsets.all(8),
-                                                child: Icon(
-                                                  Icons.check_circle,
-                                                  color: (isSelected &&
-                                                          attendanceValue ==
-                                                              true)
-                                                      ? Colors.green
-                                                      : Colors.grey,
-                                                  size: 28,
-                                                ),
+                                          child: Row(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Icon(
+                                                Icons.info_outline,
+                                                color: Colors.red.shade700,
+                                                size: isSmallScreen ? 18 : 20,
                                               ),
-                                            ),
-                                          ),
-                                          // Botón ausente
-                                          Material(
-                                            color: Colors.transparent,
-                                            child: InkWell(
-                                              borderRadius:
-                                                  BorderRadius.circular(20),
-                                              onTap: _isProcessingMassive
-                                                  ? null
-                                                  : () {
-                                                      setState(() {
-                                                        _selectedAttendances[
-                                                                registro.id] =
-                                                            false;
-                                                      });
-                                                    },
-                                              child: Container(
-                                                padding: EdgeInsets.all(8),
-                                                child: Icon(
-                                                  Icons.cancel,
-                                                  color: (isSelected &&
-                                                          attendanceValue ==
-                                                              false)
-                                                      ? Colors.red
-                                                      : Colors.grey,
-                                                  size: 28,
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      );
-                                    },
-                                  ),
-                                ),
-                              ),
-                            );
-                          }
-
-                          // Modo individual (versión original mejorada)
-                          return Container(
-                            margin: EdgeInsets.only(bottom: 12),
-                            child: Card(
-                              elevation: 2,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              color: cardColor,
-                              child: ExpansionTile(
-                                initiallyExpanded: false,
-                                tilePadding: EdgeInsets.symmetric(
-                                    horizontal: 16, vertical: 8),
-                                leading: CircleAvatar(
-                                  backgroundColor: faltas >= 3
-                                      ? Color(0xFFFF4B2B)
-                                      : Color(0xFF147B7C),
-                                  foregroundColor: Colors.white,
-                                  child: Text(
-                                    '${nombre.isNotEmpty ? nombre[0] : ''}${apellido.isNotEmpty ? apellido[0] : ''}',
-                                    style:
-                                        TextStyle(fontWeight: FontWeight.bold),
-                                  ),
-                                ),
-                                title: Text(
-                                  '$nombre $apellido',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                    color: faltas >= 3
-                                        ? Color(0xFFFF4B2B)
-                                        : Color(0xFF147B7C),
-                                  ),
-                                ),
-                                subtitle: Row(
-                                  children: [
-                                    Icon(
-                                      faltas >= 3
-                                          ? Icons.warning_amber_outlined
-                                          : Icons.check_circle_outline,
-                                      size: 16,
-                                      color: faltas >= 3
-                                          ? Color(0xFFFF4B2B)
-                                          : Colors.grey[600],
-                                    ),
-                                    SizedBox(width: 4),
-                                    Text(
-                                      faltas >= 3
-                                          ? 'Faltas: $faltas'
-                                          : 'Asistencia regular',
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        color: faltas >= 3
-                                            ? Color(0xFFFF4B2B)
-                                            : Colors.grey[600],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                trailing: FutureBuilder<bool>(
-                                  future: _tieneBloqueoPorFaltas(
-                                    registro.id,
-                                    (dataMap['faltasConsecutivas'] as num?)
-                                            ?.toInt() ??
-                                        0,
-                                  ),
-                                  builder: (context, snap) {
-                                    final bool bloqueado = snap.data == true;
-                                    final Color colorIcono = bloqueado
-                                        ? Colors.grey.shade400
-                                        : Color(0xFF147B7C);
-
-                                    return PopupMenuButton<String>(
-                                      enabled: !bloqueado,
-                                      icon: Icon(
-                                        Icons.more_vert,
-                                        color: colorIcono,
-                                      ),
-                                      tooltip: bloqueado
-                                          ? 'Bloqueado: 3+ faltas con alerta sin revisar'
-                                          : 'Opciones',
-                                      onSelected: bloqueado
-                                          ? null
-                                          : (value) {
-                                              try {
-                                                if (value == 'asistencia' &&
-                                                    mounted) {
-                                                  _registrarAsistencia(
-                                                      registro);
-                                                }
-                                              } catch (e) {
-                                                print(
-                                                    'Error en PopupMenuButton: $e');
-                                              }
-                                            },
-                                      itemBuilder: (context) => [
-                                        PopupMenuItem(
-                                          value: 'asistencia',
-                                          enabled: !bloqueado,
-                                          child: Opacity(
-                                            opacity: bloqueado ? 0.45 : 1.0,
-                                            child: Row(
-                                              children: [
-                                                Icon(
-                                                  Icons.calendar_today,
-                                                  color: colorIcono,
-                                                  size: 20,
-                                                ),
-                                                SizedBox(width: 8),
-                                                Text(
-                                                  'Registrar Asistencia',
-                                                  style: TextStyle(
-                                                    color: bloqueado
-                                                        ? Colors.grey
-                                                        : Colors.black87,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    );
-                                  },
-                                ),
-                                children: [
-                                  Padding(
-                                    padding: EdgeInsets.all(16),
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        FutureBuilder<bool>(
-                                          future: _tieneBloqueoPorFaltas(
-                                            registro.id,
-                                            (dataMap['faltasConsecutivas']
-                                                        as num?)
-                                                    ?.toInt() ??
-                                                0,
-                                          ),
-                                          builder: (context, snap) {
-                                            final bool bloqueado =
-                                                snap.data == true;
-
-                                            return Row(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment.spaceEvenly,
-                                              children: [
-                                                Expanded(
-                                                  child: Opacity(
-                                                    opacity:
-                                                        bloqueado ? 0.45 : 1.0,
-                                                    child: ElevatedButton.icon(
-                                                      icon: Icon(
-                                                          Icons.calendar_today),
-                                                      label: Text(bloqueado
-                                                          ? 'Bloqueado (revisar alerta)'
-                                                          : 'Registrar Asistencia'),
-                                                      style: ElevatedButton
-                                                          .styleFrom(
-                                                        backgroundColor:
-                                                            bloqueado
-                                                                ? Colors.grey
-                                                                    .shade400
-                                                                : Color(
-                                                                    0xFF147B7C),
-                                                        foregroundColor:
-                                                            Colors.white,
-                                                        padding: EdgeInsets
-                                                            .symmetric(
-                                                                vertical: 12),
+                                              SizedBox(width: 8),
+                                              Expanded(
+                                                child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(
+                                                      'Estado de Alerta Activa',
+                                                      style: TextStyle(
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                        color:
+                                                            Colors.red.shade700,
+                                                        fontSize: isSmallScreen
+                                                            ? 12
+                                                            : 13,
                                                       ),
-                                                      onPressed: bloqueado
-                                                          ? null
-                                                          : () {
-                                                              if (mounted) {
-                                                                _registrarAsistencia(
-                                                                    registro);
-                                                              }
-                                                            },
                                                     ),
-                                                  ),
+                                                    SizedBox(height: 4),
+                                                    Text(
+                                                      'Este discípulo tiene $faltas faltas consecutivas. Debe revisar la alerta pendiente antes de registrar nueva asistencia.',
+                                                      style: TextStyle(
+                                                        fontSize: isSmallScreen
+                                                            ? 11
+                                                            : 12,
+                                                        color:
+                                                            Colors.red.shade600,
+                                                        height: 1.3,
+                                                      ),
+                                                    ),
+                                                    SizedBox(height: 6),
+                                                    Text(
+                                                      'Vaya a la pestaña "Alertas" para revisar y gestionar esta situación.',
+                                                      style: TextStyle(
+                                                        fontSize: isSmallScreen
+                                                            ? 10
+                                                            : 11,
+                                                        color:
+                                                            Colors.red.shade500,
+                                                        fontStyle:
+                                                            FontStyle.italic,
+                                                      ),
+                                                    ),
+                                                  ],
                                                 ),
-                                              ],
-                                            );
-                                          },
+                                              ),
+                                            ],
+                                          ),
                                         ),
-                                        SizedBox(height: 16),
-                                        _buildAsistenciasCalendario(registro),
-                                      ],
-                                    ),
+                                    ],
                                   ),
-                                ],
-                              ),
-                            ),
+                                ),
+                              );
+                            },
                           );
                         } catch (e) {
                           print('Error construyendo item $index: $e');
@@ -3143,7 +2289,6 @@ class _AsistenciasCoordinadorTabState extends State<AsistenciasCoordinadorTab> {
                         }
                       }),
 
-                      // Espacio adicional al final para el FAB
                       SizedBox(height: 80),
                     ],
                   ),
@@ -3153,17 +2298,6 @@ class _AsistenciasCoordinadorTabState extends State<AsistenciasCoordinadorTab> {
           ),
         ],
       ),
-      floatingActionButton: _isMassiveMode &&
-              _selectedAttendances.isNotEmpty &&
-              !_isProcessingMassive
-          ? FloatingActionButton.extended(
-              onPressed: _procesarAsistenciaMasiva,
-              backgroundColor: Color(0xFF147B7C),
-              foregroundColor: Colors.white,
-              icon: Icon(Icons.save),
-              label: Text('Procesar ${_selectedAttendances.length}'),
-            )
-          : null,
     );
   }
 }

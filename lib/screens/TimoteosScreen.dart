@@ -1103,8 +1103,6 @@ class JovenesAsignadosTab extends StatelessWidget {
     }
   }
 
-  /// Muestra un diálogo profesional para actualizar el estado del proceso del discípulo
-  /// Utiliza los colores del tema y un diseño limpio y moderno
   Future<void> _actualizarEstado(
       BuildContext context, DocumentSnapshot registro) async {
     // Obtener el estado actual del proceso de manera segura
@@ -1127,384 +1125,398 @@ class JovenesAsignadosTab extends StatelessWidget {
           borderRadius: BorderRadius.circular(24),
         ),
         elevation: 8,
-        child: Container(
-          constraints: BoxConstraints(
-            maxWidth: 500,
-            maxHeight: MediaQuery.of(context).size.height * 0.7,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // ===== ENCABEZADO CON GRADIENTE =====
-              // Header profesional con los colores del tema
-              Container(
-                padding: EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      Color(0xFF147B7C),
-                      Color(0xFF147B7C).withOpacity(0.8),
-                    ],
-                  ),
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(24),
-                    topRight: Radius.circular(24),
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Color(0xFF147B7C).withOpacity(0.3),
-                      blurRadius: 8,
-                      offset: Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    // Ícono decorativo
-                    Container(
-                      padding: EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: Colors.white.withOpacity(0.3),
-                          width: 2,
-                        ),
-                      ),
-                      child: Icon(
-                        Icons.edit_note_rounded,
-                        color: Colors.white,
-                        size: 28,
-                      ),
-                    ),
-                    SizedBox(width: 16),
+        insetPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            // Obtener dimensiones de la pantalla
+            final screenHeight = MediaQuery.of(context).size.height;
+            final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
 
-                    // Título
-                    Expanded(
+            // Calcular altura disponible sin el teclado
+            final availableHeight = screenHeight - keyboardHeight - 48;
+
+            return Container(
+              constraints: BoxConstraints(
+                maxWidth: 500,
+                maxHeight: availableHeight,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // ===== ENCABEZADO CON GRADIENTE =====
+                  Container(
+                    padding: EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          Color(0xFF147B7C),
+                          Color(0xFF147B7C).withOpacity(0.8),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.only(
+                        topLeft: Radius.circular(24),
+                        topRight: Radius.circular(24),
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Color(0xFF147B7C).withOpacity(0.3),
+                          blurRadius: 8,
+                          offset: Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: Colors.white.withOpacity(0.3),
+                              width: 2,
+                            ),
+                          ),
+                          child: Icon(
+                            Icons.edit_note_rounded,
+                            color: Colors.white,
+                            size: 24,
+                          ),
+                        ),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Actualizar Estado',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 18,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                              SizedBox(height: 2),
+                              Text(
+                                'Estado del proceso del discípulo',
+                                style: TextStyle(
+                                  color: Colors.white.withOpacity(0.9),
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // ===== CONTENIDO SCROLLEABLE =====
+                  Flexible(
+                    child: SingleChildScrollView(
+                      padding: EdgeInsets.all(20),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            'Actualizar Estado',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 20,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                          SizedBox(height: 4),
-                          Text(
-                            'Estado del proceso del discípulo',
-                            style: TextStyle(
-                              color: Colors.white.withOpacity(0.9),
-                              fontSize: 14,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              // ===== CONTENIDO DEL FORMULARIO =====
-              Flexible(
-                child: SingleChildScrollView(
-                  padding: EdgeInsets.all(24),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Etiqueta del campo
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.timeline_rounded,
-                            color: Color(0xFF147B7C),
-                            size: 20,
-                          ),
-                          SizedBox(width: 8),
-                          Text(
-                            'Estado actual del proceso',
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF147B7C),
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 12),
-
-                      // Campo de texto profesional
-                      Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: Color(0xFF147B7C).withOpacity(0.3),
-                            width: 1.5,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Color(0xFF147B7C).withOpacity(0.1),
-                              blurRadius: 8,
-                              offset: Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: TextField(
-                          controller: estadoController,
-                          maxLines: 5,
-                          maxLength: 500,
-                          style: TextStyle(
-                            fontSize: 15,
-                            color: Colors.black87,
-                            height: 1.5,
-                          ),
-                          decoration: InputDecoration(
-                            hintText:
-                                'Describe el estado actual del joven en la iglesia...\n\nEjemplo: Asistiendo regularmente, participando en actividades juveniles...',
-                            hintStyle: TextStyle(
-                              color: Colors.grey[400],
-                              fontSize: 14,
-                            ),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(16),
-                              borderSide: BorderSide.none,
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(16),
-                              borderSide: BorderSide.none,
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(16),
-                              borderSide: BorderSide(
+                          // Etiqueta del campo
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.timeline_rounded,
                                 color: Color(0xFF147B7C),
-                                width: 2,
+                                size: 18,
                               ),
-                            ),
-                            filled: true,
-                            fillColor: Colors.grey[50],
-                            contentPadding: EdgeInsets.all(16),
-                            counterStyle: TextStyle(
-                              color: Colors.grey[600],
-                              fontSize: 12,
-                            ),
-                          ),
-                        ),
-                      ),
-
-                      SizedBox(height: 16),
-
-                      // Nota informativa
-                      Container(
-                        padding: EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Color(0xFFFFB74D).withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: Color(0xFFFFB74D).withOpacity(0.3),
-                            width: 1,
-                          ),
-                        ),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Icon(
-                              Icons.info_outline,
-                              color: Color(0xFFFFB74D),
-                              size: 20,
-                            ),
-                            SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                'Esta información ayuda a dar seguimiento al progreso del discípulo en su caminar espiritual.',
+                              SizedBox(width: 6),
+                              Text(
+                                'Estado actual del proceso',
                                 style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF147B7C),
+                                ),
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: 10),
+
+                          // Campo de texto
+                          Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: Color(0xFF147B7C).withOpacity(0.3),
+                                width: 1.5,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Color(0xFF147B7C).withOpacity(0.1),
+                                  blurRadius: 8,
+                                  offset: Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: TextField(
+                              controller: estadoController,
+                              maxLines: 5,
+                              maxLength: 500,
+                              autofocus: false,
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.black87,
+                                height: 1.4,
+                              ),
+                              decoration: InputDecoration(
+                                hintText:
+                                    'Describe el estado actual del joven en la iglesia...\n\nEjemplo: Asistiendo regularmente, participando en actividades juveniles...',
+                                hintStyle: TextStyle(
+                                  color: Colors.grey[400],
                                   fontSize: 13,
-                                  color: Colors.grey[700],
-                                  height: 1.4,
+                                ),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  borderSide: BorderSide.none,
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  borderSide: BorderSide.none,
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  borderSide: BorderSide(
+                                    color: Color(0xFF147B7C),
+                                    width: 2,
+                                  ),
+                                ),
+                                filled: true,
+                                fillColor: Colors.grey[50],
+                                contentPadding: EdgeInsets.all(14),
+                                counterStyle: TextStyle(
+                                  color: Colors.grey[600],
+                                  fontSize: 11,
                                 ),
                               ),
                             ),
-                          ],
-                        ),
+                          ),
+
+                          SizedBox(height: 12),
+
+                          // Nota informativa
+                          Container(
+                            padding: EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: Color(0xFFFFB74D).withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: Color(0xFFFFB74D).withOpacity(0.3),
+                                width: 1,
+                              ),
+                            ),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Icon(
+                                  Icons.info_outline,
+                                  color: Color(0xFFFFB74D),
+                                  size: 18,
+                                ),
+                                SizedBox(width: 6),
+                                Expanded(
+                                  child: Text(
+                                    'Esta información ayuda a dar seguimiento al progreso del discípulo en su caminar espiritual.',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey[700],
+                                      height: 1.3,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          // Espacio para evitar que el teclado tape el contenido
+                          SizedBox(height: keyboardHeight > 0 ? 20 : 0),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
-                ),
-              ),
 
-              // ===== BOTONES DE ACCIÓN =====
-              Container(
-                padding: EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 10,
-                      offset: Offset(0, -4),
+                  // ===== BOTONES DE ACCIÓN (SIEMPRE VISIBLES AL FINAL) =====
+                  Container(
+                    padding: EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 10,
+                          offset: Offset(0, -4),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    // Botón Cancelar
-                    Expanded(
-                      child: OutlinedButton(
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.grey[700],
-                          side: BorderSide(
-                            color: Colors.grey[300]!,
-                            width: 1.5,
-                          ),
-                          padding: EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        onPressed: () => Navigator.pop(context),
-                        child: Text(
-                          'Cancelar',
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    SizedBox(width: 12),
-
-                    // Botón Guardar
-                    Expanded(
-                      flex: 2,
-                      child: ElevatedButton.icon(
-                        icon: Icon(Icons.check_circle_outline, size: 20),
-                        label: Text(
-                          'Guardar Cambios',
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Color(0xFF147B7C),
-                          foregroundColor: Colors.white,
-                          padding: EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          elevation: 2,
-                        ),
-                        onPressed: () async {
-                          // Validar que haya contenido
-                          if (estadoController.text.trim().isEmpty) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Row(
-                                  children: [
-                                    Icon(Icons.warning, color: Colors.white),
-                                    SizedBox(width: 12),
-                                    Expanded(
-                                      child:
-                                          Text('Por favor, ingresa un estado'),
-                                    ),
-                                  ],
-                                ),
-                                backgroundColor: Color(0xFFFF4B2B),
-                                behavior: SnackBarBehavior.floating,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
+                    child: Row(
+                      children: [
+                        // Botón Cancelar
+                        Expanded(
+                          child: OutlinedButton(
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: Colors.grey[700],
+                              side: BorderSide(
+                                color: Colors.grey[300]!,
+                                width: 1.5,
                               ),
-                            );
-                            return;
-                          }
+                              padding: EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            onPressed: () => Navigator.pop(context),
+                            child: Text(
+                              'Cancelar',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
 
-                          try {
-                            // Guardar en Firestore
-                            await FirebaseFirestore.instance
-                                .collection('registros')
-                                .doc(registro.id)
-                                .set({
-                              'estadoProceso': estadoController.text.trim(),
-                              'fechaActualizacionEstado':
-                                  FieldValue.serverTimestamp(),
-                            }, SetOptions(merge: true));
+                        SizedBox(width: 10),
 
-                            Navigator.pop(context);
-
-                            // Mostrar confirmación exitosa
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Row(
-                                  children: [
-                                    Container(
-                                      padding: EdgeInsets.all(4),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white.withOpacity(0.2),
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: Icon(
-                                        Icons.check,
-                                        color: Colors.white,
-                                        size: 20,
-                                      ),
-                                    ),
-                                    SizedBox(width: 12),
-                                    Expanded(
-                                      child: Text(
-                                        'Estado actualizado correctamente',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.w500,
+                        // Botón Guardar
+                        Expanded(
+                          flex: 2,
+                          child: ElevatedButton.icon(
+                            icon: Icon(Icons.check_circle_outline, size: 18),
+                            label: Text(
+                              'Guardar Cambios',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Color(0xFF147B7C),
+                              foregroundColor: Colors.white,
+                              padding: EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              elevation: 2,
+                            ),
+                            onPressed: () async {
+                              // Validar que haya contenido
+                              if (estadoController.text.trim().isEmpty) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Row(
+                                      children: [
+                                        Icon(Icons.warning,
+                                            color: Colors.white),
+                                        SizedBox(width: 12),
+                                        Expanded(
+                                          child: Text(
+                                              'Por favor, ingresa un estado'),
                                         ),
-                                      ),
+                                      ],
                                     ),
-                                  ],
-                                ),
-                                backgroundColor: Color(0xFF147B7C),
-                                behavior: SnackBarBehavior.floating,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                duration: Duration(seconds: 3),
-                              ),
-                            );
-                          } catch (e) {
-                            print('Error al actualizar el estado: $e');
+                                    backgroundColor: Color(0xFFFF4B2B),
+                                    behavior: SnackBarBehavior.floating,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                );
+                                return;
+                              }
 
-                            // Mostrar error
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Row(
-                                  children: [
-                                    Icon(Icons.error, color: Colors.white),
-                                    SizedBox(width: 12),
-                                    Expanded(
-                                      child: Text('Error: ${e.toString()}'),
+                              try {
+                                // Guardar en Firestore
+                                await FirebaseFirestore.instance
+                                    .collection('registros')
+                                    .doc(registro.id)
+                                    .set({
+                                  'estadoProceso': estadoController.text.trim(),
+                                  'fechaActualizacionEstado':
+                                      FieldValue.serverTimestamp(),
+                                }, SetOptions(merge: true));
+
+                                Navigator.pop(context);
+
+                                // Mostrar confirmación exitosa
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Row(
+                                      children: [
+                                        Container(
+                                          padding: EdgeInsets.all(4),
+                                          decoration: BoxDecoration(
+                                            color:
+                                                Colors.white.withOpacity(0.2),
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: Icon(
+                                            Icons.check,
+                                            color: Colors.white,
+                                            size: 20,
+                                          ),
+                                        ),
+                                        SizedBox(width: 12),
+                                        Expanded(
+                                          child: Text(
+                                            'Estado actualizado correctamente',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                  ],
-                                ),
-                                backgroundColor: Color(0xFFFF4B2B),
-                                behavior: SnackBarBehavior.floating,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                            );
-                          }
-                        },
-                      ),
+                                    backgroundColor: Color(0xFF147B7C),
+                                    behavior: SnackBarBehavior.floating,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    duration: Duration(seconds: 3),
+                                  ),
+                                );
+                              } catch (e) {
+                                print('Error al actualizar el estado: $e');
+
+                                // Mostrar error
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Row(
+                                      children: [
+                                        Icon(Icons.error, color: Colors.white),
+                                        SizedBox(width: 12),
+                                        Expanded(
+                                          child: Text('Error: ${e.toString()}'),
+                                        ),
+                                      ],
+                                    ),
+                                    backgroundColor: Color(0xFFFF4B2B),
+                                    behavior: SnackBarBehavior.floating,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                );
+                              }
+                            },
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-            ],
-          ),
+            );
+          },
         ),
       ),
     );
@@ -2304,82 +2316,6 @@ class JovenesAsignadosTab extends StatelessWidget {
     }
   }
 
-  Future<void> _enviarAlertaPorEmail(
-      DocumentSnapshot registro, int faltas) async {
-    try {
-      // Obtener datos del timoteo
-      final timoteoDoc = await FirebaseFirestore.instance
-          .collection('timoteos')
-          .doc(timoteoId)
-          .get();
-
-      if (!timoteoDoc.exists) return;
-
-      final coordinadorId = timoteoDoc.get('coordinadorId');
-
-      // Obtener datos del coordinador
-      final coordinadorDoc = await FirebaseFirestore.instance
-          .collection('coordinadores')
-          .doc(coordinadorId)
-          .get();
-
-      if (!coordinadorDoc.exists) return;
-
-      // Crear la alerta primero
-      final alertaRef =
-          await FirebaseFirestore.instance.collection('alertas').add({
-        'tipo': 'faltasConsecutivas',
-        'registroId': registro.id,
-        'timoteoId': timoteoId,
-        'coordinadorId': coordinadorId,
-        'nombreJoven': '${registro['nombre']} ${registro['apellido']}',
-        'nombreTimoteo': '${timoteoDoc['nombre']} ${timoteoDoc['apellido']}',
-        'cantidadFaltas': faltas,
-        'fecha': FieldValue.serverTimestamp(),
-        'estado': 'pendiente',
-        'procesada': false,
-        'emailEnviado': false
-      });
-
-      try {
-        // Intentar enviar el email
-        await EmailService.enviarAlertaFaltas(
-          alertaId: alertaRef.id,
-          emailCoordinador: coordinadorDoc['email'],
-          nombreJoven: '${registro['nombre']} ${registro['apellido']}',
-          nombreTimoteo: '${timoteoDoc['nombre']} ${timoteoDoc['apellido']}',
-          faltas: faltas,
-        );
-
-        // Si llegamos aquí, el email se envió correctamente
-        await alertaRef.update({
-          'emailEnviado': true,
-          'fechaEnvioEmail': FieldValue.serverTimestamp(),
-        });
-      } catch (emailError) {
-        print('Error al enviar email: $emailError');
-        // Actualizar el registro con el error pero no interrumpir el flujo
-        await alertaRef.update({
-          'emailEnviado': false,
-          'errorEmail': emailError.toString(),
-          'fechaError': FieldValue.serverTimestamp(),
-        });
-      }
-
-      // Actualizar el registro independientemente del resultado del email
-      await FirebaseFirestore.instance
-          .collection('registros')
-          .doc(registro.id)
-          .update({
-        'visible': false,
-        'estadoAlerta': 'pendiente',
-      });
-    } catch (e) {
-      print('Error general en _enviarAlertaPorEmail: $e');
-      throw Exception('Error al crear o actualizar la alerta: $e');
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<QuerySnapshot>(
@@ -2496,86 +2432,17 @@ class JovenesAsignadosTab extends StatelessWidget {
 
         final docsOriginales = snapshot.data?.docs ?? [];
 
-        // ===== ORDENAMIENTO POR PRIORIDAD (NUEVOS PRIMERO) =====
-        // Los registros con asignación reciente (<14 días) aparecen primero
+        // ===== ORDENAMIENTO ALFABÉTICO A-Z =====
         final docs = List<QueryDocumentSnapshot>.from(docsOriginales);
         docs.sort((a, b) {
           final dataA = a.data() as Map<String, dynamic>;
           final dataB = b.data() as Map<String, dynamic>;
 
-          // Calcular días desde asignación para A
-          int diasA = 999;
-          try {
-            final fechaA = dataA['fechaAsignacion'];
-            if (fechaA != null) {
-              DateTime fechaAsigA;
-              if (fechaA is Timestamp) {
-                fechaAsigA = fechaA.toDate();
-              } else if (fechaA is String && fechaA.contains('Timestamp')) {
-                final regex = RegExp(r'seconds=(\d+)');
-                final match = regex.firstMatch(fechaA);
-                if (match != null) {
-                  final seconds = int.tryParse(match.group(1) ?? '');
-                  if (seconds != null) {
-                    fechaAsigA =
-                        DateTime.fromMillisecondsSinceEpoch(seconds * 1000);
-                  } else {
-                    fechaAsigA = DateTime.now().subtract(Duration(days: 30));
-                  }
-                } else {
-                  fechaAsigA = DateTime.now().subtract(Duration(days: 30));
-                }
-              } else {
-                fechaAsigA = DateTime.now().subtract(Duration(days: 30));
-              }
-              diasA = DateTime.now().difference(fechaAsigA).inDays;
-            }
-          } catch (e) {
-            diasA = 999;
-          }
+          final nombreA = (dataA['nombre'] ?? '').toString().toLowerCase();
+          final nombreB = (dataB['nombre'] ?? '').toString().toLowerCase();
 
-          // Calcular días desde asignación para B
-          int diasB = 999;
-          try {
-            final fechaB = dataB['fechaAsignacion'];
-            if (fechaB != null) {
-              DateTime fechaAsigB;
-              if (fechaB is Timestamp) {
-                fechaAsigB = fechaB.toDate();
-              } else if (fechaB is String && fechaB.contains('Timestamp')) {
-                final regex = RegExp(r'seconds=(\d+)');
-                final match = regex.firstMatch(fechaB);
-                if (match != null) {
-                  final seconds = int.tryParse(match.group(1) ?? '');
-                  if (seconds != null) {
-                    fechaAsigB =
-                        DateTime.fromMillisecondsSinceEpoch(seconds * 1000);
-                  } else {
-                    fechaAsigB = DateTime.now().subtract(Duration(days: 30));
-                  }
-                } else {
-                  fechaAsigB = DateTime.now().subtract(Duration(days: 30));
-                }
-              } else {
-                fechaAsigB = DateTime.now().subtract(Duration(days: 30));
-              }
-              diasB = DateTime.now().difference(fechaAsigB).inDays;
-            }
-          } catch (e) {
-            diasB = 999;
-          }
-
-          // Determinar si son asignaciones recientes
-          bool esNuevoA = diasA >= 0 && diasA <= 13;
-          bool esNuevoB = diasB >= 0 && diasB <= 13;
-
-          // Prioridad: nuevos primero, luego por días (más reciente primero)
-          if (esNuevoA && !esNuevoB) return -1;
-          if (!esNuevoA && esNuevoB) return 1;
-          if (esNuevoA && esNuevoB) return diasA.compareTo(diasB);
-          return 0;
+          return nombreA.compareTo(nombreB);
         });
-        // ===== FIN ORDENAMIENTO =====
 
         if (docs.isEmpty) {
           return Container(
@@ -2677,7 +2544,7 @@ class JovenesAsignadosTab extends StatelessWidget {
                     parent: AlwaysScrollableScrollPhysics()),
                 slivers: [
                   SliverPadding(
-                    padding: EdgeInsets.all(16),
+                    padding: EdgeInsets.all(12),
                     sliver: SliverList(
                       delegate: SliverChildBuilderDelegate(
                         (context, index) {
@@ -2703,454 +2570,427 @@ class JovenesAsignadosTab extends StatelessWidget {
                           final visible =
                               getFieldSafely<bool>(data, 'visible') ?? true;
 
-                          // === INDICADOR DE BLOQUEO ===
-                          // Verificar bloqueo real: 3+ faltas Y alerta activa
-                          final bool tieneBloqueoPendiente =
-                              faltas >= 3 && !visible;
+                          // Verificar estado de alerta
                           final String estadoAlerta =
                               getFieldSafely<String>(data, 'estadoAlerta') ??
                                   '';
                           final bool tieneAlertaActiva =
                               estadoAlerta == 'pendiente' ||
                                   estadoAlerta == 'en_revision';
-
-                          // ===== TARJETA REDUCIDA Y MÁS COMPACTA =====
-// Se reduce el margen inferior de 16 a 12 para hacer las tarjetas más pequeñas
-// Se mantiene la elevación pero con bordes más sutiles
-                          // ===== CÁLCULO DE ASIGNACIÓN RECIENTE =====
-                          bool esAsignacionReciente = false;
-                          int diasDesdeAsignacion = 0;
-
-                          try {
-                            final fechaAsignacion = data['fechaAsignacion'];
-                            if (fechaAsignacion != null) {
-                              DateTime fechaAsig;
-
-                              if (fechaAsignacion is Timestamp) {
-                                fechaAsig = fechaAsignacion.toDate();
-                              } else if (fechaAsignacion is String &&
-                                  fechaAsignacion.isNotEmpty) {
-                                if (fechaAsignacion.contains('Timestamp')) {
-                                  final regex = RegExp(r'seconds=(\d+)');
-                                  final match =
-                                      regex.firstMatch(fechaAsignacion);
-                                  if (match != null) {
-                                    final seconds =
-                                        int.tryParse(match.group(1) ?? '');
-                                    if (seconds != null) {
-                                      fechaAsig =
-                                          DateTime.fromMillisecondsSinceEpoch(
-                                              seconds * 1000);
-                                    } else {
-                                      fechaAsig = DateTime.now()
-                                          .subtract(Duration(days: 30));
-                                    }
-                                  } else {
-                                    fechaAsig = DateTime.now()
-                                        .subtract(Duration(days: 30));
-                                  }
-                                } else {
-                                  fechaAsig = DateTime.parse(fechaAsignacion);
-                                }
-                              } else {
-                                fechaAsig =
-                                    DateTime.now().subtract(Duration(days: 30));
-                              }
-
-                              diasDesdeAsignacion =
-                                  DateTime.now().difference(fechaAsig).inDays;
-                              esAsignacionReciente = diasDesdeAsignacion >= 0 &&
-                                  diasDesdeAsignacion <= 13;
-                            }
-                          } catch (e) {
-                            print('Error calculando días desde asignación: $e');
-                            esAsignacionReciente = false;
-                          }
+                          final bool tieneBloqueoPendiente =
+                              faltas >= 3 && !visible;
 
                           return Container(
-                            margin: EdgeInsets.only(bottom: 12),
+                            margin: EdgeInsets.only(bottom: 10),
                             child: Card(
-                              elevation: esAsignacionReciente ? 6 : 4,
-                              shadowColor: esAsignacionReciente
-                                  ? Color(0xFFFFB74D).withOpacity(0.4)
+                              elevation: tieneAlertaActiva ? 6 : 3,
+                              shadowColor: tieneAlertaActiva
+                                  ? Color(0xFFFF4B2B).withOpacity(0.4)
                                   : Colors.grey.withOpacity(0.2),
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
+                                borderRadius: BorderRadius.circular(14),
                               ),
                               child: Container(
                                 decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(20),
+                                  borderRadius: BorderRadius.circular(14),
                                   gradient: LinearGradient(
                                     begin: Alignment.topLeft,
                                     end: Alignment.bottomRight,
-                                    colors: esAsignacionReciente
+                                    colors: tieneAlertaActiva
                                         ? [
-                                            Color(0xFFFFF3E0), // Amarillo claro
-                                            Color(0xFFFFE0B2).withOpacity(0.6),
+                                            Colors.white,
+                                            Color(0xFFFF4B2B).withOpacity(0.03),
                                           ]
-                                        : (tieneBloqueoPendiente &&
-                                                tieneAlertaActiva)
-                                            ? [
-                                                Colors.white,
-                                                Color(0xFFFF4B2B)
-                                                    .withOpacity(0.03),
-                                              ]
-                                            : [
-                                                Colors.white,
-                                                Colors.white,
-                                              ],
+                                        : [
+                                            Colors.white,
+                                            Colors.white,
+                                          ],
                                   ),
-                                  border: esAsignacionReciente
+                                  border: tieneAlertaActiva
                                       ? Border.all(
-                                          color: Color(0xFFFFB74D),
-                                          width: 2.5,
+                                          color: Color(0xFFFF4B2B)
+                                              .withOpacity(0.3),
+                                          width: 2,
                                         )
-                                      : (tieneBloqueoPendiente &&
-                                              tieneAlertaActiva)
-                                          ? Border.all(
-                                              color: Color(0xFFFF4B2B)
-                                                  .withOpacity(0.3),
-                                              width: 2,
-                                            )
-                                          : null,
-                                  boxShadow: esAsignacionReciente
-                                      ? [
-                                          BoxShadow(
-                                            color: Color(0xFFFFB74D)
-                                                .withOpacity(0.3),
-                                            blurRadius: 12,
-                                            offset: Offset(0, 6),
-                                            spreadRadius: 2,
-                                          ),
-                                        ]
                                       : null,
                                 ),
-                                child: ExpansionTile(
-                                  // Padding reducido para hacer la tarjeta más compacta
-                                  tilePadding: EdgeInsets.symmetric(
-                                      horizontal: 16, vertical: 12), // Reducido
-                                  childrenPadding: EdgeInsets.all(0),
-                                  backgroundColor: Colors.transparent,
-                                  collapsedBackgroundColor: Colors.transparent,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(20),
-                                  ),
-                                  collapsedShape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(20),
-                                  ),
-                                  leading: Stack(
-                                    children: [
-                                      Container(
-                                        width: 44,
-                                        height: 44,
-                                        decoration: BoxDecoration(
-                                          gradient: LinearGradient(
-                                            colors: esAsignacionReciente
-                                                ? [
-                                                    Color(0xFFFFB74D),
-                                                    Color(0xFFFF9800),
-                                                  ]
-                                                : [
-                                                    Color(0xFF147B7C),
-                                                    Color(0xFF147B7C)
-                                                        .withOpacity(0.8),
-                                                  ],
-                                          ),
-                                          shape: BoxShape.circle,
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: (esAsignacionReciente
-                                                      ? Color(0xFFFFB74D)
-                                                      : Color(0xFF147B7C))
-                                                  .withOpacity(0.3),
-                                              spreadRadius: 2,
-                                              blurRadius: 6,
-                                              offset: Offset(0, 3),
+                                child: Column(
+                                  children: [
+                                    // ExpansionTile principal
+                                    ExpansionTile(
+                                      tilePadding: EdgeInsets.symmetric(
+                                          horizontal: 14, vertical: 10),
+                                      childrenPadding: EdgeInsets.all(0),
+                                      backgroundColor: Colors.transparent,
+                                      collapsedBackgroundColor:
+                                          Colors.transparent,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(14),
+                                      ),
+                                      collapsedShape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(14),
+                                      ),
+                                      leading: Stack(
+                                        children: [
+                                          Container(
+                                            width: 40,
+                                            height: 40,
+                                            decoration: BoxDecoration(
+                                              gradient: LinearGradient(
+                                                colors: [
+                                                  Color(0xFF147B7C),
+                                                  Color(0xFF147B7C)
+                                                      .withOpacity(0.8),
+                                                ],
+                                              ),
+                                              shape: BoxShape.circle,
+                                              boxShadow: [
+                                                BoxShadow(
+                                                  color: Color(0xFF147B7C)
+                                                      .withOpacity(0.3),
+                                                  spreadRadius: 2,
+                                                  blurRadius: 6,
+                                                  offset: Offset(0, 3),
+                                                ),
+                                              ],
                                             ),
-                                          ],
-                                        ),
-                                        child: Center(
-                                          child: Text(
-                                            nombre.isNotEmpty
-                                                ? nombre[0].toUpperCase()
-                                                : '?',
-                                            style: TextStyle(
-                                              color: Colors.white,
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 16,
+                                            child: Center(
+                                              child: Text(
+                                                nombre.isNotEmpty
+                                                    ? nombre[0].toUpperCase()
+                                                    : '?',
+                                                style: TextStyle(
+                                                  color: Colors.white,
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 16,
+                                                ),
+                                              ),
                                             ),
                                           ),
+                                          if (tieneAlertaActiva)
+                                            Positioned(
+                                              top: -2,
+                                              right: -2,
+                                              child: Container(
+                                                width: 18,
+                                                height: 18,
+                                                decoration: BoxDecoration(
+                                                  color: Color(0xFFFF4B2B),
+                                                  shape: BoxShape.circle,
+                                                  border: Border.all(
+                                                      color: Colors.white,
+                                                      width: 2),
+                                                ),
+                                                child: Icon(
+                                                  Icons.warning,
+                                                  color: Colors.white,
+                                                  size: 10,
+                                                ),
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                      title: Text(
+                                        '$nombre $apellido',
+                                        style: TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.bold,
+                                          color: Color(0xFF147B7C),
                                         ),
                                       ),
-                                      // Badge de "NUEVO" para asignaciones recientes
-                                      if (esAsignacionReciente)
-                                        Positioned(
-                                          top: -2,
-                                          right: -2,
-                                          child: Container(
-                                            padding: EdgeInsets.symmetric(
-                                                horizontal: 4, vertical: 2),
-                                            decoration: BoxDecoration(
-                                              gradient: LinearGradient(
-                                                colors: [
-                                                  Color(0xFFFF6F00),
-                                                  Color(0xFFFF9800),
-                                                ],
+                                      subtitle: Container(
+                                        margin: EdgeInsets.only(top: 6),
+                                        child: Wrap(
+                                          spacing: 6,
+                                          runSpacing: 4,
+                                          children: [
+                                            // Badge de faltas
+                                            Container(
+                                              padding: EdgeInsets.symmetric(
+                                                  horizontal: 6, vertical: 3),
+                                              decoration: BoxDecoration(
+                                                color: faltas >= 3
+                                                    ? Color(0xFFFF4B2B)
+                                                        .withOpacity(0.1)
+                                                    : Color(0xFF147B7C)
+                                                        .withOpacity(0.1),
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
                                               ),
-                                              borderRadius:
-                                                  BorderRadius.circular(8),
-                                              border: Border.all(
-                                                  color: Colors.white,
-                                                  width: 1.5),
-                                              boxShadow: [
-                                                BoxShadow(
-                                                  color: Color(0xFFFF6F00)
-                                                      .withOpacity(0.4),
-                                                  blurRadius: 4,
-                                                  offset: Offset(0, 2),
-                                                ),
-                                              ],
-                                            ),
-                                            child: Text(
-                                              'NUEVO',
-                                              style: TextStyle(
-                                                color: Colors.white,
-                                                fontSize: 7,
-                                                fontWeight: FontWeight.bold,
-                                                letterSpacing: 0.3,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      // Badge de alerta (si existe)
-                                      if (!esAsignacionReciente &&
-                                          tieneBloqueoPendiente &&
-                                          tieneAlertaActiva)
-                                        Positioned(
-                                          top: -2,
-                                          right: -2,
-                                          child: Container(
-                                            width: 20,
-                                            height: 20,
-                                            decoration: BoxDecoration(
-                                              color: Color(0xFFFF4B2B),
-                                              shape: BoxShape.circle,
-                                              border: Border.all(
-                                                  color: Colors.white,
-                                                  width: 2),
-                                            ),
-                                            child: Icon(
-                                              Icons.warning,
-                                              color: Colors.white,
-                                              size: 12,
-                                            ),
-                                          ),
-                                        ),
-                                    ],
-                                  ),
-                                  title: Text(
-                                    '$nombre $apellido',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                      color: Color(0xFF147B7C),
-                                    ),
-                                  ),
-                                  subtitle: Container(
-                                    margin: EdgeInsets.only(top: 8),
-                                    child: Wrap(
-                                      spacing: 8,
-                                      runSpacing: 4,
-                                      children: [
-                                        // ===== BADGE NUEVO (Prioridad 1) =====
-                                        if (esAsignacionReciente)
-                                          Container(
-                                            padding: EdgeInsets.symmetric(
-                                                horizontal: 8, vertical: 4),
-                                            decoration: BoxDecoration(
-                                              gradient: LinearGradient(
-                                                colors: [
-                                                  Color(0xFFFF6F00),
-                                                  Color(0xFFFF9800),
-                                                ],
-                                              ),
-                                              borderRadius:
-                                                  BorderRadius.circular(12),
-                                              boxShadow: [
-                                                BoxShadow(
-                                                  color: Color(0xFFFF6F00)
-                                                      .withOpacity(0.3),
-                                                  blurRadius: 6,
-                                                  offset: Offset(0, 2),
-                                                ),
-                                              ],
-                                            ),
-                                            child: Row(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                Icon(
-                                                  Icons.fiber_new_rounded,
-                                                  size: 14,
-                                                  color: Colors.white,
-                                                ),
-                                                SizedBox(width: 4),
-                                                Text(
-                                                  'NUEVO',
-                                                  style: TextStyle(
-                                                    color: Colors.white,
-                                                    fontWeight: FontWeight.bold,
-                                                    fontSize: 10,
-                                                    letterSpacing: 0.5,
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Icon(
+                                                    faltas >= 3
+                                                        ? Icons.warning
+                                                        : Icons.check_circle,
+                                                    size: 11,
+                                                    color: faltas >= 3
+                                                        ? Color(0xFFFF4B2B)
+                                                        : Color(0xFF147B7C),
                                                   ),
+                                                  SizedBox(width: 3),
+                                                  Text(
+                                                    'Faltas: $faltas',
+                                                    style: TextStyle(
+                                                      color: faltas >= 3
+                                                          ? Color(0xFFFF4B2B)
+                                                          : Color(0xFF147B7C),
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                      fontSize: 10,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+
+                                            // Badge de ALERTA ACTIVA
+                                            if (tieneAlertaActiva)
+                                              Container(
+                                                padding: EdgeInsets.symmetric(
+                                                    horizontal: 6, vertical: 3),
+                                                decoration: BoxDecoration(
+                                                  gradient: LinearGradient(
+                                                    colors: [
+                                                      Color(0xFFFF4B2B),
+                                                      Color(0xFFFF6B4A),
+                                                    ],
+                                                  ),
+                                                  borderRadius:
+                                                      BorderRadius.circular(8),
+                                                  boxShadow: [
+                                                    BoxShadow(
+                                                      color: Color(0xFFFF4B2B)
+                                                          .withOpacity(0.3),
+                                                      blurRadius: 4,
+                                                      offset: Offset(0, 2),
+                                                    ),
+                                                  ],
                                                 ),
-                                                SizedBox(width: 4),
+                                                child: Row(
+                                                  mainAxisSize:
+                                                      MainAxisSize.min,
+                                                  children: [
+                                                    Icon(
+                                                      Icons
+                                                          .notification_important,
+                                                      size: 11,
+                                                      color: Colors.white,
+                                                    ),
+                                                    SizedBox(width: 3),
+                                                    Text(
+                                                      'ALERTA',
+                                                      style: TextStyle(
+                                                        color: Colors.white,
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                        fontSize: 9,
+                                                        letterSpacing: 0.3,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+
+                                            // Badge de bloqueado
+                                            if (tieneBloqueoPendiente)
+                                              Container(
+                                                padding: EdgeInsets.symmetric(
+                                                    horizontal: 6, vertical: 3),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.grey.shade300,
+                                                  borderRadius:
+                                                      BorderRadius.circular(8),
+                                                ),
+                                                child: Row(
+                                                  mainAxisSize:
+                                                      MainAxisSize.min,
+                                                  children: [
+                                                    Icon(Icons.block,
+                                                        size: 11,
+                                                        color: Colors
+                                                            .grey.shade700),
+                                                    SizedBox(width: 3),
+                                                    Text(
+                                                      'BLOQUEADO',
+                                                      style: TextStyle(
+                                                        color: Colors
+                                                            .grey.shade700,
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                        fontSize: 9,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                          ],
+                                        ),
+                                      ),
+                                      children: [
+                                        Container(
+                                          margin: EdgeInsets.only(top: 6),
+                                          padding: EdgeInsets.all(12),
+                                          decoration: BoxDecoration(
+                                            color: Colors.grey[50],
+                                            borderRadius: BorderRadius.only(
+                                              bottomLeft: Radius.circular(14),
+                                              bottomRight: Radius.circular(14),
+                                            ),
+                                          ),
+                                          child: _buildExpandedContent(
+                                            context,
+                                            registro,
+                                            nombre,
+                                            telefono,
+                                            estadoProceso,
+                                            asistencias,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+
+                                    // ===== BANNER DE ALERTA INFORMATIVO (VISIBLE CUANDO HAY ALERTA) =====
+                                    if (tieneAlertaActiva)
+                                      Container(
+                                        width: double.infinity,
+                                        padding: EdgeInsets.symmetric(
+                                            horizontal: 12, vertical: 10),
+                                        decoration: BoxDecoration(
+                                          gradient: LinearGradient(
+                                            begin: Alignment.centerLeft,
+                                            end: Alignment.centerRight,
+                                            colors: [
+                                              Color(0xFFFF4B2B)
+                                                  .withOpacity(0.08),
+                                              Color(0xFFFF6B4A)
+                                                  .withOpacity(0.04),
+                                            ],
+                                          ),
+                                          border: Border(
+                                            top: BorderSide(
+                                              color: Color(0xFFFF4B2B)
+                                                  .withOpacity(0.25),
+                                              width: 1,
+                                            ),
+                                          ),
+                                          borderRadius: BorderRadius.only(
+                                            bottomLeft: Radius.circular(14),
+                                            bottomRight: Radius.circular(14),
+                                          ),
+                                        ),
+                                        child: LayoutBuilder(
+                                          builder: (context, constraints) {
+                                            // Detectar pantallas pequeñas
+                                            final isSmallScreen =
+                                                constraints.maxWidth < 380;
+                                            final isMediumScreen =
+                                                constraints.maxWidth >= 380 &&
+                                                    constraints.maxWidth < 480;
+
+                                            return Row(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                // Ícono de advertencia con animación sutil
                                                 Container(
-                                                  padding: EdgeInsets.symmetric(
-                                                      horizontal: 4,
-                                                      vertical: 1),
+                                                  padding: EdgeInsets.all(
+                                                      isSmallScreen ? 7 : 8),
                                                   decoration: BoxDecoration(
-                                                    color: Colors.white
-                                                        .withOpacity(0.3),
+                                                    gradient: LinearGradient(
+                                                      begin: Alignment.topLeft,
+                                                      end:
+                                                          Alignment.bottomRight,
+                                                      colors: [
+                                                        Color(0xFFFF4B2B)
+                                                            .withOpacity(0.2),
+                                                        Color(0xFFFF6B4A)
+                                                            .withOpacity(0.15),
+                                                      ],
+                                                    ),
                                                     borderRadius:
                                                         BorderRadius.circular(
                                                             8),
+                                                    boxShadow: [
+                                                      BoxShadow(
+                                                        color: Color(0xFFFF4B2B)
+                                                            .withOpacity(0.2),
+                                                        blurRadius: 4,
+                                                        offset: Offset(0, 2),
+                                                      ),
+                                                    ],
                                                   ),
-                                                  child: Text(
-                                                    '${14 - diasDesdeAsignacion}d',
-                                                    style: TextStyle(
-                                                      color: Colors.white,
-                                                      fontSize: 9,
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                    ),
+                                                  child: Icon(
+                                                    Icons
+                                                        .report_problem_outlined,
+                                                    color: Color(0xFFFF4B2B),
+                                                    size:
+                                                        isSmallScreen ? 15 : 17,
                                                   ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-
-                                        // Badge de faltas
-                                        Container(
-                                          padding: EdgeInsets.symmetric(
-                                              horizontal: 6, vertical: 3),
-                                          decoration: BoxDecoration(
-                                            color: faltas >= 3
-                                                ? Color(0xFFFF4B2B)
-                                                    .withOpacity(0.1)
-                                                : Color(0xFF147B7C)
-                                                    .withOpacity(0.1),
-                                            borderRadius:
-                                                BorderRadius.circular(10),
-                                          ),
-                                          child: Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              Icon(
-                                                faltas >= 3
-                                                    ? Icons.warning
-                                                    : Icons.check_circle,
-                                                size: 12,
-                                                color: faltas >= 3
-                                                    ? Color(0xFFFF4B2B)
-                                                    : Color(0xFF147B7C),
-                                              ),
-                                              SizedBox(width: 3),
-                                              Text(
-                                                'Faltas: $faltas',
-                                                style: TextStyle(
-                                                  color: faltas >= 3
-                                                      ? Color(0xFFFF4B2B)
-                                                      : Color(0xFF147B7C),
-                                                  fontWeight: FontWeight.w600,
-                                                  fontSize: 11,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                        // Badge de alerta más compacto
-                                        if (!visible)
-                                          Container(
-                                            padding: EdgeInsets.symmetric(
-                                                horizontal: 6,
-                                                vertical: 3), // Reducido
-                                            decoration: BoxDecoration(
-                                              color: Color(0xFFFF4B2B)
-                                                  .withOpacity(0.1),
-                                              borderRadius:
-                                                  BorderRadius.circular(
-                                                      10), // Reducido
-                                            ),
-                                            child: Text(
-                                              'ALERTA ACTIVA',
-                                              style: TextStyle(
-                                                color: Color(0xFFFF4B2B),
-                                                fontWeight: FontWeight.bold,
-                                                fontSize:
-                                                    9, // Reducido de 10 a 9
-                                              ),
-                                            ),
-                                          ),
-                                        // === INDICADOR DE BLOQUEO ===
-                                        // Badge de bloqueado más compacto
-                                        if (tieneBloqueoPendiente)
-                                          Container(
-                                            padding: EdgeInsets.symmetric(
-                                                horizontal: 6,
-                                                vertical: 3), // Reducido
-                                            decoration: BoxDecoration(
-                                              color: Colors.grey.shade300,
-                                              borderRadius:
-                                                  BorderRadius.circular(
-                                                      10), // Reducido
-                                            ),
-                                            child: Row(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                Icon(
-                                                  Icons.block,
-                                                  size:
-                                                      12, // Reducido de 14 a 12
-                                                  color: Colors.grey.shade700,
                                                 ),
                                                 SizedBox(
                                                     width:
-                                                        3), // Reducido de 4 a 3
-                                                Text(
-                                                  'BLOQUEADO',
-                                                  style: TextStyle(
-                                                    color: Colors.grey.shade700,
-                                                    fontWeight: FontWeight.bold,
-                                                    fontSize:
-                                                        9, // Reducido de 10 a 9
+                                                        isSmallScreen ? 8 : 10),
+
+                                                // Texto informativo (responsivo)
+                                                Expanded(
+                                                  child: Column(
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment
+                                                            .start,
+                                                    children: [
+                                                      // Título
+                                                      Text(
+                                                        'Estado de Alerta Activo',
+                                                        style: TextStyle(
+                                                          fontSize:
+                                                              isSmallScreen
+                                                                  ? 11
+                                                                  : 12,
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                          color:
+                                                              Color(0xFFFF4B2B),
+                                                          letterSpacing: 0.3,
+                                                        ),
+                                                      ),
+                                                      SizedBox(height: 4),
+
+                                                      // Descripción adaptativa
+                                                      Text(
+                                                        isSmallScreen
+                                                            ? 'Múltiples inasistencias detectadas. Notifique a su líder o coordinador. Asistencias bloqueadas hasta revisión.'
+                                                            : isMediumScreen
+                                                                ? 'Este discípulo presenta múltiples inasistencias consecutivas. Como Timoteo, debe notificar este caso a su líder o coordinador. No se pueden registrar nuevas asistencias hasta que la alerta sea revisada.'
+                                                                : 'Este discípulo presenta múltiples inasistencias consecutivas. Como Timoteo, debe informar inmediatamente este caso a su líder o coordinador para su evaluación. El registro de nuevas asistencias está bloqueado hasta que la alerta sea revisada y resuelta.',
+                                                        style: TextStyle(
+                                                          fontSize: isSmallScreen
+                                                              ? 9.5
+                                                              : isMediumScreen
+                                                                  ? 10
+                                                                  : 10.5,
+                                                          color:
+                                                              Colors.grey[700],
+                                                          height: 1.35,
+                                                          letterSpacing: 0.1,
+                                                        ),
+                                                        maxLines: isSmallScreen
+                                                            ? 3
+                                                            : isMediumScreen
+                                                                ? 3
+                                                                : 2,
+                                                        overflow: TextOverflow
+                                                            .ellipsis,
+                                                      ),
+                                                    ],
                                                   ),
                                                 ),
                                               ],
-                                            ),
-                                          ),
-                                      ],
-                                    ),
-                                  ),
-                                  children: [
-                                    Container(
-                                      margin: EdgeInsets.only(top: 8),
-                                      padding: EdgeInsets.all(20),
-                                      decoration: BoxDecoration(
-                                        color: Colors.grey[50],
-                                        borderRadius: BorderRadius.only(
-                                          bottomLeft: Radius.circular(20),
-                                          bottomRight: Radius.circular(20),
+                                            );
+                                          },
                                         ),
                                       ),
-                                      child: _buildExpandedContent(
-                                        context,
-                                        registro,
-                                        nombre,
-                                        telefono,
-                                        estadoProceso,
-                                        asistencias,
-                                      ),
-                                    ),
                                   ],
                                 ),
                               ),
@@ -3170,7 +3010,6 @@ class JovenesAsignadosTab extends StatelessWidget {
     );
   }
 
-  /// Construye el contenido expandido de cada tarjeta de discípulo
   /// Muestra información resumida sin dirección ni barrio (eso va en "Ver Detalles")
   Widget _buildExpandedContent(
     BuildContext context,
