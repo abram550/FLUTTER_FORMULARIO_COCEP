@@ -1,3 +1,8 @@
+// ========================================
+// UBICACIÓN: formulario_app/lib/services/auth_service.dart
+// REEMPLAZA TODO EL CONTENIDO del archivo por este código
+// ========================================
+
 // Dart SDK
 import 'dart:convert';
 
@@ -31,15 +36,62 @@ class AuthService {
       final adminCreds = CredentialsService.getAdminCredentials();
       if (username.toLowerCase() == adminCreds['username']?.toLowerCase() &&
           password == adminCreds['password']) {
-        // ✅ CAMBIO: Agregar userId único para el admin
         final result = {
           'role': 'adminPastores',
-          'userId': 'admin_cocep_unique_id', // ID único fijo para el admin
+          'userId': 'admin_cocep_unique_id',
           'userName': 'Administrador COCEP',
         };
         await _guardarSesion(result);
         return result;
       }
+
+      // ✅ Verificar credenciales de Departamento de Discipulado
+      final departamentoDoc = await FirebaseFirestore.instance
+          .collection('departamentoDiscipulado')
+          .doc('configuracion')
+          .get();
+
+      if (departamentoDoc.exists) {
+        final depData = departamentoDoc.data()!;
+        if (username.toLowerCase() == depData['usuario']?.toLowerCase() &&
+            password == depData['contrasena']) {
+          final result = {
+            'role': 'departamentoDiscipulado',
+            'userId': 'depto_discipulado_unique_id',
+            'userName': 'Departamento de Discipulado',
+            'puedeEditarCredenciales': depData['puedeEditarCredenciales'] ?? true,
+          };
+          await _guardarSesion(result);
+          return result;
+        }
+      }
+
+      // ✅ CORRECCIÓN: Verificar maestros de discipulado
+      final maestroQuery = await FirebaseFirestore.instance
+          .collection('maestrosDiscipulado')
+          .where('usuario', isEqualTo: username)
+          .where('contrasena', isEqualTo: password)
+          .get();
+
+      if (maestroQuery.docs.isNotEmpty) {
+        final maestroData = maestroQuery.docs.first;
+        final data = maestroData.data();
+        
+        print('✅ Maestro encontrado: ${data['nombre']} ${data['apellido']}');
+        print('Clase asignada: ${data['claseAsignadaId']}');
+        
+        final result = {
+          'role': 'maestroDiscipulado',
+          'maestroId': maestroData.id,
+          'maestroNombre': '${data['nombre']} ${data['apellido']}',
+          'userId': maestroData.id,
+          'userName': '${data['nombre']} ${data['apellido']}',
+          'claseAsignadaId': data['claseAsignadaId'],
+        };
+        await _guardarSesion(result);
+        return result;
+      }
+
       // Buscar en la colección de usuarios
       final userQuery = await FirebaseFirestore.instance
           .collection('usuarios')
@@ -52,13 +104,11 @@ class AuthService {
         final userData = userQuery.docs.first.data();
         print('Datos encontrados: $userData');
 
-        // Verificar la contraseña sin hash para todos los usuarios
         if (userData['contrasena'] == password) {
           Map<String, dynamic>? result;
 
           switch (userData['rol']) {
             case 'tribu':
-              // Asegurarse de que todos los campos necesarios existan
               if (userData['tribuId'] != null && userData['nombre'] != null) {
                 result = {
                   'role': 'tribu',
@@ -194,13 +244,19 @@ class AuthService {
   // MÉTODOS PARA PERSISTENCIA DE SESIÓN
   // =============================================================================
 
-  /// Guarda la sesión del usuario en SharedPreferences
   Future<void> _guardarSesion(Map<String, dynamic> userData) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('userId', userData['userId']?.toString() ?? '');
       await prefs.setString('userRole', userData['role']?.toString() ?? '');
       await prefs.setString('userName', userData['userName']?.toString() ?? '');
+
+      // ✅ Guardar datos específicos de maestro
+      if (userData['maestroId'] != null) {
+        await prefs.setString('maestroId', userData['maestroId'].toString());
+        await prefs.setString('maestroNombre', userData['maestroNombre']?.toString() ?? '');
+        await prefs.setString('claseAsignadaId', userData['claseAsignadaId']?.toString() ?? '');
+      }
 
       // Guardar datos específicos según el rol
       if (userData['coordinadorId'] != null) {
@@ -230,7 +286,6 @@ class AuthService {
     }
   }
 
-  /// Verifica si el usuario está autenticado
   Future<bool> isAuthenticated() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -241,7 +296,6 @@ class AuthService {
     }
   }
 
-  /// Obtiene el rol del usuario actual desde SharedPreferences
   Future<String?> getCurrentUserRole() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -252,7 +306,6 @@ class AuthService {
     }
   }
 
-  /// Obtiene el ID del usuario actual
   Future<String> getUserId() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -262,7 +315,6 @@ class AuthService {
     }
   }
 
-  /// Obtiene el nombre del usuario actual
   Future<String> getUserName() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -272,7 +324,34 @@ class AuthService {
     }
   }
 
-  /// Obtiene el ID del coordinador (si aplica)
+  // ✅ Métodos para maestros
+  Future<String> getMaestroId() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString('maestroId') ?? '';
+    } catch (e) {
+      return '';
+    }
+  }
+
+  Future<String> getMaestroNombre() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString('maestroNombre') ?? '';
+    } catch (e) {
+      return '';
+    }
+  }
+
+  Future<String> getClaseAsignadaId() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString('claseAsignadaId') ?? '';
+    } catch (e) {
+      return '';
+    }
+  }
+
   Future<String> getCoordinadorId() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -282,7 +361,6 @@ class AuthService {
     }
   }
 
-  /// Obtiene el nombre del coordinador (si aplica)
   Future<String> getCoordinadorNombre() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -292,7 +370,6 @@ class AuthService {
     }
   }
 
-  /// Obtiene el ID del timoteo (si aplica)
   Future<String> getTimoteoId() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -302,7 +379,6 @@ class AuthService {
     }
   }
 
-  /// Obtiene el nombre del timoteo (si aplica)
   Future<String> getTimoteoNombre() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -312,7 +388,6 @@ class AuthService {
     }
   }
 
-  /// Obtiene el ID de la tribu (si aplica)
   Future<String> getTribuId() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -322,7 +397,6 @@ class AuthService {
     }
   }
 
-  /// Obtiene el nombre de la tribu (si aplica)
   Future<String> getNombreTribu() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -332,7 +406,6 @@ class AuthService {
     }
   }
 
-  /// Obtiene el ministerio del líder (si aplica)
   Future<String> getMinisterio() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -342,7 +415,6 @@ class AuthService {
     }
   }
 
-  /// Cierra la sesión del usuario
   Future<void> logout() async {
     try {
       final prefs = await SharedPreferences.getInstance();

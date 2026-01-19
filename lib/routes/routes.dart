@@ -1,3 +1,8 @@
+// ========================================
+// UBICACIÓN: formulario_app/lib/router.dart
+// REEMPLAZA TODO EL CONTENIDO del archivo por este código
+// ========================================
+
 import 'package:flutter/material.dart';
 import 'package:formulario_app/screens/ministerio_lider_screen.dart';
 import 'package:go_router/go_router.dart';
@@ -9,6 +14,8 @@ import 'package:formulario_app/screens/CoordinadorScreen.dart';
 import 'package:formulario_app/screens/admin_pastores.dart';
 import 'package:formulario_app/screens/admin_screen.dart';
 import 'package:formulario_app/screens/TribusScreen.dart';
+import 'package:formulario_app/screens/departamento_discipulado_screen.dart';
+import 'package:formulario_app/screens/maestro_discipulado_screen.dart';
 
 final GoRouter router = GoRouter(
   initialLocation: '/login',
@@ -64,6 +71,27 @@ final GoRouter router = GoRouter(
         final tribuId = state.pathParameters['tribuId']!;
         final tribuNombre = state.pathParameters['tribuNombre']!;
         return TribusScreen(tribuId: tribuId, tribuNombre: tribuNombre);
+      },
+    ),
+    // ✅ NUEVAS RUTAS - Departamento de Discipulado
+    // Departamento de Discipulado
+    GoRoute(
+      path: '/departamento_discipulado',
+      builder: (context, state) => const DepartamentoDiscipuladoScreen(),
+    ),
+
+// Maestro de Discipulado
+    GoRoute(
+      path: '/maestro_discipulado/:maestroId/:maestroNombre',
+      builder: (context, state) {
+        final maestroId = state.pathParameters['maestroId']!;
+        final maestroNombre = state.pathParameters['maestroNombre']!;
+        final claseAsignadaId = state.uri.queryParameters['claseAsignadaId'];
+        return MaestroDiscipuladoScreen(
+          maestroId: maestroId,
+          maestroNombre: maestroNombre,
+          claseAsignadaId: claseAsignadaId,
+        );
       },
     ),
   ],

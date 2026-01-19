@@ -22,7 +22,7 @@ import 'package:formulario_app/utils/error_handler.dart';
 import 'package:formulario_app/utils/migrate_services.dart';
 
 // Proyecto – servicios
-import 'package:formulario_app/services/auth_service.dart'; // 🆕 AGREGAR ESTA LÍNEA
+import 'package:formulario_app/services/auth_service.dart';
 import 'package:formulario_app/services/database_service.dart';
 import 'package:formulario_app/services/sync_service.dart';
 
@@ -37,31 +37,25 @@ import 'package:formulario_app/screens/admin_pastores.dart';
 import 'package:formulario_app/screens/TimoteosScreen.dart';
 import 'package:formulario_app/screens/CoordinadorScreen.dart';
 import 'package:formulario_app/screens/TribusScreen.dart';
+// 🆕 AGREGAR ESTOS IMPORTS
+import 'package:formulario_app/screens/departamento_discipulado_screen.dart';
+import 'package:formulario_app/screens/maestro_discipulado_screen.dart';
 
 // =============================================================================
-// 🆕 NUEVA CLASE: Servicio de Limpieza Automática de Eventos
-// Colócala DESPUÉS de los imports y ANTES de la clase AppColors
+// SERVICIO DE LIMPIEZA AUTOMÁTICA DE EVENTOS
 // =============================================================================
 
-/// Servicio para gestionar la eliminación automática de eventos vencidos
 class ServicioLimpiezaEventos {
   static Timer? _timer;
 
-  /// Inicializa la limpieza automática de eventos
-  /// Se ejecuta cada 24 horas y una vez al iniciar la aplicación
   static void iniciarLimpiezaAutomatica() {
     try {
       print('🚀 Iniciando servicio de limpieza automática de eventos...');
-
-      // Ejecutar limpieza inmediatamente al iniciar
       _ejecutarLimpieza();
-
-      // Programar limpieza cada 24 horas
       _timer = Timer.periodic(Duration(hours: 24), (timer) {
         print('⏰ Ejecutando limpieza programada cada 24 horas...');
         _ejecutarLimpieza();
       });
-
       print('✅ Servicio de limpieza automática configurado correctamente');
     } catch (e) {
       print('❌ Error al iniciar servicio de limpieza: $e');
@@ -69,14 +63,12 @@ class ServicioLimpiezaEventos {
     }
   }
 
-  /// Detiene el servicio de limpieza automática
   static void detenerLimpiezaAutomatica() {
     _timer?.cancel();
     _timer = null;
     print('🛑 Servicio de limpieza automática detenido');
   }
 
-  /// Ejecuta la limpieza de eventos vencidos
   static Future<void> _ejecutarLimpieza() async {
     try {
       await eliminarEventosVencidos();
@@ -86,16 +78,12 @@ class ServicioLimpiezaEventos {
     }
   }
 
-  /// Elimina todos los eventos que ya cumplieron su fecha de eliminación automática
-  /// Esta función busca eventos con 'fechaEliminacionAutomatica' vencida
   static Future<void> eliminarEventosVencidos() async {
     try {
       final ahora = DateTime.now();
-
       print('🧹 Iniciando limpieza de eventos vencidos...');
       print('📅 Fecha actual: ${ahora.toString()}');
 
-      // Buscar eventos cuya fecha de eliminación automática ya pasó
       final querySnapshot = await FirebaseFirestore.instance
           .collection('eventos')
           .where('fechaEliminacionAutomatica',
@@ -105,24 +93,19 @@ class ServicioLimpiezaEventos {
       print(
           '📋 Encontrados ${querySnapshot.docs.length} eventos para eliminar');
 
-      // Si no hay eventos para eliminar, terminar
       if (querySnapshot.docs.isEmpty) {
         print('✅ No hay eventos vencidos para eliminar');
         return;
       }
 
-      // Preparar eliminación en lotes para mejor rendimiento
       WriteBatch batch = FirebaseFirestore.instance.batch();
       int contador = 0;
       List<String> nombresEliminados = [];
 
-      // Procesar cada evento a eliminar
       for (var doc in querySnapshot.docs) {
-        // Agregar operación de eliminación al batch
         batch.delete(doc.reference);
         contador++;
 
-        // Guardar nombre del evento para el log
         final data = doc.data() as Map<String, dynamic>;
         final nombreEvento = data['nombre'] ?? 'Sin nombre';
         final fechaEliminacion =
@@ -132,7 +115,6 @@ class ServicioLimpiezaEventos {
         print(
             '🗑️ Programado para eliminar: $nombreEvento (vencido: ${fechaEliminacion?.toDate()})');
 
-        // Firebase permite máximo 500 operaciones por batch
         if (contador >= 500) {
           await batch.commit();
           batch = FirebaseFirestore.instance.batch();
@@ -141,13 +123,11 @@ class ServicioLimpiezaEventos {
         }
       }
 
-      // Ejecutar el último batch si tiene operaciones pendientes
       if (contador > 0) {
         await batch.commit();
         print('📦 Ejecutado lote final de $contador eliminaciones');
       }
 
-      // Mostrar resumen de eliminaciones
       print(
           '✅ LIMPIEZA COMPLETADA - Eliminados ${querySnapshot.docs.length} eventos vencidos:');
       for (int i = 0; i < nombresEliminados.length; i++) {
@@ -156,20 +136,16 @@ class ServicioLimpiezaEventos {
     } catch (e) {
       print('❌ Error al eliminar eventos vencidos: $e');
       ErrorHandler.logError(e, StackTrace.current);
-      rethrow; // Re-lanzar para que el error se maneje en el nivel superior
+      rethrow;
     }
   }
 
-  /// Función auxiliar para verificar si un evento específico debe eliminarse
-  /// Útil para mostrar información en la UI
   static bool debeEliminarseEvento(DateTime fechaFinEvento) {
     final ahora = DateTime.now();
     final fechaLimite = DateTime(ahora.year - 1, ahora.month, ahora.day);
     return fechaFinEvento.isBefore(fechaLimite);
   }
 
-  /// Calcula los días restantes antes de que un evento sea eliminado
-  /// Retorna 0 si ya debe eliminarse
   static int diasRestantesParaEliminacion(DateTime fechaFinEvento) {
     final ahora = DateTime.now();
     final fechaEliminacion = DateTime(
@@ -180,7 +156,6 @@ class ServicioLimpiezaEventos {
   }
 }
 
-// Tu clase AppColors existente (sin cambios)
 class AppColors {
   static const Color primary = Color(0xFF1A7A8B);
   static const Color secondary = Color(0xFFFF6B35);
@@ -209,11 +184,11 @@ class AppColors {
 }
 
 // =============================================================================
-// 🔄 CONFIGURACIÓN DE RUTAS CON AUTENTICACIÓN PERSISTENTE
+// 🔄 CONFIGURACIÓN DE RUTAS - ACTUALIZADA
 // =============================================================================
 
 final GoRouter router = GoRouter(
-  initialLocation: '/login', // 🎯 Ruta principal: siempre inicia en login
+  initialLocation: '/login',
   errorBuilder: (context, state) => const SplashScreen(),
 
   routes: [
@@ -277,11 +252,30 @@ final GoRouter router = GoRouter(
         );
       },
     ),
+    
+    // ✅ NUEVAS RUTAS - Departamento de Discipulado
+    GoRoute(
+      path: '/departamento_discipulado',
+      builder: (context, state) => const DepartamentoDiscipuladoScreen(),
+    ),
+    GoRoute(
+      path: '/maestro_discipulado/:maestroId/:maestroNombre',
+      builder: (context, state) {
+        final maestroId = state.pathParameters['maestroId']!;
+        final maestroNombre = state.pathParameters['maestroNombre']!;
+        final claseAsignadaId = state.uri.queryParameters['claseAsignadaId'];
+        return MaestroDiscipuladoScreen(
+          maestroId: maestroId,
+          maestroNombre: maestroNombre,
+          claseAsignadaId: claseAsignadaId,
+        );
+      },
+    ),
   ],
 );
 
 // =============================================================================
-// 🚫 FUNCIÓN SIN PERMISOS DE NOTIFICACIÓN - COMPLETAMENTE DESACTIVADA
+// FUNCIÓN SIN PERMISOS DE NOTIFICACIÓN
 // =============================================================================
 
 Future<void> initializeFirebaseMessaging() async {
@@ -289,7 +283,7 @@ Future<void> initializeFirebaseMessaging() async {
 }
 
 // =============================================================================
-// 🔄 FUNCIÓN MAIN MODIFICADA - Aquí se activa la limpieza automática
+// FUNCIÓN MAIN
 // =============================================================================
 void main() async {
   await runZonedGuarded(() async {
@@ -302,11 +296,6 @@ void main() async {
       await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform,
       );
-      //await migrarNombresServicios();
-      // ❌ COMENTAR O ELIMINAR ESTAS LÍNEAS:
-      // if (!kIsWeb) {
-      //   await initializeFirebaseMessaging();
-      // }
 
       final syncService = SyncService();
       await syncService.initialize();
@@ -332,7 +321,6 @@ void main() async {
   });
 }
 
-// Tus clases existentes (sin cambios)
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 

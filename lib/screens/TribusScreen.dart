@@ -16804,7 +16804,7 @@ class _AsistenciasTabState extends State<AsistenciasTab>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
   }
 
   // ========================================
@@ -18312,6 +18312,24 @@ class _InscripcionesTabState extends State<InscripcionesTab> {
 
   // Estado para alternar entre eventos y cumpleaños
   bool mostrandoCumpleanos = false;
+  String _vistaMostrada = 'eventos';
+  bool isLoading = false;
+
+  Future<String> _obtenerNombreTribu(String tribuId) async {
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('tribus')
+          .doc(tribuId)
+          .get();
+
+      if (doc.exists && doc.data() != null) {
+        return doc.data()?['nombre'] ?? 'Sin nombre';
+      }
+    } catch (e) {
+      print('Error al obtener nombre de tribu: $e');
+    }
+    return 'Sin nombre';
+  }
 
 // Sistema de iconos por tipo de evento
   IconData _getIconoPorTipo(String tipo) {
@@ -18376,7 +18394,6 @@ class _InscripcionesTabState extends State<InscripcionesTab> {
             ),
             child: Column(
               children: [
-                // Toggle buttons
                 Container(
                   margin: EdgeInsets.only(bottom: 12),
                   child: Row(
@@ -18384,13 +18401,13 @@ class _InscripcionesTabState extends State<InscripcionesTab> {
                       Expanded(
                         child: ElevatedButton.icon(
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: !mostrandoCumpleanos
+                            backgroundColor: _vistaMostrada == 'eventos'
                                 ? Colors.white
                                 : Colors.white.withOpacity(0.3),
-                            foregroundColor: !mostrandoCumpleanos
+                            foregroundColor: _vistaMostrada == 'eventos'
                                 ? primaryTeal
                                 : Colors.white,
-                            elevation: !mostrandoCumpleanos ? 2 : 0,
+                            elevation: _vistaMostrada == 'eventos' ? 2 : 0,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
@@ -18399,20 +18416,20 @@ class _InscripcionesTabState extends State<InscripcionesTab> {
                           label: Text('Eventos',
                               style: TextStyle(fontWeight: FontWeight.bold)),
                           onPressed: () =>
-                              setState(() => mostrandoCumpleanos = false),
+                              setState(() => _vistaMostrada = 'eventos'),
                         ),
                       ),
                       SizedBox(width: 8),
                       Expanded(
                         child: ElevatedButton.icon(
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: mostrandoCumpleanos
+                            backgroundColor: _vistaMostrada == 'cumpleanos'
                                 ? Colors.white
                                 : Colors.white.withOpacity(0.3),
-                            foregroundColor: mostrandoCumpleanos
+                            foregroundColor: _vistaMostrada == 'cumpleanos'
                                 ? primaryTeal
                                 : Colors.white,
-                            elevation: mostrandoCumpleanos ? 2 : 0,
+                            elevation: _vistaMostrada == 'cumpleanos' ? 2 : 0,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
@@ -18421,7 +18438,30 @@ class _InscripcionesTabState extends State<InscripcionesTab> {
                           label: Text('Cumpleaños',
                               style: TextStyle(fontWeight: FontWeight.bold)),
                           onPressed: () =>
-                              setState(() => mostrandoCumpleanos = true),
+                              setState(() => _vistaMostrada = 'cumpleanos'),
+                        ),
+                      ),
+                      SizedBox(width: 8),
+                      // ✅ NUEVO BOTÓN - Clases de Discipulado
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _vistaMostrada == 'clases'
+                                ? Colors.white
+                                : Colors.white.withOpacity(0.3),
+                            foregroundColor: _vistaMostrada == 'clases'
+                                ? primaryTeal
+                                : Colors.white,
+                            elevation: _vistaMostrada == 'clases' ? 2 : 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          icon: Icon(Icons.school, size: 20),
+                          label: Text('Clases',
+                              style: TextStyle(fontWeight: FontWeight.bold)),
+                          onPressed: () =>
+                              setState(() => _vistaMostrada = 'clases'),
                         ),
                       ),
                     ],
@@ -18465,9 +18505,11 @@ class _InscripcionesTabState extends State<InscripcionesTab> {
           ),
           // Lista de eventos
           Expanded(
-            child: mostrandoCumpleanos
+            child: _vistaMostrada == 'cumpleanos'
                 ? _buildCumpleanosView()
-                : _buildEventosView(),
+                : _vistaMostrada == 'clases'
+                    ? _buildClasesDiscipuladoView()
+                    : _buildEventosView(),
           ),
         ],
       ),
@@ -19902,6 +19944,763 @@ class _InscripcionesTabState extends State<InscripcionesTab> {
       ),
     );
   }
+
+  Widget _buildClasesDiscipuladoView() {
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('clasesDiscipulado')
+          .where('estado', isEqualTo: 'activa')
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Center(child: CircularProgressIndicator());
+        }
+
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.school_outlined, size: 80, color: Colors.grey[400]),
+                SizedBox(height: 16),
+                Text(
+                  'No hay clases disponibles',
+                  style: TextStyle(
+                    fontSize: 18,
+                    color: Colors.grey[600],
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        return ListView.builder(
+          padding: EdgeInsets.all(16),
+          itemCount: snapshot.data!.docs.length,
+          itemBuilder: (context, index) {
+            final doc = snapshot.data!.docs[index];
+            final data = doc.data() as Map<String, dynamic>;
+            final discipulos = List<Map<String, dynamic>>.from(
+                data['discipulosInscritos'] ?? []);
+
+            // Verificar si hay personas de esta tribu inscritas
+            final personasDeEstaTribu =
+                discipulos.where((d) => d['tribuId'] == widget.tribuId).length;
+
+            return Card(
+              elevation: 4,
+              margin: EdgeInsets.only(bottom: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: ExpansionTile(
+                leading: CircleAvatar(
+                  backgroundColor: primaryTeal,
+                  child: Icon(Icons.school, color: Colors.white),
+                ),
+                title: Text(
+                  data['tipo'] ?? '',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Total módulos: ${data['totalModulos']}'),
+                    Text(
+                        'Inicio: ${DateFormat('dd/MM/yyyy').format((data['fechaInicio'] as Timestamp).toDate())}'),
+                    if (data['maestroNombre'] != null)
+                      Text(
+                        'Maestro: ${data['maestroNombre']}',
+                        style: TextStyle(
+                            color: Colors.green, fontWeight: FontWeight.bold),
+                      ),
+                    Text('Inscritos de esta tribu: $personasDeEstaTribu'),
+                  ],
+                ),
+                trailing: ElevatedButton.icon(
+                  icon: Icon(Icons.person_add, size: 18),
+                  label: Text('Inscribir'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: secondaryOrange,
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: () => _inscribirPersonaEnClase(doc.id, data),
+                ),
+                children: [
+                  if (personasDeEstaTribu > 0) ...[
+                    FutureBuilder<String>(
+                      future: _obtenerNombreTribu(widget.tribuId),
+                      builder: (context, snapshot) {
+                        final nombreTribu = snapshot.data ?? 'Cargando...';
+
+                        // ✅ OBTENER ESTADO DE INSCRIPCIONES
+                        final inscripcionesCerradas =
+                            data['inscripcionesCerradas'] ?? false;
+
+                        return Padding(
+                          padding: EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Header con estado de inscripciones
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      'Personas de $nombreTribu inscritas:',
+                                      style: TextStyle(
+                                          fontWeight: FontWeight.bold),
+                                    ),
+                                  ),
+                                  // ✅ INDICADOR DE ESTADO
+                                  Container(
+                                    padding: EdgeInsets.symmetric(
+                                        horizontal: 10, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color: inscripcionesCerradas
+                                          ? Colors.red.withOpacity(0.1)
+                                          : Colors.green.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(
+                                        color: inscripcionesCerradas
+                                            ? Colors.red.withOpacity(0.3)
+                                            : Colors.green.withOpacity(0.3),
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          inscripcionesCerradas
+                                              ? Icons.lock
+                                              : Icons.lock_open,
+                                          size: 14,
+                                          color: inscripcionesCerradas
+                                              ? Colors.red[700]
+                                              : Colors.green[700],
+                                        ),
+                                        SizedBox(width: 4),
+                                        Text(
+                                          inscripcionesCerradas
+                                              ? 'Cerradas'
+                                              : 'Abiertas',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.bold,
+                                            color: inscripcionesCerradas
+                                                ? Colors.red[700]
+                                                : Colors.green[700],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              SizedBox(height: 8),
+
+                              // Lista de discípulos con botón de desasignar
+                              ...discipulos
+                                  .where((d) => d['tribuId'] == widget.tribuId)
+                                  .map(
+                                    (d) => Container(
+                                      margin: EdgeInsets.only(bottom: 8),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(
+                                          color: primaryTeal.withOpacity(0.2),
+                                          width: 1,
+                                        ),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color:
+                                                Colors.black.withOpacity(0.03),
+                                            blurRadius: 4,
+                                            offset: Offset(0, 2),
+                                          ),
+                                        ],
+                                      ),
+                                      child: ListTile(
+                                        dense: true,
+                                        leading: CircleAvatar(
+                                          backgroundColor:
+                                              primaryTeal.withOpacity(0.1),
+                                          child: Icon(
+                                            Icons.person,
+                                            size: 20,
+                                            color: primaryTeal,
+                                          ),
+                                        ),
+                                        title: Text(
+                                          d['nombre'] ?? '',
+                                          style: TextStyle(
+                                              fontWeight: FontWeight.w600),
+                                        ),
+                                        subtitle: Text(
+                                          '${d['telefono']} | ${d['ministerio']}',
+                                          style: TextStyle(fontSize: 12),
+                                        ),
+
+                                        // ✅ BOTÓN DESASIGNAR - Solo visible si inscripciones ABIERTAS
+                                        trailing: !inscripcionesCerradas
+                                            ? Tooltip(
+                                                message: 'Desasignar discípulo',
+                                                child: Material(
+                                                  color: Colors.transparent,
+                                                  child: InkWell(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            20),
+                                                    onTap: () =>
+                                                        _desasignarDiscipuloDeClase(
+                                                      doc.id,
+                                                      d,
+                                                      nombreTribu,
+                                                    ),
+                                                    child: Container(
+                                                      padding:
+                                                          EdgeInsets.all(8),
+                                                      decoration: BoxDecoration(
+                                                        color: Colors.red
+                                                            .withOpacity(0.1),
+                                                        borderRadius:
+                                                            BorderRadius
+                                                                .circular(20),
+                                                        border: Border.all(
+                                                          color: Colors.red
+                                                              .withOpacity(0.3),
+                                                          width: 1,
+                                                        ),
+                                                      ),
+                                                      child: Icon(
+                                                        Icons
+                                                            .person_remove_outlined,
+                                                        color: Colors.red[700],
+                                                        size: 20,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                              )
+                                            : null,
+                                      ),
+                                    ),
+                                  ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _inscribirPersonaEnClase(
+      String claseId, Map<String, dynamic> claseData) async {
+    // ✅ VERIFICAR SI LAS INSCRIPCIONES ESTÁN CERRADAS
+    final inscripcionesCerradas = claseData['inscripcionesCerradas'] ?? false;
+
+    if (inscripcionesCerradas) {
+      showDialog(
+        context: context,
+        builder: (context) => Dialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          child: Container(
+            padding: EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.lock_outline,
+                    size: 64,
+                    color: Colors.red[600],
+                  ),
+                ),
+                SizedBox(height: 20),
+                Text(
+                  'Inscripciones Cerradas',
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.red[700],
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: 12),
+                Text(
+                  'Las inscripciones para esta clase han sido cerradas por el Departamento de Discipulado.',
+                  style: TextStyle(
+                    fontSize: 15,
+                    color: Colors.grey[700],
+                    height: 1.5,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red[600],
+                      padding: EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: Text(
+                      'Entendido',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+      return;
+    }
+
+    setState(() => isLoading = true);
+
+    try {
+      final results = await Future.wait([
+        FirebaseFirestore.instance
+            .collection('registros')
+            .where('tribuAsignada', isEqualTo: widget.tribuId)
+            .where('activo', isEqualTo: true)
+            .get(),
+        FirebaseFirestore.instance
+            .collection('eventos')
+            .where('tribuId', isEqualTo: widget.tribuId)
+            .where('estado', isEqualTo: 'activo')
+            .get(),
+      ]);
+
+      final personasSnapshot = results[0] as QuerySnapshot;
+      final eventosActivosSnapshot = results[1] as QuerySnapshot;
+
+      final Set<String> personasConInscripcionActiva = {};
+      final ahora = DateTime.now();
+
+      for (var eventoDoc in eventosActivosSnapshot.docs) {
+        final eventoData = eventoDoc.data() as Map<String, dynamic>;
+        final fechaFin = (eventoData['fechaFin'] as Timestamp).toDate();
+
+        if (fechaFin.isAfter(ahora)) {
+          final inscripcionesEvento = List<Map<String, dynamic>>.from(
+              eventoData['inscripciones'] ?? []);
+
+          for (var inscripcion in inscripcionesEvento) {
+            personasConInscripcionActiva
+                .add(inscripcion['personaId'] as String);
+          }
+        }
+      }
+
+      final discipulosActuales = List<Map<String, dynamic>>.from(
+          claseData['discipulosInscritos'] ?? []);
+
+      final Set<String> personasYaInscritasEstaClase =
+          discipulosActuales.map((d) => d['personaId'] as String).toSet();
+
+      final personasDisponibles = personasSnapshot.docs.where((doc) {
+        if (personasYaInscritasEstaClase.contains(doc.id)) {
+          return false;
+        }
+
+        if (personasConInscripcionActiva.contains(doc.id)) {
+          return false;
+        }
+
+        final data = doc.data() as Map<String, dynamic>?;
+        if (data == null) return false;
+
+        final nombre = data['nombre']?.toString().trim() ?? '';
+        return nombre.isNotEmpty && nombre != 'Sin nombre';
+      }).toList();
+
+      setState(() => isLoading = false);
+
+      if (personasDisponibles.isEmpty) {
+        final totalPersonas = personasSnapshot.docs.length;
+        final yaInscritas = discipulosActuales.length;
+        final conInscripcionesActivas = personasConInscripcionActiva.length;
+
+        String mensaje;
+        if (yaInscritas == totalPersonas) {
+          mensaje =
+              'Todas las personas de la tribu ya están inscritas en esta clase';
+        } else if (conInscripcionesActivas > 0) {
+          mensaje =
+              'Las personas restantes tienen inscripciones activas en otros eventos';
+        } else {
+          mensaje = 'No hay más personas disponibles para inscribir';
+        }
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(mensaje),
+            backgroundColor: Colors.orange,
+            duration: Duration(seconds: 4),
+          ),
+        );
+        return;
+      }
+
+      final seleccion = await showDialog<DocumentSnapshot>(
+        context: context,
+        builder: (context) => _DialogoBuscarPersona(
+          personas: personasDisponibles,
+          primaryColor: primaryTeal,
+          secondaryColor: secondaryOrange,
+        ),
+      );
+
+      if (seleccion != null) {
+        final personaData = seleccion.data() as Map<String, dynamic>;
+
+        String nombreTribu = 'Sin nombre';
+        try {
+          final tribuDoc = await FirebaseFirestore.instance
+              .collection('tribus')
+              .doc(widget.tribuId)
+              .get();
+
+          if (tribuDoc.exists) {
+            nombreTribu = tribuDoc.data()?['nombre'] ?? 'Sin nombre';
+          }
+        } catch (e) {
+          print('Error al obtener nombre de tribu: $e');
+        }
+
+        discipulosActuales.add({
+          'personaId': seleccion.id,
+          'nombre': '${personaData['nombre']} ${personaData['apellido']}',
+          'telefono': personaData['telefono'] ?? 'Sin teléfono',
+          'tribu': nombreTribu,
+          'tribuId': widget.tribuId,
+          'ministerio': personaData['ministerioAsignado'] ?? 'Sin ministerio',
+          'fechaInscripcion': Timestamp.now(),
+        });
+
+        await FirebaseFirestore.instance
+            .collection('clasesDiscipulado')
+            .doc(claseId)
+            .update({
+          'discipulosInscritos': discipulosActuales,
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${personaData['nombre']} inscrito correctamente'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      setState(() => isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al inscribir: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _desasignarDiscipuloDeClase(
+    String claseId,
+    Map<String, dynamic> discipulo,
+    String nombreTribu,
+  ) async {
+    final nombreCompleto = discipulo['nombre'] ?? 'Discípulo';
+
+    // ✅ Mostrar confirmación sin Future.delayed
+    final confirmar = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false, // Prevenir cierre accidental
+      builder: (dialogContext) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Container(
+          padding: EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Icono de advertencia
+              Container(
+                padding: EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.person_remove_outlined,
+                  size: 64,
+                  color: Colors.orange[700],
+                ),
+              ),
+              SizedBox(height: 20),
+
+              // Título
+              Text(
+                'Desasignar Discípulo',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: primaryTeal,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: 12),
+
+              // Mensaje
+              RichText(
+                textAlign: TextAlign.center,
+                text: TextSpan(
+                  style: TextStyle(
+                    fontSize: 15,
+                    color: Colors.grey[700],
+                    height: 1.5,
+                  ),
+                  children: [
+                    TextSpan(text: '¿Estás seguro de desasignar a '),
+                    TextSpan(
+                      text: '"$nombreCompleto"',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: primaryTeal,
+                      ),
+                    ),
+                    TextSpan(text: ' de '),
+                    TextSpan(
+                      text: '"$nombreTribu"',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: secondaryOrange,
+                      ),
+                    ),
+                    TextSpan(text: ' en esta clase?\n\n'),
+                    TextSpan(
+                      text:
+                          'Podrás volver a inscribirlo mientras las inscripciones estén abiertas.',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontStyle: FontStyle.italic,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(height: 24),
+
+              // Botones
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () => Navigator.of(dialogContext).pop(false),
+                      style: TextButton.styleFrom(
+                        padding: EdgeInsets.symmetric(vertical: 14),
+                      ),
+                      child: Text(
+                        'Cancelar',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.grey[700],
+                        ),
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.of(dialogContext).pop(true),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.orange[700],
+                        padding: EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: Text(
+                        'Desasignar',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    // ✅ Si no confirmó, salir inmediatamente
+    if (confirmar != true) return;
+
+    // ✅ Mostrar loading overlay
+    bool isLoading = true;
+
+    // Mostrar overlay de loading sin usar showDialog
+    final overlayEntry = OverlayEntry(
+      builder: (context) => Container(
+        color: Colors.black54,
+        child: Center(
+          child: Container(
+            padding: EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(primaryTeal),
+                ),
+                SizedBox(height: 16),
+                Text(
+                  'Desasignando...',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: primaryTeal,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    // Insertar overlay
+    Overlay.of(context)?.insert(overlayEntry);
+
+    try {
+      // ✅ Obtener la clase actual
+      final claseDoc = await FirebaseFirestore.instance
+          .collection('clasesDiscipulado')
+          .doc(claseId)
+          .get();
+
+      if (!claseDoc.exists) {
+        throw Exception('La clase no existe');
+      }
+
+      final claseData = claseDoc.data() as Map<String, dynamic>;
+      final discipulos = List<Map<String, dynamic>>.from(
+          claseData['discipulosInscritos'] ?? []);
+
+      // ✅ Verificar que el discípulo existe en la lista
+      final discipuloIndex = discipulos
+          .indexWhere((d) => d['personaId'] == discipulo['personaId']);
+
+      if (discipuloIndex == -1) {
+        throw Exception('El discípulo no está inscrito en esta clase');
+      }
+
+      // ✅ Eliminar el discípulo de la lista
+      discipulos.removeAt(discipuloIndex);
+
+      // ✅ Actualizar en Firebase
+      await FirebaseFirestore.instance
+          .collection('clasesDiscipulado')
+          .doc(claseId)
+          .update({
+        'discipulosInscritos': discipulos,
+      });
+
+      // ✅ Remover loading
+      overlayEntry.remove();
+
+      // ✅ Mostrar confirmación de éxito
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.white, size: 20),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    '$nombreCompleto desasignado correctamente',
+                    style: TextStyle(fontSize: 15),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.green[700],
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      // ✅ Remover loading en caso de error
+      overlayEntry.remove();
+
+      // ✅ Mostrar error
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.error_outline, color: Colors.white, size: 20),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Error al desasignar: ${e.toString()}',
+                    style: TextStyle(fontSize: 15),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.red[700],
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            duration: Duration(seconds: 4),
+          ),
+        );
+      }
+
+      // ✅ Log para debugging
+      print('❌ Error al desasignar discípulo: $e');
+    }
+  }
 }
 
 //----------------------------------------------------------------------------------------------
@@ -20241,31 +21040,19 @@ class _DialogoCrearEventoState extends State<DialogoCrearEvento> {
     }
   }
 
-  // =============================================================================
-// UBICACIÓN: Dentro de la clase _DialogoCrearEventoState
-// REEMPLAZA tu función _crearEvento() actual con esta versión completa
-// =============================================================================
-
-  /// Función auxiliar para obtener el nombre de la tribu desde Firebase
-  /// Parámetro: tribuId - ID de la tribu en Firebase
-  /// Retorna: Nombre de la tribu o "Sin nombre" si hay error
   Future<String> _obtenerNombreTribu(String tribuId) async {
     try {
-      // Consultar el documento de la tribu en Firebase
       final doc = await FirebaseFirestore.instance
           .collection('tribus')
           .doc(tribuId)
           .get();
 
-      // Verificar si el documento existe y tiene datos
       if (doc.exists && doc.data() != null) {
         return doc.data()?['nombre'] ?? 'Sin nombre';
       }
     } catch (e) {
-      // En caso de error, loggear para debugging
       print('Error al obtener nombre de tribu: $e');
     }
-    // Valor por defecto si no se puede obtener el nombre
     return 'Sin nombre';
   }
 

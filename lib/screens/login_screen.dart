@@ -134,6 +134,28 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                   .go('/ministerio_lider', extra: {'ministerio': ministerio});
             }
             break;
+
+          case 'departamentoDiscipulado':
+            if (mounted) {
+              context.go('/departamento_discipulado');
+            }
+            break;
+            
+          case 'maestroDiscipulado':
+            if (mounted) {
+              final maestroId = result['maestroId'] ?? '';
+              final maestroNombre = result['maestroNombre'] ?? '';
+              final claseAsignadaId = result['claseAsignadaId'];
+              
+              if (claseAsignadaId != null) {
+                context.go('/maestro_discipulado/$maestroId/$maestroNombre?claseAsignadaId=$claseAsignadaId');
+              } else {
+                context.go('/maestro_discipulado/$maestroId/$maestroNombre');
+              }
+            }
+            break;
+
+
           default:
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
