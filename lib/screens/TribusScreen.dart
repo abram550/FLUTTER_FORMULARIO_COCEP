@@ -19953,21 +19953,27 @@ class _InscripcionesTabState extends State<InscripcionesTab> {
           .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return Center(child: CircularProgressIndicator());
-        }
-
-        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.school_outlined, size: 80, color: Colors.grey[400]),
-                SizedBox(height: 16),
+                Container(
+                  padding: EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: primaryTeal.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(primaryTeal),
+                    strokeWidth: 3,
+                  ),
+                ),
+                SizedBox(height: 24),
                 Text(
-                  'No hay clases disponibles',
+                  'Cargando clases...',
                   style: TextStyle(
-                    fontSize: 18,
                     color: Colors.grey[600],
+                    fontSize: 16,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -19976,229 +19982,170 @@ class _InscripcionesTabState extends State<InscripcionesTab> {
           );
         }
 
-        return ListView.builder(
-          padding: EdgeInsets.all(16),
-          itemCount: snapshot.data!.docs.length,
-          itemBuilder: (context, index) {
-            final doc = snapshot.data!.docs[index];
-            final data = doc.data() as Map<String, dynamic>;
-            final discipulos = List<Map<String, dynamic>>.from(
-                data['discipulosInscritos'] ?? []);
-
-            // Verificar si hay personas de esta tribu inscritas
-            final personasDeEstaTribu =
-                discipulos.where((d) => d['tribuId'] == widget.tribuId).length;
-
-            return Card(
-              elevation: 4,
-              margin: EdgeInsets.only(bottom: 12),
-              shape: RoundedRectangleBorder(
+        if (snapshot.hasError) {
+          return Center(
+            child: Container(
+              padding: EdgeInsets.all(24),
+              margin: EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.red.shade50,
                 borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.red.shade200),
               ),
-              child: ExpansionTile(
-                leading: CircleAvatar(
-                  backgroundColor: primaryTeal,
-                  child: Icon(Icons.school, color: Colors.white),
-                ),
-                title: Text(
-                  data['tipo'] ?? '',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                subtitle: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Total módulos: ${data['totalModulos']}'),
-                    Text(
-                        'Inicio: ${DateFormat('dd/MM/yyyy').format((data['fechaInicio'] as Timestamp).toDate())}'),
-                    if (data['maestroNombre'] != null)
-                      Text(
-                        'Maestro: ${data['maestroNombre']}',
-                        style: TextStyle(
-                            color: Colors.green, fontWeight: FontWeight.bold),
-                      ),
-                    Text('Inscritos de esta tribu: $personasDeEstaTribu'),
-                  ],
-                ),
-                trailing: ElevatedButton.icon(
-                  icon: Icon(Icons.person_add, size: 18),
-                  label: Text('Inscribir'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: secondaryOrange,
-                    foregroundColor: Colors.white,
-                  ),
-                  onPressed: () => _inscribirPersonaEnClase(doc.id, data),
-                ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  if (personasDeEstaTribu > 0) ...[
-                    FutureBuilder<String>(
-                      future: _obtenerNombreTribu(widget.tribuId),
-                      builder: (context, snapshot) {
-                        final nombreTribu = snapshot.data ?? 'Cargando...';
-
-                        // ✅ OBTENER ESTADO DE INSCRIPCIONES
-                        final inscripcionesCerradas =
-                            data['inscripcionesCerradas'] ?? false;
-
-                        return Padding(
-                          padding: EdgeInsets.all(16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Header con estado de inscripciones
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      'Personas de $nombreTribu inscritas:',
-                                      style: TextStyle(
-                                          fontWeight: FontWeight.bold),
-                                    ),
-                                  ),
-                                  // ✅ INDICADOR DE ESTADO
-                                  Container(
-                                    padding: EdgeInsets.symmetric(
-                                        horizontal: 10, vertical: 6),
-                                    decoration: BoxDecoration(
-                                      color: inscripcionesCerradas
-                                          ? Colors.red.withOpacity(0.1)
-                                          : Colors.green.withOpacity(0.1),
-                                      borderRadius: BorderRadius.circular(8),
-                                      border: Border.all(
-                                        color: inscripcionesCerradas
-                                            ? Colors.red.withOpacity(0.3)
-                                            : Colors.green.withOpacity(0.3),
-                                      ),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(
-                                          inscripcionesCerradas
-                                              ? Icons.lock
-                                              : Icons.lock_open,
-                                          size: 14,
-                                          color: inscripcionesCerradas
-                                              ? Colors.red[700]
-                                              : Colors.green[700],
-                                        ),
-                                        SizedBox(width: 4),
-                                        Text(
-                                          inscripcionesCerradas
-                                              ? 'Cerradas'
-                                              : 'Abiertas',
-                                          style: TextStyle(
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.bold,
-                                            color: inscripcionesCerradas
-                                                ? Colors.red[700]
-                                                : Colors.green[700],
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              SizedBox(height: 8),
-
-                              // Lista de discípulos con botón de desasignar
-                              ...discipulos
-                                  .where((d) => d['tribuId'] == widget.tribuId)
-                                  .map(
-                                    (d) => Container(
-                                      margin: EdgeInsets.only(bottom: 8),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white,
-                                        borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(
-                                          color: primaryTeal.withOpacity(0.2),
-                                          width: 1,
-                                        ),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color:
-                                                Colors.black.withOpacity(0.03),
-                                            blurRadius: 4,
-                                            offset: Offset(0, 2),
-                                          ),
-                                        ],
-                                      ),
-                                      child: ListTile(
-                                        dense: true,
-                                        leading: CircleAvatar(
-                                          backgroundColor:
-                                              primaryTeal.withOpacity(0.1),
-                                          child: Icon(
-                                            Icons.person,
-                                            size: 20,
-                                            color: primaryTeal,
-                                          ),
-                                        ),
-                                        title: Text(
-                                          d['nombre'] ?? '',
-                                          style: TextStyle(
-                                              fontWeight: FontWeight.w600),
-                                        ),
-                                        subtitle: Text(
-                                          '${d['telefono']} | ${d['ministerio']}',
-                                          style: TextStyle(fontSize: 12),
-                                        ),
-
-                                        // ✅ BOTÓN DESASIGNAR - Solo visible si inscripciones ABIERTAS
-                                        trailing: !inscripcionesCerradas
-                                            ? Tooltip(
-                                                message: 'Desasignar discípulo',
-                                                child: Material(
-                                                  color: Colors.transparent,
-                                                  child: InkWell(
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                            20),
-                                                    onTap: () =>
-                                                        _desasignarDiscipuloDeClase(
-                                                      doc.id,
-                                                      d,
-                                                      nombreTribu,
-                                                    ),
-                                                    child: Container(
-                                                      padding:
-                                                          EdgeInsets.all(8),
-                                                      decoration: BoxDecoration(
-                                                        color: Colors.red
-                                                            .withOpacity(0.1),
-                                                        borderRadius:
-                                                            BorderRadius
-                                                                .circular(20),
-                                                        border: Border.all(
-                                                          color: Colors.red
-                                                              .withOpacity(0.3),
-                                                          width: 1,
-                                                        ),
-                                                      ),
-                                                      child: Icon(
-                                                        Icons
-                                                            .person_remove_outlined,
-                                                        color: Colors.red[700],
-                                                        size: 20,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                              )
-                                            : null,
-                                      ),
-                                    ),
-                                  ),
-                            ],
-                          ),
-                        );
-                      },
+                  Icon(Icons.error_outline, size: 64, color: Colors.red[400]),
+                  SizedBox(height: 16),
+                  Text(
+                    'Error al cargar clases',
+                    style: TextStyle(
+                      fontSize: 18,
+                      color: Colors.red[600],
+                      fontWeight: FontWeight.w600,
                     ),
-                  ],
+                  ),
                 ],
               ),
-            );
+            ),
+          );
+        }
+
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return Center(
+            child: Container(
+              padding: EdgeInsets.all(32),
+              margin: EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Colors.grey.shade50, Colors.grey.shade100],
+                ),
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 10,
+                    offset: Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade200,
+                      borderRadius: BorderRadius.circular(50),
+                    ),
+                    child: Icon(Icons.school_outlined,
+                        size: 48, color: Colors.grey[500]),
+                  ),
+                  SizedBox(height: 20),
+                  Text(
+                    'No hay clases disponibles',
+                    style: TextStyle(
+                      fontSize: 20,
+                      color: Colors.grey[700],
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    'Las clases aparecerán aquí cuando estén activas',
+                    style: TextStyle(
+                      color: Colors.grey[500],
+                      fontSize: 14,
+                      height: 1.5,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        // ✅ SEPARAR CLASES EN ABIERTAS Y CERRADAS Y ORDENAR
+        final todasLasClases = snapshot.data!.docs;
+
+        // Ordenar todas las clases por fechaInicio
+        todasLasClases.sort((a, b) {
+          final dataA = a.data() as Map<String, dynamic>;
+          final dataB = b.data() as Map<String, dynamic>;
+
+          final fechaA =
+              (dataA['fechaInicio'] as Timestamp?)?.toDate() ?? DateTime.now();
+          final fechaB =
+              (dataB['fechaInicio'] as Timestamp?)?.toDate() ?? DateTime.now();
+
+          return fechaA.compareTo(fechaB); // Orden cronológico ascendente
+        });
+
+        // Separar en abiertas y cerradas
+        final clasesAbiertas = todasLasClases
+            .where((doc) =>
+                !(doc.data()
+                    as Map<String, dynamic>)['inscripcionesCerradas'] ??
+                false)
+            .toList();
+
+        final clasesCerradas = todasLasClases
+            .where((doc) =>
+                (doc.data() as Map<String, dynamic>)['inscripcionesCerradas'] ??
+                false)
+            .toList();
+
+        return RefreshIndicator(
+          onRefresh: () async {
+            setState(() {}); // Forzar refresh
           },
+          color: primaryTeal,
+          child: ListView(
+            padding: EdgeInsets.all(16),
+            children: [
+              // ✅ SECCIÓN: CLASES CON INSCRIPCIONES ABIERTAS
+              if (clasesAbiertas.isNotEmpty) ...[
+                _buildSeccionClases(
+                  titulo: 'Inscripciones Abiertas',
+                  icono: Icons.lock_open_rounded,
+                  color: Colors.green,
+                  clases: clasesAbiertas,
+                  inicialmenteExpandido: false,
+                ),
+                SizedBox(height: 16),
+              ],
+
+              // ✅ SECCIÓN: CLASES CON INSCRIPCIONES CERRADAS
+              if (clasesCerradas.isNotEmpty) ...[
+                _buildSeccionClases(
+                  titulo: 'Inscripciones Cerradas',
+                  icono: Icons.lock_rounded,
+                  color: Colors.red,
+                  clases: clasesCerradas,
+                  inicialmenteExpandido: false,
+                ),
+              ],
+
+              // ✅ MENSAJE SI NO HAY CLASES EN NINGUNA CATEGORÍA
+              if (clasesAbiertas.isEmpty && clasesCerradas.isEmpty)
+                Container(
+                  padding: EdgeInsets.all(24),
+                  child: Text(
+                    'No hay clases disponibles en este momento',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.grey[600],
+                      fontSize: 16,
+                    ),
+                  ),
+                ),
+            ],
+          ),
         );
       },
     );
@@ -20700,6 +20647,481 @@ class _InscripcionesTabState extends State<InscripcionesTab> {
       // ✅ Log para debugging
       print('❌ Error al desasignar discípulo: $e');
     }
+  }
+
+  Widget _buildSeccionClases({
+    required String titulo,
+    required IconData icono,
+    required Color color,
+    required List<QueryDocumentSnapshot> clases,
+    required bool inicialmenteExpandido,
+  }) {
+    return Card(
+      elevation: 6,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Colors.white,
+              color.withOpacity(0.02),
+            ],
+          ),
+        ),
+        child: Theme(
+          data: Theme.of(context).copyWith(
+            dividerColor: Colors.transparent,
+          ),
+          child: ExpansionTile(
+            initiallyExpanded: inicialmenteExpandido,
+            tilePadding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            childrenPadding: EdgeInsets.only(bottom: 12),
+            leading: Container(
+              padding: EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icono, color: color, size: 26),
+            ),
+            title: Text(
+              titulo,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: color,
+                letterSpacing: 0.3,
+              ),
+            ),
+            subtitle: Padding(
+              padding: EdgeInsets.only(top: 4),
+              child: Text(
+                '${clases.length} ${clases.length == 1 ? 'clase' : 'clases'}',
+                style: TextStyle(
+                  color: Colors.grey[600],
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+            children: [
+              // ✅ Grid responsivo para las cards de clases
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 12),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    return Wrap(
+                      spacing: 12.0,
+                      runSpacing: 12.0,
+                      children: clases.map((claseDoc) {
+                        return _buildClaseCard(claseDoc, constraints.maxWidth);
+                      }).toList(),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Widget que construye la card individual de cada clase
+  Widget _buildClaseCard(DocumentSnapshot claseDoc, double maxWidth) {
+    final data = claseDoc.data() as Map<String, dynamic>;
+    final discipulos =
+        List<Map<String, dynamic>>.from(data['discipulosInscritos'] ?? []);
+    final personasDeEstaTribu =
+        discipulos.where((d) => d['tribuId'] == widget.tribuId).length;
+    final inscripcionesCerradas = data['inscripcionesCerradas'] ?? false;
+
+    // ✅ Cálculo responsivo del ancho
+    double cardWidth;
+    if (maxWidth > 900) {
+      cardWidth = (maxWidth - 48) / 3; // 3 columnas en pantallas grandes
+    } else if (maxWidth > 600) {
+      cardWidth = (maxWidth - 36) / 2; // 2 columnas en pantallas medianas
+    } else {
+      cardWidth = maxWidth - 24; // 1 columna en pantallas pequeñas
+    }
+
+    return AnimatedContainer(
+      duration: Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+      width: cardWidth,
+      child: Card(
+        elevation: 4,
+        margin: EdgeInsets.zero,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(
+            color: inscripcionesCerradas
+                ? Colors.red.withOpacity(0.3)
+                : Colors.green.withOpacity(0.3),
+            width: 2,
+          ),
+        ),
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: inscripcionesCerradas
+                  ? [Colors.red.shade50, Colors.red.shade100]
+                  : [Colors.green.shade50, Colors.green.shade100],
+            ),
+          ),
+          child: Padding(
+            padding: EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // ✅ Header con tipo y estado
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.school_rounded,
+                                color: primaryTeal,
+                                size: 20,
+                              ),
+                              SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  data['tipo'] ?? 'Clase',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                    color: primaryTeal,
+                                  ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: 8),
+                          // Badge de estado
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: inscripcionesCerradas
+                                  ? Colors.red.withOpacity(0.2)
+                                  : Colors.green.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: inscripcionesCerradas
+                                    ? Colors.red.withOpacity(0.4)
+                                    : Colors.green.withOpacity(0.4),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  inscripcionesCerradas
+                                      ? Icons.lock
+                                      : Icons.lock_open,
+                                  size: 12,
+                                  color: inscripcionesCerradas
+                                      ? Colors.red[700]
+                                      : Colors.green[700],
+                                ),
+                                SizedBox(width: 4),
+                                Text(
+                                  inscripcionesCerradas
+                                      ? 'Cerradas'
+                                      : 'Abiertas',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    color: inscripcionesCerradas
+                                        ? Colors.red[700]
+                                        : Colors.green[700],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 12),
+
+                // ✅ Información de la clase
+                Container(
+                  padding: EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.7),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Column(
+                    children: [
+                      _buildInfoRow(
+                        Icons.format_list_numbered_rounded,
+                        'Módulos',
+                        '${data['totalModulos'] ?? 0}',
+                        Colors.blue,
+                      ),
+                      Divider(height: 12, color: Colors.grey.shade300),
+                      _buildInfoRow(
+                        Icons.calendar_today_rounded,
+                        'Inicio',
+                        DateFormat('dd/MM/yyyy').format(
+                            (data['fechaInicio'] as Timestamp).toDate()),
+                        Colors.orange,
+                      ),
+                      if (data['maestroNombre'] != null) ...[
+                        Divider(height: 12, color: Colors.grey.shade300),
+                        _buildInfoRow(
+                          Icons.person_rounded,
+                          'Maestro',
+                          data['maestroNombre'],
+                          Colors.purple,
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                SizedBox(height: 12),
+
+                // ✅ Footer con contador e inscripción
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    // Contador de inscritos de esta tribu
+                    Container(
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            secondaryOrange.withOpacity(0.2),
+                            secondaryOrange.withOpacity(0.1),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: secondaryOrange.withOpacity(0.3),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.people_rounded,
+                              size: 16, color: secondaryOrange),
+                          SizedBox(width: 4),
+                          Text(
+                            '$personasDeEstaTribu',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              color: secondaryOrange,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // Botón de inscripción
+                    Tooltip(
+                      message: inscripcionesCerradas
+                          ? 'Inscripciones cerradas'
+                          : 'Inscribir persona',
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(20),
+                          onTap: inscripcionesCerradas
+                              ? () =>
+                                  _inscribirPersonaEnClase(claseDoc.id, data)
+                              : () =>
+                                  _inscribirPersonaEnClase(claseDoc.id, data),
+                          child: Container(
+                            padding: EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: inscripcionesCerradas
+                                  ? Colors.grey.shade300
+                                  : primaryTeal.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: inscripcionesCerradas
+                                    ? Colors.grey.shade400
+                                    : primaryTeal.withOpacity(0.3),
+                              ),
+                            ),
+                            child: Icon(
+                              Icons.person_add_rounded,
+                              color: inscripcionesCerradas
+                                  ? Colors.grey.shade600
+                                  : primaryTeal,
+                              size: 20,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+
+                // ✅ Lista de inscritos expandible (si hay)
+                if (personasDeEstaTribu > 0) ...[
+                  SizedBox(height: 12),
+                  Theme(
+                    data: Theme.of(context).copyWith(
+                      dividerColor: Colors.transparent,
+                    ),
+                    child: ExpansionTile(
+                      tilePadding: EdgeInsets.zero,
+                      childrenPadding: EdgeInsets.only(top: 8),
+                      title: Text(
+                        'Ver inscritos de esta tribu',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: primaryTeal,
+                        ),
+                      ),
+                      leading:
+                          Icon(Icons.expand_more, color: primaryTeal, size: 20),
+                      children: [
+                        Container(
+                          padding: EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.5),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Column(
+                            children: discipulos
+                                .where((d) => d['tribuId'] == widget.tribuId)
+                                .map((d) => Padding(
+                                      padding: EdgeInsets.only(bottom: 6),
+                                      child: Row(
+                                        children: [
+                                          CircleAvatar(
+                                            backgroundColor:
+                                                primaryTeal.withOpacity(0.1),
+                                            radius: 14,
+                                            child: Icon(Icons.person,
+                                                size: 14, color: primaryTeal),
+                                          ),
+                                          SizedBox(width: 8),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  d['nombre'] ?? '',
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                                ),
+                                                Text(
+                                                  '${d['telefono']} | ${d['ministerio']}',
+                                                  style: TextStyle(
+                                                    fontSize: 10,
+                                                    color: Colors.grey[600],
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          if (!inscripcionesCerradas)
+                                            Tooltip(
+                                              message: 'Desasignar',
+                                              child: InkWell(
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
+                                                onTap: () async {
+                                                  final nombreTribu =
+                                                      await _obtenerNombreTribu(
+                                                          widget.tribuId);
+                                                  _desasignarDiscipuloDeClase(
+                                                      claseDoc.id,
+                                                      d,
+                                                      nombreTribu);
+                                                },
+                                                child: Container(
+                                                  padding: EdgeInsets.all(4),
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.red
+                                                        .withOpacity(0.1),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            12),
+                                                  ),
+                                                  child: Icon(
+                                                    Icons.close_rounded,
+                                                    color: Colors.red[700],
+                                                    size: 16,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                    ))
+                                .toList(),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Widget auxiliar para filas de información
+  Widget _buildInfoRow(IconData icon, String label, String value, Color color) {
+    return Row(
+      children: [
+        Icon(icon, size: 14, color: color),
+        SizedBox(width: 6),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            color: Colors.grey[700],
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        Spacer(),
+        Flexible(
+          child: Text(
+            value,
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey[800],
+              fontWeight: FontWeight.w600,
+            ),
+            textAlign: TextAlign.right,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
   }
 }
 
