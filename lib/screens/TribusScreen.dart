@@ -18364,6 +18364,102 @@ class _InscripcionesTabState extends State<InscripcionesTab> {
 
   @override
   Widget build(BuildContext context) {
+    // ✅ Obtener información de la pantalla
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+
+    // ✅ Definir breakpoints responsivos
+    final isVerySmall = screenWidth < 360;
+    final isSmall = screenWidth < 600;
+    final isMedium = screenWidth >= 600 && screenWidth < 900;
+    final isLarge = screenWidth >= 900;
+
+    // ✅ Calcular tamaños de fuente responsivos
+    final titleFontSize = isVerySmall
+        ? 16.0
+        : isSmall
+            ? 18.0
+            : isMedium
+                ? 20.0
+                : 22.0;
+    final subtitleFontSize = isVerySmall
+        ? 12.0
+        : isSmall
+            ? 13.0
+            : isMedium
+                ? 14.0
+                : 15.0;
+    final buttonFontSize = isVerySmall
+        ? 11.0
+        : isSmall
+            ? 12.0
+            : isMedium
+                ? 13.0
+                : 14.0;
+    final buttonIconSize = isVerySmall
+        ? 16.0
+        : isSmall
+            ? 18.0
+            : isMedium
+                ? 20.0
+                : 22.0;
+
+    // ✅ Calcular padding responsivo
+    final horizontalPadding = isVerySmall
+        ? 12.0
+        : isSmall
+            ? 14.0
+            : isMedium
+                ? 16.0
+                : 20.0;
+    final verticalPadding = isVerySmall
+        ? 12.0
+        : isSmall
+            ? 14.0
+            : isMedium
+                ? 16.0
+                : 18.0;
+
+    // ✅ Definir textos dinámicos según la pestaña activa
+    String getTituloActual() {
+      switch (_vistaMostrada) {
+        case 'eventos':
+          return 'Eventos e Inscripciones';
+        case 'cumpleanos':
+          return 'Cumpleaños del Mes';
+        case 'clases':
+          return 'Clases de Discipulado';
+        default:
+          return 'Eventos e Inscripciones';
+      }
+    }
+
+    String getSubtituloActual() {
+      switch (_vistaMostrada) {
+        case 'eventos':
+          return 'Gestiona encuentros, raíces y reencuentros';
+        case 'cumpleanos':
+          return 'Celebra con los cumpleañeros de este mes';
+        case 'clases':
+          return 'Inscribe discípulos en las clases activas';
+        default:
+          return '';
+      }
+    }
+
+    IconData getIconoActual() {
+      switch (_vistaMostrada) {
+        case 'eventos':
+          return Icons.event_note;
+        case 'cumpleanos':
+          return Icons.cake;
+        case 'clases':
+          return Icons.school;
+        default:
+          return Icons.event_note;
+      }
+    }
+
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
@@ -18375,9 +18471,14 @@ class _InscripcionesTabState extends State<InscripcionesTab> {
       ),
       child: Column(
         children: [
-          // Header con botón para crear evento
+          // ═══════════════════════════════════════════════════════════════
+          // HEADER RESPONSIVO CON PESTAÑAS Y BOTÓN CONDICIONAL
+          // ═══════════════════════════════════════════════════════════════
           Container(
-            padding: EdgeInsets.all(16),
+            padding: EdgeInsets.symmetric(
+              horizontal: horizontalPadding,
+              vertical: verticalPadding,
+            ),
             decoration: BoxDecoration(
               color: primaryTeal,
               borderRadius: BorderRadius.only(
@@ -18394,116 +18495,386 @@ class _InscripcionesTabState extends State<InscripcionesTab> {
             ),
             child: Column(
               children: [
+                // ───────────────────────────────────────────────────────────
+                // FILA DE 3 PESTAÑAS - COMPLETAMENTE RESPONSIVA
+                // ───────────────────────────────────────────────────────────
                 Container(
-                  margin: EdgeInsets.only(bottom: 12),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: _vistaMostrada == 'eventos'
-                                ? Colors.white
-                                : Colors.white.withOpacity(0.3),
-                            foregroundColor: _vistaMostrada == 'eventos'
-                                ? primaryTeal
-                                : Colors.white,
-                            elevation: _vistaMostrada == 'eventos' ? 2 : 0,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                  margin: EdgeInsets.only(bottom: isVerySmall ? 10 : 12),
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final availableWidth = constraints.maxWidth;
+                      final buttonSpacing = isVerySmall
+                          ? 4.0
+                          : isSmall
+                              ? 6.0
+                              : 8.0;
+                      final totalSpacing =
+                          buttonSpacing * 2; // Espacios entre 3 botones
+                      final buttonWidth = (availableWidth - totalSpacing) / 3;
+
+                      return Row(
+                        children: [
+                          // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                          // BOTÓN 1: EVENTOS
+                          // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                          Flexible(
+                            flex: 1,
+                            child: SizedBox(
+                              width: buttonWidth,
+                              child: ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: _vistaMostrada == 'eventos'
+                                      ? Colors.white
+                                      : Colors.white.withOpacity(0.3),
+                                  foregroundColor: _vistaMostrada == 'eventos'
+                                      ? primaryTeal
+                                      : Colors.white,
+                                  elevation:
+                                      _vistaMostrada == 'eventos' ? 2 : 0,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(
+                                        isVerySmall ? 10 : 12),
+                                  ),
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: isVerySmall
+                                        ? 4
+                                        : isSmall
+                                            ? 6
+                                            : 8,
+                                    vertical: isVerySmall
+                                        ? 8
+                                        : isSmall
+                                            ? 10
+                                            : 12,
+                                  ),
+                                ),
+                                onPressed: () =>
+                                    setState(() => _vistaMostrada = 'eventos'),
+                                child: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.event_note,
+                                          size: buttonIconSize),
+                                      if (screenWidth > 380) ...[
+                                        SizedBox(width: 4),
+                                        Text(
+                                          'Eventos',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: buttonFontSize,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                              ),
                             ),
                           ),
-                          icon: Icon(Icons.event_note, size: 20),
-                          label: Text('Eventos',
-                              style: TextStyle(fontWeight: FontWeight.bold)),
-                          onPressed: () =>
-                              setState(() => _vistaMostrada = 'eventos'),
-                        ),
-                      ),
-                      SizedBox(width: 8),
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: _vistaMostrada == 'cumpleanos'
-                                ? Colors.white
-                                : Colors.white.withOpacity(0.3),
-                            foregroundColor: _vistaMostrada == 'cumpleanos'
-                                ? primaryTeal
-                                : Colors.white,
-                            elevation: _vistaMostrada == 'cumpleanos' ? 2 : 0,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                          SizedBox(width: buttonSpacing),
+
+                          // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                          // BOTÓN 2: CUMPLEAÑOS
+                          // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                          Flexible(
+                            flex: 1,
+                            child: SizedBox(
+                              width: buttonWidth,
+                              child: ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor:
+                                      _vistaMostrada == 'cumpleanos'
+                                          ? Colors.white
+                                          : Colors.white.withOpacity(0.3),
+                                  foregroundColor:
+                                      _vistaMostrada == 'cumpleanos'
+                                          ? primaryTeal
+                                          : Colors.white,
+                                  elevation:
+                                      _vistaMostrada == 'cumpleanos' ? 2 : 0,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(
+                                        isVerySmall ? 10 : 12),
+                                  ),
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: isVerySmall
+                                        ? 4
+                                        : isSmall
+                                            ? 6
+                                            : 8,
+                                    vertical: isVerySmall
+                                        ? 8
+                                        : isSmall
+                                            ? 10
+                                            : 12,
+                                  ),
+                                ),
+                                onPressed: () => setState(
+                                    () => _vistaMostrada = 'cumpleanos'),
+                                child: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.cake, size: buttonIconSize),
+                                      if (screenWidth > 380) ...[
+                                        SizedBox(width: 4),
+                                        Text(
+                                          'Cumpleaños',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: buttonFontSize,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                              ),
                             ),
                           ),
-                          icon: Icon(Icons.cake, size: 20),
-                          label: Text('Cumpleaños',
-                              style: TextStyle(fontWeight: FontWeight.bold)),
-                          onPressed: () =>
-                              setState(() => _vistaMostrada = 'cumpleanos'),
-                        ),
-                      ),
-                      SizedBox(width: 8),
-                      // ✅ NUEVO BOTÓN - Clases de Discipulado
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: _vistaMostrada == 'clases'
-                                ? Colors.white
-                                : Colors.white.withOpacity(0.3),
-                            foregroundColor: _vistaMostrada == 'clases'
-                                ? primaryTeal
-                                : Colors.white,
-                            elevation: _vistaMostrada == 'clases' ? 2 : 0,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                          SizedBox(width: buttonSpacing),
+
+                          // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                          // BOTÓN 3: CLASES
+                          // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                          Flexible(
+                            flex: 1,
+                            child: SizedBox(
+                              width: buttonWidth,
+                              child: ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: _vistaMostrada == 'clases'
+                                      ? Colors.white
+                                      : Colors.white.withOpacity(0.3),
+                                  foregroundColor: _vistaMostrada == 'clases'
+                                      ? primaryTeal
+                                      : Colors.white,
+                                  elevation: _vistaMostrada == 'clases' ? 2 : 0,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(
+                                        isVerySmall ? 10 : 12),
+                                  ),
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: isVerySmall
+                                        ? 4
+                                        : isSmall
+                                            ? 6
+                                            : 8,
+                                    vertical: isVerySmall
+                                        ? 8
+                                        : isSmall
+                                            ? 10
+                                            : 12,
+                                  ),
+                                ),
+                                onPressed: () =>
+                                    setState(() => _vistaMostrada = 'clases'),
+                                child: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.school, size: buttonIconSize),
+                                      if (screenWidth > 380) ...[
+                                        SizedBox(width: 4),
+                                        Text(
+                                          'Clases',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: buttonFontSize,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                              ),
                             ),
                           ),
-                          icon: Icon(Icons.school, size: 20),
-                          label: Text('Clases',
-                              style: TextStyle(fontWeight: FontWeight.bold)),
-                          onPressed: () =>
-                              setState(() => _vistaMostrada = 'clases'),
-                        ),
-                      ),
-                    ],
+                        ],
+                      );
+                    },
                   ),
                 ),
-                // Header title and action button
-                Row(
-                  children: [
-                    Icon(mostrandoCumpleanos ? Icons.cake : Icons.event_note,
-                        color: Colors.white, size: 28),
-                    SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        mostrandoCumpleanos
-                            ? 'Cumpleaños del Mes'
-                            : 'Eventos e Inscripciones',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
+
+                // ───────────────────────────────────────────────────────────
+                // TÍTULO DINÁMICO Y BOTÓN CREAR EVENTO (SOLO EN EVENTOS)
+                // ───────────────────────────────────────────────────────────
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final showFullButton = screenWidth > 450;
+                    final showCompactButton =
+                        screenWidth > 350 && screenWidth <= 450;
+
+                    return Row(
+                      children: [
+                        // Icono representativo
+                        Icon(
+                          getIconoActual(),
                           color: Colors.white,
+                          size: isVerySmall
+                              ? 24
+                              : isSmall
+                                  ? 26
+                                  : 28,
                         ),
-                      ),
-                    ),
-                    if (!mostrandoCumpleanos)
-                      ElevatedButton.icon(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: secondaryOrange,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                        SizedBox(width: isVerySmall ? 8 : 12),
+
+                        // Título y subtítulo
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: Alignment.centerLeft,
+                                child: Text(
+                                  getTituloActual(),
+                                  style: TextStyle(
+                                    fontSize: titleFontSize,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                    letterSpacing: 0.3,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              if (getSubtituloActual().isNotEmpty) ...[
+                                SizedBox(height: 2),
+                                FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  alignment: Alignment.centerLeft,
+                                  child: Text(
+                                    getSubtituloActual(),
+                                    style: TextStyle(
+                                      fontSize: subtitleFontSize,
+                                      color: Colors.white.withOpacity(0.9),
+                                      fontWeight: FontWeight.w400,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ],
                           ),
                         ),
-                        icon: Icon(Icons.add, color: Colors.white),
-                        label: Text('Crear Evento',
-                            style: TextStyle(color: Colors.white)),
-                        onPressed: () => _mostrarDialogoCrearEvento(),
-                      ),
-                  ],
+
+                        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                        // BOTÓN "CREAR EVENTO" - SOLO EN PESTAÑA EVENTOS
+                        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                        if (_vistaMostrada == 'eventos') ...[
+                          SizedBox(width: isVerySmall ? 6 : 8),
+
+                          // Versión completa (pantallas grandes)
+                          if (showFullButton)
+                            ElevatedButton.icon(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: secondaryOrange,
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: isMedium ? 16 : 20,
+                                  vertical: isMedium ? 10 : 12,
+                                ),
+                              ),
+                              icon: Icon(Icons.add, size: buttonIconSize),
+                              label: Text(
+                                'Crear Evento',
+                                style: TextStyle(
+                                  fontSize: buttonFontSize,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              onPressed: () => _mostrarDialogoCrearEvento(),
+                            )
+
+                          // Versión compacta (pantallas medianas)
+                          else if (showCompactButton)
+                            ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: secondaryOrange,
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 10,
+                                ),
+                              ),
+                              onPressed: () => _mostrarDialogoCrearEvento(),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.add, size: buttonIconSize),
+                                  SizedBox(width: 4),
+                                  Text(
+                                    'Crear',
+                                    style: TextStyle(
+                                      fontSize: buttonFontSize,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )
+
+                          // Versión solo icono (pantallas pequeñas)
+                          else
+                            Container(
+                              decoration: BoxDecoration(
+                                color: secondaryOrange,
+                                borderRadius: BorderRadius.circular(12),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.2),
+                                    blurRadius: 4,
+                                    offset: Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  borderRadius: BorderRadius.circular(12),
+                                  onTap: () => _mostrarDialogoCrearEvento(),
+                                  child: Padding(
+                                    padding:
+                                        EdgeInsets.all(isVerySmall ? 8 : 10),
+                                    child: Icon(
+                                      Icons.add,
+                                      color: Colors.white,
+                                      size: buttonIconSize,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ],
+                    );
+                  },
                 ),
               ],
             ),
           ),
-          // Lista de eventos
+
+          // ═══════════════════════════════════════════════════════════════
+          // CONTENIDO DE LAS PESTAÑAS
+          // ═══════════════════════════════════════════════════════════════
           Expanded(
             child: _vistaMostrada == 'cumpleanos'
                 ? _buildCumpleanosView()
@@ -22857,6 +23228,8 @@ class _DialogoBuscarPersona extends StatefulWidget {
 
 class _DialogoBuscarPersonaState extends State<_DialogoBuscarPersona> {
   final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocusNode = FocusNode();
+  final ScrollController _scrollController = ScrollController();
   List<DocumentSnapshot> personasFiltradas = [];
 
   @override
@@ -22870,6 +23243,8 @@ class _DialogoBuscarPersonaState extends State<_DialogoBuscarPersona> {
   void dispose() {
     _searchController.removeListener(_filtrarPersonas);
     _searchController.dispose();
+    _searchFocusNode.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -22883,11 +23258,8 @@ class _DialogoBuscarPersonaState extends State<_DialogoBuscarPersona> {
         personasFiltradas = widget.personas.where((doc) {
           try {
             final data = doc.data() as Map<String, dynamic>?;
-
-            // ✅ Validar que data no sea null
             if (data == null) return false;
 
-            // ✅ Manejo seguro de campos
             final nombre = data['nombre']?.toString().toLowerCase() ?? '';
             final apellido = data['apellido']?.toString().toLowerCase() ?? '';
             final nombreCompleto = '$nombre $apellido'.trim();
@@ -22900,201 +23272,417 @@ class _DialogoBuscarPersonaState extends State<_DialogoBuscarPersona> {
         }).toList();
       }
     });
+
+    // ✅ Auto-scroll al inicio después de filtrar
+    if (_scrollController.hasClients) {
+      _scrollController.jumpTo(0);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      child: Container(
-        width: MediaQuery.of(context).size.width * 0.9,
-        height: MediaQuery.of(context).size.height * 0.7,
-        padding: EdgeInsets.all(20),
-        child: Column(
-          children: [
-            // Header
-            Container(
-              padding: EdgeInsets.all(12),
+    final screenSize = MediaQuery.of(context).size;
+    final isSmallScreen = screenSize.width < 600;
+
+    return GestureDetector(
+      onTap: () => Navigator.pop(context), // ✅ Cerrar al tocar afuera
+      child: Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: EdgeInsets.zero, // ✅ Sin padding automático
+        child: GestureDetector(
+          onTap: () {}, // ✅ Prevenir cierre al tocar el dialog
+          child: Center(
+            child: Container(
+              width: isSmallScreen ? screenSize.width * 0.92 : 600,
+              height: screenSize.height * 0.80, // ✅ Altura fija
+              margin: EdgeInsets.symmetric(horizontal: 16),
               decoration: BoxDecoration(
-                color: widget.primaryColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(10),
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black26,
+                    blurRadius: 20,
+                    offset: Offset(0, 10),
+                  ),
+                ],
               ),
-              child: Row(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.person_search,
-                      color: widget.primaryColor, size: 28),
-                  SizedBox(width: 12),
-                  Text(
-                    'Buscar Persona',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: widget.primaryColor,
+                  // ═══════════════════════════════════════════════════════
+                  // HEADER FIJO
+                  // ═══════════════════════════════════════════════════════
+                  Container(
+                    padding: EdgeInsets.all(isSmallScreen ? 14 : 18),
+                    decoration: BoxDecoration(
+                      color: widget.primaryColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.only(
+                        topLeft: Radius.circular(20),
+                        topRight: Radius.circular(20),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.person_search,
+                          color: widget.primaryColor,
+                          size: isSmallScreen ? 22 : 26,
+                        ),
+                        SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            'Buscar Persona',
+                            style: TextStyle(
+                              fontSize: isSmallScreen ? 17 : 19,
+                              fontWeight: FontWeight.bold,
+                              color: widget.primaryColor,
+                            ),
+                          ),
+                        ),
+                        Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(20),
+                            onTap: () => Navigator.pop(context),
+                            child: Container(
+                              padding: EdgeInsets.all(6),
+                              child: Icon(
+                                Icons.close,
+                                color: Colors.grey[600],
+                                size: isSmallScreen ? 20 : 24,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // ═══════════════════════════════════════════════════════
+                  // BARRA DE BÚSQUEDA FIJA
+                  // ═══════════════════════════════════════════════════════
+                  Container(
+                    padding: EdgeInsets.fromLTRB(
+                      isSmallScreen ? 12 : 16,
+                      isSmallScreen ? 12 : 14,
+                      isSmallScreen ? 12 : 16,
+                      isSmallScreen ? 8 : 10,
+                    ),
+                    child: TextField(
+                      controller: _searchController,
+                      focusNode: _searchFocusNode,
+                      autofocus: false,
+                      style: TextStyle(
+                        fontSize: isSmallScreen ? 14 : 16,
+                        height: 1.3,
+                      ),
+                      decoration: InputDecoration(
+                        hintText: 'Buscar por nombre...',
+                        hintStyle: TextStyle(
+                          fontSize: isSmallScreen ? 13 : 15,
+                          color: Colors.grey[500],
+                        ),
+                        prefixIcon: Icon(
+                          Icons.search,
+                          color: widget.primaryColor,
+                          size: isSmallScreen ? 20 : 22,
+                        ),
+                        suffixIcon: _searchController.text.isNotEmpty
+                            ? IconButton(
+                                icon: Icon(
+                                  Icons.clear,
+                                  size: isSmallScreen ? 18 : 20,
+                                ),
+                                onPressed: () {
+                                  _searchController.clear();
+                                  _searchFocusNode.unfocus();
+                                },
+                                padding: EdgeInsets.all(8),
+                                constraints: BoxConstraints(),
+                              )
+                            : null,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: widget.primaryColor),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.grey[300]!),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(
+                            color: widget.primaryColor,
+                            width: 2,
+                          ),
+                        ),
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: isSmallScreen ? 10 : 14,
+                          vertical: isSmallScreen ? 12 : 14,
+                        ),
+                        isDense: true,
+                      ),
+                    ),
+                  ),
+
+                  // ═══════════════════════════════════════════════════════
+                  // CONTADOR DE RESULTADOS FIJO
+                  // ═══════════════════════════════════════════════════════
+                  Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: isSmallScreen ? 12 : 16,
+                      vertical: 4,
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.people_outline,
+                          size: isSmallScreen ? 14 : 16,
+                          color: Colors.grey[600],
+                        ),
+                        SizedBox(width: 6),
+                        Text(
+                          '${personasFiltradas.length} ${personasFiltradas.length == 1 ? 'persona' : 'personas'}',
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: isSmallScreen ? 12 : 13,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // ═══════════════════════════════════════════════════════
+                  // LISTA SCROLLABLE - ÁREA EXPANSIBLE
+                  // ═══════════════════════════════════════════════════════
+
+                  Expanded(
+                    child: personasFiltradas.isEmpty
+                        ? Center(
+                            child: Padding(
+                              padding: EdgeInsets.all(isSmallScreen ? 16 : 24),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Container(
+                                    padding:
+                                        EdgeInsets.all(isSmallScreen ? 14 : 18),
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey[100],
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(
+                                      Icons.person_off_outlined,
+                                      size: isSmallScreen ? 40 : 50,
+                                      color: Colors.grey[400],
+                                    ),
+                                  ),
+                                  SizedBox(height: isSmallScreen ? 12 : 16),
+                                  Text(
+                                    'No se encontraron personas',
+                                    style: TextStyle(
+                                      fontSize: isSmallScreen ? 15 : 17,
+                                      color: Colors.grey[700],
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                  SizedBox(height: 6),
+                                  Text(
+                                    'Intenta con otro término',
+                                    style: TextStyle(
+                                      color: Colors.grey[500],
+                                      fontSize: isSmallScreen ? 12 : 14,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          )
+                        : NotificationListener<ScrollNotification>(
+                            onNotification: (notification) {
+                              // ✅ SOLUCIÓN: Prevenir que el scroll cierre el teclado
+                              return true; // Consumir la notificación
+                            },
+                            child: ListView.builder(
+                              controller: _scrollController,
+                              padding: EdgeInsets.fromLTRB(
+                                isSmallScreen ? 8 : 12,
+                                4,
+                                isSmallScreen ? 8 : 12,
+                                8,
+                              ),
+                              itemCount: personasFiltradas.length,
+                              keyboardDismissBehavior:
+                                  ScrollViewKeyboardDismissBehavior
+                                      .manual, // ✅ CRÍTICO
+                              physics: AlwaysScrollableScrollPhysics(),
+                              itemBuilder: (context, index) {
+                                final doc = personasFiltradas[index];
+
+                                try {
+                                  final data =
+                                      doc.data() as Map<String, dynamic>?;
+                                  if (data == null) {
+                                    return SizedBox.shrink();
+                                  }
+
+                                  final nombre = data['nombre']?.toString() ??
+                                      'Sin nombre';
+                                  final apellido =
+                                      data['apellido']?.toString() ?? '';
+                                  final nombreCompleto = apellido.isNotEmpty
+                                      ? '$nombre $apellido'
+                                      : nombre;
+
+                                  return Card(
+                                    margin: EdgeInsets.symmetric(
+                                      vertical: isSmallScreen ? 4 : 5,
+                                      horizontal: 2,
+                                    ),
+                                    elevation: 2,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: InkWell(
+                                      borderRadius: BorderRadius.circular(12),
+                                      onTap: () {
+                                        _searchFocusNode.unfocus();
+                                        Navigator.pop(context, doc);
+                                      },
+                                      child: Padding(
+                                        padding: EdgeInsets.symmetric(
+                                          horizontal: isSmallScreen ? 10 : 14,
+                                          vertical: isSmallScreen ? 10 : 12,
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            // Avatar
+                                            CircleAvatar(
+                                              backgroundColor: widget
+                                                  .primaryColor
+                                                  .withOpacity(0.1),
+                                              radius: isSmallScreen ? 18 : 22,
+                                              child: Text(
+                                                nombreCompleto.isNotEmpty
+                                                    ? nombreCompleto[0]
+                                                        .toUpperCase()
+                                                    : '?',
+                                                style: TextStyle(
+                                                  color: widget.primaryColor,
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize:
+                                                      isSmallScreen ? 15 : 17,
+                                                ),
+                                              ),
+                                            ),
+                                            SizedBox(
+                                                width: isSmallScreen ? 10 : 14),
+
+                                            // Nombre
+                                            Expanded(
+                                              child: Text(
+                                                nombreCompleto,
+                                                style: TextStyle(
+                                                  fontWeight: FontWeight.w600,
+                                                  fontSize:
+                                                      isSmallScreen ? 14 : 15,
+                                                  color: Colors.black87,
+                                                  height: 1.3,
+                                                ),
+                                                maxLines: 2,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+
+                                            // Icono de acción
+                                            Container(
+                                              padding: EdgeInsets.all(6),
+                                              decoration: BoxDecoration(
+                                                color: widget.secondaryColor
+                                                    .withOpacity(0.1),
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                              ),
+                                              child: Icon(
+                                                Icons.add_circle_outline,
+                                                color: widget.secondaryColor,
+                                                size: isSmallScreen ? 20 : 24,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                } catch (e) {
+                                  print('Error mostrando persona: $e');
+                                  return SizedBox.shrink();
+                                }
+                              },
+                            ),
+                          ),
+                  ),
+                  // ═══════════════════════════════════════════════════════
+                  // BOTÓN CANCELAR FIJO - SIEMPRE AL FINAL
+                  // ═══════════════════════════════════════════════════════
+                  Container(
+                    padding: EdgeInsets.fromLTRB(
+                      isSmallScreen ? 12 : 16,
+                      isSmallScreen ? 10 : 12,
+                      isSmallScreen ? 12 : 16,
+                      isSmallScreen ? 12 : 14,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      border: Border(
+                        top: BorderSide(color: Colors.grey[300]!, width: 1),
+                      ),
+                      borderRadius: BorderRadius.only(
+                        bottomLeft: Radius.circular(20),
+                        bottomRight: Radius.circular(20),
+                      ),
+                    ),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: TextButton(
+                        onPressed: () {
+                          _searchFocusNode.unfocus();
+                          Navigator.pop(context);
+                        },
+                        style: TextButton.styleFrom(
+                          padding: EdgeInsets.symmetric(
+                            vertical: isSmallScreen ? 12 : 14,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          backgroundColor: Colors.grey[100],
+                        ),
+                        child: Text(
+                          'Cancelar',
+                          style: TextStyle(
+                            color: Colors.grey[700],
+                            fontSize: isSmallScreen ? 14 : 15,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
-            SizedBox(height: 16),
-
-            // Barra de búsqueda
-            TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                hintText: 'Buscar por nombre o registro...',
-                prefixIcon: Icon(Icons.search, color: widget.primaryColor),
-                suffixIcon: _searchController.text.isNotEmpty
-                    ? IconButton(
-                        icon: Icon(Icons.clear),
-                        onPressed: () {
-                          _searchController.clear();
-                        },
-                      )
-                    : null,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: widget.primaryColor),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: widget.primaryColor, width: 2),
-                ),
-              ),
-            ),
-            SizedBox(height: 16),
-
-            // Contador de resultados
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                '${personasFiltradas.length} persona(s) encontrada(s)',
-                style: TextStyle(
-                  color: Colors.grey[600],
-                  fontSize: 14,
-                ),
-              ),
-            ),
-            SizedBox(height: 12),
-
-            // Lista de personas
-            Expanded(
-              child: personasFiltradas.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.person_off,
-                            size: 64,
-                            color: Colors.grey[400],
-                          ),
-                          SizedBox(height: 16),
-                          Text(
-                            'No se encontraron personas',
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: Colors.grey[600],
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          SizedBox(height: 8),
-                          Text(
-                            'Intenta con otro término de búsqueda',
-                            style: TextStyle(color: Colors.grey[500]),
-                          ),
-                        ],
-                      ),
-                    )
-                  : ListView.builder(
-                      itemCount: personasFiltradas.length,
-                      itemBuilder: (context, index) {
-                        final doc = personasFiltradas[index];
-
-                        try {
-                          final data = doc.data() as Map<String, dynamic>?;
-
-                          // ✅ Validar que data no sea null
-                          if (data == null) {
-                            return SizedBox.shrink();
-                          }
-
-                          // ✅ Manejo seguro de campos
-                          final nombre =
-                              data['nombre']?.toString() ?? 'Sin nombre';
-                          final apellido = data['apellido']?.toString() ?? '';
-                          final nombreCompleto = apellido.isNotEmpty
-                              ? '$nombre $apellido'
-                              : nombre;
-
-                          return Card(
-                            margin: EdgeInsets.symmetric(vertical: 4),
-                            elevation: 2,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: ListTile(
-                              leading: CircleAvatar(
-                                backgroundColor:
-                                    widget.primaryColor.withOpacity(0.1),
-                                child: Text(
-                                  nombreCompleto.isNotEmpty
-                                      ? nombreCompleto[0].toUpperCase()
-                                      : '?',
-                                  style: TextStyle(
-                                    color: widget.primaryColor,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                              title: Text(
-                                nombreCompleto,
-                                style: TextStyle(fontWeight: FontWeight.w600),
-                              ),
-                              subtitle: Text(
-                                'ID: ${doc.id}',
-                                style: TextStyle(
-                                  color: Colors.grey[600],
-                                  fontSize: 13,
-                                ),
-                              ),
-                              trailing: Icon(
-                                Icons.add_circle_outline,
-                                color: widget.secondaryColor,
-                              ),
-                              onTap: () => Navigator.pop(context, doc),
-                            ),
-                          );
-                        } catch (e) {
-                          print('Error mostrando persona: $e');
-                          return SizedBox.shrink();
-                        }
-                      },
-                    ),
-            ),
-
-            // Botón cancelar
-            SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text(
-                  'Cancelar',
-                  style: TextStyle(
-                    color: Colors.grey[600],
-                    fontSize: 16,
-                  ),
-                ),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
   }
 }
 
-// AGREGA esta clase al final del archivo, después de todas las demás clases
 // Esta clase permite el arrastre y reordenamiento de los cards de eventos
 
 class ReorderableWrap extends StatefulWidget {

@@ -60,7 +60,7 @@ class _CoordinadorScreenState extends State<CoordinadorScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 5, vsync: this);
     _resetInactivityTimer();
 
     // Detectar interacciones del usuario
@@ -589,6 +589,8 @@ class _CoordinadorScreenState extends State<CoordinadorScreen>
                             'Asistencia',
                             isVerySmallScreen,
                           ),
+                          _buildCoordinadorTab(
+                              Icons.school, 'Clases', isVerySmallScreen),
                         ],
                       );
                     },
@@ -623,6 +625,15 @@ class _CoordinadorScreenState extends State<CoordinadorScreen>
                   icon: Icons.calendar_today,
                   title: 'Registro de Asistencia',
                   description: 'Gestiona la asistencia de tu grupo',
+                ),
+                CustomTabContent(
+                  child: ClasesCoordinadorTab(
+                    coordinadorId: widget.coordinadorId,
+                    tribuId: tribuId,
+                  ),
+                  icon: Icons.school,
+                  title: 'Clases de Discipulado',
+                  description: 'Inscribe personas en clases de discipulado',
                 ),
               ],
             ),
@@ -6207,10 +6218,6 @@ Future<List<Map<String, dynamic>>> _obtenerTimoteosConConteo(
         getSafeValue<String>('estadoCivil') ?? 'Soltero(a)';
     String sexoSeleccionado = getSafeValue<String>('sexo') ?? 'Hombre';
 
-    // Estado activo del registro
-    bool estadoActivo = getSafeValue<bool>('activo') ?? true;
-    bool estadoActivoAnterior = estadoActivo;
-
     // Fecha de nacimiento
     DateTime? fechaNacimiento;
     final fechaNacimientoValue = getSafeValue('fechaNacimiento');
@@ -6878,173 +6885,6 @@ Future<List<Map<String, dynamic>>> _obtenerTimoteosConConteo(
                                     ),
                                     SizedBox(height: verticalPadding),
 
-                                    // Switch para estado activo/inactivo
-                                    Container(
-                                      padding:
-                                          EdgeInsets.all(horizontalPadding),
-                                      decoration: BoxDecoration(
-                                        color: estadoActivo
-                                            ? Colors.green.withOpacity(0.1)
-                                            : Colors.red.withOpacity(0.1),
-                                        borderRadius:
-                                            BorderRadius.circular(borderRadius),
-                                        border: Border.all(
-                                          color: estadoActivo
-                                              ? Colors.green.withOpacity(0.3)
-                                              : Colors.red.withOpacity(0.3),
-                                          width: 1,
-                                        ),
-                                      ),
-                                      child: Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          Expanded(
-                                            child: Row(
-                                              children: [
-                                                Icon(
-                                                  estadoActivo
-                                                      ? Icons.check_circle
-                                                      : Icons.cancel,
-                                                  color: estadoActivo
-                                                      ? Colors.green
-                                                      : Colors.red,
-                                                  size: iconSize,
-                                                ),
-                                                SizedBox(width: 12),
-                                                Expanded(
-                                                  child: Column(
-                                                    crossAxisAlignment:
-                                                        CrossAxisAlignment
-                                                            .start,
-                                                    children: [
-                                                      Text(
-                                                        'Estado del Registro',
-                                                        style:
-                                                            GoogleFonts.poppins(
-                                                          fontSize:
-                                                              labelFontSize - 2,
-                                                          color:
-                                                              Colors.grey[600],
-                                                          fontWeight:
-                                                              FontWeight.w500,
-                                                        ),
-                                                        maxLines: 1,
-                                                        overflow: TextOverflow
-                                                            .ellipsis,
-                                                      ),
-                                                      Text(
-                                                        estadoActivo
-                                                            ? "Activo"
-                                                            : "No Activo",
-                                                        style:
-                                                            GoogleFonts.poppins(
-                                                          fontSize:
-                                                              labelFontSize,
-                                                          fontWeight:
-                                                              FontWeight.w700,
-                                                          color: estadoActivo
-                                                              ? Colors
-                                                                  .green[700]
-                                                              : Colors.red[700],
-                                                        ),
-                                                        maxLines: 1,
-                                                        overflow: TextOverflow
-                                                            .ellipsis,
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                          Switch(
-                                            value: estadoActivo,
-                                            activeColor: secondaryOrange,
-                                            inactiveThumbColor:
-                                                Colors.grey[400],
-                                            inactiveTrackColor:
-                                                Colors.grey[300],
-                                            onChanged: (value) async {
-                                              if (!value &&
-                                                  estadoActivoAnterior) {
-                                                final observacion =
-                                                    await _mostrarDialogoObservacionesDesactivacion();
-
-                                                if (observacion != null &&
-                                                    observacion.isNotEmpty) {
-                                                  if (controllers[
-                                                          'observaciones'] !=
-                                                      null) {
-                                                    final observacionActual =
-                                                        controllers[
-                                                                'observaciones']!
-                                                            .text;
-                                                    final nuevaObservacion =
-                                                        observacionActual
-                                                                .isEmpty
-                                                            ? 'MOTIVO DESACTIVACIÓN: $observacion'
-                                                            : '$observacionActual\n\nMOTIVO DESACTIVACIÓN: $observacion';
-                                                    controllers['observaciones']!
-                                                            .text =
-                                                        nuevaObservacion;
-                                                  }
-
-                                                  setState(() {
-                                                    estadoActivo = value;
-                                                    estadoActivoAnterior =
-                                                        value;
-                                                    hayModificaciones = true;
-                                                  });
-                                                }
-                                              } else {
-                                                setState(() {
-                                                  estadoActivo = value;
-                                                  estadoActivoAnterior = value;
-                                                  hayModificaciones = true;
-                                                });
-                                              }
-                                            },
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    SizedBox(height: verticalPadding),
-
-                                    if (!estadoActivo)
-                                      Container(
-                                        padding: EdgeInsets.all(12),
-                                        margin: EdgeInsets.only(
-                                            bottom: verticalPadding),
-                                        decoration: BoxDecoration(
-                                          color: Colors.orange.withOpacity(0.1),
-                                          borderRadius: BorderRadius.circular(
-                                              borderRadius),
-                                          border: Border.all(
-                                            color:
-                                                Colors.orange.withOpacity(0.3),
-                                            width: 1,
-                                          ),
-                                        ),
-                                        child: Row(
-                                          children: [
-                                            Icon(Icons.info_outline,
-                                                color: Colors.orange,
-                                                size: iconSize * 0.8),
-                                            SizedBox(width: 8),
-                                            Expanded(
-                                              child: Text(
-                                                'Al desactivar este registro, se eliminarán automáticamente las asignaciones de coordinador y timoteo.',
-                                                style: GoogleFonts.poppins(
-                                                  fontSize: labelFontSize - 2,
-                                                  color: Colors.orange[800],
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-
                                     // ✅ CAMPOS DEL FORMULARIO CON NAVEGACIÓN
                                     ...camposDefinicion.entries.map((entry) {
                                       final fieldName = entry.key;
@@ -7637,23 +7477,6 @@ Future<List<Map<String, dynamic>>> _obtenerTimoteosConConteo(
                                                         // updateData['fechaNacimiento'] = null; // ❌ NO hacer esto
                                                       }
 
-                                                      updateData['activo'] =
-                                                          estadoActivo;
-                                                      if (!estadoActivo) {
-                                                        updateData[
-                                                                'coordinadorAsignado'] =
-                                                            null;
-                                                        updateData[
-                                                                'coordinadorNombre'] =
-                                                            null;
-                                                        updateData[
-                                                                'timoteoAsignado'] =
-                                                            null;
-                                                        updateData[
-                                                                'nombreTimoteo'] =
-                                                            null;
-                                                      }
-
                                                       controllers.forEach(
                                                           (key, controller) {
                                                         if (controller !=
@@ -8129,23 +7952,6 @@ Future<List<Map<String, dynamic>>> _obtenerTimoteosConConteo(
                                                                 'fechaNacimiento'] =
                                                             Timestamp.fromDate(
                                                                 fechaNacimiento!);
-                                                      }
-
-                                                      updateData['activo'] =
-                                                          estadoActivo;
-                                                      if (!estadoActivo) {
-                                                        updateData[
-                                                                'coordinadorAsignado'] =
-                                                            null;
-                                                        updateData[
-                                                                'coordinadorNombre'] =
-                                                            null;
-                                                        updateData[
-                                                                'timoteoAsignado'] =
-                                                            null;
-                                                        updateData[
-                                                                'nombreTimoteo'] =
-                                                            null;
                                                       }
 
                                                       controllers.forEach(
@@ -12741,6 +12547,1629 @@ class _RegistroNuevoMiembroStatefulState
                   ),
                 ),
               ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class ClasesCoordinadorTab extends StatefulWidget {
+  final String coordinadorId;
+  final String tribuId;
+
+  const ClasesCoordinadorTab({
+    Key? key,
+    required this.coordinadorId,
+    required this.tribuId,
+  }) : super(key: key);
+
+  @override
+  _ClasesCoordinadorTabState createState() => _ClasesCoordinadorTabState();
+}
+
+class _ClasesCoordinadorTabState extends State<ClasesCoordinadorTab> {
+  final Color primaryTeal = Color(0xFF1B998B);
+  final Color secondaryOrange = Color(0xFFFF7E00);
+  bool isLoading = false;
+
+  Future<String> _obtenerNombreTribu(String tribuId) async {
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('tribus')
+          .doc(tribuId)
+          .get();
+
+      if (doc.exists && doc.data() != null) {
+        return doc.data()?['nombre'] ?? 'Sin nombre';
+      }
+    } catch (e) {
+      print('Error al obtener nombre de tribu: $e');
+    }
+    return 'Sin nombre';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('clasesDiscipulado')
+          .where('estado', isEqualTo: 'activa')
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  padding: EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: primaryTeal.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(primaryTeal),
+                    strokeWidth: 3,
+                  ),
+                ),
+                SizedBox(height: 24),
+                Text(
+                  'Cargando clases...',
+                  style: TextStyle(
+                    color: Colors.grey[600],
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        if (snapshot.hasError) {
+          return Center(
+            child: Container(
+              padding: EdgeInsets.all(24),
+              margin: EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.red.shade50,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.red.shade200),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.error_outline, size: 64, color: Colors.red[400]),
+                  SizedBox(height: 16),
+                  Text(
+                    'Error al cargar clases',
+                    style: TextStyle(
+                      fontSize: 18,
+                      color: Colors.red[600],
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return Center(
+            child: Container(
+              padding: EdgeInsets.all(32),
+              margin: EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Colors.grey.shade50, Colors.grey.shade100],
+                ),
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 10,
+                    offset: Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade200,
+                      borderRadius: BorderRadius.circular(50),
+                    ),
+                    child: Icon(Icons.school_outlined,
+                        size: 48, color: Colors.grey[500]),
+                  ),
+                  SizedBox(height: 20),
+                  Text(
+                    'No hay clases disponibles',
+                    style: TextStyle(
+                      fontSize: 20,
+                      color: Colors.grey[700],
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    'Las clases aparecerán aquí cuando estén activas',
+                    style: TextStyle(
+                      color: Colors.grey[500],
+                      fontSize: 14,
+                      height: 1.5,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        // ✅ SEPARAR CLASES Y ORDENAR
+        final todasLasClases = snapshot.data!.docs;
+
+        todasLasClases.sort((a, b) {
+          final dataA = a.data() as Map<String, dynamic>;
+          final dataB = b.data() as Map<String, dynamic>;
+
+          final fechaA =
+              (dataA['fechaInicio'] as Timestamp?)?.toDate() ?? DateTime.now();
+          final fechaB =
+              (dataB['fechaInicio'] as Timestamp?)?.toDate() ?? DateTime.now();
+
+          return fechaA.compareTo(fechaB);
+        });
+
+        final clasesAbiertas = todasLasClases
+            .where((doc) =>
+                !(doc.data()
+                    as Map<String, dynamic>)['inscripcionesCerradas'] ??
+                false)
+            .toList();
+
+        final clasesCerradas = todasLasClases
+            .where((doc) =>
+                (doc.data() as Map<String, dynamic>)['inscripcionesCerradas'] ??
+                false)
+            .toList();
+
+        return RefreshIndicator(
+          onRefresh: () async {
+            setState(() {});
+          },
+          color: primaryTeal,
+          child: ListView(
+            padding: EdgeInsets.all(16),
+            children: [
+              if (clasesAbiertas.isNotEmpty) ...[
+                _buildSeccionClases(
+                  titulo: 'Inscripciones Abiertas',
+                  icono: Icons.lock_open_rounded,
+                  color: Colors.green,
+                  clases: clasesAbiertas,
+                  inicialmenteExpandido: false,
+                ),
+                SizedBox(height: 16),
+              ],
+              if (clasesCerradas.isNotEmpty) ...[
+                _buildSeccionClases(
+                  titulo: 'Inscripciones Cerradas',
+                  icono: Icons.lock_rounded,
+                  color: Colors.red,
+                  clases: clasesCerradas,
+                  inicialmenteExpandido: false,
+                ),
+              ],
+              if (clasesAbiertas.isEmpty && clasesCerradas.isEmpty)
+                Container(
+                  padding: EdgeInsets.all(24),
+                  child: Text(
+                    'No hay clases disponibles en este momento',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.grey[600],
+                      fontSize: 16,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildSeccionClases({
+    required String titulo,
+    required IconData icono,
+    required Color color,
+    required List<QueryDocumentSnapshot> clases,
+    required bool inicialmenteExpandido,
+  }) {
+    return Card(
+      elevation: 6,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Colors.white,
+              color.withOpacity(0.02),
+            ],
+          ),
+        ),
+        child: Theme(
+          data: Theme.of(context).copyWith(
+            dividerColor: Colors.transparent,
+          ),
+          child: ExpansionTile(
+            initiallyExpanded: inicialmenteExpandido,
+            tilePadding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            childrenPadding: EdgeInsets.only(bottom: 12),
+            leading: Container(
+              padding: EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icono, color: color, size: 26),
+            ),
+            title: Text(
+              titulo,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: color,
+                letterSpacing: 0.3,
+              ),
+            ),
+            subtitle: Padding(
+              padding: EdgeInsets.only(top: 4),
+              child: Text(
+                '${clases.length} ${clases.length == 1 ? 'clase' : 'clases'}',
+                style: TextStyle(
+                  color: Colors.grey[600],
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+            children: [
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 12),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    return Wrap(
+                      spacing: 12.0,
+                      runSpacing: 12.0,
+                      children: clases.map((claseDoc) {
+                        return _buildClaseCard(claseDoc, constraints.maxWidth);
+                      }).toList(),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildClaseCard(DocumentSnapshot claseDoc, double maxWidth) {
+    final data = claseDoc.data() as Map<String, dynamic>;
+    final discipulos =
+        List<Map<String, dynamic>>.from(data['discipulosInscritos'] ?? []);
+    final personasDeEstaTribu =
+        discipulos.where((d) => d['tribuId'] == widget.tribuId).length;
+    final inscripcionesCerradas = data['inscripcionesCerradas'] ?? false;
+
+    double cardWidth;
+    if (maxWidth > 900) {
+      cardWidth = (maxWidth - 48) / 3;
+    } else if (maxWidth > 600) {
+      cardWidth = (maxWidth - 36) / 2;
+    } else {
+      cardWidth = maxWidth - 24;
+    }
+
+    return AnimatedContainer(
+      duration: Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+      width: cardWidth,
+      child: Card(
+        elevation: 4,
+        margin: EdgeInsets.zero,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(
+            color: inscripcionesCerradas
+                ? Colors.red.withOpacity(0.3)
+                : Colors.green.withOpacity(0.3),
+            width: 2,
+          ),
+        ),
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: inscripcionesCerradas
+                  ? [Colors.red.shade50, Colors.red.shade100]
+                  : [Colors.green.shade50, Colors.green.shade100],
+            ),
+          ),
+          child: Padding(
+            padding: EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.school_rounded,
+                                color: primaryTeal,
+                                size: 20,
+                              ),
+                              SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  data['tipo'] ?? 'Clase',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                    color: primaryTeal,
+                                  ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: 8),
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: inscripcionesCerradas
+                                  ? Colors.red.withOpacity(0.2)
+                                  : Colors.green.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: inscripcionesCerradas
+                                    ? Colors.red.withOpacity(0.4)
+                                    : Colors.green.withOpacity(0.4),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  inscripcionesCerradas
+                                      ? Icons.lock
+                                      : Icons.lock_open,
+                                  size: 12,
+                                  color: inscripcionesCerradas
+                                      ? Colors.red[700]
+                                      : Colors.green[700],
+                                ),
+                                SizedBox(width: 4),
+                                Text(
+                                  inscripcionesCerradas
+                                      ? 'Cerradas'
+                                      : 'Abiertas',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    color: inscripcionesCerradas
+                                        ? Colors.red[700]
+                                        : Colors.green[700],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 12),
+                Container(
+                  padding: EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.7),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Column(
+                    children: [
+                      _buildInfoRow(
+                        Icons.format_list_numbered_rounded,
+                        'Módulos',
+                        '${data['totalModulos'] ?? 0}',
+                        Colors.blue,
+                      ),
+                      Divider(height: 12, color: Colors.grey.shade300),
+                      _buildInfoRow(
+                        Icons.calendar_today_rounded,
+                        'Inicio',
+                        DateFormat('dd/MM/yyyy').format(
+                            (data['fechaInicio'] as Timestamp).toDate()),
+                        Colors.orange,
+                      ),
+                      if (data['maestroNombre'] != null) ...[
+                        Divider(height: 12, color: Colors.grey.shade300),
+                        _buildInfoRow(
+                          Icons.person_rounded,
+                          'Maestro',
+                          data['maestroNombre'],
+                          Colors.purple,
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Container(
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            secondaryOrange.withOpacity(0.2),
+                            secondaryOrange.withOpacity(0.1),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: secondaryOrange.withOpacity(0.3),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.people_rounded,
+                              size: 16, color: secondaryOrange),
+                          SizedBox(width: 4),
+                          Text(
+                            '$personasDeEstaTribu',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              color: secondaryOrange,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Tooltip(
+                      message: inscripcionesCerradas
+                          ? 'Inscripciones cerradas'
+                          : 'Inscribir persona',
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(20),
+                          onTap: inscripcionesCerradas
+                              ? () => _mostrarMensajeCerrado()
+                              : () =>
+                                  _inscribirPersonaEnClase(claseDoc.id, data),
+                          child: Container(
+                            padding: EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: inscripcionesCerradas
+                                  ? Colors.grey.shade300
+                                  : primaryTeal.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: inscripcionesCerradas
+                                    ? Colors.grey.shade400
+                                    : primaryTeal.withOpacity(0.3),
+                              ),
+                            ),
+                            child: Icon(
+                              Icons.person_add_rounded,
+                              color: inscripcionesCerradas
+                                  ? Colors.grey.shade600
+                                  : primaryTeal,
+                              size: 20,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                if (personasDeEstaTribu > 0) ...[
+                  SizedBox(height: 12),
+                  Theme(
+                    data: Theme.of(context).copyWith(
+                      dividerColor: Colors.transparent,
+                    ),
+                    child: ExpansionTile(
+                      tilePadding: EdgeInsets.zero,
+                      childrenPadding: EdgeInsets.only(top: 8),
+                      title: Text(
+                        'Ver inscritos de esta tribu',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: primaryTeal,
+                        ),
+                      ),
+                      leading:
+                          Icon(Icons.expand_more, color: primaryTeal, size: 20),
+                      children: [
+                        Container(
+                          padding: EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.5),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Column(
+                            children: discipulos
+                                .where((d) => d['tribuId'] == widget.tribuId)
+                                .map((d) => Padding(
+                                      padding: EdgeInsets.only(bottom: 6),
+                                      child: Row(
+                                        children: [
+                                          CircleAvatar(
+                                            backgroundColor:
+                                                primaryTeal.withOpacity(0.1),
+                                            radius: 14,
+                                            child: Icon(Icons.person,
+                                                size: 14, color: primaryTeal),
+                                          ),
+                                          SizedBox(width: 8),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  d['nombre'] ?? '',
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                                ),
+                                                Text(
+                                                  '${d['telefono']} | ${d['ministerio']}',
+                                                  style: TextStyle(
+                                                    fontSize: 10,
+                                                    color: Colors.grey[600],
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          if (!inscripcionesCerradas)
+                                            Tooltip(
+                                              message: 'Desasignar',
+                                              child: InkWell(
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
+                                                onTap: () async {
+                                                  final nombreTribu =
+                                                      await _obtenerNombreTribu(
+                                                          widget.tribuId);
+                                                  _desasignarDiscipuloDeClase(
+                                                      claseDoc.id,
+                                                      d,
+                                                      nombreTribu);
+                                                },
+                                                child: Container(
+                                                  padding: EdgeInsets.all(4),
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.red
+                                                        .withOpacity(0.1),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            12),
+                                                  ),
+                                                  child: Icon(
+                                                    Icons.close_rounded,
+                                                    color: Colors.red[700],
+                                                    size: 16,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                    ))
+                                .toList(),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(IconData icon, String label, String value, Color color) {
+    return Row(
+      children: [
+        Icon(icon, size: 14, color: color),
+        SizedBox(width: 6),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            color: Colors.grey[700],
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        Spacer(),
+        Flexible(
+          child: Text(
+            value,
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey[800],
+              fontWeight: FontWeight.w600,
+            ),
+            textAlign: TextAlign.right,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _mostrarMensajeCerrado() {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Container(
+          padding: EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.lock_outline,
+                  size: 64,
+                  color: Colors.red[600],
+                ),
+              ),
+              SizedBox(height: 20),
+              Text(
+                'Inscripciones Cerradas',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.red[700],
+                ),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: 12),
+              Text(
+                'Las inscripciones para esta clase han sido cerradas por el Departamento de Discipulado.',
+                style: TextStyle(
+                  fontSize: 15,
+                  color: Colors.grey[700],
+                  height: 1.5,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red[600],
+                    padding: EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: Text(
+                    'Entendido',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _inscribirPersonaEnClase(
+      String claseId, Map<String, dynamic> claseData) async {
+    final inscripcionesCerradas = claseData['inscripcionesCerradas'] ?? false;
+
+    if (inscripcionesCerradas) {
+      _mostrarMensajeCerrado();
+      return;
+    }
+
+    setState(() => isLoading = true);
+
+    try {
+      // ✅ FILTRO MEJORADO: Solo personas de esta tribu Y de este coordinador
+      final results = await Future.wait([
+        FirebaseFirestore.instance
+            .collection('registros')
+            .where('tribuAsignada', isEqualTo: widget.tribuId)
+            .where('coordinadorAsignado',
+                isEqualTo: widget.coordinadorId) // ✅ NUEVO FILTRO
+            .where('activo', isEqualTo: true)
+            .get(),
+        FirebaseFirestore.instance
+            .collection('eventos')
+            .where('tribuId', isEqualTo: widget.tribuId)
+            .where('estado', isEqualTo: 'activo')
+            .get(),
+      ]);
+
+      final personasSnapshot = results[0] as QuerySnapshot;
+      final eventosActivosSnapshot = results[1] as QuerySnapshot;
+
+      final Set<String> personasConInscripcionActiva = {};
+      final ahora = DateTime.now();
+
+      for (var eventoDoc in eventosActivosSnapshot.docs) {
+        final eventoData = eventoDoc.data() as Map<String, dynamic>;
+        final fechaFin = (eventoData['fechaFin'] as Timestamp).toDate();
+
+        if (fechaFin.isAfter(ahora)) {
+          final inscripcionesEvento = List<Map<String, dynamic>>.from(
+              eventoData['inscripciones'] ?? []);
+
+          for (var inscripcion in inscripcionesEvento) {
+            personasConInscripcionActiva
+                .add(inscripcion['personaId'] as String);
+          }
+        }
+      }
+
+      final discipulosActuales = List<Map<String, dynamic>>.from(
+          claseData['discipulosInscritos'] ?? []);
+
+      final Set<String> personasYaInscritasEstaClase =
+          discipulosActuales.map((d) => d['personaId'] as String).toSet();
+
+      final personasDisponibles = personasSnapshot.docs.where((doc) {
+        if (personasYaInscritasEstaClase.contains(doc.id)) {
+          return false;
+        }
+
+        if (personasConInscripcionActiva.contains(doc.id)) {
+          return false;
+        }
+
+        final data = doc.data() as Map<String, dynamic>?;
+        if (data == null) return false;
+
+        final nombre = data['nombre']?.toString().trim() ?? '';
+        return nombre.isNotEmpty && nombre != 'Sin nombre';
+      }).toList();
+
+      setState(() => isLoading = false);
+
+      if (personasDisponibles.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'No hay personas disponibles para inscribir de tu grupo',
+            ),
+            backgroundColor: Colors.orange,
+            duration: Duration(seconds: 4),
+          ),
+        );
+        return;
+      }
+
+      final seleccion = await showDialog<DocumentSnapshot>(
+        context: context,
+        builder: (context) => _DialogoBuscarPersona(
+          personas: personasDisponibles,
+          primaryColor: primaryTeal,
+          secondaryColor: secondaryOrange,
+        ),
+      );
+
+      if (seleccion != null) {
+        final personaData = seleccion.data() as Map<String, dynamic>;
+
+        String nombreTribu = await _obtenerNombreTribu(widget.tribuId);
+
+        discipulosActuales.add({
+          'personaId': seleccion.id,
+          'nombre': '${personaData['nombre']} ${personaData['apellido']}',
+          'telefono': personaData['telefono'] ?? 'Sin teléfono',
+          'tribu': nombreTribu,
+          'tribuId': widget.tribuId,
+          'ministerio': personaData['ministerioAsignado'] ?? 'Sin ministerio',
+          'fechaInscripcion': Timestamp.now(),
+        });
+
+        await FirebaseFirestore.instance
+            .collection('clasesDiscipulado')
+            .doc(claseId)
+            .update({
+          'discipulosInscritos': discipulosActuales,
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${personaData['nombre']} inscrito correctamente'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      setState(() => isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al inscribir: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _desasignarDiscipuloDeClase(
+    String claseId,
+    Map<String, dynamic> discipulo,
+    String nombreTribu,
+  ) async {
+    final nombreCompleto = discipulo['nombre'] ?? 'Discípulo';
+
+    final confirmar = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Container(
+          padding: EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.person_remove_outlined,
+                  size: 64,
+                  color: Colors.orange[700],
+                ),
+              ),
+              SizedBox(height: 20),
+              Text(
+                'Desasignar Discípulo',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: primaryTeal,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: 12),
+              RichText(
+                textAlign: TextAlign.center,
+                text: TextSpan(
+                  style: TextStyle(
+                    fontSize: 15,
+                    color: Colors.grey[700],
+                    height: 1.5,
+                  ),
+                  children: [
+                    TextSpan(text: '¿Estás seguro de desasignar a '),
+                    TextSpan(
+                      text: '"$nombreCompleto"',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: primaryTeal,
+                      ),
+                    ),
+                    TextSpan(text: ' de '),
+                    TextSpan(
+                      text: '"$nombreTribu"',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: secondaryOrange,
+                      ),
+                    ),
+                    TextSpan(text: ' en esta clase?\n\n'),
+                    TextSpan(
+                      text:
+                          'Podrás volver a inscribirlo mientras las inscripciones estén abiertas.',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontStyle: FontStyle.italic,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () => Navigator.of(dialogContext).pop(false),
+                      style: TextButton.styleFrom(
+                        padding: EdgeInsets.symmetric(vertical: 14),
+                      ),
+                      child: Text(
+                        'Cancelar',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.grey[700],
+                        ),
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.of(dialogContext).pop(true),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.orange[700],
+                        padding: EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: Text(
+                        'Desasignar',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (confirmar != true) return;
+
+    final overlayEntry = OverlayEntry(
+      builder: (context) => Container(
+        color: Colors.black54,
+        child: Center(
+          child: Container(
+            padding: EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(primaryTeal),
+                ),
+                SizedBox(height: 16),
+                Text(
+                  'Desasignando...',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: primaryTeal,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    Overlay.of(context)?.insert(overlayEntry);
+
+    try {
+      final claseDoc = await FirebaseFirestore.instance
+          .collection('clasesDiscipulado')
+          .doc(claseId)
+          .get();
+
+      if (!claseDoc.exists) {
+        throw Exception('La clase no existe');
+      }
+
+      final claseData = claseDoc.data() as Map<String, dynamic>;
+      final discipulos = List<Map<String, dynamic>>.from(
+          claseData['discipulosInscritos'] ?? []);
+
+      final discipuloIndex = discipulos
+          .indexWhere((d) => d['personaId'] == discipulo['personaId']);
+
+      if (discipuloIndex == -1) {
+        throw Exception('El discípulo no está inscrito en esta clase');
+      }
+
+      discipulos.removeAt(discipuloIndex);
+
+      await FirebaseFirestore.instance
+          .collection('clasesDiscipulado')
+          .doc(claseId)
+          .update({
+        'discipulosInscritos': discipulos,
+      });
+
+      overlayEntry.remove();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.white, size: 20),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    '$nombreCompleto desasignado correctamente',
+                    style: TextStyle(fontSize: 15),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.green[700],
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      overlayEntry.remove();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.error_outline, color: Colors.white, size: 20),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Error al desasignar: ${e.toString()}',
+                    style: TextStyle(fontSize: 15),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.red[700],
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            duration: Duration(seconds: 4),
+          ),
+        );
+      }
+
+      print('❌ Error al desasignar discípulo: $e');
+    }
+  }
+}
+
+class _DialogoBuscarPersona extends StatefulWidget {
+  final List<DocumentSnapshot> personas;
+  final Color primaryColor;
+  final Color secondaryColor;
+
+  const _DialogoBuscarPersona({
+    Key? key,
+    required this.personas,
+    required this.primaryColor,
+    required this.secondaryColor,
+  }) : super(key: key);
+
+  @override
+  _DialogoBuscarPersonaState createState() => _DialogoBuscarPersonaState();
+}
+
+class _DialogoBuscarPersonaState extends State<_DialogoBuscarPersona> {
+  final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocusNode = FocusNode();
+  final ScrollController _scrollController = ScrollController();
+  List<DocumentSnapshot> personasFiltradas = [];
+
+  @override
+  void initState() {
+    super.initState();
+    personasFiltradas = widget.personas;
+    _searchController.addListener(_filtrarPersonas);
+  }
+
+  @override
+  void dispose() {
+    _searchController.removeListener(_filtrarPersonas);
+    _searchController.dispose();
+    _searchFocusNode.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _filtrarPersonas() {
+    final query = _searchController.text.toLowerCase().trim();
+
+    setState(() {
+      if (query.isEmpty) {
+        personasFiltradas = widget.personas;
+      } else {
+        personasFiltradas = widget.personas.where((doc) {
+          try {
+            final data = doc.data() as Map<String, dynamic>?;
+            if (data == null) return false;
+
+            final nombre = data['nombre']?.toString().toLowerCase() ?? '';
+            final apellido = data['apellido']?.toString().toLowerCase() ?? '';
+            final nombreCompleto = '$nombre $apellido'.trim();
+
+            return nombreCompleto.contains(query);
+          } catch (e) {
+            print('Error filtrando persona: $e');
+            return false;
+          }
+        }).toList();
+      }
+    });
+
+    // ✅ Auto-scroll al inicio después de filtrar
+    if (_scrollController.hasClients) {
+      _scrollController.jumpTo(0);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final screenSize = MediaQuery.of(context).size;
+    final isSmallScreen = screenSize.width < 600;
+
+    return GestureDetector(
+      onTap: () => Navigator.pop(context), // ✅ Cerrar al tocar afuera
+      child: Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: EdgeInsets.zero, // ✅ Sin padding automático
+        child: GestureDetector(
+          onTap: () {}, // ✅ Prevenir cierre al tocar el dialog
+          child: Center(
+            child: Container(
+              width: isSmallScreen ? screenSize.width * 0.92 : 600,
+              height: screenSize.height * 0.80, // ✅ Altura fija
+              margin: EdgeInsets.symmetric(horizontal: 16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black26,
+                    blurRadius: 20,
+                    offset: Offset(0, 10),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // ═══════════════════════════════════════════════════════
+                  // HEADER FIJO
+                  // ═══════════════════════════════════════════════════════
+                  Container(
+                    padding: EdgeInsets.all(isSmallScreen ? 14 : 18),
+                    decoration: BoxDecoration(
+                      color: widget.primaryColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.only(
+                        topLeft: Radius.circular(20),
+                        topRight: Radius.circular(20),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.person_search,
+                          color: widget.primaryColor,
+                          size: isSmallScreen ? 22 : 26,
+                        ),
+                        SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            'Buscar Persona',
+                            style: TextStyle(
+                              fontSize: isSmallScreen ? 17 : 19,
+                              fontWeight: FontWeight.bold,
+                              color: widget.primaryColor,
+                            ),
+                          ),
+                        ),
+                        Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(20),
+                            onTap: () => Navigator.pop(context),
+                            child: Container(
+                              padding: EdgeInsets.all(6),
+                              child: Icon(
+                                Icons.close,
+                                color: Colors.grey[600],
+                                size: isSmallScreen ? 20 : 24,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // ═══════════════════════════════════════════════════════
+                  // BARRA DE BÚSQUEDA FIJA
+                  // ═══════════════════════════════════════════════════════
+                  Container(
+                    padding: EdgeInsets.fromLTRB(
+                      isSmallScreen ? 12 : 16,
+                      isSmallScreen ? 12 : 14,
+                      isSmallScreen ? 12 : 16,
+                      isSmallScreen ? 8 : 10,
+                    ),
+                    child: TextField(
+                      controller: _searchController,
+                      focusNode: _searchFocusNode,
+                      autofocus: false,
+                      style: TextStyle(
+                        fontSize: isSmallScreen ? 14 : 16,
+                        height: 1.3,
+                      ),
+                      decoration: InputDecoration(
+                        hintText: 'Buscar por nombre...',
+                        hintStyle: TextStyle(
+                          fontSize: isSmallScreen ? 13 : 15,
+                          color: Colors.grey[500],
+                        ),
+                        prefixIcon: Icon(
+                          Icons.search,
+                          color: widget.primaryColor,
+                          size: isSmallScreen ? 20 : 22,
+                        ),
+                        suffixIcon: _searchController.text.isNotEmpty
+                            ? IconButton(
+                                icon: Icon(
+                                  Icons.clear,
+                                  size: isSmallScreen ? 18 : 20,
+                                ),
+                                onPressed: () {
+                                  _searchController.clear();
+                                  _searchFocusNode.unfocus();
+                                },
+                                padding: EdgeInsets.all(8),
+                                constraints: BoxConstraints(),
+                              )
+                            : null,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: widget.primaryColor),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.grey[300]!),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(
+                            color: widget.primaryColor,
+                            width: 2,
+                          ),
+                        ),
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: isSmallScreen ? 10 : 14,
+                          vertical: isSmallScreen ? 12 : 14,
+                        ),
+                        isDense: true,
+                      ),
+                    ),
+                  ),
+
+                  // ═══════════════════════════════════════════════════════
+                  // CONTADOR DE RESULTADOS FIJO
+                  // ═══════════════════════════════════════════════════════
+                  Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: isSmallScreen ? 12 : 16,
+                      vertical: 4,
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.people_outline,
+                          size: isSmallScreen ? 14 : 16,
+                          color: Colors.grey[600],
+                        ),
+                        SizedBox(width: 6),
+                        Text(
+                          '${personasFiltradas.length} ${personasFiltradas.length == 1 ? 'persona' : 'personas'}',
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: isSmallScreen ? 12 : 13,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // ═══════════════════════════════════════════════════════
+                  // LISTA SCROLLABLE - ÁREA EXPANSIBLE
+                  // ═══════════════════════════════════════════════════════
+
+                  Expanded(
+                    child: personasFiltradas.isEmpty
+                        ? Center(
+                            child: Padding(
+                              padding: EdgeInsets.all(isSmallScreen ? 16 : 24),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Container(
+                                    padding:
+                                        EdgeInsets.all(isSmallScreen ? 14 : 18),
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey[100],
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(
+                                      Icons.person_off_outlined,
+                                      size: isSmallScreen ? 40 : 50,
+                                      color: Colors.grey[400],
+                                    ),
+                                  ),
+                                  SizedBox(height: isSmallScreen ? 12 : 16),
+                                  Text(
+                                    'No se encontraron personas',
+                                    style: TextStyle(
+                                      fontSize: isSmallScreen ? 15 : 17,
+                                      color: Colors.grey[700],
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                  SizedBox(height: 6),
+                                  Text(
+                                    'Intenta con otro término',
+                                    style: TextStyle(
+                                      color: Colors.grey[500],
+                                      fontSize: isSmallScreen ? 12 : 14,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          )
+                        : NotificationListener<ScrollNotification>(
+                            onNotification: (notification) {
+                              // ✅ SOLUCIÓN: Prevenir que el scroll cierre el teclado
+                              return true; // Consumir la notificación
+                            },
+                            child: ListView.builder(
+                              controller: _scrollController,
+                              padding: EdgeInsets.fromLTRB(
+                                isSmallScreen ? 8 : 12,
+                                4,
+                                isSmallScreen ? 8 : 12,
+                                8,
+                              ),
+                              itemCount: personasFiltradas.length,
+                              keyboardDismissBehavior:
+                                  ScrollViewKeyboardDismissBehavior
+                                      .manual, // ✅ CRÍTICO
+                              physics: AlwaysScrollableScrollPhysics(),
+                              itemBuilder: (context, index) {
+                                final doc = personasFiltradas[index];
+
+                                try {
+                                  final data =
+                                      doc.data() as Map<String, dynamic>?;
+                                  if (data == null) {
+                                    return SizedBox.shrink();
+                                  }
+
+                                  final nombre = data['nombre']?.toString() ??
+                                      'Sin nombre';
+                                  final apellido =
+                                      data['apellido']?.toString() ?? '';
+                                  final nombreCompleto = apellido.isNotEmpty
+                                      ? '$nombre $apellido'
+                                      : nombre;
+
+                                  return Card(
+                                    margin: EdgeInsets.symmetric(
+                                      vertical: isSmallScreen ? 4 : 5,
+                                      horizontal: 2,
+                                    ),
+                                    elevation: 2,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: InkWell(
+                                      borderRadius: BorderRadius.circular(12),
+                                      onTap: () {
+                                        _searchFocusNode.unfocus();
+                                        Navigator.pop(context, doc);
+                                      },
+                                      child: Padding(
+                                        padding: EdgeInsets.symmetric(
+                                          horizontal: isSmallScreen ? 10 : 14,
+                                          vertical: isSmallScreen ? 10 : 12,
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            // Avatar
+                                            CircleAvatar(
+                                              backgroundColor: widget
+                                                  .primaryColor
+                                                  .withOpacity(0.1),
+                                              radius: isSmallScreen ? 18 : 22,
+                                              child: Text(
+                                                nombreCompleto.isNotEmpty
+                                                    ? nombreCompleto[0]
+                                                        .toUpperCase()
+                                                    : '?',
+                                                style: TextStyle(
+                                                  color: widget.primaryColor,
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize:
+                                                      isSmallScreen ? 15 : 17,
+                                                ),
+                                              ),
+                                            ),
+                                            SizedBox(
+                                                width: isSmallScreen ? 10 : 14),
+
+                                            // Nombre
+                                            Expanded(
+                                              child: Text(
+                                                nombreCompleto,
+                                                style: TextStyle(
+                                                  fontWeight: FontWeight.w600,
+                                                  fontSize:
+                                                      isSmallScreen ? 14 : 15,
+                                                  color: Colors.black87,
+                                                  height: 1.3,
+                                                ),
+                                                maxLines: 2,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+
+                                            // Icono de acción
+                                            Container(
+                                              padding: EdgeInsets.all(6),
+                                              decoration: BoxDecoration(
+                                                color: widget.secondaryColor
+                                                    .withOpacity(0.1),
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                              ),
+                                              child: Icon(
+                                                Icons.add_circle_outline,
+                                                color: widget.secondaryColor,
+                                                size: isSmallScreen ? 20 : 24,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                } catch (e) {
+                                  print('Error mostrando persona: $e');
+                                  return SizedBox.shrink();
+                                }
+                              },
+                            ),
+                          ),
+                  ),
+                  // ═══════════════════════════════════════════════════════
+                  // BOTÓN CANCELAR FIJO - SIEMPRE AL FINAL
+                  // ═══════════════════════════════════════════════════════
+                  Container(
+                    padding: EdgeInsets.fromLTRB(
+                      isSmallScreen ? 12 : 16,
+                      isSmallScreen ? 10 : 12,
+                      isSmallScreen ? 12 : 16,
+                      isSmallScreen ? 12 : 14,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      border: Border(
+                        top: BorderSide(color: Colors.grey[300]!, width: 1),
+                      ),
+                      borderRadius: BorderRadius.only(
+                        bottomLeft: Radius.circular(20),
+                        bottomRight: Radius.circular(20),
+                      ),
+                    ),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: TextButton(
+                        onPressed: () {
+                          _searchFocusNode.unfocus();
+                          Navigator.pop(context);
+                        },
+                        style: TextButton.styleFrom(
+                          padding: EdgeInsets.symmetric(
+                            vertical: isSmallScreen ? 12 : 14,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          backgroundColor: Colors.grey[100],
+                        ),
+                        child: Text(
+                          'Cancelar',
+                          style: TextStyle(
+                            color: Colors.grey[700],
+                            fontSize: isSmallScreen ? 14 : 15,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
