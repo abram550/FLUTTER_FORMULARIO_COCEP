@@ -21103,7 +21103,6 @@ class _InscripcionesTabState extends State<InscripcionesTab> {
     );
   }
 
-  /// Widget que construye la card individual de cada clase
   Widget _buildClaseCard(DocumentSnapshot claseDoc, double maxWidth) {
     final data = claseDoc.data() as Map<String, dynamic>;
     final discipulos =
@@ -21112,14 +21111,31 @@ class _InscripcionesTabState extends State<InscripcionesTab> {
         discipulos.where((d) => d['tribuId'] == widget.tribuId).length;
     final inscripcionesCerradas = data['inscripcionesCerradas'] ?? false;
 
-    // ✅ Cálculo responsivo del ancho
+    // ✅ DETERMINAR NOMENCLATURA SEGÚN TIPO DE CLASE
+    final tipoClase = data['tipo'] ?? 'Clase';
+    final usarLeccion = tipoClase == 'Discipulado 1' ||
+        tipoClase == 'Discipulado 2' ||
+        tipoClase == 'Discipulado 3' ||
+        tipoClase == 'Consolidación';
+
+    final nombreUnidad = usarLeccion ? 'Lecciones' : 'Módulos';
+
+    // ✅ Cálculo responsivo del ancho de las tarjetas
+    final screenWidth = MediaQuery.of(context).size.width;
     double cardWidth;
-    if (maxWidth > 900) {
-      cardWidth = (maxWidth - 48) / 3; // 3 columnas en pantallas grandes
-    } else if (maxWidth > 600) {
-      cardWidth = (maxWidth - 36) / 2; // 2 columnas en pantallas medianas
+
+    if (screenWidth > 900) {
+      // Pantallas muy grandes - 4 columnas
+      cardWidth = (screenWidth - 80) / 4;
+    } else if (screenWidth > 600) {
+      // Pantallas medianas - 3 columnas
+      cardWidth = (screenWidth - 60) / 3;
+    } else if (screenWidth > 400) {
+      // Pantallas pequeñas - 2 columnas
+      cardWidth = (screenWidth - 40) / 2;
     } else {
-      cardWidth = maxWidth - 24; // 1 columna en pantallas pequeñas
+      // Pantallas muy pequeñas - 1 columna
+      cardWidth = screenWidth - 24;
     }
 
     return AnimatedContainer(
@@ -21171,7 +21187,7 @@ class _InscripcionesTabState extends State<InscripcionesTab> {
                               SizedBox(width: 6),
                               Expanded(
                                 child: Text(
-                                  data['tipo'] ?? 'Clase',
+                                  tipoClase,
                                   style: TextStyle(
                                     fontWeight: FontWeight.bold,
                                     fontSize: 16,
@@ -21234,7 +21250,7 @@ class _InscripcionesTabState extends State<InscripcionesTab> {
                 ),
                 SizedBox(height: 12),
 
-                // ✅ Información de la clase
+                // ✅ Información de la clase CON NOMENCLATURA CORRECTA
                 Container(
                   padding: EdgeInsets.all(10),
                   decoration: BoxDecoration(
@@ -21245,7 +21261,7 @@ class _InscripcionesTabState extends State<InscripcionesTab> {
                     children: [
                       _buildInfoRow(
                         Icons.format_list_numbered_rounded,
-                        'Módulos',
+                        nombreUnidad, // ✅ CAMBIADO
                         '${data['totalModulos'] ?? 0}',
                         Colors.blue,
                       ),
@@ -21350,7 +21366,7 @@ class _InscripcionesTabState extends State<InscripcionesTab> {
                   ],
                 ),
 
-                // ✅ Lista de inscritos expandible (si hay)
+                // ✅ Lista de inscritos expandible (sin cambios adicionales)
                 if (personasDeEstaTribu > 0) ...[
                   SizedBox(height: 12),
                   Theme(
@@ -21492,6 +21508,481 @@ class _InscripcionesTabState extends State<InscripcionesTab> {
           ),
         ),
       ],
+    );
+  }
+}
+
+//Clase dialogo buscar persona
+
+class _DialogoBuscarPersona extends StatefulWidget {
+  final List<DocumentSnapshot> personas;
+  final Color primaryColor;
+  final Color secondaryColor;
+
+  const _DialogoBuscarPersona({
+    Key? key,
+    required this.personas,
+    required this.primaryColor,
+    required this.secondaryColor,
+  }) : super(key: key);
+
+  @override
+  _DialogoBuscarPersonaState createState() => _DialogoBuscarPersonaState();
+}
+
+class _DialogoBuscarPersonaState extends State<_DialogoBuscarPersona> {
+  final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocusNode = FocusNode();
+  final ScrollController _scrollController = ScrollController();
+  List<DocumentSnapshot> personasFiltradas = [];
+
+  @override
+  void initState() {
+    super.initState();
+    personasFiltradas = widget.personas;
+    _searchController.addListener(_filtrarPersonas);
+  }
+
+  @override
+  void dispose() {
+    _searchController.removeListener(_filtrarPersonas);
+    _searchController.dispose();
+    _searchFocusNode.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _filtrarPersonas() {
+    final query = _searchController.text.toLowerCase().trim();
+
+    setState(() {
+      if (query.isEmpty) {
+        personasFiltradas = widget.personas;
+      } else {
+        personasFiltradas = widget.personas.where((doc) {
+          try {
+            final data = doc.data() as Map<String, dynamic>?;
+            if (data == null) return false;
+
+            final nombre = data['nombre']?.toString().toLowerCase() ?? '';
+            final apellido = data['apellido']?.toString().toLowerCase() ?? '';
+            final nombreCompleto = '$nombre $apellido'.trim();
+
+            return nombreCompleto.contains(query);
+          } catch (e) {
+            print('Error filtrando persona: $e');
+            return false;
+          }
+        }).toList();
+      }
+    });
+
+    // ✅ Auto-scroll al inicio después de filtrar
+    if (_scrollController.hasClients) {
+      _scrollController.jumpTo(0);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final screenSize = MediaQuery.of(context).size;
+    final isSmallScreen = screenSize.width < 600;
+
+    return GestureDetector(
+      onTap: () => Navigator.pop(context), // ✅ Cerrar al tocar afuera
+      child: Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: EdgeInsets.zero, // ✅ Sin padding automático
+        child: GestureDetector(
+          onTap: () {}, // ✅ Prevenir cierre al tocar el dialog
+          child: Center(
+            child: Container(
+              width: isSmallScreen ? screenSize.width * 0.92 : 600,
+              height: screenSize.height * 0.80, // ✅ Altura fija
+              margin: EdgeInsets.symmetric(horizontal: 16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black26,
+                    blurRadius: 20,
+                    offset: Offset(0, 10),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // ═══════════════════════════════════════════════════════
+                  // HEADER FIJO
+                  // ═══════════════════════════════════════════════════════
+                  Container(
+                    padding: EdgeInsets.all(isSmallScreen ? 14 : 18),
+                    decoration: BoxDecoration(
+                      color: widget.primaryColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.only(
+                        topLeft: Radius.circular(20),
+                        topRight: Radius.circular(20),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.person_search,
+                          color: widget.primaryColor,
+                          size: isSmallScreen ? 22 : 26,
+                        ),
+                        SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            'Buscar Persona',
+                            style: TextStyle(
+                              fontSize: isSmallScreen ? 17 : 19,
+                              fontWeight: FontWeight.bold,
+                              color: widget.primaryColor,
+                            ),
+                          ),
+                        ),
+                        Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(20),
+                            onTap: () => Navigator.pop(context),
+                            child: Container(
+                              padding: EdgeInsets.all(6),
+                              child: Icon(
+                                Icons.close,
+                                color: Colors.grey[600],
+                                size: isSmallScreen ? 20 : 24,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // ═══════════════════════════════════════════════════════
+                  // BARRA DE BÚSQUEDA FIJA
+                  // ═══════════════════════════════════════════════════════
+                  Container(
+                    padding: EdgeInsets.fromLTRB(
+                      isSmallScreen ? 12 : 16,
+                      isSmallScreen ? 12 : 14,
+                      isSmallScreen ? 12 : 16,
+                      isSmallScreen ? 8 : 10,
+                    ),
+                    child: TextField(
+                      controller: _searchController,
+                      focusNode: _searchFocusNode,
+                      autofocus: false,
+                      style: TextStyle(
+                        fontSize: isSmallScreen ? 14 : 16,
+                        height: 1.3,
+                      ),
+                      decoration: InputDecoration(
+                        hintText: 'Buscar por nombre...',
+                        hintStyle: TextStyle(
+                          fontSize: isSmallScreen ? 13 : 15,
+                          color: Colors.grey[500],
+                        ),
+                        prefixIcon: Icon(
+                          Icons.search,
+                          color: widget.primaryColor,
+                          size: isSmallScreen ? 20 : 22,
+                        ),
+                        suffixIcon: _searchController.text.isNotEmpty
+                            ? IconButton(
+                                icon: Icon(
+                                  Icons.clear,
+                                  size: isSmallScreen ? 18 : 20,
+                                ),
+                                onPressed: () {
+                                  _searchController.clear();
+                                  _searchFocusNode.unfocus();
+                                },
+                                padding: EdgeInsets.all(8),
+                                constraints: BoxConstraints(),
+                              )
+                            : null,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: widget.primaryColor),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.grey[300]!),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(
+                            color: widget.primaryColor,
+                            width: 2,
+                          ),
+                        ),
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: isSmallScreen ? 10 : 14,
+                          vertical: isSmallScreen ? 12 : 14,
+                        ),
+                        isDense: true,
+                      ),
+                    ),
+                  ),
+
+                  // ═══════════════════════════════════════════════════════
+                  // CONTADOR DE RESULTADOS FIJO
+                  // ═══════════════════════════════════════════════════════
+                  Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: isSmallScreen ? 12 : 16,
+                      vertical: 4,
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.people_outline,
+                          size: isSmallScreen ? 14 : 16,
+                          color: Colors.grey[600],
+                        ),
+                        SizedBox(width: 6),
+                        Text(
+                          '${personasFiltradas.length} ${personasFiltradas.length == 1 ? 'persona' : 'personas'}',
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: isSmallScreen ? 12 : 13,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // ═══════════════════════════════════════════════════════
+                  // LISTA SCROLLABLE - ÁREA EXPANSIBLE
+                  // ═══════════════════════════════════════════════════════
+
+                  Expanded(
+                    child: personasFiltradas.isEmpty
+                        ? Center(
+                            child: Padding(
+                              padding: EdgeInsets.all(isSmallScreen ? 16 : 24),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Container(
+                                    padding:
+                                        EdgeInsets.all(isSmallScreen ? 14 : 18),
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey[100],
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(
+                                      Icons.person_off_outlined,
+                                      size: isSmallScreen ? 40 : 50,
+                                      color: Colors.grey[400],
+                                    ),
+                                  ),
+                                  SizedBox(height: isSmallScreen ? 12 : 16),
+                                  Text(
+                                    'No se encontraron personas',
+                                    style: TextStyle(
+                                      fontSize: isSmallScreen ? 15 : 17,
+                                      color: Colors.grey[700],
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                  SizedBox(height: 6),
+                                  Text(
+                                    'Intenta con otro término',
+                                    style: TextStyle(
+                                      color: Colors.grey[500],
+                                      fontSize: isSmallScreen ? 12 : 14,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          )
+                        : NotificationListener<ScrollNotification>(
+                            onNotification: (notification) {
+                              // ✅ SOLUCIÓN: Prevenir que el scroll cierre el teclado
+                              return true; // Consumir la notificación
+                            },
+                            child: ListView.builder(
+                              controller: _scrollController,
+                              padding: EdgeInsets.fromLTRB(
+                                isSmallScreen ? 8 : 12,
+                                4,
+                                isSmallScreen ? 8 : 12,
+                                8,
+                              ),
+                              itemCount: personasFiltradas.length,
+                              keyboardDismissBehavior:
+                                  ScrollViewKeyboardDismissBehavior
+                                      .manual, // ✅ CRÍTICO
+                              physics: AlwaysScrollableScrollPhysics(),
+                              itemBuilder: (context, index) {
+                                final doc = personasFiltradas[index];
+
+                                try {
+                                  final data =
+                                      doc.data() as Map<String, dynamic>?;
+                                  if (data == null) {
+                                    return SizedBox.shrink();
+                                  }
+
+                                  final nombre = data['nombre']?.toString() ??
+                                      'Sin nombre';
+                                  final apellido =
+                                      data['apellido']?.toString() ?? '';
+                                  final nombreCompleto = apellido.isNotEmpty
+                                      ? '$nombre $apellido'
+                                      : nombre;
+
+                                  return Card(
+                                    margin: EdgeInsets.symmetric(
+                                      vertical: isSmallScreen ? 4 : 5,
+                                      horizontal: 2,
+                                    ),
+                                    elevation: 2,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: InkWell(
+                                      borderRadius: BorderRadius.circular(12),
+                                      onTap: () {
+                                        _searchFocusNode.unfocus();
+                                        Navigator.pop(context, doc);
+                                      },
+                                      child: Padding(
+                                        padding: EdgeInsets.symmetric(
+                                          horizontal: isSmallScreen ? 10 : 14,
+                                          vertical: isSmallScreen ? 10 : 12,
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            // Avatar
+                                            CircleAvatar(
+                                              backgroundColor: widget
+                                                  .primaryColor
+                                                  .withOpacity(0.1),
+                                              radius: isSmallScreen ? 18 : 22,
+                                              child: Text(
+                                                nombreCompleto.isNotEmpty
+                                                    ? nombreCompleto[0]
+                                                        .toUpperCase()
+                                                    : '?',
+                                                style: TextStyle(
+                                                  color: widget.primaryColor,
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize:
+                                                      isSmallScreen ? 15 : 17,
+                                                ),
+                                              ),
+                                            ),
+                                            SizedBox(
+                                                width: isSmallScreen ? 10 : 14),
+
+                                            // Nombre
+                                            Expanded(
+                                              child: Text(
+                                                nombreCompleto,
+                                                style: TextStyle(
+                                                  fontWeight: FontWeight.w600,
+                                                  fontSize:
+                                                      isSmallScreen ? 14 : 15,
+                                                  color: Colors.black87,
+                                                  height: 1.3,
+                                                ),
+                                                maxLines: 2,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+
+                                            // Icono de acción
+                                            Container(
+                                              padding: EdgeInsets.all(6),
+                                              decoration: BoxDecoration(
+                                                color: widget.secondaryColor
+                                                    .withOpacity(0.1),
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                              ),
+                                              child: Icon(
+                                                Icons.add_circle_outline,
+                                                color: widget.secondaryColor,
+                                                size: isSmallScreen ? 20 : 24,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                } catch (e) {
+                                  print('Error mostrando persona: $e');
+                                  return SizedBox.shrink();
+                                }
+                              },
+                            ),
+                          ),
+                  ),
+                  // ═══════════════════════════════════════════════════════
+                  // BOTÓN CANCELAR FIJO - SIEMPRE AL FINAL
+                  // ═══════════════════════════════════════════════════════
+                  Container(
+                    padding: EdgeInsets.fromLTRB(
+                      isSmallScreen ? 12 : 16,
+                      isSmallScreen ? 10 : 12,
+                      isSmallScreen ? 12 : 16,
+                      isSmallScreen ? 12 : 14,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      border: Border(
+                        top: BorderSide(color: Colors.grey[300]!, width: 1),
+                      ),
+                      borderRadius: BorderRadius.only(
+                        bottomLeft: Radius.circular(20),
+                        bottomRight: Radius.circular(20),
+                      ),
+                    ),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: TextButton(
+                        onPressed: () {
+                          _searchFocusNode.unfocus();
+                          Navigator.pop(context);
+                        },
+                        style: TextButton.styleFrom(
+                          padding: EdgeInsets.symmetric(
+                            vertical: isSmallScreen ? 12 : 14,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          backgroundColor: Colors.grey[100],
+                        ),
+                        child: Text(
+                          'Cancelar',
+                          style: TextStyle(
+                            color: Colors.grey[700],
+                            fontSize: isSmallScreen ? 14 : 15,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -23207,479 +23698,6 @@ class _DetalleEventoModalState extends State<DetalleEventoModal> {
         ),
       );
     }
-  }
-}
-
-class _DialogoBuscarPersona extends StatefulWidget {
-  final List<DocumentSnapshot> personas;
-  final Color primaryColor;
-  final Color secondaryColor;
-
-  const _DialogoBuscarPersona({
-    Key? key,
-    required this.personas,
-    required this.primaryColor,
-    required this.secondaryColor,
-  }) : super(key: key);
-
-  @override
-  _DialogoBuscarPersonaState createState() => _DialogoBuscarPersonaState();
-}
-
-class _DialogoBuscarPersonaState extends State<_DialogoBuscarPersona> {
-  final TextEditingController _searchController = TextEditingController();
-  final FocusNode _searchFocusNode = FocusNode();
-  final ScrollController _scrollController = ScrollController();
-  List<DocumentSnapshot> personasFiltradas = [];
-
-  @override
-  void initState() {
-    super.initState();
-    personasFiltradas = widget.personas;
-    _searchController.addListener(_filtrarPersonas);
-  }
-
-  @override
-  void dispose() {
-    _searchController.removeListener(_filtrarPersonas);
-    _searchController.dispose();
-    _searchFocusNode.dispose();
-    _scrollController.dispose();
-    super.dispose();
-  }
-
-  void _filtrarPersonas() {
-    final query = _searchController.text.toLowerCase().trim();
-
-    setState(() {
-      if (query.isEmpty) {
-        personasFiltradas = widget.personas;
-      } else {
-        personasFiltradas = widget.personas.where((doc) {
-          try {
-            final data = doc.data() as Map<String, dynamic>?;
-            if (data == null) return false;
-
-            final nombre = data['nombre']?.toString().toLowerCase() ?? '';
-            final apellido = data['apellido']?.toString().toLowerCase() ?? '';
-            final nombreCompleto = '$nombre $apellido'.trim();
-
-            return nombreCompleto.contains(query);
-          } catch (e) {
-            print('Error filtrando persona: $e');
-            return false;
-          }
-        }).toList();
-      }
-    });
-
-    // ✅ Auto-scroll al inicio después de filtrar
-    if (_scrollController.hasClients) {
-      _scrollController.jumpTo(0);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final screenSize = MediaQuery.of(context).size;
-    final isSmallScreen = screenSize.width < 600;
-
-    return GestureDetector(
-      onTap: () => Navigator.pop(context), // ✅ Cerrar al tocar afuera
-      child: Dialog(
-        backgroundColor: Colors.transparent,
-        insetPadding: EdgeInsets.zero, // ✅ Sin padding automático
-        child: GestureDetector(
-          onTap: () {}, // ✅ Prevenir cierre al tocar el dialog
-          child: Center(
-            child: Container(
-              width: isSmallScreen ? screenSize.width * 0.92 : 600,
-              height: screenSize.height * 0.80, // ✅ Altura fija
-              margin: EdgeInsets.symmetric(horizontal: 16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black26,
-                    blurRadius: 20,
-                    offset: Offset(0, 10),
-                  ),
-                ],
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // ═══════════════════════════════════════════════════════
-                  // HEADER FIJO
-                  // ═══════════════════════════════════════════════════════
-                  Container(
-                    padding: EdgeInsets.all(isSmallScreen ? 14 : 18),
-                    decoration: BoxDecoration(
-                      color: widget.primaryColor.withOpacity(0.1),
-                      borderRadius: BorderRadius.only(
-                        topLeft: Radius.circular(20),
-                        topRight: Radius.circular(20),
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.person_search,
-                          color: widget.primaryColor,
-                          size: isSmallScreen ? 22 : 26,
-                        ),
-                        SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            'Buscar Persona',
-                            style: TextStyle(
-                              fontSize: isSmallScreen ? 17 : 19,
-                              fontWeight: FontWeight.bold,
-                              color: widget.primaryColor,
-                            ),
-                          ),
-                        ),
-                        Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            borderRadius: BorderRadius.circular(20),
-                            onTap: () => Navigator.pop(context),
-                            child: Container(
-                              padding: EdgeInsets.all(6),
-                              child: Icon(
-                                Icons.close,
-                                color: Colors.grey[600],
-                                size: isSmallScreen ? 20 : 24,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  // ═══════════════════════════════════════════════════════
-                  // BARRA DE BÚSQUEDA FIJA
-                  // ═══════════════════════════════════════════════════════
-                  Container(
-                    padding: EdgeInsets.fromLTRB(
-                      isSmallScreen ? 12 : 16,
-                      isSmallScreen ? 12 : 14,
-                      isSmallScreen ? 12 : 16,
-                      isSmallScreen ? 8 : 10,
-                    ),
-                    child: TextField(
-                      controller: _searchController,
-                      focusNode: _searchFocusNode,
-                      autofocus: false,
-                      style: TextStyle(
-                        fontSize: isSmallScreen ? 14 : 16,
-                        height: 1.3,
-                      ),
-                      decoration: InputDecoration(
-                        hintText: 'Buscar por nombre...',
-                        hintStyle: TextStyle(
-                          fontSize: isSmallScreen ? 13 : 15,
-                          color: Colors.grey[500],
-                        ),
-                        prefixIcon: Icon(
-                          Icons.search,
-                          color: widget.primaryColor,
-                          size: isSmallScreen ? 20 : 22,
-                        ),
-                        suffixIcon: _searchController.text.isNotEmpty
-                            ? IconButton(
-                                icon: Icon(
-                                  Icons.clear,
-                                  size: isSmallScreen ? 18 : 20,
-                                ),
-                                onPressed: () {
-                                  _searchController.clear();
-                                  _searchFocusNode.unfocus();
-                                },
-                                padding: EdgeInsets.all(8),
-                                constraints: BoxConstraints(),
-                              )
-                            : null,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: widget.primaryColor),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: Colors.grey[300]!),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(
-                            color: widget.primaryColor,
-                            width: 2,
-                          ),
-                        ),
-                        contentPadding: EdgeInsets.symmetric(
-                          horizontal: isSmallScreen ? 10 : 14,
-                          vertical: isSmallScreen ? 12 : 14,
-                        ),
-                        isDense: true,
-                      ),
-                    ),
-                  ),
-
-                  // ═══════════════════════════════════════════════════════
-                  // CONTADOR DE RESULTADOS FIJO
-                  // ═══════════════════════════════════════════════════════
-                  Padding(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: isSmallScreen ? 12 : 16,
-                      vertical: 4,
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.people_outline,
-                          size: isSmallScreen ? 14 : 16,
-                          color: Colors.grey[600],
-                        ),
-                        SizedBox(width: 6),
-                        Text(
-                          '${personasFiltradas.length} ${personasFiltradas.length == 1 ? 'persona' : 'personas'}',
-                          style: TextStyle(
-                            color: Colors.grey[600],
-                            fontSize: isSmallScreen ? 12 : 13,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  // ═══════════════════════════════════════════════════════
-                  // LISTA SCROLLABLE - ÁREA EXPANSIBLE
-                  // ═══════════════════════════════════════════════════════
-
-                  Expanded(
-                    child: personasFiltradas.isEmpty
-                        ? Center(
-                            child: Padding(
-                              padding: EdgeInsets.all(isSmallScreen ? 16 : 24),
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Container(
-                                    padding:
-                                        EdgeInsets.all(isSmallScreen ? 14 : 18),
-                                    decoration: BoxDecoration(
-                                      color: Colors.grey[100],
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: Icon(
-                                      Icons.person_off_outlined,
-                                      size: isSmallScreen ? 40 : 50,
-                                      color: Colors.grey[400],
-                                    ),
-                                  ),
-                                  SizedBox(height: isSmallScreen ? 12 : 16),
-                                  Text(
-                                    'No se encontraron personas',
-                                    style: TextStyle(
-                                      fontSize: isSmallScreen ? 15 : 17,
-                                      color: Colors.grey[700],
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                  SizedBox(height: 6),
-                                  Text(
-                                    'Intenta con otro término',
-                                    style: TextStyle(
-                                      color: Colors.grey[500],
-                                      fontSize: isSmallScreen ? 12 : 14,
-                                    ),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          )
-                        : NotificationListener<ScrollNotification>(
-                            onNotification: (notification) {
-                              // ✅ SOLUCIÓN: Prevenir que el scroll cierre el teclado
-                              return true; // Consumir la notificación
-                            },
-                            child: ListView.builder(
-                              controller: _scrollController,
-                              padding: EdgeInsets.fromLTRB(
-                                isSmallScreen ? 8 : 12,
-                                4,
-                                isSmallScreen ? 8 : 12,
-                                8,
-                              ),
-                              itemCount: personasFiltradas.length,
-                              keyboardDismissBehavior:
-                                  ScrollViewKeyboardDismissBehavior
-                                      .manual, // ✅ CRÍTICO
-                              physics: AlwaysScrollableScrollPhysics(),
-                              itemBuilder: (context, index) {
-                                final doc = personasFiltradas[index];
-
-                                try {
-                                  final data =
-                                      doc.data() as Map<String, dynamic>?;
-                                  if (data == null) {
-                                    return SizedBox.shrink();
-                                  }
-
-                                  final nombre = data['nombre']?.toString() ??
-                                      'Sin nombre';
-                                  final apellido =
-                                      data['apellido']?.toString() ?? '';
-                                  final nombreCompleto = apellido.isNotEmpty
-                                      ? '$nombre $apellido'
-                                      : nombre;
-
-                                  return Card(
-                                    margin: EdgeInsets.symmetric(
-                                      vertical: isSmallScreen ? 4 : 5,
-                                      horizontal: 2,
-                                    ),
-                                    elevation: 2,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: InkWell(
-                                      borderRadius: BorderRadius.circular(12),
-                                      onTap: () {
-                                        _searchFocusNode.unfocus();
-                                        Navigator.pop(context, doc);
-                                      },
-                                      child: Padding(
-                                        padding: EdgeInsets.symmetric(
-                                          horizontal: isSmallScreen ? 10 : 14,
-                                          vertical: isSmallScreen ? 10 : 12,
-                                        ),
-                                        child: Row(
-                                          children: [
-                                            // Avatar
-                                            CircleAvatar(
-                                              backgroundColor: widget
-                                                  .primaryColor
-                                                  .withOpacity(0.1),
-                                              radius: isSmallScreen ? 18 : 22,
-                                              child: Text(
-                                                nombreCompleto.isNotEmpty
-                                                    ? nombreCompleto[0]
-                                                        .toUpperCase()
-                                                    : '?',
-                                                style: TextStyle(
-                                                  color: widget.primaryColor,
-                                                  fontWeight: FontWeight.bold,
-                                                  fontSize:
-                                                      isSmallScreen ? 15 : 17,
-                                                ),
-                                              ),
-                                            ),
-                                            SizedBox(
-                                                width: isSmallScreen ? 10 : 14),
-
-                                            // Nombre
-                                            Expanded(
-                                              child: Text(
-                                                nombreCompleto,
-                                                style: TextStyle(
-                                                  fontWeight: FontWeight.w600,
-                                                  fontSize:
-                                                      isSmallScreen ? 14 : 15,
-                                                  color: Colors.black87,
-                                                  height: 1.3,
-                                                ),
-                                                maxLines: 2,
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                            ),
-
-                                            // Icono de acción
-                                            Container(
-                                              padding: EdgeInsets.all(6),
-                                              decoration: BoxDecoration(
-                                                color: widget.secondaryColor
-                                                    .withOpacity(0.1),
-                                                borderRadius:
-                                                    BorderRadius.circular(8),
-                                              ),
-                                              child: Icon(
-                                                Icons.add_circle_outline,
-                                                color: widget.secondaryColor,
-                                                size: isSmallScreen ? 20 : 24,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  );
-                                } catch (e) {
-                                  print('Error mostrando persona: $e');
-                                  return SizedBox.shrink();
-                                }
-                              },
-                            ),
-                          ),
-                  ),
-                  // ═══════════════════════════════════════════════════════
-                  // BOTÓN CANCELAR FIJO - SIEMPRE AL FINAL
-                  // ═══════════════════════════════════════════════════════
-                  Container(
-                    padding: EdgeInsets.fromLTRB(
-                      isSmallScreen ? 12 : 16,
-                      isSmallScreen ? 10 : 12,
-                      isSmallScreen ? 12 : 16,
-                      isSmallScreen ? 12 : 14,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      border: Border(
-                        top: BorderSide(color: Colors.grey[300]!, width: 1),
-                      ),
-                      borderRadius: BorderRadius.only(
-                        bottomLeft: Radius.circular(20),
-                        bottomRight: Radius.circular(20),
-                      ),
-                    ),
-                    child: SizedBox(
-                      width: double.infinity,
-                      child: TextButton(
-                        onPressed: () {
-                          _searchFocusNode.unfocus();
-                          Navigator.pop(context);
-                        },
-                        style: TextButton.styleFrom(
-                          padding: EdgeInsets.symmetric(
-                            vertical: isSmallScreen ? 12 : 14,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          backgroundColor: Colors.grey[100],
-                        ),
-                        child: Text(
-                          'Cancelar',
-                          style: TextStyle(
-                            color: Colors.grey[700],
-                            fontSize: isSmallScreen ? 14 : 15,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
   }
 }
 

@@ -576,229 +576,348 @@ class _DepartamentoDiscipuladoScreenState
                 );
               }
 
-              return ListView.builder(
-                padding: EdgeInsets.fromLTRB(20, 0, 20, 20),
-                itemCount: snapshot.data!.docs.length,
-                itemBuilder: (context, index) {
-                  final doc = snapshot.data!.docs[index];
-                  final data = doc.data() as Map<String, dynamic>;
-                  final discipulos = List<Map<String, dynamic>>.from(
-                      data['discipulosInscritos'] ?? []);
+              // ✅ Separar clases por estado de inscripciones
+              final clasesAbiertas = snapshot.data!.docs
+                  .where((doc) =>
+                      (doc.data()
+                          as Map<String, dynamic>)['inscripcionesCerradas'] !=
+                      true)
+                  .toList();
 
-                  return Container(
-                    margin: EdgeInsets.only(bottom: 16),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
-                          blurRadius: 10,
-                          offset: Offset(0, 4),
-                        ),
-                      ],
+              final clasesCerradas = snapshot.data!.docs
+                  .where((doc) =>
+                      (doc.data()
+                          as Map<String, dynamic>)['inscripcionesCerradas'] ==
+                      true)
+                  .toList();
+
+              // ✅ Ordenar por fecha de inicio (más reciente primero)
+              clasesAbiertas.sort((a, b) {
+                final fechaA =
+                    ((a.data() as Map<String, dynamic>)['fechaInicio']
+                                as Timestamp?)
+                            ?.toDate() ??
+                        DateTime(2000);
+                final fechaB =
+                    ((b.data() as Map<String, dynamic>)['fechaInicio']
+                                as Timestamp?)
+                            ?.toDate() ??
+                        DateTime(2000);
+                return fechaB.compareTo(fechaA);
+              });
+
+              clasesCerradas.sort((a, b) {
+                final fechaA =
+                    ((a.data() as Map<String, dynamic>)['fechaInicio']
+                                as Timestamp?)
+                            ?.toDate() ??
+                        DateTime(2000);
+                final fechaB =
+                    ((b.data() as Map<String, dynamic>)['fechaInicio']
+                                as Timestamp?)
+                            ?.toDate() ??
+                        DateTime(2000);
+                return fechaB.compareTo(fechaA);
+              });
+
+              return ListView(
+                padding: EdgeInsets.fromLTRB(20, 0, 20, 20),
+                children: [
+                  // ✅ Sección de Inscripciones Abiertas
+                  if (clasesAbiertas.isNotEmpty) ...[
+                    _buildSeccionHeader(
+                      icon: Icons.lock_open,
+                      titulo: 'Inscripciones Abiertas',
+                      color: Colors.green,
+                      cantidad: clasesAbiertas.length,
                     ),
-                    child: Theme(
-                      data: Theme.of(context)
-                          .copyWith(dividerColor: Colors.transparent),
-                      child: ExpansionTile(
-                        tilePadding: EdgeInsets.all(16),
-                        childrenPadding: EdgeInsets.zero,
-                        leading: Container(
-                          width: 56,
-                          height: 56,
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [Color(0xFFF7941D), Color(0xFFE67E22)],
-                            ),
-                            shape: BoxShape.circle,
-                          ),
-                          child:
-                              Icon(Icons.class_, color: Colors.white, size: 28),
-                        ),
-                        title: Text(
-                          data['tipo'] ?? '',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF1A5968),
-                          ),
-                        ),
-                        subtitle: Padding(
-                          padding: EdgeInsets.only(top: 8),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _buildInfoChip(
-                                icon: Icons.menu_book,
-                                label: '${data['totalModulos']} módulos',
-                                color: Color(0xFF2B7A8C),
-                              ),
-                              SizedBox(height: 6),
-                              _buildInfoChip(
-                                icon: Icons.calendar_today,
-                                label: DateFormat('dd/MM/yyyy').format(
-                                    (data['fechaInicio'] as Timestamp)
-                                        .toDate()),
-                                color: Colors.grey[700]!,
-                              ),
-                              if (data['maestroNombre'] != null) ...[
-                                SizedBox(height: 6),
-                                _buildInfoChip(
-                                  icon: Icons.person,
-                                  label: data['maestroNombre'],
-                                  color: Colors.green[700]!,
-                                ),
-                              ],
-                              SizedBox(height: 6),
-                              _buildInfoChip(
-                                icon: Icons.people,
-                                label: '${discipulos.length} discípulos',
-                                color: Color(0xFFF7941D),
-                              ),
-                              // ✅ NUEVO: INDICADOR DE ESTADO DE INSCRIPCIONES
-                              SizedBox(height: 6),
-                              _buildInfoChip(
-                                icon: data['inscripcionesCerradas'] == true
-                                    ? Icons.lock
-                                    : Icons.lock_open,
-                                label: data['inscripcionesCerradas'] == true
-                                    ? 'Inscripciones Cerradas'
-                                    : 'Inscripciones Abiertas',
-                                color: data['inscripcionesCerradas'] == true
-                                    ? Colors.red[700]!
-                                    : Colors.green[700]!,
-                              ),
-                            ],
-                          ),
-                        ),
-                        trailing: PopupMenuButton(
-                          icon: Icon(Icons.more_vert, color: Color(0xFF2B7A8C)),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          itemBuilder: (context) => [
-                            PopupMenuItem(
-                              child: Row(
-                                children: [
-                                  Icon(Icons.swap_horiz,
-                                      size: 20, color: Color(0xFF2B7A8C)),
-                                  SizedBox(width: 12),
-                                  Text('Cambiar Maestro'),
-                                ],
-                              ),
-                              onTap: () => _cambiarMaestroClase(doc),
-                            ),
-                            // ✅ NUEVO: BOTÓN CERRAR/ABRIR INSCRIPCIONES
-                            PopupMenuItem(
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    data['inscripcionesCerradas'] == true
-                                        ? Icons.lock_open
-                                        : Icons.lock,
-                                    size: 20,
-                                    color: data['inscripcionesCerradas'] == true
-                                        ? Colors.green[700]
-                                        : Colors.red[700],
-                                  ),
-                                  SizedBox(width: 12),
-                                  Text(
-                                    data['inscripcionesCerradas'] == true
-                                        ? 'Abrir Inscripciones'
-                                        : 'Cerrar Inscripciones',
-                                  ),
-                                ],
-                              ),
-                              onTap: () => _toggleInscripciones(doc),
-                            ),
-                          ],
-                        ),
-                        children: [
-                          Container(
-                            decoration: BoxDecoration(
-                              color: Colors.grey[50],
-                              borderRadius: BorderRadius.only(
-                                bottomLeft: Radius.circular(16),
-                                bottomRight: Radius.circular(16),
-                              ),
-                            ),
-                            child: discipulos.isEmpty
-                                ? Padding(
-                                    padding: EdgeInsets.all(24),
-                                    child: Center(
-                                      child: Text(
-                                        'No hay discípulos inscritos',
-                                        style: TextStyle(
-                                            fontSize: 14,
-                                            color: Colors.grey[600]),
-                                      ),
-                                    ),
-                                  )
-                                : Column(
-                                    children: discipulos
-                                        .map((discipulo) => Container(
-                                              decoration: BoxDecoration(
-                                                border: Border(
-                                                  top: BorderSide(
-                                                      color: Colors.grey[200]!,
-                                                      width: 1),
-                                                ),
-                                              ),
-                                              child: ListTile(
-                                                dense: true,
-                                                leading: CircleAvatar(
-                                                  backgroundColor:
-                                                      Color(0xFF2B7A8C)
-                                                          .withOpacity(0.1),
-                                                  child: Icon(
-                                                      Icons.person_outline,
-                                                      size: 20,
-                                                      color: Color(0xFF2B7A8C)),
-                                                ),
-                                                title: Text(
-                                                  discipulo['nombre'] ?? '',
-                                                  style: TextStyle(
-                                                      fontWeight:
-                                                          FontWeight.w600),
-                                                ),
-                                                subtitle: Text(
-                                                  'Tribu: ${discipulo['tribu'] ?? 'N/A'} • Ministerio: ${discipulo['ministerio'] ?? 'N/A'}',
-                                                  style:
-                                                      TextStyle(fontSize: 12),
-                                                ),
-                                                // ✅ NUEVO: BOTÓN DESASIGNAR (solo si inscripciones cerradas)
-                                                trailing:
-                                                    data['inscripcionesCerradas'] ==
-                                                            true
-                                                        ? IconButton(
-                                                            icon: Icon(
-                                                                Icons
-                                                                    .person_remove,
-                                                                color: Colors
-                                                                    .red[600],
-                                                                size: 20),
-                                                            tooltip:
-                                                                'Desasignar discípulo',
-                                                            onPressed: () =>
-                                                                _desasignarDiscipulo(
-                                                                    doc.id,
-                                                                    discipulo),
-                                                          )
-                                                        : null,
-                                              ),
-                                            ))
-                                        .toList(),
-                                  ),
-                          ),
-                        ],
-                      ),
+                    SizedBox(height: 12),
+                    ...clasesAbiertas
+                        .map((doc) => _buildClaseCardCompacta(doc)),
+                    SizedBox(height: 24),
+                  ],
+
+                  // ✅ Sección de Inscripciones Cerradas
+                  if (clasesCerradas.isNotEmpty) ...[
+                    _buildSeccionHeader(
+                      icon: Icons.lock,
+                      titulo: 'Inscripciones Cerradas',
+                      color: Colors.orange,
+                      cantidad: clasesCerradas.length,
                     ),
-                  );
-                },
+                    SizedBox(height: 12),
+                    ...clasesCerradas
+                        .map((doc) => _buildClaseCardCompacta(doc)),
+                  ],
+                ],
               );
             },
           ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSeccionHeader({
+    required IconData icon,
+    required String titulo,
+    required Color color,
+    required int cantidad,
+  }) {
+    return Container(
+      padding: EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [color.withOpacity(0.1), color.withOpacity(0.05)],
+        ),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, color: color, size: 20),
+          ),
+          SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              titulo,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+            ),
+          ),
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              '$cantidad',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildClaseCardCompacta(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    final discipulos =
+        List<Map<String, dynamic>>.from(data['discipulosInscritos'] ?? []);
+    final inscripcionesCerradas = data['inscripcionesCerradas'] ?? false;
+
+    // ✅ Formatear fecha de manera legible
+    String fechaLegible = 'Sin fecha';
+    if (data['fechaInicio'] != null) {
+      final fecha = (data['fechaInicio'] as Timestamp).toDate();
+      fechaLegible = DateFormat('d MMMM yyyy', 'es_ES').format(fecha);
+      // Capitalizar primera letra
+      fechaLegible = fechaLegible[0].toUpperCase() + fechaLegible.substring(1);
+    }
+
+    return Container(
+      margin: EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          tilePadding: EdgeInsets.all(12),
+          childrenPadding: EdgeInsets.zero,
+          leading: Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Color(0xFFF7941D), Color(0xFFE67E22)],
+              ),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(Icons.class_, color: Colors.white, size: 24),
+          ),
+          title: Text(
+            data['tipo'] ?? '',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF1A5968),
+            ),
+          ),
+          subtitle: Padding(
+            padding: EdgeInsets.only(top: 6),
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              children: [
+                _buildCompactChip(
+                  icon: Icons.calendar_today,
+                  label: fechaLegible,
+                  color: Colors.grey[700]!,
+                ),
+                if (data['maestroNombre'] != null)
+                  _buildCompactChip(
+                    icon: Icons.person,
+                    label: data['maestroNombre'],
+                    color: Colors.green[700]!,
+                  ),
+                _buildCompactChip(
+                  icon: Icons.people,
+                  label: '${discipulos.length}',
+                  color: Color(0xFFF7941D),
+                ),
+              ],
+            ),
+          ),
+          trailing: PopupMenuButton(
+            icon: Icon(Icons.more_vert, color: Color(0xFF2B7A8C), size: 20),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            itemBuilder: (context) => [
+              PopupMenuItem(
+                child: Row(
+                  children: [
+                    Icon(Icons.swap_horiz, size: 18, color: Color(0xFF2B7A8C)),
+                    SizedBox(width: 10),
+                    Text('Cambiar Maestro', style: TextStyle(fontSize: 14)),
+                  ],
+                ),
+                onTap: () => _cambiarMaestroClase(doc),
+              ),
+              PopupMenuItem(
+                child: Row(
+                  children: [
+                    Icon(
+                      inscripcionesCerradas ? Icons.lock_open : Icons.lock,
+                      size: 18,
+                      color: inscripcionesCerradas
+                          ? Colors.green[700]
+                          : Colors.red[700],
+                    ),
+                    SizedBox(width: 10),
+                    Text(
+                      inscripcionesCerradas
+                          ? 'Abrir Inscripciones'
+                          : 'Cerrar Inscripciones',
+                      style: TextStyle(fontSize: 14),
+                    ),
+                  ],
+                ),
+                onTap: () => _toggleInscripciones(doc),
+              ),
+            ],
+          ),
+          children: [
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.grey[50],
+                borderRadius: BorderRadius.only(
+                  bottomLeft: Radius.circular(12),
+                  bottomRight: Radius.circular(12),
+                ),
+              ),
+              child: discipulos.isEmpty
+                  ? Padding(
+                      padding: EdgeInsets.all(20),
+                      child: Center(
+                        child: Text(
+                          'No hay discípulos inscritos',
+                          style:
+                              TextStyle(fontSize: 13, color: Colors.grey[600]),
+                        ),
+                      ),
+                    )
+                  : Column(
+                      children: discipulos
+                          .map((discipulo) => Container(
+                                decoration: BoxDecoration(
+                                  border: Border(
+                                    top: BorderSide(
+                                        color: Colors.grey[200]!, width: 1),
+                                  ),
+                                ),
+                                child: ListTile(
+                                  dense: true,
+                                  contentPadding: EdgeInsets.symmetric(
+                                      horizontal: 12, vertical: 4),
+                                  leading: CircleAvatar(
+                                    radius: 16,
+                                    backgroundColor:
+                                        Color(0xFF2B7A8C).withOpacity(0.1),
+                                    child: Icon(Icons.person_outline,
+                                        size: 16, color: Color(0xFF2B7A8C)),
+                                  ),
+                                  title: Text(
+                                    discipulo['nombre'] ?? '',
+                                    style: TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 13),
+                                  ),
+                                  subtitle: Text(
+                                    '${discipulo['tribu'] ?? 'N/A'} • ${discipulo['ministerio'] ?? 'N/A'}',
+                                    style: TextStyle(fontSize: 11),
+                                  ),
+                                  trailing: inscripcionesCerradas
+                                      ? IconButton(
+                                          icon: Icon(Icons.person_remove,
+                                              color: Colors.red[600], size: 18),
+                                          tooltip: 'Desasignar',
+                                          onPressed: () => _desasignarDiscipulo(
+                                              doc.id, discipulo),
+                                        )
+                                      : null,
+                                ),
+                              ))
+                          .toList(),
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCompactChip({
+    required IconData icon,
+    required String label,
+    required Color color,
+  }) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 12, color: color),
+        SizedBox(width: 4),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            color: color,
+            fontWeight: FontWeight.w500,
+          ),
+          overflow: TextOverflow.ellipsis,
         ),
       ],
     );
@@ -859,261 +978,37 @@ class _DepartamentoDiscipuladoScreenState
           );
         }
 
+        // ✅ Agrupar clases por año
+        Map<int, List<DocumentSnapshot>> clasesPorAno = {};
+        for (var doc in snapshot.data!.docs) {
+          final data = doc.data() as Map<String, dynamic>;
+          if (data['fechaFinalizacion'] != null) {
+            final fecha = (data['fechaFinalizacion'] as Timestamp).toDate();
+            final ano = fecha.year;
+
+            if (!clasesPorAno.containsKey(ano)) {
+              clasesPorAno[ano] = [];
+            }
+            clasesPorAno[ano]!.add(doc);
+          }
+        }
+
+        // Ordenar años de más reciente a más antiguo
+        final anosOrdenados = clasesPorAno.keys.toList()
+          ..sort((a, b) => b.compareTo(a));
+
         return ListView.builder(
           padding: EdgeInsets.all(20),
-          itemCount: snapshot.data!.docs.length,
-          itemBuilder: (context, index) {
-            final doc = snapshot.data!.docs[index];
-            final data = doc.data() as Map<String, dynamic>;
+          itemCount: anosOrdenados.length,
+          itemBuilder: (context, anoIndex) {
+            final ano = anosOrdenados[anoIndex];
+            final clasesDelAno = clasesPorAno[ano]!;
 
-            return Container(
-              margin: EdgeInsets.only(bottom: 16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 10,
-                    offset: Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Theme(
-                data: Theme.of(context)
-                    .copyWith(dividerColor: Colors.transparent),
-                child: ExpansionTile(
-                  tilePadding: EdgeInsets.all(16),
-                  childrenPadding: EdgeInsets.zero,
-                  leading: Container(
-                    width: 56,
-                    height: 56,
-                    decoration: BoxDecoration(
-                      color: Colors.grey[300],
-                      shape: BoxShape.circle,
-                    ),
-                    child:
-                        Icon(Icons.history, color: Colors.grey[700], size: 28),
-                  ),
-                  title: Text(
-                    data['tipo'] ?? '',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF1A5968),
-                    ),
-                  ),
-                  subtitle: Padding(
-                    padding: EdgeInsets.only(top: 8),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildInfoChip(
-                          icon: Icons.event_available,
-                          label: data['fechaFinalizacion'] != null
-                              ? 'Finalizada: ${DateFormat('dd/MM/yyyy').format((data['fechaFinalizacion'] as Timestamp).toDate())}'
-                              : 'Sin fecha de finalización',
-                          color: Colors.grey[700]!,
-                        ),
-                        if (data['maestroNombre'] != null) ...[
-                          SizedBox(height: 6),
-                          _buildInfoChip(
-                            icon: Icons.person,
-                            label: data['maestroNombre'],
-                            color: Color(0xFF2B7A8C),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                  children: [
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.grey[50],
-                        borderRadius: BorderRadius.only(
-                          bottomLeft: Radius.circular(16),
-                          bottomRight: Radius.circular(16),
-                        ),
-                      ),
-                      child: Column(
-                        children: [
-                          // Historial de maestros
-                          StreamBuilder<QuerySnapshot>(
-                            stream: FirebaseFirestore.instance
-                                .collection('cambiosMaestrosDiscipulado')
-                                .where('claseId', isEqualTo: doc.id)
-                                .orderBy('fechaCambio')
-                                .snapshots(),
-                            builder: (context, cambiosSnap) {
-                              if (cambiosSnap.hasData &&
-                                  cambiosSnap.data!.docs.isNotEmpty) {
-                                return Container(
-                                  padding: EdgeInsets.all(16),
-                                  decoration: BoxDecoration(
-                                    color: Colors.blue[50],
-                                    border: Border(
-                                      bottom: BorderSide(
-                                          color: Colors.grey[200]!, width: 1),
-                                    ),
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          Icon(Icons.swap_horiz,
-                                              color: Colors.blue[700],
-                                              size: 20),
-                                          SizedBox(width: 8),
-                                          Text(
-                                            'Historial de Maestros',
-                                            style: TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 16,
-                                              color: Colors.blue[900],
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      SizedBox(height: 12),
-                                      ...cambiosSnap.data!.docs
-                                          .map((cambioDoc) {
-                                        final cambio = cambioDoc.data()
-                                            as Map<String, dynamic>;
-                                        return Container(
-                                          margin: EdgeInsets.only(bottom: 12),
-                                          padding: EdgeInsets.all(12),
-                                          decoration: BoxDecoration(
-                                            color: Colors.white,
-                                            borderRadius:
-                                                BorderRadius.circular(8),
-                                            border: Border.all(
-                                                color: Colors.blue[200]!),
-                                          ),
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Row(
-                                                children: [
-                                                  Icon(Icons.person,
-                                                      size: 16,
-                                                      color: Colors.grey[600]),
-                                                  SizedBox(width: 6),
-                                                  Expanded(
-                                                    child: Text(
-                                                      cambio[
-                                                          'maestroAnteriorNombre'],
-                                                      style: TextStyle(
-                                                        fontWeight:
-                                                            FontWeight.w600,
-                                                        color: Colors.grey[800],
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                              Text(
-                                                'Módulos ${cambio['moduloInicioAnterior']} - ${cambio['moduloFinAnterior']}',
-                                                style: TextStyle(
-                                                    fontSize: 12,
-                                                    color: Colors.grey[600]),
-                                              ),
-                                              Padding(
-                                                padding: EdgeInsets.symmetric(
-                                                    vertical: 6),
-                                                child: Icon(
-                                                    Icons.arrow_downward,
-                                                    size: 16,
-                                                    color: Colors.blue[400]),
-                                              ),
-                                              Row(
-                                                children: [
-                                                  Icon(Icons.person,
-                                                      size: 16,
-                                                      color: Colors.green[600]),
-                                                  SizedBox(width: 6),
-                                                  Expanded(
-                                                    child: Text(
-                                                      cambio[
-                                                          'maestroNuevoNombre'],
-                                                      style: TextStyle(
-                                                        fontWeight:
-                                                            FontWeight.w600,
-                                                        color:
-                                                            Colors.green[800],
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                              Text(
-                                                'Desde módulo ${cambio['moduloInicioNuevo']}',
-                                                style: TextStyle(
-                                                    fontSize: 12,
-                                                    color: Colors.grey[600]),
-                                              ),
-                                            ],
-                                          ),
-                                        );
-                                      }).toList(),
-                                    ],
-                                  ),
-                                );
-                              }
-                              return SizedBox.shrink();
-                            },
-                          ),
-                          // Resultados
-
-                          StreamBuilder<QuerySnapshot>(
-                            stream: FirebaseFirestore.instance
-                                .collection('resultadosDiscipulado')
-                                .where('claseId', isEqualTo: doc.id)
-                                .snapshots(),
-                            builder: (context, resultadosSnap) {
-                              if (!resultadosSnap.hasData ||
-                                  resultadosSnap.data!.docs.isEmpty) {
-                                return Padding(
-                                  padding: EdgeInsets.all(24),
-                                  child: Center(
-                                    child: Text(
-                                      'No hay resultados registrados',
-                                      style: TextStyle(color: Colors.grey[600]),
-                                    ),
-                                  ),
-                                );
-                              }
-
-                              final aprobados = resultadosSnap.data!.docs
-                                  .where((doc) =>
-                                      (doc.data() as Map<String, dynamic>)[
-                                          'aprobado'] ==
-                                      true)
-                                  .toList();
-
-                              final reprobados = resultadosSnap.data!.docs
-                                  .where((doc) =>
-                                      (doc.data() as Map<String, dynamic>)[
-                                          'aprobado'] ==
-                                      false)
-                                  .toList();
-
-                              return _ResultadosColapsables(
-                                aprobados: aprobados,
-                                reprobados: reprobados,
-                                buildResultadoTile: _buildResultadoTile,
-                                copyToClipboard: _copyToClipboard,
-                              );
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+            return _GrupoAnioClases(
+              ano: ano,
+              clases: clasesDelAno,
+              buildResultadoTile: _buildResultadoTile,
+              copyToClipboard: _copyToClipboard,
             );
           },
         );
@@ -1124,10 +1019,18 @@ class _DepartamentoDiscipuladoScreenState
   Widget _buildResultadoTile(Map<String, dynamic> resData, bool aprobado) {
     final totalAsistencias = resData['totalAsistencias'] ?? 0;
     final totalFaltas = resData['totalFaltas'] ?? 0;
-    final tribu =
-        resData['tribu']?.toString() ?? 'Sin tribu'; // ✅ TEXTO DIRECTO
+    final tribu = resData['tribu']?.toString() ?? 'Sin tribu';
     final telefono = resData['telefono'] ?? '';
     final faltasDetalle = resData['faltasDetalle'] as List?;
+    final tipoClase = resData['tipoClase'] ?? '';
+
+    // ✅ Determinar nomenclatura según tipo de clase
+    final usarLeccion = tipoClase == 'Discipulado 1' ||
+        tipoClase == 'Discipulado 2' ||
+        tipoClase == 'Discipulado 3' ||
+        tipoClase == 'Consolidación';
+    final nombreUnidad = usarLeccion ? 'Lección' : 'Módulo';
+    final prefijoUnidad = usarLeccion ? 'L' : 'M';
 
     return Container(
       decoration: BoxDecoration(
@@ -1171,14 +1074,14 @@ class _DepartamentoDiscipuladoScreenState
                   ),
                   SizedBox(height: 8),
 
-                  // ✅ BADGES DE TRIBU Y MINISTERIO (TEXTO DIRECTO)
+                  // Badges de tribu y ministerio
                   Wrap(
                     spacing: 8,
                     runSpacing: 6,
                     children: [
                       _buildBadge(
                         icon: Icons.flag,
-                        label: tribu, // ✅ MOSTRAR TEXTO DIRECTO
+                        label: tribu,
                         color: Color(0xFF2B7A8C),
                       ),
                       _buildBadge(
@@ -1231,7 +1134,7 @@ class _DepartamentoDiscipuladoScreenState
                     ],
                   ),
 
-                  // Módulos reprobados (si existen)
+                  // ✅ Módulos/Lecciones reprobados (si existen)
                   if (faltasDetalle != null && faltasDetalle.isNotEmpty) ...[
                     SizedBox(height: 12),
                     Container(
@@ -1250,7 +1153,7 @@ class _DepartamentoDiscipuladoScreenState
                                   size: 16, color: Colors.red[700]),
                               SizedBox(width: 6),
                               Text(
-                                'Módulos reprobados:',
+                                '${nombreUnidad}s reprobadas:', // ✅ Dinámico
                                 style: TextStyle(
                                   fontSize: 13,
                                   fontWeight: FontWeight.bold,
@@ -1273,7 +1176,7 @@ class _DepartamentoDiscipuladoScreenState
                                   border: Border.all(color: Colors.red[300]!),
                                 ),
                                 child: Text(
-                                  'Módulo $modulo',
+                                  '$nombreUnidad $prefijoUnidad$modulo', // ✅ "Lección L3" o "Módulo M5"
                                   style: TextStyle(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w600,
@@ -1972,73 +1875,125 @@ class _DepartamentoDiscipuladoScreenState
                   StreamBuilder<QuerySnapshot>(
                     stream: FirebaseFirestore.instance
                         .collection('maestrosDiscipulado')
-                        .where('claseAsignadaId', isNull: true)
                         .snapshots(),
                     builder: (context, snapshot) {
                       if (!snapshot.hasData) {
-                        return Center(child: CircularProgressIndicator());
-                      }
-
-                      final maestrosDisponibles = snapshot.data!.docs;
-
-                      if (maestrosDisponibles.isEmpty) {
-                        return Container(
-                          padding: EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.orange[50],
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.orange[200]!),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(Icons.info_outline,
-                                  color: Colors.orange[700]),
-                              SizedBox(width: 12),
-                              Expanded(
-                                child: Text(
-                                  'No hay maestros disponibles',
-                                  style: TextStyle(color: Colors.orange[900]),
-                                ),
-                              ),
-                            ],
+                        return Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(16),
+                            child: CircularProgressIndicator(),
                           ),
                         );
                       }
 
-                      return DropdownButtonFormField<String>(
-                        value: maestroId,
-                        decoration: InputDecoration(
-                          labelText: 'Asignar Maestro (opcional)',
-                          prefixIcon:
-                              Icon(Icons.person, color: Color(0xFF2B7A8C)),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide:
-                                BorderSide(color: Color(0xFF2B7A8C), width: 2),
-                          ),
-                        ),
-                        items: maestrosDisponibles.map((doc) {
-                          final data = doc.data() as Map<String, dynamic>;
-                          return DropdownMenuItem(
-                            value: doc.id,
-                            child:
-                                Text('${data['nombre']} ${data['apellido']}'),
+                      // ✅ CORRECCIÓN: Usar FutureBuilder para filtrado asíncrono
+                      return FutureBuilder<List<QueryDocumentSnapshot>>(
+                        future: Future.wait(
+                          snapshot.data!.docs.map((doc) async {
+                            final data = doc.data() as Map<String, dynamic>;
+                            final claseAsignadaId = data['claseAsignadaId'];
+
+                            // ✅ Si no tiene clase asignada, está disponible
+                            if (claseAsignadaId == null) return doc;
+
+                            // ✅ Si tiene clase asignada, verificar si está finalizada
+                            try {
+                              final claseDoc = await FirebaseFirestore.instance
+                                  .collection('clasesDiscipulado')
+                                  .doc(claseAsignadaId)
+                                  .get();
+
+                              if (!claseDoc.exists) return doc;
+
+                              final claseData =
+                                  claseDoc.data() as Map<String, dynamic>;
+
+                              // ✅ Retornar el doc si la clase está finalizada, null si no
+                              return claseData['estado'] == 'finalizada'
+                                  ? doc
+                                  : null;
+                            } catch (e) {
+                              // ✅ En caso de error, considerar disponible
+                              return doc;
+                            }
+                          }),
+                        ).then((results) => results
+                            .whereType<QueryDocumentSnapshot>()
+                            .toList()),
+                        builder: (context, asyncSnapshot) {
+                          if (asyncSnapshot.connectionState ==
+                              ConnectionState.waiting) {
+                            return Center(
+                              child: Padding(
+                                padding: EdgeInsets.all(16),
+                                child: CircularProgressIndicator(),
+                              ),
+                            );
+                          }
+
+                          final maestrosDisponibles = asyncSnapshot.data ?? [];
+
+                          if (maestrosDisponibles.isEmpty) {
+                            return Container(
+                              padding: EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: Colors.orange[50],
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: Colors.orange[200]!),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.info_outline,
+                                      color: Colors.orange[700]),
+                                  SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      'No hay maestros disponibles',
+                                      style:
+                                          TextStyle(color: Colors.orange[900]),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }
+
+                          return DropdownButtonFormField<String>(
+                            value: maestroId,
+                            decoration: InputDecoration(
+                              labelText: 'Asignar Maestro',
+                              prefixIcon:
+                                  Icon(Icons.person, color: Color(0xFF2B7A8C)),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(
+                                    color: Color(0xFF2B7A8C), width: 2),
+                              ),
+                            ),
+                            items: maestrosDisponibles.map((doc) {
+                              final data = doc.data() as Map<String, dynamic>;
+                              return DropdownMenuItem(
+                                value: doc.id,
+                                child: Text(
+                                    '${data['nombre']} ${data['apellido']}'),
+                              );
+                            }).toList(),
+                            onChanged: (value) {
+                              final maestroDoc = maestrosDisponibles.firstWhere(
+                                (doc) => doc.id == value,
+                              );
+                              final data =
+                                  maestroDoc.data() as Map<String, dynamic>;
+                              setDialogState(() {
+                                maestroId = value;
+                                maestroNombre =
+                                    '${data['nombre']} ${data['apellido']}';
+                              });
+                            },
                           );
-                        }).toList(),
-                        onChanged: (value) {
-                          final maestroDoc = maestrosDisponibles.firstWhere(
-                            (doc) => doc.id == value,
-                          );
-                          final data =
-                              maestroDoc.data() as Map<String, dynamic>;
-                          setDialogState(() {
-                            maestroId = value;
-                            maestroNombre =
-                                '${data['nombre']} ${data['apellido']}';
-                          });
                         },
                       );
                     },
@@ -2077,42 +2032,112 @@ class _DepartamentoDiscipuladoScreenState
                               return;
                             }
 
-                            final claseRef = await FirebaseFirestore.instance
-                                .collection('clasesDiscipulado')
-                                .add({
-                              'tipo': tipoSeleccionado,
-                              'totalModulos': tiposClases[tipoSeleccionado],
-                              'fechaInicio': Timestamp.fromDate(fechaInicio!),
-                              'maestroId': maestroId,
-                              'maestroNombre': maestroNombre,
-                              'discipulosInscritos': [],
-                              'estado': 'activa',
-                              'fechaCreacion': FieldValue.serverTimestamp(),
-                            });
+                            try {
+                              // ✅ PASO 1: Si hay maestro seleccionado, limpiar COMPLETAMENTE su registro
+                              if (maestroId != null) {
+                                // ✅ Obtener datos actuales del maestro
+                                final maestroDoc = await FirebaseFirestore
+                                    .instance
+                                    .collection('maestrosDiscipulado')
+                                    .doc(maestroId)
+                                    .get();
 
-                            if (maestroId != null) {
-                              await FirebaseFirestore.instance
-                                  .collection('maestrosDiscipulado')
-                                  .doc(maestroId)
-                                  .update({
-                                'claseAsignadaId': claseRef.id,
+                                if (maestroDoc.exists) {
+                                  final maestroData =
+                                      maestroDoc.data() as Map<String, dynamic>;
+                                  final claseAnteriorId =
+                                      maestroData['claseAsignadaId'];
+
+                                  // ✅ Si tiene clase asignada anterior, verificar si está finalizada
+                                  if (claseAnteriorId != null) {
+                                    final claseAnteriorDoc =
+                                        await FirebaseFirestore.instance
+                                            .collection('clasesDiscipulado')
+                                            .doc(claseAnteriorId)
+                                            .get();
+
+                                    if (claseAnteriorDoc.exists) {
+                                      final claseAnteriorData = claseAnteriorDoc
+                                          .data() as Map<String, dynamic>;
+
+                                      // ✅ Solo permitir reasignación si la clase anterior está finalizada
+                                      if (claseAnteriorData['estado'] !=
+                                          'finalizada') {
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          SnackBar(
+                                            content: Text(
+                                                'El maestro aún tiene una clase activa'),
+                                            backgroundColor: Colors.orange,
+                                          ),
+                                        );
+                                        return;
+                                      }
+                                    }
+                                  }
+
+                                  // ✅ Limpiar COMPLETAMENTE el maestro antes de asignar nueva clase
+                                  await FirebaseFirestore.instance
+                                      .collection('maestrosDiscipulado')
+                                      .doc(maestroId)
+                                      .update({
+                                    'claseAsignadaId': null,
+                                    'ultimaClaseFinalizadaId': null,
+                                  });
+                                }
+                              }
+
+                              // ✅ PASO 2: Crear nueva clase DESDE CERO (sin datos heredados)
+                              final claseRef = await FirebaseFirestore.instance
+                                  .collection('clasesDiscipulado')
+                                  .add({
+                                'tipo': tipoSeleccionado,
+                                'totalModulos': tiposClases[tipoSeleccionado],
+                                'fechaInicio': Timestamp.fromDate(fechaInicio!),
+                                'maestroId': maestroId,
+                                'maestroNombre': maestroNombre,
+                                'discipulosInscritos': [], // ✅ Array VACÍO
+                                'estado': 'activa',
+                                'fechaCreacion': FieldValue.serverTimestamp(),
+                                'moduloInicialPermitido':
+                                    1, // ✅ SIEMPRE desde módulo 1
+                                'inscripcionesCerradas':
+                                    false, // ✅ Inscripciones abiertas por defecto
                               });
-                            }
-                            Navigator.pop(context);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Row(
-                                  children: [
-                                    Icon(Icons.check_circle,
-                                        color: Colors.white),
-                                    SizedBox(width: 12),
-                                    Text('Clase creada correctamente'),
-                                  ],
+
+                              // ✅ PASO 3: Asignar nueva clase al maestro (si fue seleccionado)
+                              if (maestroId != null) {
+                                await FirebaseFirestore.instance
+                                    .collection('maestrosDiscipulado')
+                                    .doc(maestroId)
+                                    .update({
+                                  'claseAsignadaId': claseRef.id,
+                                });
+                              }
+
+                              Navigator.pop(context);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Row(
+                                    children: [
+                                      Icon(Icons.check_circle,
+                                          color: Colors.white),
+                                      SizedBox(width: 12),
+                                      Text('Clase creada correctamente'),
+                                    ],
+                                  ),
+                                  backgroundColor: Colors.green[700],
+                                  behavior: SnackBarBehavior.floating,
                                 ),
-                                backgroundColor: Colors.green[700],
-                                behavior: SnackBarBehavior.floating,
-                              ),
-                            );
+                              );
+                            } catch (e) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Error al crear clase: $e'),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            }
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Color(0xFFF7941D),
@@ -2125,7 +2150,7 @@ class _DepartamentoDiscipuladoScreenState
                               style: TextStyle(
                                   fontWeight: FontWeight.bold, fontSize: 15)),
                         ),
-                      ),
+                      )
                     ],
                   ),
                 ],
@@ -3068,6 +3093,433 @@ class _ResultadosColapsablesState extends State<_ResultadosColapsables> {
           ),
         ],
       ],
+    );
+  }
+}
+
+class _GrupoAnioClases extends StatefulWidget {
+  final int ano;
+  final List<DocumentSnapshot> clases;
+  final Widget Function(Map<String, dynamic>, bool) buildResultadoTile;
+  final void Function(BuildContext, String) copyToClipboard;
+
+  const _GrupoAnioClases({
+    Key? key,
+    required this.ano,
+    required this.clases,
+    required this.buildResultadoTile,
+    required this.copyToClipboard,
+  }) : super(key: key);
+
+  @override
+  State<_GrupoAnioClases> createState() => _GrupoAnioClasesState();
+}
+
+class _GrupoAnioClasesState extends State<_GrupoAnioClases> {
+  bool _expandido = false; // ✅ Inicia colapsado
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: EdgeInsets.only(bottom: 20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          // Header del año (clickeable)
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () {
+                setState(() {
+                  _expandido = !_expandido;
+                });
+              },
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(16),
+                topRight: Radius.circular(16),
+              ),
+              child: Container(
+                padding: EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Color(0xFF2B7A8C), Color(0xFF1A5968)],
+                  ),
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(16),
+                    topRight: Radius.circular(16),
+                    bottomLeft: _expandido ? Radius.zero : Radius.circular(16),
+                    bottomRight: _expandido ? Radius.zero : Radius.circular(16),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.calendar_today, color: Colors.white, size: 24),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Año ${widget.ano}',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    Container(
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        '${widget.clases.length} ${widget.clases.length == 1 ? "clase" : "clases"}',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: 12),
+                    AnimatedRotation(
+                      turns: _expandido ? 0.5 : 0,
+                      duration: Duration(milliseconds: 200),
+                      child: Icon(
+                        Icons.keyboard_arrow_down,
+                        color: Colors.white,
+                        size: 28,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          // Lista de clases (colapsable)
+          AnimatedSize(
+            duration: Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+            child: _expandido
+                ? Column(
+                    children: widget.clases.asMap().entries.map((entry) {
+                      final index = entry.key;
+                      final doc = entry.value;
+                      final data = doc.data() as Map<String, dynamic>;
+
+                      return _ClaseHistorialCard(
+                        claseDoc: doc,
+                        claseData: data,
+                        buildResultadoTile: widget.buildResultadoTile,
+                        copyToClipboard: widget.copyToClipboard,
+                        isLast: index == widget.clases.length - 1,
+                      );
+                    }).toList(),
+                  )
+                : SizedBox.shrink(),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ============================================
+// WIDGET PARA CADA CLASE EN EL HISTORIAL
+// ============================================
+class _ClaseHistorialCard extends StatelessWidget {
+  final DocumentSnapshot claseDoc;
+  final Map<String, dynamic> claseData;
+  final Widget Function(Map<String, dynamic>, bool) buildResultadoTile;
+  final void Function(BuildContext, String) copyToClipboard;
+  final bool isLast;
+
+  const _ClaseHistorialCard({
+    Key? key,
+    required this.claseDoc,
+    required this.claseData,
+    required this.buildResultadoTile,
+    required this.copyToClipboard,
+    required this.isLast,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    // ✅ Formatear fecha de finalización
+    String fechaFormateada = 'Sin fecha';
+    if (claseData['fechaFinalizacion'] != null) {
+      final fecha = (claseData['fechaFinalizacion'] as Timestamp).toDate();
+      fechaFormateada = DateFormat('MMMM yyyy', 'es_ES').format(fecha);
+      // Capitalizar primera letra del mes
+      fechaFormateada =
+          fechaFormateada[0].toUpperCase() + fechaFormateada.substring(1);
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: isLast
+              ? BorderSide.none
+              : BorderSide(color: Colors.grey[200]!, width: 1),
+        ),
+      ),
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          tilePadding: EdgeInsets.all(16),
+          childrenPadding: EdgeInsets.zero,
+          leading: Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              color: Colors.grey[300],
+              shape: BoxShape.circle,
+            ),
+            child: Icon(Icons.history, color: Colors.grey[700], size: 28),
+          ),
+          title: Text(
+            claseData['tipo'] ?? '',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF1A5968),
+            ),
+          ),
+          subtitle: Padding(
+            padding: EdgeInsets.only(top: 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // ✅ Fecha formateada de manera clara
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[100],
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.grey[300]!),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.event_available,
+                          size: 16, color: Colors.grey[700]),
+                      SizedBox(width: 6),
+                      Text(
+                        'Finalizada en $fechaFormateada',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey[800],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (claseData['maestroNombre'] != null) ...[
+                  SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Icon(Icons.person, size: 16, color: Color(0xFF2B7A8C)),
+                      SizedBox(width: 6),
+                      Flexible(
+                        child: Text(
+                          claseData['maestroNombre'],
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Color(0xFF2B7A8C),
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ],
+            ),
+          ),
+          children: [
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.grey[50],
+              ),
+              child: Column(
+                children: [
+                  // Historial de maestros
+                  StreamBuilder<QuerySnapshot>(
+                    stream: FirebaseFirestore.instance
+                        .collection('cambiosMaestrosDiscipulado')
+                        .where('claseId', isEqualTo: claseDoc.id)
+                        .orderBy('fechaCambio')
+                        .snapshots(),
+                    builder: (context, cambiosSnap) {
+                      if (cambiosSnap.hasData &&
+                          cambiosSnap.data!.docs.isNotEmpty) {
+                        return Container(
+                          padding: EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.blue[50],
+                            border: Border(
+                              bottom: BorderSide(
+                                  color: Colors.grey[200]!, width: 1),
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(Icons.swap_horiz,
+                                      color: Colors.blue[700], size: 20),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    'Historial de Maestros',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                      color: Colors.blue[900],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              SizedBox(height: 12),
+                              ...cambiosSnap.data!.docs.map((cambioDoc) {
+                                final cambio =
+                                    cambioDoc.data() as Map<String, dynamic>;
+                                return Container(
+                                  margin: EdgeInsets.only(bottom: 12),
+                                  padding: EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(8),
+                                    border:
+                                        Border.all(color: Colors.blue[200]!),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Icon(Icons.person,
+                                              size: 16,
+                                              color: Colors.grey[600]),
+                                          SizedBox(width: 6),
+                                          Expanded(
+                                            child: Text(
+                                              cambio['maestroAnteriorNombre'],
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.w600,
+                                                color: Colors.grey[800],
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      Text(
+                                        'Módulos ${cambio['moduloInicioAnterior']} - ${cambio['moduloFinAnterior']}',
+                                        style: TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.grey[600]),
+                                      ),
+                                      Padding(
+                                        padding:
+                                            EdgeInsets.symmetric(vertical: 6),
+                                        child: Icon(Icons.arrow_downward,
+                                            size: 16, color: Colors.blue[400]),
+                                      ),
+                                      Row(
+                                        children: [
+                                          Icon(Icons.person,
+                                              size: 16,
+                                              color: Colors.green[600]),
+                                          SizedBox(width: 6),
+                                          Expanded(
+                                            child: Text(
+                                              cambio['maestroNuevoNombre'],
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.w600,
+                                                color: Colors.green[800],
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      Text(
+                                        'Desde módulo ${cambio['moduloInicioNuevo']}',
+                                        style: TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.grey[600]),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }).toList(),
+                            ],
+                          ),
+                        );
+                      }
+                      return SizedBox.shrink();
+                    },
+                  ),
+                  // Resultados
+                  StreamBuilder<QuerySnapshot>(
+                    stream: FirebaseFirestore.instance
+                        .collection('resultadosDiscipulado')
+                        .where('claseId', isEqualTo: claseDoc.id)
+                        .snapshots(),
+                    builder: (context, resultadosSnap) {
+                      if (!resultadosSnap.hasData ||
+                          resultadosSnap.data!.docs.isEmpty) {
+                        return Padding(
+                          padding: EdgeInsets.all(24),
+                          child: Center(
+                            child: Text(
+                              'No hay resultados registrados',
+                              style: TextStyle(color: Colors.grey[600]),
+                            ),
+                          ),
+                        );
+                      }
+
+                      final aprobados = resultadosSnap.data!.docs
+                          .where((doc) =>
+                              (doc.data()
+                                  as Map<String, dynamic>)['aprobado'] ==
+                              true)
+                          .toList();
+
+                      final reprobados = resultadosSnap.data!.docs
+                          .where((doc) =>
+                              (doc.data()
+                                  as Map<String, dynamic>)['aprobado'] ==
+                              false)
+                          .toList();
+
+                      return _ResultadosColapsables(
+                        aprobados: aprobados,
+                        reprobados: reprobados,
+                        buildResultadoTile: buildResultadoTile,
+                        copyToClipboard: copyToClipboard,
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
