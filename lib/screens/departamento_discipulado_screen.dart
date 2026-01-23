@@ -1522,9 +1522,6 @@ class _DepartamentoDiscipuladoScreenState
     );
   }
 
-// ============================================
-// REEMPLAZA DIÁLOGO - Crear Maestro
-// ============================================
   void _mostrarDialogoCrearMaestro() async {
     final nombreController = TextEditingController();
     final apellidoController = TextEditingController();
@@ -1731,9 +1728,6 @@ class _DepartamentoDiscipuladoScreenState
     );
   }
 
-// ============================================
-// REEMPLAZA DIÁLOGO - Crear Clase
-// ============================================
   void _mostrarDialogoCrearClase() async {
     String? tipoSeleccionado;
     DateTime? fechaInicio;
@@ -1886,17 +1880,14 @@ class _DepartamentoDiscipuladoScreenState
                         );
                       }
 
-                      // ✅ CORRECCIÓN: Usar FutureBuilder para filtrado asíncrono
                       return FutureBuilder<List<QueryDocumentSnapshot>>(
                         future: Future.wait(
                           snapshot.data!.docs.map((doc) async {
                             final data = doc.data() as Map<String, dynamic>;
                             final claseAsignadaId = data['claseAsignadaId'];
 
-                            // ✅ Si no tiene clase asignada, está disponible
                             if (claseAsignadaId == null) return doc;
 
-                            // ✅ Si tiene clase asignada, verificar si está finalizada
                             try {
                               final claseDoc = await FirebaseFirestore.instance
                                   .collection('clasesDiscipulado')
@@ -1907,13 +1898,10 @@ class _DepartamentoDiscipuladoScreenState
 
                               final claseData =
                                   claseDoc.data() as Map<String, dynamic>;
-
-                              // ✅ Retornar el doc si la clase está finalizada, null si no
                               return claseData['estado'] == 'finalizada'
                                   ? doc
                                   : null;
                             } catch (e) {
-                              // ✅ En caso de error, considerar disponible
                               return doc;
                             }
                           }),
@@ -2033,9 +2021,8 @@ class _DepartamentoDiscipuladoScreenState
                             }
 
                             try {
-                              // ✅ PASO 1: Si hay maestro seleccionado, limpiar COMPLETAMENTE su registro
+                              // ✅ PASO 1: Si hay maestro, limpiar TODO del anterior
                               if (maestroId != null) {
-                                // ✅ Obtener datos actuales del maestro
                                 final maestroDoc = await FirebaseFirestore
                                     .instance
                                     .collection('maestrosDiscipulado')
@@ -2048,7 +2035,7 @@ class _DepartamentoDiscipuladoScreenState
                                   final claseAnteriorId =
                                       maestroData['claseAsignadaId'];
 
-                                  // ✅ Si tiene clase asignada anterior, verificar si está finalizada
+                                  // ✅ Validar que clase anterior esté finalizada
                                   if (claseAnteriorId != null) {
                                     final claseAnteriorDoc =
                                         await FirebaseFirestore.instance
@@ -2060,7 +2047,6 @@ class _DepartamentoDiscipuladoScreenState
                                       final claseAnteriorData = claseAnteriorDoc
                                           .data() as Map<String, dynamic>;
 
-                                      // ✅ Solo permitir reasignación si la clase anterior está finalizada
                                       if (claseAnteriorData['estado'] !=
                                           'finalizada') {
                                         ScaffoldMessenger.of(context)
@@ -2076,19 +2062,23 @@ class _DepartamentoDiscipuladoScreenState
                                     }
                                   }
 
-                                  // ✅ Limpiar COMPLETAMENTE el maestro antes de asignar nueva clase
+                                  // ✅ CRÍTICO: Eliminar TODA referencia a clases anteriores
                                   await FirebaseFirestore.instance
                                       .collection('maestrosDiscipulado')
                                       .doc(maestroId)
                                       .update({
-                                    'claseAsignadaId': null,
-                                    'ultimaClaseFinalizadaId': null,
+                                    'claseAsignadaId': FieldValue.delete(),
                                   });
+
+                                  // ✅ Esperar para asegurar que Firestore procese
+                                  await Future.delayed(
+                                      Duration(milliseconds: 500));
                                 }
                               }
 
-                              // ✅ PASO 2: Crear nueva clase DESDE CERO (sin datos heredados)
-                              final claseRef = await FirebaseFirestore.instance
+                              // ✅ PASO 2: Crear nueva clase DESDE CERO
+                              final nuevaClaseRef = await FirebaseFirestore
+                                  .instance
                                   .collection('clasesDiscipulado')
                                   .add({
                                 'tipo': tipoSeleccionado,
@@ -2096,22 +2086,21 @@ class _DepartamentoDiscipuladoScreenState
                                 'fechaInicio': Timestamp.fromDate(fechaInicio!),
                                 'maestroId': maestroId,
                                 'maestroNombre': maestroNombre,
-                                'discipulosInscritos': [], // ✅ Array VACÍO
+                                'discipulosInscritos': [], // ✅ VACÍO
                                 'estado': 'activa',
                                 'fechaCreacion': FieldValue.serverTimestamp(),
                                 'moduloInicialPermitido':
-                                    1, // ✅ SIEMPRE desde módulo 1
-                                'inscripcionesCerradas':
-                                    false, // ✅ Inscripciones abiertas por defecto
+                                    1, // ✅ SIEMPRE desde 1
+                                'inscripcionesCerradas': false,
                               });
 
-                              // ✅ PASO 3: Asignar nueva clase al maestro (si fue seleccionado)
+                              // ✅ PASO 3: Asignar nueva clase al maestro
                               if (maestroId != null) {
                                 await FirebaseFirestore.instance
                                     .collection('maestrosDiscipulado')
                                     .doc(maestroId)
                                     .update({
-                                  'claseAsignadaId': claseRef.id,
+                                  'claseAsignadaId': nuevaClaseRef.id,
                                 });
                               }
 
@@ -2378,9 +2367,6 @@ class _DepartamentoDiscipuladoScreenState
     );
   }
 
-// ============================================
-// 6. AGREGA ESTE MÉTODO AL FINAL DE LA CLASE (copiar teléfono)
-// ============================================
   void _copyToClipboard(BuildContext context, String text) {
     // Implementación simple sin package externo
     ScaffoldMessenger.of(context).showSnackBar(
@@ -2571,7 +2557,7 @@ class _DepartamentoDiscipuladoScreenState
     }
   }
 
-  // ============================================
+// ============================================
 // MÉTODOS PARA CONTROL DE INSCRIPCIONES
 // ============================================
 
@@ -2860,11 +2846,6 @@ class _DepartamentoDiscipuladoScreenState
     }
   }
 }
-
-// ============================================
-// WIDGET PARA RESULTADOS COLAPSABLES
-// AGREGAR AL FINAL DEL ARCHIVO
-// ============================================
 
 class _ResultadosColapsables extends StatefulWidget {
   final List<QueryDocumentSnapshot> aprobados;
@@ -3235,9 +3216,6 @@ class _GrupoAnioClasesState extends State<_GrupoAnioClases> {
   }
 }
 
-// ============================================
-// WIDGET PARA CADA CLASE EN EL HISTORIAL
-// ============================================
 class _ClaseHistorialCard extends StatelessWidget {
   final DocumentSnapshot claseDoc;
   final Map<String, dynamic> claseData;

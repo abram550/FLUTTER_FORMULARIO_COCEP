@@ -67,14 +67,40 @@ class _MaestroDiscipuladoScreenState extends State<MaestroDiscipuladoScreen>
 
         final maestroData =
             maestroSnapshot.data!.data() as Map<String, dynamic>;
+
+        // ✅ CORRECCIÓN CRÍTICA: Obtener claseId del documento del maestro
+        // Esto funciona tanto si viene del login como del departamento
         final claseActualId = maestroData['claseAsignadaId'];
 
-        // ✅ CORRECCIÓN: Si tiene clase activa, mostrarla SIEMPRE
-        if (claseActualId != null) {
-          return _buildClaseActiva(claseActualId);
+        // ✅ Verificar que claseActualId existe y es válido
+        if (claseActualId != null && claseActualId.toString().isNotEmpty) {
+          // ✅ Verificar que la clase realmente existe en Firestore
+          return StreamBuilder<DocumentSnapshot>(
+            stream: FirebaseFirestore.instance
+                .collection('clasesDiscipulado')
+                .doc(claseActualId)
+                .snapshots(),
+            builder: (context, claseSnapshot) {
+              if (claseSnapshot.connectionState == ConnectionState.waiting) {
+                return Scaffold(
+                  body: Center(
+                    child: CircularProgressIndicator(color: cocepTeal),
+                  ),
+                );
+              }
+
+              // ✅ Si la clase no existe, mostrar sin clase
+              if (!claseSnapshot.hasData || !claseSnapshot.data!.exists) {
+                return _buildSinClaseAsignada();
+              }
+
+              // ✅ CRÍTICO: Pasar claseActualId a _buildClaseActiva
+              return _buildClaseActiva(claseActualId);
+            },
+          );
         }
 
-        // ✅ Si no tiene clase activa, mostrar pantalla sin clase
+        // ✅ No tiene clase asignada
         return _buildSinClaseAsignada();
       },
     );
@@ -415,127 +441,272 @@ class _MaestroDiscipuladoScreenState extends State<MaestroDiscipuladoScreen>
         tipoClase == 'Consolidación';
     final nombreUnidad = usarLeccion ? 'Lecciones' : 'Módulos';
 
-    return StreamBuilder<QuerySnapshot>(
+    // ✅ CORRECCIÓN CRÍTICA: Obtener el claseAsignadaId ACTUAL del maestro en tiempo real
+    return StreamBuilder<DocumentSnapshot>(
       stream: FirebaseFirestore.instance
-          .collection('asistenciasDiscipulado')
-          .where('claseId', isEqualTo: widget.claseAsignadaId)
+          .collection('maestrosDiscipulado')
+          .doc(widget.maestroId)
           .snapshots(),
-      builder: (context, asistenciasSnap) {
-        int modulosCompletados = 0;
-        if (asistenciasSnap.hasData) {
-          modulosCompletados = asistenciasSnap.data!.docs
-              .map((doc) =>
-                  (doc.data() as Map<String, dynamic>)['numeroModulo'] as int)
-              .toSet()
-              .length;
+      builder: (context, maestroSnapshot) {
+        // Si aún no hay datos del maestro
+        if (!maestroSnapshot.hasData) {
+          return _buildHeaderSkeleton(
+              totalModulos, discipulos.length, nombreUnidad);
         }
 
-        double progreso =
-            totalModulos > 0 ? modulosCompletados / totalModulos : 0;
+        final maestroData =
+            maestroSnapshot.data!.data() as Map<String, dynamic>?;
 
-        return Container(
-          margin: EdgeInsets.fromLTRB(16, 16, 16, 0),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [cocepTeal, cocepDarkTeal],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: cocepTeal.withOpacity(0.3),
-                blurRadius: 15,
-                offset: Offset(0, 8),
-              ),
-            ],
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(16),
-            child: Stack(
-              children: [
-                Positioned(
-                  right: -30,
-                  top: -30,
-                  child: Container(
-                    width: 100,
-                    height: 100,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.white.withOpacity(0.1),
-                    ),
-                  ),
+        // Si no existe el documento del maestro
+        if (maestroData == null) {
+          return _buildHeaderSkeleton(
+              totalModulos, discipulos.length, nombreUnidad);
+        }
+
+        // ✅ CRÍTICO: Obtener el claseAsignadaId ACTUAL del maestro
+        final claseActualId = maestroData['claseAsignadaId'];
+
+        // Si no hay clase asignada
+        if (claseActualId == null) {
+          return _buildHeaderSkeleton(
+              totalModulos, discipulos.length, nombreUnidad);
+        }
+
+        // ✅ SOLUCIÓN: Consultar asistencias SOLO de la clase ACTUAL
+        return StreamBuilder<QuerySnapshot>(
+          stream: FirebaseFirestore.instance
+              .collection('asistenciasDiscipulado')
+              .where('claseId',
+                  isEqualTo: claseActualId) // ✅ Filtrar por clase ACTUAL
+              .snapshots(),
+          builder: (context, asistenciasSnap) {
+            int modulosCompletados = 0;
+
+            // ✅ Contar módulos únicos SOLO de esta clase
+            if (asistenciasSnap.hasData && asistenciasSnap.data != null) {
+              modulosCompletados = asistenciasSnap.data!.docs
+                  .map((doc) => (doc.data()
+                      as Map<String, dynamic>)['numeroModulo'] as int)
+                  .toSet()
+                  .length;
+            }
+
+            double progreso =
+                totalModulos > 0 ? modulosCompletados / totalModulos : 0;
+
+            return Container(
+              margin: EdgeInsets.fromLTRB(16, 16, 16, 0),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [cocepTeal, cocepDarkTeal],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
-                Padding(
-                  padding: EdgeInsets.all(16),
-                  child: Column(
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceAround,
-                        children: [
-                          _buildStatCard(
-                            icon: Icons.school_outlined,
-                            label: nombreUnidad, // ✅ Dinámico
-                            value: '$totalModulos',
-                          ),
-                          _buildStatCard(
-                            icon: Icons.people_outline,
-                            label: 'Discípulos',
-                            value: '${discipulos.length}',
-                          ),
-                          _buildStatCard(
-                            icon: Icons.check_circle_outline,
-                            label: 'Hechos',
-                            value: '$modulosCompletados',
-                          ),
-                        ],
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: cocepTeal.withOpacity(0.3),
+                    blurRadius: 15,
+                    offset: Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: Stack(
+                  children: [
+                    Positioned(
+                      right: -30,
+                      top: -30,
+                      child: Container(
+                        width: 100,
+                        height: 100,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.white.withOpacity(0.1),
+                        ),
                       ),
-                      SizedBox(height: 12),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                    ),
+                    Padding(
+                      padding: EdgeInsets.all(16),
+                      child: Column(
                         children: [
                           Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            mainAxisAlignment: MainAxisAlignment.spaceAround,
                             children: [
-                              Text(
-                                'Progreso',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                ),
+                              _buildStatCard(
+                                icon: Icons.school_outlined,
+                                label: nombreUnidad,
+                                value: '$totalModulos',
                               ),
-                              Text(
-                                '${(progreso * 100).toStringAsFixed(0)}%',
-                                style: TextStyle(
-                                  color: cocepYellow,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
+                              _buildStatCard(
+                                icon: Icons.people_outline,
+                                label: 'Discípulos',
+                                value: '${discipulos.length}',
+                              ),
+                              _buildStatCard(
+                                icon: Icons.check_circle_outline,
+                                label: 'Hechos',
+                                value: '$modulosCompletados',
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: 12),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    'Progreso',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  Text(
+                                    '${(progreso * 100).toStringAsFixed(0)}%',
+                                    style: TextStyle(
+                                      color: cocepYellow,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              SizedBox(height: 6),
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: LinearProgressIndicator(
+                                  value: progreso,
+                                  backgroundColor:
+                                      Colors.white.withOpacity(0.3),
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                      cocepYellow),
+                                  minHeight: 6,
                                 ),
                               ),
                             ],
                           ),
-                          SizedBox(height: 6),
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: LinearProgressIndicator(
-                              value: progreso,
-                              backgroundColor: Colors.white.withOpacity(0.3),
-                              valueColor:
-                                  AlwaysStoppedAnimation<Color>(cocepYellow),
-                              minHeight: 6,
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildHeaderSkeleton(
+      int totalModulos, int totalDiscipulos, String nombreUnidad) {
+    return Container(
+      margin: EdgeInsets.fromLTRB(16, 16, 16, 0),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [cocepTeal, cocepDarkTeal],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: cocepTeal.withOpacity(0.3),
+            blurRadius: 15,
+            offset: Offset(0, 8),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Stack(
+          children: [
+            Positioned(
+              right: -30,
+              top: -30,
+              child: Container(
+                width: 100,
+                height: 100,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withOpacity(0.1),
+                ),
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      _buildStatCard(
+                        icon: Icons.school_outlined,
+                        label: nombreUnidad,
+                        value: '$totalModulos',
+                      ),
+                      _buildStatCard(
+                        icon: Icons.people_outline,
+                        label: 'Discípulos',
+                        value: '$totalDiscipulos',
+                      ),
+                      _buildStatCard(
+                        icon: Icons.check_circle_outline,
+                        label: 'Hechos',
+                        value: '0',
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 12),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Progreso',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          Text(
+                            '0%',
+                            style: TextStyle(
+                              color: cocepYellow,
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
                         ],
                       ),
+                      SizedBox(height: 6),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: LinearProgressIndicator(
+                          value: 0,
+                          backgroundColor: Colors.white.withOpacity(0.3),
+                          valueColor:
+                              AlwaysStoppedAnimation<Color>(cocepYellow),
+                          minHeight: 6,
+                        ),
+                      ),
                     ],
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        );
-      },
+          ],
+        ),
+      ),
     );
   }
 
@@ -1033,10 +1204,8 @@ class _MaestroDiscipuladoScreenState extends State<MaestroDiscipuladoScreen>
                                     ].map((ministerio) {
                                       return DropdownMenuItem(
                                         value: ministerio,
-                                        child: Text(
-                                          ministerio,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
+                                        child: Text(ministerio,
+                                            overflow: TextOverflow.ellipsis),
                                       );
                                     }).toList(),
                                     onChanged: (value) {
@@ -1055,11 +1224,9 @@ class _MaestroDiscipuladoScreenState extends State<MaestroDiscipuladoScreen>
                                         child: TextButton(
                                           onPressed: () =>
                                               Navigator.pop(context),
-                                          child: Text(
-                                            'Cancelar',
-                                            style: TextStyle(
-                                                color: Colors.grey[700]),
-                                          ),
+                                          child: Text('Cancelar',
+                                              style: TextStyle(
+                                                  color: Colors.grey[700])),
                                         ),
                                       ),
                                       SizedBox(width: 8),
@@ -1069,9 +1236,37 @@ class _MaestroDiscipuladoScreenState extends State<MaestroDiscipuladoScreen>
                                             if (formKey.currentState!
                                                 .validate()) {
                                               try {
-                                                // ✅ CORRECCIÓN: Verificar que claseAsignadaId no sea null
-                                                if (widget.claseAsignadaId ==
-                                                    null) {
+                                                // ✅ CORRECCIÓN: Obtener claseAsignadaId del maestro en tiempo real
+                                                final maestroDoc =
+                                                    await FirebaseFirestore
+                                                        .instance
+                                                        .collection(
+                                                            'maestrosDiscipulado')
+                                                        .doc(widget.maestroId)
+                                                        .get();
+
+                                                if (!maestroDoc.exists) {
+                                                  ScaffoldMessenger.of(context)
+                                                      .showSnackBar(
+                                                    SnackBar(
+                                                      content: Text(
+                                                          'Error: No se encontró el maestro'),
+                                                      backgroundColor:
+                                                          Colors.red,
+                                                    ),
+                                                  );
+                                                  return;
+                                                }
+
+                                                final maestroData =
+                                                    maestroDoc.data()
+                                                        as Map<String, dynamic>;
+                                                final claseAsignadaId =
+                                                    maestroData[
+                                                        'claseAsignadaId'];
+
+                                                // ✅ Verificar que tiene clase asignada
+                                                if (claseAsignadaId == null) {
                                                   ScaffoldMessenger.of(context)
                                                       .showSnackBar(
                                                     SnackBar(
@@ -1084,17 +1279,15 @@ class _MaestroDiscipuladoScreenState extends State<MaestroDiscipuladoScreen>
                                                   return;
                                                 }
 
-                                                // ✅ Obtener documento de la clase
+                                                // ✅ Verificar que la clase existe y está activa
                                                 final claseDoc =
                                                     await FirebaseFirestore
                                                         .instance
                                                         .collection(
                                                             'clasesDiscipulado')
-                                                        .doc(widget
-                                                            .claseAsignadaId)
+                                                        .doc(claseAsignadaId)
                                                         .get();
 
-                                                // ✅ Verificar que la clase existe
                                                 if (!claseDoc.exists) {
                                                   ScaffoldMessenger.of(context)
                                                       .showSnackBar(
@@ -1108,7 +1301,6 @@ class _MaestroDiscipuladoScreenState extends State<MaestroDiscipuladoScreen>
                                                   return;
                                                 }
 
-                                                // ✅ Obtener datos de la clase de forma segura
                                                 final claseData =
                                                     claseDoc.data();
                                                 if (claseData == null) {
@@ -1124,7 +1316,22 @@ class _MaestroDiscipuladoScreenState extends State<MaestroDiscipuladoScreen>
                                                   return;
                                                 }
 
-                                                // ✅ Obtener lista de discípulos (manejar null correctamente)
+                                                // ✅ Verificar que la clase esté activa
+                                                if (claseData['estado'] !=
+                                                    'activa') {
+                                                  ScaffoldMessenger.of(context)
+                                                      .showSnackBar(
+                                                    SnackBar(
+                                                      content: Text(
+                                                          'La clase ya fue finalizada'),
+                                                      backgroundColor:
+                                                          Colors.orange,
+                                                    ),
+                                                  );
+                                                  return;
+                                                }
+
+                                                // ✅ Obtener lista de discípulos actual
                                                 final discipulos = List<
                                                         Map<String,
                                                             dynamic>>.from(
@@ -1132,7 +1339,7 @@ class _MaestroDiscipuladoScreenState extends State<MaestroDiscipuladoScreen>
                                                             'discipulosInscritos'] ??
                                                         []);
 
-                                                // ✅ Generar ID único para el discípulo
+                                                // ✅ Generar ID único
                                                 final personaId =
                                                     'maestro_${DateTime.now().millisecondsSinceEpoch}';
 
@@ -1152,11 +1359,11 @@ class _MaestroDiscipuladoScreenState extends State<MaestroDiscipuladoScreen>
                                                   'registradoPorMaestro': true,
                                                 });
 
-                                                // ✅ Actualizar Firestore
+                                                // ✅ Actualizar Firestore con el claseAsignadaId correcto
                                                 await FirebaseFirestore.instance
                                                     .collection(
                                                         'clasesDiscipulado')
-                                                    .doc(widget.claseAsignadaId)
+                                                    .doc(claseAsignadaId)
                                                     .update({
                                                   'discipulosInscritos':
                                                       discipulos,
@@ -1173,9 +1380,8 @@ class _MaestroDiscipuladoScreenState extends State<MaestroDiscipuladoScreen>
                                                                 Colors.white),
                                                         SizedBox(width: 12),
                                                         Flexible(
-                                                          child: Text(
-                                                              'Discípulo registrado exitosamente'),
-                                                        ),
+                                                            child: Text(
+                                                                'Discípulo registrado exitosamente')),
                                                       ],
                                                     ),
                                                     backgroundColor:
@@ -1215,9 +1421,8 @@ class _MaestroDiscipuladoScreenState extends State<MaestroDiscipuladoScreen>
                                           child: Text(
                                             'Registrar',
                                             style: TextStyle(
-                                              fontSize: 15,
-                                              fontWeight: FontWeight.w600,
-                                            ),
+                                                fontSize: 15,
+                                                fontWeight: FontWeight.w600),
                                           ),
                                         ),
                                       ),
@@ -1239,11 +1444,6 @@ class _MaestroDiscipuladoScreenState extends State<MaestroDiscipuladoScreen>
       ),
     );
   }
-
-// ========================================
-// MODIFICACIÓN 5: Actualizar _editarDiscipulo
-// REEMPLAZA el método _editarDiscipulo completo
-// ========================================
 
   void _editarDiscipulo(Map<String, dynamic> discipulo) async {
     final formKey = GlobalKey<FormState>();
@@ -1554,31 +1754,90 @@ class _MaestroDiscipuladoScreenState extends State<MaestroDiscipuladoScreen>
       for (var d in discipulos) d['personaId']: true
     };
 
-    // ✅ OBTENER CONFIGURACIÓN DE LA CLASE
-    final claseDoc = await FirebaseFirestore.instance
-        .collection('clasesDiscipulado')
-        .doc(widget.claseAsignadaId)
+    // ✅ CORRECCIÓN CRÍTICA: Obtener claseAsignadaId ACTUAL del maestro en tiempo real
+    final maestroDoc = await FirebaseFirestore.instance
+        .collection('maestrosDiscipulado')
+        .doc(widget.maestroId)
         .get();
 
-    final claseData = claseDoc.data() as Map<String, dynamic>;
+    if (!maestroDoc.exists) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: No se encontró el maestro'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
+    }
+
+    final maestroData = maestroDoc.data() as Map<String, dynamic>;
+    final claseAsignadaId = maestroData['claseAsignadaId'];
+
+    if (claseAsignadaId == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('No hay clase asignada actualmente'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
+    }
+
+    // ✅ Ahora obtener la clase con el ID correcto
+    final claseDoc = await FirebaseFirestore.instance
+        .collection('clasesDiscipulado')
+        .doc(claseAsignadaId)
+        .get();
+
+    if (!claseDoc.exists) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: La clase no existe'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
+    }
+
+    final claseData = claseDoc.data();
+    if (claseData == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content:
+                Text('Error: No se pudieron obtener los datos de la clase'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
+    }
+
     final totalModulos = claseData['totalModulos'] as int;
     final tipoClase = claseData['tipo'] ?? 'Clase de Discipulado';
 
-    // ✅ NUEVO: Determinar si usar "Lección" o "Módulo"
+    // ✅ Determinar si usar "Lección" o "Módulo"
     final usarLeccion = tipoClase == 'Discipulado 1' ||
         tipoClase == 'Discipulado 2' ||
         tipoClase == 'Discipulado 3' ||
         tipoClase == 'Consolidación';
     final nombreUnidad = usarLeccion ? 'Lección' : 'Módulo';
 
-    // ✅ NUEVO: Obtener módulo inicial permitido (por defecto 1)
+    // ✅ Obtener módulo inicial permitido (por defecto 1)
     final moduloInicialPermitido =
         claseData['moduloInicialPermitido'] as int? ?? 1;
 
-    // ✅ Obtener asistencias ya registradas
+    // ✅ CORRECCIÓN: Obtener asistencias SOLO de la clase ACTUAL
     final asistenciasRegistradas = await FirebaseFirestore.instance
         .collection('asistenciasDiscipulado')
-        .where('claseId', isEqualTo: widget.claseAsignadaId)
+        .where('claseId',
+            isEqualTo: claseAsignadaId) // ✅ Usar claseAsignadaId ACTUAL
         .get();
 
     Set<int> modulosYaRegistrados = {};
@@ -1587,7 +1846,7 @@ class _MaestroDiscipuladoScreenState extends State<MaestroDiscipuladoScreen>
       modulosYaRegistrados.add(data['numeroModulo'] as int);
     }
 
-    // ✅ MODIFICADO: Calcular siguiente módulo considerando el inicial permitido
+    // ✅ Calcular siguiente módulo considerando el inicial permitido
     int siguienteModulo = moduloInicialPermitido;
     while (modulosYaRegistrados.contains(siguienteModulo) &&
         siguienteModulo <= totalModulos) {
@@ -1658,7 +1917,7 @@ class _MaestroDiscipuladoScreenState extends State<MaestroDiscipuladoScreen>
                               mainAxisSize: MainAxisSize.min,
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
-                                // ✅ NUEVO: Indicador visual del módulo inicial
+                                // ✅ Indicador visual del módulo inicial
                                 if (moduloInicialPermitido > 1)
                                   Container(
                                     margin: EdgeInsets.only(bottom: 16),
@@ -2032,6 +2291,7 @@ class _MaestroDiscipuladoScreenState extends State<MaestroDiscipuladoScreen>
                                         );
                                         return;
                                       }
+                                      // ✅ Guardar con claseAsignadaId ACTUAL
                                       for (var discipulo in discipulos) {
                                         final personaId =
                                             discipulo['personaId'];
@@ -2041,7 +2301,8 @@ class _MaestroDiscipuladoScreenState extends State<MaestroDiscipuladoScreen>
                                             .collection(
                                                 'asistenciasDiscipulado')
                                             .add({
-                                          'claseId': widget.claseAsignadaId,
+                                          'claseId':
+                                              claseAsignadaId, // ✅ ID ACTUAL
                                           'discipuloId': personaId,
                                           'discipuloNombre':
                                               discipulo['nombre'],
@@ -2117,6 +2378,7 @@ class _MaestroDiscipuladoScreenState extends State<MaestroDiscipuladoScreen>
                                             );
                                             return;
                                           }
+                                          // ✅ Guardar con claseAsignadaId ACTUAL
                                           for (var discipulo in discipulos) {
                                             final personaId =
                                                 discipulo['personaId'];
@@ -2126,7 +2388,8 @@ class _MaestroDiscipuladoScreenState extends State<MaestroDiscipuladoScreen>
                                                 .collection(
                                                     'asistenciasDiscipulado')
                                                 .add({
-                                              'claseId': widget.claseAsignadaId,
+                                              'claseId':
+                                                  claseAsignadaId, // ✅ ID ACTUAL
                                               'discipuloId': personaId,
                                               'discipuloNombre':
                                                   discipulo['nombre'],
@@ -2209,75 +2472,154 @@ class _MaestroDiscipuladoScreenState extends State<MaestroDiscipuladoScreen>
       return _buildEmptyState();
     }
 
-    return StreamBuilder<QuerySnapshot>(
+    // ✅ Obtener claseAsignadaId ACTUAL del maestro
+    return StreamBuilder<DocumentSnapshot>(
       stream: FirebaseFirestore.instance
-          .collection('asistenciasDiscipulado')
-          .where('claseId', isEqualTo: widget.claseAsignadaId)
+          .collection('maestrosDiscipulado')
+          .doc(widget.maestroId)
           .snapshots(),
-      builder: (context, asistenciasSnap) {
-        if (asistenciasSnap.connectionState == ConnectionState.waiting) {
+      builder: (context, maestroSnapshot) {
+        if (!maestroSnapshot.hasData) {
           return Center(
             child: CircularProgressIndicator(color: cocepTeal),
           );
         }
 
-        Map<String, Map<String, dynamic>> estadisticas = {};
-
-        for (var discipulo in discipulos) {
-          final personaId = discipulo['personaId'];
-          estadisticas[personaId] = {
-            'personaId': personaId, // ✅ CORRECCIÓN: Agregar personaId al Map
-            'nombre': discipulo['nombre'],
-            'telefono': discipulo['telefono'],
-            'tribu': discipulo['tribu'],
-            'ministerio': discipulo['ministerio'],
-            'asistencias': 0,
-            'faltas': 0,
-            'modulosFaltados': <int>[],
-            'modulosAsistidos': <int>[],
-            'aprobado': null,
-          };
+        final maestroData =
+            maestroSnapshot.data!.data() as Map<String, dynamic>?;
+        if (maestroData == null) {
+          return Center(child: Text('Error al cargar datos del maestro'));
         }
 
-        if (asistenciasSnap.hasData) {
-          for (var doc in asistenciasSnap.data!.docs) {
-            final data = doc.data() as Map<String, dynamic>;
-            final personaId = data['discipuloId'];
-            final numeroModulo = data['numeroModulo'] as int;
+        final claseActualId = maestroData['claseAsignadaId'];
+        if (claseActualId == null) {
+          return Center(child: Text('No hay clase asignada'));
+        }
 
-            if (estadisticas.containsKey(personaId)) {
-              if (data['asistio'] == true) {
-                estadisticas[personaId]!['asistencias']++;
-                (estadisticas[personaId]!['modulosAsistidos'] as List<int>)
-                    .add(numeroModulo);
-              } else {
-                estadisticas[personaId]!['faltas']++;
-                (estadisticas[personaId]!['modulosFaltados'] as List<int>)
-                    .add(numeroModulo);
-              }
+        return StreamBuilder<QuerySnapshot>(
+          stream: FirebaseFirestore.instance
+              .collection('asistenciasDiscipulado')
+              .where('claseId', isEqualTo: claseActualId)
+              .snapshots(),
+          builder: (context, asistenciasSnapshot) {
+            if (asistenciasSnapshot.connectionState ==
+                ConnectionState.waiting) {
+              return Center(child: CircularProgressIndicator(color: cocepTeal));
             }
-          }
 
-          estadisticas.forEach((personaId, stats) {
-            final faltas = stats['faltas'] as int;
-            stats['aprobado'] = faltas < 2;
-          });
-        }
+            // ✅ Consultar reprobaciones manuales en paralelo
+            return StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('reprobacionesManualesdiscipulado')
+                  .where('claseId', isEqualTo: claseActualId)
+                  .snapshots(),
+              builder: (context, reprobacionesSnapshot) {
+                Map<String, Map<String, dynamic>> estadisticas = {};
 
-        return ListView.builder(
-          padding: EdgeInsets.fromLTRB(16, 16, 16, 100),
-          itemCount: estadisticas.length,
-          itemBuilder: (context, index) {
-            final personaId = estadisticas.keys.elementAt(index);
-            final stats = estadisticas[personaId]!;
-            return _buildEstadisticaCard(stats);
+                // Inicializar estadísticas
+                for (var discipulo in discipulos) {
+                  final personaId = discipulo['personaId'];
+                  estadisticas[personaId] = {
+                    'personaId': personaId,
+                    'nombre': discipulo['nombre'],
+                    'telefono': discipulo['telefono'],
+                    'tribu': discipulo['tribu'],
+                    'ministerio': discipulo['ministerio'],
+                    'asistencias': 0,
+                    'faltas': 0,
+                    'modulosFaltados': <int>[],
+                    'modulosAsistidos': <int>[],
+                    'aprobado': null,
+                    'reprobadoManualmente': false,
+                  };
+                }
+
+                // ✅ Procesar asistencias
+                if (asistenciasSnapshot.hasData &&
+                    asistenciasSnapshot.data!.docs.isNotEmpty) {
+                  for (var doc in asistenciasSnapshot.data!.docs) {
+                    final data = doc.data() as Map<String, dynamic>;
+                    final personaId = data['discipuloId'];
+                    final numeroModulo = data['numeroModulo'] as int;
+                    final recuperado = data['recuperado'] ?? false;
+
+                    if (estadisticas.containsKey(personaId)) {
+                      if (data['asistio'] == true) {
+                        estadisticas[personaId]!['asistencias']++;
+                        (estadisticas[personaId]!['modulosAsistidos']
+                                as List<int>)
+                            .add(numeroModulo);
+                      } else {
+                        // ✅ Solo contar como falta si NO fue recuperado
+                        if (!recuperado) {
+                          estadisticas[personaId]!['faltas']++;
+                          (estadisticas[personaId]!['modulosFaltados']
+                                  as List<int>)
+                              .add(numeroModulo);
+                        }
+                      }
+                    }
+                  }
+                }
+
+                // ✅ Procesar reprobaciones manuales
+                Set<String> reprobadosManualmente = {};
+                if (reprobacionesSnapshot.hasData &&
+                    reprobacionesSnapshot.data!.docs.isNotEmpty) {
+                  for (var doc in reprobacionesSnapshot.data!.docs) {
+                    final data = doc.data() as Map<String, dynamic>;
+                    final personaId = data['discipuloId'];
+                    reprobadosManualmente.add(personaId);
+                  }
+                }
+
+                // ✅ LÓGICA DE APROBACIÓN/REPROBACIÓN
+                final tipoClase = claseData['tipo'] ?? '';
+                final esClaseConReprobacionAutomatica =
+                    tipoClase == 'Discipulado 1' ||
+                        tipoClase == 'Discipulado 2' ||
+                        tipoClase == 'Discipulado 3';
+
+                estadisticas.forEach((personaId, stats) {
+                  final faltas = stats['faltas'] as int;
+                  final fueReprobadoManualmente =
+                      reprobadosManualmente.contains(personaId);
+
+                  // Marcar si fue reprobado manualmente
+                  stats['reprobadoManualmente'] = fueReprobadoManualmente;
+
+                  if (esClaseConReprobacionAutomatica) {
+                    // ✅ Reprobación automática a las 3 faltas
+                    stats['aprobado'] = faltas < 3;
+                  } else {
+                    // ✅ Para Consolidación/Estudios Bíblicos
+                    if (fueReprobadoManualmente) {
+                      stats['aprobado'] = false;
+                    } else {
+                      stats['aprobado'] = null; // Aún sin definir
+                    }
+                  }
+                });
+
+                return ListView.builder(
+                  padding: EdgeInsets.fromLTRB(16, 16, 16, 100),
+                  itemCount: estadisticas.length,
+                  itemBuilder: (context, index) {
+                    final personaId = estadisticas.keys.elementAt(index);
+                    final stats = estadisticas[personaId]!;
+                    return _buildEstadisticaCard(stats, claseData);
+                  },
+                );
+              },
+            );
           },
         );
       },
     );
   }
 
-  Widget _buildEstadisticaCard(Map<String, dynamic> stats) {
+  Widget _buildEstadisticaCard(
+      Map<String, dynamic> stats, Map<String, dynamic> claseData) {
     final aprobado = stats['aprobado'];
     final faltas = stats['faltas'];
     final asistencias = stats['asistencias'];
@@ -2286,185 +2628,232 @@ class _MaestroDiscipuladoScreenState extends State<MaestroDiscipuladoScreen>
     final inicial = nombre.isNotEmpty ? nombre[0].toUpperCase() : '?';
     final modulosFaltados = List<int>.from(stats['modulosFaltados'] ?? []);
     final modulosAsistidos = List<int>.from(stats['modulosAsistidos'] ?? []);
+    final reprobadoManualmente = stats['reprobadoManualmente'] ?? false;
 
     modulosFaltados.sort();
     modulosAsistidos.sort();
 
-    Color statusColor = aprobado == true
-        ? Colors.green
-        : aprobado == false
-            ? Colors.red
-            : Colors.grey;
+    // ✅ Determinar tipo de clase y nomenclatura
+    final tipoClase = claseData['tipo'] ?? '';
+    final usarLeccion = tipoClase == 'Discipulado 1' ||
+        tipoClase == 'Discipulado 2' ||
+        tipoClase == 'Discipulado 3' ||
+        tipoClase == 'Consolidación';
+    final nombreUnidad = usarLeccion ? 'Lecciones' : 'Módulos';
+    final prefijoUnidad = usarLeccion ? 'L' : 'M';
 
-    return StreamBuilder<DocumentSnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('clasesDiscipulado')
-          .doc(widget.claseAsignadaId)
-          .snapshots(),
-      builder: (context, claseSnapshot) {
-        String nombreUnidad = 'Módulos';
-        String prefijoUnidad = 'M';
-        bool claseActiva = true;
+    // ✅ Determinar si es clase con reprobación automática
+    final esClaseConReprobacionAutomatica = tipoClase == 'Discipulado 1' ||
+        tipoClase == 'Discipulado 2' ||
+        tipoClase == 'Discipulado 3';
 
-        if (claseSnapshot.hasData && claseSnapshot.data!.exists) {
-          final claseData = claseSnapshot.data!.data() as Map<String, dynamic>;
-          final tipoClase = claseData['tipo'] ?? '';
-          final estado = claseData['estado'] ?? 'activa';
-          claseActiva = estado == 'activa';
+    // ✅ Determinar estado y color
+    Color statusColor;
+    if (aprobado == true) {
+      statusColor = Colors.green;
+    } else if (aprobado == false) {
+      statusColor = Colors.red;
+    } else {
+      // Sin estado definido (Consolidación/Estudios Bíblicos)
+      statusColor = faltas >= 3 ? Colors.orange : Colors.grey;
+    }
 
-          final usarLeccion = tipoClase == 'Discipulado 1' ||
-              tipoClase == 'Discipulado 2' ||
-              tipoClase == 'Discipulado 3' ||
-              tipoClase == 'Consolidación';
+    final estado = claseData['estado'] ?? 'activa';
+    final claseActiva = estado == 'activa';
 
-          if (usarLeccion) {
-            nombreUnidad = 'Lecciones';
-            prefijoUnidad = 'L';
-          }
-        }
+    // ✅ Determinar si mostrar botón de reprobar
+    final mostrarBotonReprobar = !esClaseConReprobacionAutomatica &&
+        faltas >= 3 &&
+        !reprobadoManualmente &&
+        claseActiva;
 
-        return Container(
-          margin: EdgeInsets.only(bottom: 16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: statusColor.withOpacity(0.1),
-                blurRadius: 10,
-                offset: Offset(0, 4),
-              ),
-            ],
-            border: Border.all(
-              color: statusColor.withOpacity(0.2),
-              width: 2,
+    return Container(
+      margin: EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: statusColor.withOpacity(0.1),
+            blurRadius: 10,
+            offset: Offset(0, 4),
+          ),
+        ],
+        border: Border.all(
+          color: statusColor.withOpacity(0.2),
+          width: 2,
+        ),
+      ),
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          tilePadding: EdgeInsets.all(16),
+          childrenPadding: EdgeInsets.fromLTRB(16, 0, 16, 16),
+          leading: Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              color: statusColor,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  inicial,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Icon(
+                  aprobado == true
+                      ? Icons.check
+                      : aprobado == false
+                          ? Icons.close
+                          : Icons.help,
+                  color: Colors.white,
+                  size: 16,
+                ),
+              ],
             ),
           ),
-          child: Theme(
-            data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-            child: ExpansionTile(
-              tilePadding: EdgeInsets.all(16),
-              childrenPadding: EdgeInsets.fromLTRB(16, 0, 16, 16),
-              leading: Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  color: statusColor,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      inicial,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Icon(
-                      aprobado == true
-                          ? Icons.check
-                          : aprobado == false
-                              ? Icons.close
-                              : Icons.help,
-                      color: Colors.white,
-                      size: 16,
-                    ),
-                  ],
-                ),
-              ),
-              title: Text(
-                nombre,
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: cocepDarkTeal,
-                ),
-              ),
-              subtitle: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+          title: Text(
+            nombre,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: cocepDarkTeal,
+            ),
+          ),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(height: 8),
+              Row(
                 children: [
-                  SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Icon(Icons.check_circle, size: 16, color: Colors.green),
-                      SizedBox(width: 6),
-                      Text('$asistencias',
-                          style: TextStyle(fontWeight: FontWeight.w600)),
-                      SizedBox(width: 16),
-                      Icon(Icons.cancel, size: 16, color: Colors.red),
-                      SizedBox(width: 6),
-                      Text('$faltas',
-                          style: TextStyle(fontWeight: FontWeight.w600)),
-                    ],
+                  Icon(Icons.check_circle, size: 16, color: Colors.green),
+                  SizedBox(width: 6),
+                  Text('$asistencias',
+                      style: TextStyle(fontWeight: FontWeight.w600)),
+                  SizedBox(width: 16),
+                  Icon(Icons.cancel, size: 16, color: Colors.red),
+                  SizedBox(width: 6),
+                  Text('$faltas',
+                      style: TextStyle(fontWeight: FontWeight.w600)),
+                ],
+              ),
+              // ✅ Mostrar estado según tipo de clase
+              if (esClaseConReprobacionAutomatica && aprobado != null) ...[
+                SizedBox(height: 8),
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: statusColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: statusColor.withOpacity(0.3)),
                   ),
-                  if (aprobado != null) ...[
-                    SizedBox(height: 8),
-                    Container(
-                      padding:
-                          EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: statusColor.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: statusColor.withOpacity(0.3)),
-                      ),
-                      child: Text(
-                        aprobado ? 'APROBADO' : 'REPROBADO',
+                  child: Text(
+                    aprobado ? 'APROBADO' : 'REPROBADO',
+                    style: TextStyle(
+                      color: statusColor,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ] else if (mostrarBotonReprobar) ...[
+                // ✅ Botón para reprobar manualmente
+                SizedBox(height: 8),
+                _buildBotonReprobarManual(stats, claseData, claseActiva),
+              ] else if (reprobadoManualmente) ...[
+                // ✅ Mostrar badge de reprobado manualmente
+                SizedBox(height: 8),
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.red.withOpacity(0.3)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.block, size: 14, color: Colors.red[700]),
+                      SizedBox(width: 6),
+                      Text(
+                        'REPROBADO',
                         style: TextStyle(
-                          color: statusColor,
+                          color: Colors.red[700],
                           fontWeight: FontWeight.bold,
                           fontSize: 12,
                         ),
                       ),
-                    ),
-                  ],
-                ],
-              ),
-              children: [
-                Container(
-                  padding: EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[50],
-                    borderRadius: BorderRadius.circular(12),
+                    ],
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildInfoRow(
-                          Icons.phone_android, stats['telefono'] ?? 'N/A'),
-                      SizedBox(height: 8),
-                      _buildInfoRow(Icons.group, nombreTribu),
-                      SizedBox(height: 8),
-                      _buildInfoRow(Icons.church, stats['ministerio'] ?? 'N/A'),
-
-                      if (modulosAsistidos.isNotEmpty) ...[
-                        SizedBox(height: 16),
-                        Divider(),
-                        SizedBox(height: 12),
-                        Row(
-                          children: [
-                            Icon(Icons.check_circle,
-                                size: 18, color: Colors.green),
-                            SizedBox(width: 8),
-                            Text(
-                              '$nombreUnidad Asistidas',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: Colors.green[700],
-                                fontSize: 14,
-                              ),
-                            ),
-                          ],
+                ),
+              ],
+            ],
+          ),
+          children: [
+            Container(
+              padding: EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.grey[50],
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildInfoRow(
+                      Icons.phone_android, stats['telefono'] ?? 'N/A'),
+                  SizedBox(height: 8),
+                  _buildInfoRow(Icons.group, nombreTribu),
+                  SizedBox(height: 8),
+                  _buildInfoRow(Icons.church, stats['ministerio'] ?? 'N/A'),
+                  if (modulosAsistidos.isNotEmpty) ...[
+                    SizedBox(height: 16),
+                    Divider(),
+                    SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Icon(Icons.check_circle, size: 18, color: Colors.green),
+                        SizedBox(width: 8),
+                        Text(
+                          '$nombreUnidad Asistidas',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.green[700],
+                            fontSize: 14,
+                          ),
                         ),
-                        SizedBox(height: 8),
-                        // ✅ Obtener módulos recuperados desde asistencias
-                        FutureBuilder<QuerySnapshot>(
+                      ],
+                    ),
+                    SizedBox(height: 8),
+                    // ✅ Obtener módulos recuperados
+                    StreamBuilder<DocumentSnapshot>(
+                      stream: FirebaseFirestore.instance
+                          .collection('maestrosDiscipulado')
+                          .doc(widget.maestroId)
+                          .snapshots(),
+                      builder: (context, maestroSnap) {
+                        if (!maestroSnap.hasData) {
+                          return SizedBox.shrink();
+                        }
+
+                        final maestroData =
+                            maestroSnap.data!.data() as Map<String, dynamic>?;
+                        final claseActualId = maestroData?['claseAsignadaId'];
+
+                        if (claseActualId == null) {
+                          return SizedBox.shrink();
+                        }
+
+                        return FutureBuilder<QuerySnapshot>(
                           future: FirebaseFirestore.instance
                               .collection('asistenciasDiscipulado')
-                              .where('claseId',
-                                  isEqualTo: widget.claseAsignadaId)
+                              .where('claseId', isEqualTo: claseActualId)
                               .where('discipuloId',
                                   isEqualTo: stats['personaId'])
                               .where('recuperado', isEqualTo: true)
@@ -2478,200 +2867,436 @@ class _MaestroDiscipuladoScreenState extends State<MaestroDiscipuladoScreen>
                                   .toList();
                             }
 
-                            return Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              children: modulosAsistidos.map((modulo) {
-                                final esRecuperado =
-                                    modulosRecuperados.contains(modulo);
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Wrap(
+                                  spacing: 8,
+                                  runSpacing: 8,
+                                  children: modulosAsistidos.map((modulo) {
+                                    final esRecuperado =
+                                        modulosRecuperados.contains(modulo);
 
-                                return Container(
-                                  padding: EdgeInsets.symmetric(
-                                      horizontal: 12, vertical: 6),
-                                  decoration: BoxDecoration(
-                                    gradient: esRecuperado
-                                        ? LinearGradient(
+                                    return Container(
+                                      padding: EdgeInsets.symmetric(
+                                          horizontal: 12, vertical: 6),
+                                      decoration: BoxDecoration(
+                                        gradient: esRecuperado
+                                            ? LinearGradient(
+                                                colors: [
+                                                  Colors.orange[100]!,
+                                                  Colors.orange[50]!
+                                                ],
+                                              )
+                                            : null,
+                                        color: esRecuperado
+                                            ? null
+                                            : Colors.green.withOpacity(0.1),
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(
+                                          color: esRecuperado
+                                              ? Colors.orange[400]!
+                                              : Colors.green.withOpacity(0.3),
+                                          width: esRecuperado ? 2 : 1,
+                                        ),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          if (esRecuperado) ...[
+                                            Icon(Icons.restore,
+                                                size: 14,
+                                                color: Colors.orange[700]),
+                                            SizedBox(width: 4),
+                                          ],
+                                          Text(
+                                            '$prefijoUnidad$modulo',
+                                            style: TextStyle(
+                                              color: esRecuperado
+                                                  ? Colors.orange[900]
+                                                  : Colors.green[700],
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  }).toList(),
+                                ),
+                                if (modulosRecuperados.isNotEmpty) ...[
+                                  SizedBox(height: 8),
+                                  Row(
+                                    children: [
+                                      Container(
+                                        width: 12,
+                                        height: 12,
+                                        decoration: BoxDecoration(
+                                          gradient: LinearGradient(
                                             colors: [
                                               Colors.orange[100]!,
                                               Colors.orange[50]!
                                             ],
-                                          )
-                                        : null,
-                                    color: esRecuperado
-                                        ? null
-                                        : Colors.green.withOpacity(0.1),
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(
-                                      color: esRecuperado
-                                          ? Colors.orange[400]!
-                                          : Colors.green.withOpacity(0.3),
-                                      width: esRecuperado ? 2 : 1,
-                                    ),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      if (esRecuperado) ...[
-                                        Icon(Icons.restore,
-                                            size: 14,
-                                            color: Colors.orange[700]),
-                                        SizedBox(width: 4),
-                                      ],
+                                          ),
+                                          border: Border.all(
+                                              color: Colors.orange[400]!,
+                                              width: 2),
+                                          borderRadius:
+                                              BorderRadius.circular(3),
+                                        ),
+                                      ),
+                                      SizedBox(width: 6),
                                       Text(
-                                        '$prefijoUnidad$modulo',
+                                        'Recuperadas',
                                         style: TextStyle(
-                                          color: esRecuperado
-                                              ? Colors.orange[900]
-                                              : Colors.green[700],
+                                          fontSize: 11,
+                                          color: Colors.orange[800],
                                           fontWeight: FontWeight.w600,
-                                          fontSize: 12,
                                         ),
                                       ),
                                     ],
                                   ),
-                                );
-                              }).toList(),
-                            );
-                          },
-                        ),
-                        // ✅ Leyenda de módulos recuperados
-                        FutureBuilder<QuerySnapshot>(
-                          future: FirebaseFirestore.instance
-                              .collection('asistenciasDiscipulado')
-                              .where('claseId',
-                                  isEqualTo: widget.claseAsignadaId)
-                              .where('discipuloId',
-                                  isEqualTo: stats['personaId'])
-                              .where('recuperado', isEqualTo: true)
-                              .get(),
-                          builder: (context, recuperadosSnap) {
-                            if (!recuperadosSnap.hasData ||
-                                recuperadosSnap.data!.docs.isEmpty) {
-                              return SizedBox.shrink();
-                            }
-
-                            return Padding(
-                              padding: EdgeInsets.only(top: 8),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    width: 12,
-                                    height: 12,
-                                    decoration: BoxDecoration(
-                                      gradient: LinearGradient(
-                                        colors: [
-                                          Colors.orange[100]!,
-                                          Colors.orange[50]!
-                                        ],
-                                      ),
-                                      border: Border.all(
-                                          color: Colors.orange[400]!, width: 2),
-                                      borderRadius: BorderRadius.circular(3),
-                                    ),
-                                  ),
-                                  SizedBox(width: 6),
-                                  Text(
-                                    'Recuperadas',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color: Colors.orange[800],
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
                                 ],
-                              ),
+                              ],
                             );
                           },
-                        ),
-                      ],
-
-                      // ✅ NUEVO: Módulos faltados con opción de marcar como recuperados (solo si clase activa)
-                      if (modulosFaltados.isNotEmpty) ...[
-                        SizedBox(height: 16),
-                        Divider(),
-                        SizedBox(height: 12),
+                        );
+                      },
+                    ),
+                  ],
+                  if (modulosFaltados.isNotEmpty) ...[
+                    SizedBox(height: 16),
+                    Divider(),
+                    SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
                         Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Row(
-                              children: [
-                                Icon(Icons.cancel, size: 18, color: Colors.red),
-                                SizedBox(width: 8),
-                                Text(
-                                  '$nombreUnidad Faltadas',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.red[700],
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            // ✅ Botón para recuperar módulos (solo si clase activa)
-                            if (claseActiva)
-                              TextButton.icon(
-                                onPressed: () =>
-                                    _mostrarDialogoRecuperarModulos(
-                                  stats['personaId'],
-                                  modulosFaltados,
-                                  nombreUnidad,
-                                  prefijoUnidad,
-                                ),
-                                icon: Icon(Icons.restore,
-                                    size: 16, color: cocepOrange),
-                                label: Text(
-                                  'Recuperar',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    color: cocepOrange,
-                                  ),
-                                ),
-                                style: TextButton.styleFrom(
-                                  padding: EdgeInsets.symmetric(
-                                      horizontal: 8, vertical: 4),
-                                  minimumSize: Size(0, 0),
-                                  tapTargetSize:
-                                      MaterialTapTargetSize.shrinkWrap,
-                                ),
+                            Icon(Icons.cancel, size: 18, color: Colors.red),
+                            SizedBox(width: 8),
+                            Text(
+                              '$nombreUnidad Faltadas',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.red[700],
+                                fontSize: 14,
                               ),
+                            ),
                           ],
                         ),
-                        SizedBox(height: 8),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: modulosFaltados.map((modulo) {
-                            return Container(
+                        if (claseActiva)
+                          TextButton.icon(
+                            onPressed: () => _mostrarDialogoRecuperarModulos(
+                              stats['personaId'],
+                              modulosFaltados,
+                              nombreUnidad,
+                              prefijoUnidad,
+                            ),
+                            icon: Icon(Icons.restore,
+                                size: 16, color: cocepOrange),
+                            label: Text(
+                              'Recuperar',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: cocepOrange,
+                              ),
+                            ),
+                            style: TextButton.styleFrom(
                               padding: EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: Colors.red.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(
-                                    color: Colors.red.withOpacity(0.3)),
-                              ),
-                              child: Text(
-                                '$prefijoUnidad$modulo',
-                                style: TextStyle(
-                                  color: Colors.red[700],
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            );
-                          }).toList(),
+                                  horizontal: 8, vertical: 4),
+                              minimumSize: Size(0, 0),
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                          ),
+                      ],
+                    ),
+                    SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: modulosFaltados.map((modulo) {
+                        return Container(
+                          padding:
+                              EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.red.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                            border:
+                                Border.all(color: Colors.red.withOpacity(0.3)),
+                          ),
+                          child: Text(
+                            '$prefijoUnidad$modulo',
+                            style: TextStyle(
+                              color: Colors.red[700],
+                              fontWeight: FontWeight.w600,
+                              fontSize: 12,
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBotonReprobarManual(
+    Map<String, dynamic> stats,
+    Map<String, dynamic> claseData,
+    bool claseActiva,
+  ) {
+    final faltas = stats['faltas'] as int;
+    final personaId = stats['personaId'];
+    final nombre = stats['nombre'];
+
+    if (!claseActiva) {
+      return SizedBox.shrink();
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isSmallScreen = constraints.maxWidth < 350;
+
+        return Container(
+          padding: EdgeInsets.all(isSmallScreen ? 10 : 12),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.orange[50]!, Colors.orange[100]!],
+            ),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: Colors.orange[300]!, width: 2),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Encabezado con ícono y texto
+              Row(
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(isSmallScreen ? 6 : 8),
+                    decoration: BoxDecoration(
+                      color: Colors.orange[200],
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.warning_amber_rounded,
+                      color: Colors.orange[900],
+                      size: isSmallScreen ? 16 : 20,
+                    ),
+                  ),
+                  SizedBox(width: isSmallScreen ? 8 : 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Reprobación pendiente',
+                          style: TextStyle(
+                            fontSize: isSmallScreen ? 12 : 13,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.orange[900],
+                          ),
+                        ),
+                        SizedBox(height: 2),
+                        Text(
+                          '$faltas ${faltas == 1 ? "falta" : "faltas"} registrada${faltas == 1 ? "" : "s"}',
+                          style: TextStyle(
+                            fontSize: isSmallScreen ? 10 : 11,
+                            color: Colors.orange[800],
+                          ),
                         ),
                       ],
-                    ],
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: isSmallScreen ? 8 : 10),
+              // Botón de acción
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () => _confirmarReprobacionManual(
+                    personaId,
+                    nombre,
+                    claseData,
+                  ),
+                  icon: Icon(
+                    Icons.block,
+                    size: isSmallScreen ? 14 : 16,
+                  ),
+                  label: Text(
+                    'Marcar como REPROBADO',
+                    style: TextStyle(
+                      fontSize: isSmallScreen ? 11 : 13,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red[600],
+                    foregroundColor: Colors.white,
+                    padding: EdgeInsets.symmetric(
+                      vertical: isSmallScreen ? 10 : 12,
+                      horizontal: isSmallScreen ? 12 : 16,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    elevation: 2,
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         );
       },
     );
+  }
+
+  void _confirmarReprobacionManual(
+    String personaId,
+    String nombre,
+    Map<String, dynamic> claseData,
+  ) async {
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Container(
+          constraints: BoxConstraints(maxWidth: 400),
+          padding: EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.warning_amber_rounded,
+                  size: 64,
+                  color: Colors.red[600],
+                ),
+              ),
+              SizedBox(height: 20),
+              Text(
+                'Confirmar Reprobación',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: cocepDarkTeal,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: 12),
+              Text(
+                '¿Estás seguro de marcar a "$nombre" como REPROBADO?\n\nEsta acción quedará registrada en el historial.',
+                style: TextStyle(
+                  fontSize: 15,
+                  color: Colors.grey[700],
+                  height: 1.5,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      style: TextButton.styleFrom(
+                        padding: EdgeInsets.symmetric(vertical: 14),
+                      ),
+                      child: Text(
+                        'Cancelar',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.grey[700],
+                        ),
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red[600],
+                        padding: EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: Text(
+                        'Reprobar',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (confirmar != true) return;
+
+    try {
+      // Crear documento de reprobación manual
+      await FirebaseFirestore.instance
+          .collection('reprobacionesManualesdiscipulado')
+          .add({
+        'claseId': widget.claseAsignadaId,
+        'discipuloId': personaId,
+        'discipuloNombre': nombre,
+        'maestroId': widget.maestroId,
+        'tipoClase': claseData['tipo'],
+        'fechaReprobacion': FieldValue.serverTimestamp(),
+        'reprobadoManualmente': true,
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.check_circle, color: Colors.white),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text('$nombre marcado como REPROBADO'),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.red[600],
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
+
+      setState(() {}); // Refrescar para ocultar el botón
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al marcar reprobación: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   void _mostrarDialogoRecuperarModulos(
@@ -2962,46 +3587,81 @@ class _MaestroDiscipuladoScreenState extends State<MaestroDiscipuladoScreen>
   }
 
   Widget _buildFloatingButton() {
+    // ✅ CORRECCIÓN: Obtener claseAsignadaId ACTUAL del maestro
     return StreamBuilder<DocumentSnapshot>(
       stream: FirebaseFirestore.instance
-          .collection('clasesDiscipulado')
-          .doc(widget.claseAsignadaId)
+          .collection('maestrosDiscipulado')
+          .doc(widget.maestroId)
           .snapshots(),
-      builder: (context, snapshot) {
-        // ✅ Si la clase está finalizada, no mostrar botón
-        if (snapshot.hasData && snapshot.data!.exists) {
-          final claseData = snapshot.data!.data() as Map<String, dynamic>;
-          final estado = claseData['estado'] ?? 'activa';
-
-          if (estado == 'finalizada') {
-            return SizedBox.shrink(); // ✅ Ocultar botón si ya finalizó
-          }
+      builder: (context, maestroSnapshot) {
+        // Si no hay datos, no mostrar botón
+        if (!maestroSnapshot.hasData) {
+          return SizedBox.shrink();
         }
 
-        // Mostrar botón de finalizar solo si clase está activa
-        return Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.red.withOpacity(0.3),
-                blurRadius: 15,
-                offset: Offset(0, 8),
+        final maestroData =
+            maestroSnapshot.data!.data() as Map<String, dynamic>?;
+        if (maestroData == null) {
+          return SizedBox.shrink();
+        }
+
+        // ✅ Obtener claseAsignadaId ACTUAL
+        final claseActualId = maestroData['claseAsignadaId'];
+        if (claseActualId == null) {
+          return SizedBox.shrink();
+        }
+
+        // ✅ Consultar el estado de la clase ACTUAL
+        return StreamBuilder<DocumentSnapshot>(
+          stream: FirebaseFirestore.instance
+              .collection('clasesDiscipulado')
+              .doc(claseActualId)
+              .snapshots(),
+          builder: (context, claseSnapshot) {
+            // Si no hay datos o no existe la clase
+            if (!claseSnapshot.hasData || !claseSnapshot.data!.exists) {
+              return SizedBox.shrink();
+            }
+
+            final claseData =
+                claseSnapshot.data!.data() as Map<String, dynamic>?;
+            if (claseData == null) {
+              return SizedBox.shrink();
+            }
+
+            final estado = claseData['estado'] ?? 'activa';
+
+            // ✅ Si la clase está finalizada, no mostrar botón
+            if (estado == 'finalizada') {
+              return SizedBox.shrink();
+            }
+
+            // ✅ Si la clase está activa, mostrar botón
+            return Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.red.withOpacity(0.3),
+                    blurRadius: 15,
+                    offset: Offset(0, 8),
+                  ),
+                ],
               ),
-            ],
-          ),
-          child: FloatingActionButton.extended(
-            onPressed: _finalizarClase,
-            backgroundColor: Colors.red[600],
-            icon: Icon(Icons.done_all, size: 24),
-            label: Text(
-              'Finalizar Clase',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
+              child: FloatingActionButton.extended(
+                onPressed: _finalizarClase,
+                backgroundColor: Colors.red[600],
+                icon: Icon(Icons.done_all, size: 24),
+                label: Text(
+                  'Finalizar Clase',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
-            ),
-          ),
+            );
+          },
         );
       },
     );
@@ -3093,22 +3753,66 @@ class _MaestroDiscipuladoScreenState extends State<MaestroDiscipuladoScreen>
         ),
       ),
     );
-
     if (confirmar != true) return;
-
     try {
+// ✅ PASO 1: Obtener claseAsignadaId ACTUAL del maestro en tiempo real
+      final maestroDoc = await FirebaseFirestore.instance
+          .collection('maestrosDiscipulado')
+          .doc(widget.maestroId)
+          .get();
+      if (!maestroDoc.exists) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error: No se encontró el maestro'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+
+      final maestroData = maestroDoc.data() as Map<String, dynamic>;
+      final claseAsignadaIdActual = maestroData['claseAsignadaId'];
+
+      if (claseAsignadaIdActual == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('No hay clase asignada actualmente'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+
+// ✅ PASO 2: Obtener datos de la clase ACTUAL
       final claseDoc = await FirebaseFirestore.instance
           .collection('clasesDiscipulado')
-          .doc(widget.claseAsignadaId)
+          .doc(claseAsignadaIdActual)
           .get();
+
+      if (!claseDoc.exists) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error: La clase no existe'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
 
       final claseData = claseDoc.data() as Map<String, dynamic>;
       final discipulos = List<Map<String, dynamic>>.from(
           claseData['discipulosInscritos'] ?? []);
 
+// ✅ PASO 3: Obtener asistencias SOLO de esta clase
       final asistenciasSnap = await FirebaseFirestore.instance
           .collection('asistenciasDiscipulado')
-          .where('claseId', isEqualTo: widget.claseAsignadaId)
+          .where('claseId', isEqualTo: claseAsignadaIdActual)
           .get();
 
       Map<String, Map<String, dynamic>> resultadosCalculados = {};
@@ -3124,8 +3828,11 @@ class _MaestroDiscipuladoScreenState extends State<MaestroDiscipuladoScreen>
             if (data['asistio'] == true) {
               totalAsistencias++;
             } else {
-              totalFaltas++;
-              modulosFaltados.add(data['numeroModulo']);
+              final recuperado = data['recuperado'] ?? false;
+              if (!recuperado) {
+                totalFaltas++;
+                modulosFaltados.add(data['numeroModulo']);
+              }
             }
           }
         }
@@ -3153,7 +3860,7 @@ class _MaestroDiscipuladoScreenState extends State<MaestroDiscipuladoScreen>
 
       if (resultadosFinales == null) return;
 
-      // ✅ Guardar resultados en Firestore
+// ✅ PASO 4: Guardar resultados en Firestore
       for (var discipulo in discipulos) {
         final personaId = discipulo['personaId'];
         final resultado = resultadosCalculados[personaId]!;
@@ -3163,7 +3870,7 @@ class _MaestroDiscipuladoScreenState extends State<MaestroDiscipuladoScreen>
         await FirebaseFirestore.instance
             .collection('resultadosDiscipulado')
             .add({
-          'claseId': widget.claseAsignadaId,
+          'claseId': claseAsignadaIdActual, // ✅ Usar ID ACTUAL
           'discipuloId': personaId,
           'discipuloNombre': resultado['nombre'],
           'telefono': resultado['telefono'],
@@ -3181,18 +3888,18 @@ class _MaestroDiscipuladoScreenState extends State<MaestroDiscipuladoScreen>
         });
       }
 
-      // ✅ Marcar clase como finalizada
+// ✅ PASO 5: Marcar clase como finalizada
       await FirebaseFirestore.instance
           .collection('clasesDiscipulado')
-          .doc(widget.claseAsignadaId)
+          .doc(claseAsignadaIdActual)
           .update({
         'estado': 'finalizada',
         'fechaFinalizacion': FieldValue.serverTimestamp(),
         'maestroIdFinal': widget.maestroId,
       });
 
-      // ✅ NO ELIMINAR claseAsignadaId del maestro - mantenerlo para consulta
-      // Solo se eliminará cuando se asigne una nueva clase
+// ✅ PASO 6: NO eliminar claseAsignadaId - mantenerlo para consulta
+// Solo se eliminará cuando se asigne una nueva clase desde Departamento
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
