@@ -1728,428 +1728,400 @@ class _DepartamentoDiscipuladoScreenState
     );
   }
 
-  void _mostrarDialogoCrearClase() async {
-    String? tipoSeleccionado;
-    DateTime? fechaInicio;
-    String? maestroId;
-    String? maestroNombre;
 
-    final tiposClases = {
-      'Discipulado 1': 8,
-      'Discipulado 2': 10,
-      'Discipulado 3': 12,
-      'Consolidación': 10,
-      'Estudios Bíblicos': 42,
-    };
 
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => Dialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          child: SingleChildScrollView(
-            child: Container(
-              constraints: BoxConstraints(maxWidth: 500),
-              padding: EdgeInsets.all(24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [Color(0xFFF7941D), Color(0xFFE67E22)],
-                          ),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child:
-                            Icon(Icons.class_, color: Colors.white, size: 24),
-                      ),
-                      SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          'Crear Clase de Discipulado',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF1A5968),
-                          ),
-                        ),
-                      ),
-                      IconButton(
-                        icon: Icon(Icons.close, color: Colors.grey),
-                        onPressed: () => Navigator.pop(context),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 24),
-                  DropdownButtonFormField<String>(
-                    value: tipoSeleccionado,
-                    decoration: InputDecoration(
-                      labelText: 'Tipo de Clase',
-                      prefixIcon:
-                          Icon(Icons.menu_book, color: Color(0xFF2B7A8C)),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide:
-                            BorderSide(color: Color(0xFF2B7A8C), width: 2),
-                      ),
-                    ),
-                    items: tiposClases.keys.map((tipo) {
-                      return DropdownMenuItem(
-                        value: tipo,
-                        child: Text('$tipo (${tiposClases[tipo]} módulos)'),
-                      );
-                    }).toList(),
-                    onChanged: (value) {
-                      setDialogState(() {
-                        tipoSeleccionado = value;
-                      });
-                    },
-                  ),
-                  SizedBox(height: 16),
-                  InkWell(
-                    onTap: () async {
-                      final fecha = await showDatePicker(
-                        context: context,
-                        initialDate: DateTime.now(),
-                        firstDate: DateTime.now(),
-                        lastDate: DateTime.now().add(Duration(days: 365)),
-                        builder: (context, child) {
-                          return Theme(
-                            data: Theme.of(context).copyWith(
-                              colorScheme: ColorScheme.light(
-                                primary: Color(0xFF2B7A8C),
-                              ),
-                            ),
-                            child: child!,
-                          );
-                        },
-                      );
-                      if (fecha != null) {
-                        setDialogState(() {
-                          fechaInicio = fecha;
-                        });
-                      }
-                    },
-                    child: Container(
-                      padding: EdgeInsets.all(16),
+
+void _mostrarDialogoCrearClase() async {
+  String? tipoSeleccionado;
+  DateTime? fechaInicio;
+  String? maestroId;
+  String? maestroNombre;
+
+  final tiposClases = {
+    'Discipulado 1': 8,
+    'Discipulado 2': 10,
+    'Discipulado 3': 12,
+    'Consolidación': 10,
+    'Estudios Bíblicos': 42,
+  };
+
+  showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (context) => StatefulBuilder(
+      builder: (context, setDialogState) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: SingleChildScrollView(
+          child: Container(
+            constraints: BoxConstraints(maxWidth: 500),
+            padding: EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        border: Border.all(color: Colors.grey[400]!),
+                        gradient: LinearGradient(
+                          colors: [Color(0xFFF7941D), Color(0xFFE67E22)],
+                        ),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: Row(
-                        children: [
-                          Icon(Icons.calendar_today, color: Color(0xFF2B7A8C)),
-                          SizedBox(width: 12),
-                          Text(
-                            fechaInicio != null
-                                ? 'Inicio: ${DateFormat('dd/MM/yyyy').format(fechaInicio!)}'
-                                : 'Seleccionar fecha de inicio',
-                            style: TextStyle(
-                              fontSize: 15,
-                              color: fechaInicio != null
-                                  ? Colors.black87
-                                  : Colors.grey[600],
-                            ),
-                          ),
-                        ],
+                      child: Icon(Icons.class_, color: Colors.white, size: 24),
+                    ),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Crear Clase de Discipulado',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF1A5968),
+                        ),
                       ),
                     ),
+                    IconButton(
+                      icon: Icon(Icons.close, color: Colors.grey),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 24),
+                DropdownButtonFormField<String>(
+                  value: tipoSeleccionado,
+                  decoration: InputDecoration(
+                    labelText: 'Tipo de Clase',
+                    prefixIcon: Icon(Icons.menu_book, color: Color(0xFF2B7A8C)),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: Color(0xFF2B7A8C), width: 2),
+                    ),
                   ),
-                  SizedBox(height: 16),
-                  StreamBuilder<QuerySnapshot>(
-                    stream: FirebaseFirestore.instance
-                        .collection('maestrosDiscipulado')
-                        .snapshots(),
-                    builder: (context, snapshot) {
-                      if (!snapshot.hasData) {
-                        return Center(
-                          child: Padding(
-                            padding: EdgeInsets.all(16),
-                            child: CircularProgressIndicator(),
-                          ),
-                        );
-                      }
-
-                      return FutureBuilder<List<QueryDocumentSnapshot>>(
-                        future: Future.wait(
-                          snapshot.data!.docs.map((doc) async {
-                            final data = doc.data() as Map<String, dynamic>;
-                            final claseAsignadaId = data['claseAsignadaId'];
-
-                            if (claseAsignadaId == null) return doc;
-
-                            try {
-                              final claseDoc = await FirebaseFirestore.instance
-                                  .collection('clasesDiscipulado')
-                                  .doc(claseAsignadaId)
-                                  .get();
-
-                              if (!claseDoc.exists) return doc;
-
-                              final claseData =
-                                  claseDoc.data() as Map<String, dynamic>;
-                              return claseData['estado'] == 'finalizada'
-                                  ? doc
-                                  : null;
-                            } catch (e) {
-                              return doc;
-                            }
-                          }),
-                        ).then((results) => results
-                            .whereType<QueryDocumentSnapshot>()
-                            .toList()),
-                        builder: (context, asyncSnapshot) {
-                          if (asyncSnapshot.connectionState ==
-                              ConnectionState.waiting) {
-                            return Center(
-                              child: Padding(
-                                padding: EdgeInsets.all(16),
-                                child: CircularProgressIndicator(),
-                              ),
-                            );
-                          }
-
-                          final maestrosDisponibles = asyncSnapshot.data ?? [];
-
-                          if (maestrosDisponibles.isEmpty) {
-                            return Container(
-                              padding: EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: Colors.orange[50],
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: Colors.orange[200]!),
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(Icons.info_outline,
-                                      color: Colors.orange[700]),
-                                  SizedBox(width: 12),
-                                  Expanded(
-                                    child: Text(
-                                      'No hay maestros disponibles',
-                                      style:
-                                          TextStyle(color: Colors.orange[900]),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            );
-                          }
-
-                          return DropdownButtonFormField<String>(
-                            value: maestroId,
-                            decoration: InputDecoration(
-                              labelText: 'Asignar Maestro',
-                              prefixIcon:
-                                  Icon(Icons.person, color: Color(0xFF2B7A8C)),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide(
-                                    color: Color(0xFF2B7A8C), width: 2),
-                              ),
+                  items: tiposClases.keys.map((tipo) {
+                    return DropdownMenuItem(
+                      value: tipo,
+                      child: Text('$tipo (${tiposClases[tipo]} módulos)'),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    setDialogState(() {
+                      tipoSeleccionado = value;
+                    });
+                  },
+                ),
+                SizedBox(height: 16),
+                InkWell(
+                  onTap: () async {
+                    final fecha = await showDatePicker(
+                      context: context,
+                      initialDate: DateTime.now(),
+                      firstDate: DateTime.now(),
+                      lastDate: DateTime.now().add(Duration(days: 365)),
+                      builder: (context, child) {
+                        return Theme(
+                          data: Theme.of(context).copyWith(
+                            colorScheme: ColorScheme.light(
+                              primary: Color(0xFF2B7A8C),
                             ),
-                            items: maestrosDisponibles.map((doc) {
-                              final data = doc.data() as Map<String, dynamic>;
-                              return DropdownMenuItem(
-                                value: doc.id,
-                                child: Text(
-                                    '${data['nombre']} ${data['apellido']}'),
-                              );
-                            }).toList(),
-                            onChanged: (value) {
-                              final maestroDoc = maestrosDisponibles.firstWhere(
-                                (doc) => doc.id == value,
-                              );
-                              final data =
-                                  maestroDoc.data() as Map<String, dynamic>;
-                              setDialogState(() {
-                                maestroId = value;
-                                maestroNombre =
-                                    '${data['nombre']} ${data['apellido']}';
-                              });
-                            },
-                          );
-                        },
-                      );
-                    },
+                          ),
+                          child: child!,
+                        );
+                      },
+                    );
+                    if (fecha != null) {
+                      setDialogState(() {
+                        fechaInicio = fecha;
+                      });
+                    }
+                  },
+                  child: Container(
+                    padding: EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey[400]!),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.calendar_today, color: Color(0xFF2B7A8C)),
+                        SizedBox(width: 12),
+                        Text(
+                          fechaInicio != null
+                              ? 'Inicio: ${DateFormat('dd/MM/yyyy').format(fechaInicio!)}'
+                              : 'Seleccionar fecha de inicio',
+                          style: TextStyle(
+                            fontSize: 15,
+                            color: fechaInicio != null ? Colors.black87 : Colors.grey[600],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                  SizedBox(height: 24),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () => Navigator.pop(context),
-                          style: OutlinedButton.styleFrom(
-                            padding: EdgeInsets.symmetric(vertical: 16),
-                            side: BorderSide(color: Colors.grey[400]!),
-                            shape: RoundedRectangleBorder(
+                ),
+                SizedBox(height: 16),
+                StreamBuilder<QuerySnapshot>(
+                  stream: FirebaseFirestore.instance
+                      .collection('maestrosDiscipulado')
+                      .snapshots(),
+                  builder: (context, snapshot) {
+                    if (!snapshot.hasData) {
+                      return Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(16),
+                          child: CircularProgressIndicator(),
+                        ),
+                      );
+                    }
+
+                    return FutureBuilder<List<QueryDocumentSnapshot>>(
+                      future: Future.wait(
+                        snapshot.data!.docs.map((doc) async {
+                          final data = doc.data() as Map<String, dynamic>;
+                          final claseAsignadaId = data['claseAsignadaId'];
+
+                          if (claseAsignadaId == null) return doc;
+
+                          try {
+                            final claseDoc = await FirebaseFirestore.instance
+                                .collection('clasesDiscipulado')
+                                .doc(claseAsignadaId)
+                                .get();
+
+                            if (!claseDoc.exists) return doc;
+
+                            final claseData = claseDoc.data() as Map<String, dynamic>;
+                            return claseData['estado'] == 'finalizada' ? doc : null;
+                          } catch (e) {
+                            return doc;
+                          }
+                        }),
+                      ).then((results) =>
+                          results.whereType<QueryDocumentSnapshot>().toList()),
+                      builder: (context, asyncSnapshot) {
+                        if (asyncSnapshot.connectionState == ConnectionState.waiting) {
+                          return Center(
+                            child: Padding(
+                              padding: EdgeInsets.all(16),
+                              child: CircularProgressIndicator(),
+                            ),
+                          );
+                        }
+
+                        final maestrosDisponibles = asyncSnapshot.data ?? [];
+
+                        if (maestrosDisponibles.isEmpty) {
+                          return Container(
+                            padding: EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Colors.orange[50],
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.orange[200]!),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.info_outline, color: Colors.orange[700]),
+                                SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    'No hay maestros disponibles',
+                                    style: TextStyle(color: Colors.orange[900]),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }
+
+                        return DropdownButtonFormField<String>(
+                          value: maestroId,
+                          decoration: InputDecoration(
+                            labelText: 'Asignar Maestro',
+                            prefixIcon: Icon(Icons.person, color: Color(0xFF2B7A8C)),
+                            border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(color: Color(0xFF2B7A8C), width: 2),
+                            ),
                           ),
-                          child: Text('Cancelar',
-                              style: TextStyle(color: Colors.grey[700])),
+                          items: maestrosDisponibles.map((doc) {
+                            final data = doc.data() as Map<String, dynamic>;
+                            return DropdownMenuItem(
+                              value: doc.id,
+                              child: Text('${data['nombre']} ${data['apellido']}'),
+                            );
+                          }).toList(),
+                          onChanged: (value) {
+                            final maestroDoc = maestrosDisponibles.firstWhere(
+                              (doc) => doc.id == value,
+                            );
+                            final data = maestroDoc.data() as Map<String, dynamic>;
+                            setDialogState(() {
+                              maestroId = value;
+                              maestroNombre = '${data['nombre']} ${data['apellido']}';
+                            });
+                          },
+                        );
+                      },
+                    );
+                  },
+                ),
+                SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: OutlinedButton.styleFrom(
+                          padding: EdgeInsets.symmetric(vertical: 16),
+                          side: BorderSide(color: Colors.grey[400]!),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
+                        child: Text('Cancelar', style: TextStyle(color: Colors.grey[700])),
                       ),
-                      SizedBox(width: 12),
-                      Expanded(
-                        flex: 2,
-                        child: ElevatedButton(
-                          onPressed: () async {
-                            if (tipoSeleccionado == null ||
-                                fechaInicio == null) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                      'Completa todos los campos requeridos'),
-                                  backgroundColor: Colors.orange,
-                                ),
-                              );
-                              return;
-                            }
+                    ),
+                    SizedBox(width: 12),
+                    Expanded(
+                      flex: 2,
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          if (tipoSeleccionado == null || fechaInicio == null) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Completa todos los campos requeridos'),
+                                backgroundColor: Colors.orange,
+                              ),
+                            );
+                            return;
+                          }
 
-                            try {
-                              // ✅ PASO 1: Si hay maestro, limpiar TODO del anterior
-                              if (maestroId != null) {
-                                final maestroDoc = await FirebaseFirestore
-                                    .instance
-                                    .collection('maestrosDiscipulado')
-                                    .doc(maestroId)
-                                    .get();
+                          try {
+                            // ✅ CRÍTICO: Reseteo completo antes de crear nueva clase
+                            if (maestroId != null) {
+                              final maestroDoc = await FirebaseFirestore.instance
+                                  .collection('maestrosDiscipulado')
+                                  .doc(maestroId)
+                                  .get();
 
-                                if (maestroDoc.exists) {
-                                  final maestroData =
-                                      maestroDoc.data() as Map<String, dynamic>;
-                                  final claseAnteriorId =
-                                      maestroData['claseAsignadaId'];
+                              if (maestroDoc.exists) {
+                                final maestroData = maestroDoc.data() as Map<String, dynamic>;
+                                final claseAnteriorId = maestroData['claseAsignadaId'];
 
-                                  // ✅ Validar que clase anterior esté finalizada
-                                  if (claseAnteriorId != null) {
-                                    final claseAnteriorDoc =
-                                        await FirebaseFirestore.instance
-                                            .collection('clasesDiscipulado')
-                                            .doc(claseAnteriorId)
-                                            .get();
+                                // ✅ Validar que clase anterior esté finalizada
+                                if (claseAnteriorId != null) {
+                                  final claseAnteriorDoc = await FirebaseFirestore.instance
+                                      .collection('clasesDiscipulado')
+                                      .doc(claseAnteriorId)
+                                      .get();
 
-                                    if (claseAnteriorDoc.exists) {
-                                      final claseAnteriorData = claseAnteriorDoc
-                                          .data() as Map<String, dynamic>;
+                                  if (claseAnteriorDoc.exists) {
+                                    final claseAnteriorData =
+                                        claseAnteriorDoc.data() as Map<String, dynamic>;
 
-                                      if (claseAnteriorData['estado'] !=
-                                          'finalizada') {
-                                        ScaffoldMessenger.of(context)
-                                            .showSnackBar(
-                                          SnackBar(
-                                            content: Text(
-                                                'El maestro aún tiene una clase activa'),
-                                            backgroundColor: Colors.orange,
-                                          ),
-                                        );
-                                        return;
-                                      }
+                                    if (claseAnteriorData['estado'] != 'finalizada') {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text('El maestro aún tiene una clase activa'),
+                                          backgroundColor: Colors.orange,
+                                        ),
+                                      );
+                                      return;
                                     }
                                   }
-
-                                  // ✅ CRÍTICO: Eliminar TODA referencia a clases anteriores
-                                  await FirebaseFirestore.instance
-                                      .collection('maestrosDiscipulado')
-                                      .doc(maestroId)
-                                      .update({
-                                    'claseAsignadaId': FieldValue.delete(),
-                                  });
-
-                                  // ✅ Esperar para asegurar que Firestore procese
-                                  await Future.delayed(
-                                      Duration(milliseconds: 500));
                                 }
-                              }
 
-                              // ✅ PASO 2: Crear nueva clase DESDE CERO
-                              final nuevaClaseRef = await FirebaseFirestore
-                                  .instance
-                                  .collection('clasesDiscipulado')
-                                  .add({
-                                'tipo': tipoSeleccionado,
-                                'totalModulos': tiposClases[tipoSeleccionado],
-                                'fechaInicio': Timestamp.fromDate(fechaInicio!),
-                                'maestroId': maestroId,
-                                'maestroNombre': maestroNombre,
-                                'discipulosInscritos': [], // ✅ VACÍO
-                                'estado': 'activa',
-                                'fechaCreacion': FieldValue.serverTimestamp(),
-                                'moduloInicialPermitido':
-                                    1, // ✅ SIEMPRE desde 1
-                                'inscripcionesCerradas': false,
-                              });
-
-                              // ✅ PASO 3: Asignar nueva clase al maestro
-                              if (maestroId != null) {
+                                // ✅ ELIMINAR referencia a clase anterior
                                 await FirebaseFirestore.instance
                                     .collection('maestrosDiscipulado')
                                     .doc(maestroId)
                                     .update({
-                                  'claseAsignadaId': nuevaClaseRef.id,
+                                  'claseAsignadaId': FieldValue.delete(),
                                 });
-                              }
 
-                              Navigator.pop(context);
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Row(
-                                    children: [
-                                      Icon(Icons.check_circle,
-                                          color: Colors.white),
-                                      SizedBox(width: 12),
-                                      Text('Clase creada correctamente'),
-                                    ],
-                                  ),
-                                  backgroundColor: Colors.green[700],
-                                  behavior: SnackBarBehavior.floating,
-                                ),
-                              );
-                            } catch (e) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text('Error al crear clase: $e'),
-                                  backgroundColor: Colors.red,
-                                ),
-                              );
+                                // ✅ Esperar para asegurar que Firestore procese
+                                await Future.delayed(Duration(milliseconds: 500));
+                              }
                             }
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Color(0xFFF7941D),
-                            padding: EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
+
+                            // ✅ CREAR NUEVA CLASE COMPLETAMENTE INDEPENDIENTE
+                            final nuevaClaseRef = await FirebaseFirestore.instance
+                                .collection('clasesDiscipulado')
+                                .add({
+                              'tipo': tipoSeleccionado,
+                              'totalModulos': tiposClases[tipoSeleccionado],
+                              'fechaInicio': Timestamp.fromDate(fechaInicio!),
+                              'maestroId': maestroId,
+                              'maestroNombre': maestroNombre,
+                              'discipulosInscritos': [], // ✅ VACÍO
+                              'estado': 'activa',
+                              'fechaCreacion': FieldValue.serverTimestamp(),
+                              'moduloInicialPermitido': 1, // ✅ SIEMPRE desde 1
+                              'inscripcionesCerradas': false,
+                            });
+
+                            // ✅ Asignar nueva clase al maestro
+                            if (maestroId != null) {
+                              await FirebaseFirestore.instance
+                                  .collection('maestrosDiscipulado')
+                                  .doc(maestroId)
+                                  .update({
+                                'claseAsignadaId': nuevaClaseRef.id,
+                              });
+                            }
+
+                            Navigator.pop(context);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Row(
+                                  children: [
+                                    Icon(Icons.check_circle, color: Colors.white),
+                                    SizedBox(width: 12),
+                                    Text('Clase creada correctamente'),
+                                  ],
+                                ),
+                                backgroundColor: Colors.green[700],
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          } catch (e) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Error al crear clase: $e'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Color(0xFFF7941D),
+                          padding: EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
                           ),
-                          child: Text('Crear Clase',
-                              style: TextStyle(
-                                  fontWeight: FontWeight.bold, fontSize: 15)),
                         ),
-                      )
-                    ],
-                  ),
-                ],
-              ),
+                        child: Text('Crear Clase',
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                      ),
+                    )
+                  ],
+                ),
+              ],
             ),
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
+
+
 
   void _verPerfilMaestro(DocumentSnapshot doc) async {
     final data = doc.data() as Map<String, dynamic>;

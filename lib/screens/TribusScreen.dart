@@ -20713,14 +20713,17 @@ class _InscripcionesTabState extends State<InscripcionesTab> {
           print('Error al obtener nombre de tribu: $e');
         }
 
+        // ✅ CRÍTICO: Usar doc.id como personaId para mantener sincronización
         discipulosActuales.add({
-          'personaId': seleccion.id,
+          'personaId':
+              seleccion.id, // ✅ Este es el ID del documento en Firebase
           'nombre': '${personaData['nombre']} ${personaData['apellido']}',
           'telefono': personaData['telefono'] ?? 'Sin teléfono',
           'tribu': nombreTribu,
           'tribuId': widget.tribuId,
           'ministerio': personaData['ministerioAsignado'] ?? 'Sin ministerio',
           'fechaInscripcion': Timestamp.now(),
+          'registradoPorMaestro': false, // ✅ Indicar que viene de tribu
         });
 
         await FirebaseFirestore.instance

@@ -1445,306 +1445,306 @@ class _MaestroDiscipuladoScreenState extends State<MaestroDiscipuladoScreen>
     );
   }
 
-  void _editarDiscipulo(Map<String, dynamic> discipulo) async {
-    final formKey = GlobalKey<FormState>();
-    final nombreController = TextEditingController(text: discipulo['nombre']);
-    final telefonoController =
-        TextEditingController(text: discipulo['telefono']);
-    final tribuController = TextEditingController(text: discipulo['tribu']);
-    String? ministerioSeleccionado = discipulo['ministerio'];
 
-    showDialog(
-      context: context,
-      builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        insetPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-        child: StatefulBuilder(
-          builder: (context, setDialogState) => LayoutBuilder(
-            builder: (context, constraints) {
-              return SingleChildScrollView(
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    maxWidth: 500,
-                    minHeight: 100,
-                  ),
-                  child: IntrinsicHeight(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          padding: EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 16),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [cocepOrange, Color(0xFFE67635)],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            borderRadius: BorderRadius.only(
-                              topLeft: Radius.circular(20),
-                              topRight: Radius.circular(20),
-                            ),
+
+
+void _editarDiscipulo(Map<String, dynamic> discipulo) async {
+  final formKey = GlobalKey<FormState>();
+  final nombreController = TextEditingController(text: discipulo['nombre']);
+  final telefonoController = TextEditingController(text: discipulo['telefono']);
+  final tribuController = TextEditingController(text: discipulo['tribu']);
+  String? ministerioSeleccionado = discipulo['ministerio'];
+
+  showDialog(
+    context: context,
+    builder: (context) => Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      insetPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+      child: StatefulBuilder(
+        builder: (context, setDialogState) => LayoutBuilder(
+          builder: (context, constraints) {
+            return SingleChildScrollView(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: 500,
+                  minHeight: 100,
+                ),
+                child: IntrinsicHeight(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [cocepOrange, Color(0xFFE67635)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
                           ),
-                          child: Row(
-                            children: [
-                              Icon(Icons.edit, color: Colors.white, size: 24),
-                              SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  'Editar Discípulo',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
+                          borderRadius: BorderRadius.only(
+                            topLeft: Radius.circular(20),
+                            topRight: Radius.circular(20),
                           ),
                         ),
-                        Flexible(
-                          child: SingleChildScrollView(
-                            padding: EdgeInsets.all(16),
-                            child: Form(
-                              key: formKey,
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  TextFormField(
-                                    controller: nombreController,
-                                    decoration: InputDecoration(
-                                      labelText: 'Nombre Completo',
-                                      prefixIcon: Icon(Icons.person,
-                                          color: cocepOrange),
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      focusedBorder: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                        borderSide: BorderSide(
-                                            color: cocepOrange, width: 2),
+                        child: Row(
+                          children: [
+                            Icon(Icons.edit, color: Colors.white, size: 24),
+                            SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Editar Discípulo',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Flexible(
+                        child: SingleChildScrollView(
+                          padding: EdgeInsets.all(16),
+                          child: Form(
+                            key: formKey,
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                TextFormField(
+                                  controller: nombreController,
+                                  decoration: InputDecoration(
+                                    labelText: 'Nombre Completo',
+                                    prefixIcon: Icon(Icons.person, color: cocepOrange),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: BorderSide(color: cocepOrange, width: 2),
+                                    ),
+                                  ),
+                                  validator: (value) => value?.isEmpty ?? true ? 'Campo requerido' : null,
+                                ),
+                                SizedBox(height: 12),
+                                TextFormField(
+                                  controller: telefonoController,
+                                  decoration: InputDecoration(
+                                    labelText: 'Teléfono',
+                                    prefixIcon: Icon(Icons.phone_android, color: cocepOrange),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: BorderSide(color: cocepOrange, width: 2),
+                                    ),
+                                  ),
+                                  keyboardType: TextInputType.phone,
+                                  validator: (value) => value?.isEmpty ?? true ? 'Campo requerido' : null,
+                                ),
+                                SizedBox(height: 12),
+                                TextFormField(
+                                  controller: tribuController,
+                                  decoration: InputDecoration(
+                                    labelText: 'Tribu',
+                                    prefixIcon: Icon(Icons.group, color: cocepOrange),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: BorderSide(color: cocepOrange, width: 2),
+                                    ),
+                                  ),
+                                  validator: (value) => value?.isEmpty ?? true ? 'Campo requerido' : null,
+                                ),
+                                SizedBox(height: 12),
+                                DropdownButtonFormField<String>(
+                                  value: ministerioSeleccionado,
+                                  decoration: InputDecoration(
+                                    labelText: 'Ministerio',
+                                    prefixIcon: Icon(Icons.church, color: cocepOrange),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: BorderSide(color: cocepOrange, width: 2),
+                                    ),
+                                  ),
+                                  items: [
+                                    'Ministerio De Caballeros',
+                                    'Ministerio De Damas',
+                                    'Ministerio Juvenil'
+                                  ].map((ministerio) {
+                                    return DropdownMenuItem(
+                                      value: ministerio,
+                                      child: Text(ministerio, overflow: TextOverflow.ellipsis),
+                                    );
+                                  }).toList(),
+                                  onChanged: (value) {
+                                    setDialogState(() {
+                                      ministerioSeleccionado = value;
+                                    });
+                                  },
+                                  validator: (value) => value == null ? 'Selecciona un ministerio' : null,
+                                ),
+                                SizedBox(height: 16),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: TextButton(
+                                        onPressed: () => Navigator.pop(context),
+                                        child: Text('Cancelar', style: TextStyle(color: Colors.grey[700])),
                                       ),
                                     ),
-                                    validator: (value) => value?.isEmpty ?? true
-                                        ? 'Campo requerido'
-                                        : null,
-                                  ),
-                                  SizedBox(height: 12),
-                                  TextFormField(
-                                    controller: telefonoController,
-                                    decoration: InputDecoration(
-                                      labelText: 'Teléfono',
-                                      prefixIcon: Icon(Icons.phone_android,
-                                          color: cocepOrange),
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      focusedBorder: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                        borderSide: BorderSide(
-                                            color: cocepOrange, width: 2),
-                                      ),
-                                    ),
-                                    keyboardType: TextInputType.phone,
-                                    validator: (value) => value?.isEmpty ?? true
-                                        ? 'Campo requerido'
-                                        : null,
-                                  ),
-                                  SizedBox(height: 12),
-                                  TextFormField(
-                                    controller: tribuController,
-                                    decoration: InputDecoration(
-                                      labelText: 'Tribu',
-                                      prefixIcon:
-                                          Icon(Icons.group, color: cocepOrange),
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      focusedBorder: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                        borderSide: BorderSide(
-                                            color: cocepOrange, width: 2),
-                                      ),
-                                    ),
-                                    validator: (value) => value?.isEmpty ?? true
-                                        ? 'Campo requerido'
-                                        : null,
-                                  ),
-                                  SizedBox(height: 12),
-                                  DropdownButtonFormField<String>(
-                                    value: ministerioSeleccionado,
-                                    decoration: InputDecoration(
-                                      labelText: 'Ministerio',
-                                      prefixIcon: Icon(Icons.church,
-                                          color: cocepOrange),
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      focusedBorder: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                        borderSide: BorderSide(
-                                            color: cocepOrange, width: 2),
-                                      ),
-                                    ),
-                                    items: [
-                                      'Ministerio De Caballeros',
-                                      'Ministerio De Damas',
-                                      'Ministerio Juvenil'
-                                    ].map((ministerio) {
-                                      return DropdownMenuItem(
-                                        value: ministerio,
-                                        child: Text(
-                                          ministerio,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      );
-                                    }).toList(),
-                                    onChanged: (value) {
-                                      setDialogState(() {
-                                        ministerioSeleccionado = value;
-                                      });
-                                    },
-                                    validator: (value) => value == null
-                                        ? 'Selecciona un ministerio'
-                                        : null,
-                                  ),
-                                  SizedBox(height: 16),
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: TextButton(
-                                          onPressed: () =>
-                                              Navigator.pop(context),
-                                          child: Text(
-                                            'Cancelar',
-                                            style: TextStyle(
-                                                color: Colors.grey[700]),
-                                          ),
-                                        ),
-                                      ),
-                                      SizedBox(width: 8),
-                                      Expanded(
-                                        child: ElevatedButton(
-                                          onPressed: () async {
-                                            if (formKey.currentState!
-                                                .validate()) {
-                                              final claseDoc =
-                                                  await FirebaseFirestore
-                                                      .instance
-                                                      .collection(
-                                                          'clasesDiscipulado')
-                                                      .doc(widget
-                                                          .claseAsignadaId)
-                                                      .get();
+                                    SizedBox(width: 8),
+                                    Expanded(
+                                      child: ElevatedButton(
+                                        onPressed: () async {
+                                          if (formKey.currentState!.validate()) {
+                                            try {
+                                              // ✅ CRÍTICO: Obtener claseAsignadaId ACTUAL del maestro
+                                              final maestroDoc = await FirebaseFirestore.instance
+                                                  .collection('maestrosDiscipulado')
+                                                  .doc(widget.maestroId)
+                                                  .get();
 
-                                              final claseData = claseDoc.data()
-                                                  as Map<String, dynamic>;
-                                              final discipulos = List<
-                                                      Map<String,
-                                                          dynamic>>.from(
-                                                  claseData[
-                                                          'discipulosInscritos'] ??
-                                                      []);
+                                              if (!maestroDoc.exists) {
+                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                  SnackBar(
+                                                    content: Text('Error: No se encontró el maestro'),
+                                                    backgroundColor: Colors.red,
+                                                  ),
+                                                );
+                                                return;
+                                              }
 
-                                              final index =
-                                                  discipulos.indexWhere((d) =>
-                                                      d['personaId'] ==
-                                                      discipulo['personaId']);
+                                              final maestroData = maestroDoc.data() as Map<String, dynamic>;
+                                              final claseAsignadaIdActual = maestroData['claseAsignadaId'];
+
+                                              if (claseAsignadaIdActual == null) {
+                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                  SnackBar(
+                                                    content: Text('No hay clase asignada actualmente'),
+                                                    backgroundColor: Colors.red,
+                                                  ),
+                                                );
+                                                return;
+                                              }
+
+                                              // ✅ Obtener datos de la clase ACTUAL
+                                              final claseDoc = await FirebaseFirestore.instance
+                                                  .collection('clasesDiscipulado')
+                                                  .doc(claseAsignadaIdActual)
+                                                  .get();
+
+                                              if (!claseDoc.exists) {
+                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                  SnackBar(
+                                                    content: Text('La clase no existe'),
+                                                    backgroundColor: Colors.red,
+                                                  ),
+                                                );
+                                                return;
+                                              }
+
+                                              final claseData = claseDoc.data() as Map<String, dynamic>;
+                                              final discipulos = List<Map<String, dynamic>>.from(
+                                                  claseData['discipulosInscritos'] ?? []);
+
+                                              final index = discipulos.indexWhere(
+                                                  (d) => d['personaId'] == discipulo['personaId']);
 
                                               if (index != -1) {
-                                                discipulos[index] = {
-                                                  'personaId':
-                                                      discipulo['personaId'],
-                                                  'nombre': nombreController
-                                                      .text
-                                                      .trim(),
-                                                  'telefono': telefonoController
-                                                      .text
-                                                      .trim(),
-                                                  'tribu': tribuController.text
-                                                      .trim(),
-                                                  'ministerio':
-                                                      ministerioSeleccionado,
-                                                  'registradoPorMaestro': true,
+                                                // ✅ CRÍTICO: Mantener TODOS los campos originales
+                                                final discipuloActualizado = {
+                                                  'personaId': discipulo['personaId'], // ✅ MANTENER ID ORIGINAL
+                                                  'nombre': nombreController.text.trim(),
+                                                  'telefono': telefonoController.text.trim(),
+                                                  'tribu': tribuController.text.trim(),
+                                                  'tribuId': discipulo['tribuId'], // ✅ MANTENER tribuId ORIGINAL
+                                                  'ministerio': ministerioSeleccionado,
+                                                  'registradoPorMaestro': discipulo['registradoPorMaestro'] ?? false, // ✅ MANTENER origen
+                                                  'fechaInscripcion': discipulo['fechaInscripcion'], // ✅ MANTENER fecha original
                                                 };
 
+                                                discipulos[index] = discipuloActualizado;
+
                                                 await FirebaseFirestore.instance
-                                                    .collection(
-                                                        'clasesDiscipulado')
-                                                    .doc(widget.claseAsignadaId)
+                                                    .collection('clasesDiscipulado')
+                                                    .doc(claseAsignadaIdActual)
                                                     .update({
-                                                  'discipulosInscritos':
-                                                      discipulos,
+                                                  'discipulosInscritos': discipulos,
                                                 });
 
                                                 Navigator.pop(context);
-                                                ScaffoldMessenger.of(context)
-                                                    .showSnackBar(
+                                                ScaffoldMessenger.of(context).showSnackBar(
                                                   SnackBar(
                                                     content: Row(
                                                       children: [
-                                                        Icon(Icons.check_circle,
-                                                            color:
-                                                                Colors.white),
+                                                        Icon(Icons.check_circle, color: Colors.white),
                                                         SizedBox(width: 12),
-                                                        Flexible(
-                                                          child: Text(
-                                                              'Discípulo actualizado'),
-                                                        ),
+                                                        Flexible(child: Text('Discípulo actualizado')),
                                                       ],
                                                     ),
-                                                    backgroundColor:
-                                                        Colors.green,
-                                                    behavior: SnackBarBehavior
-                                                        .floating,
-                                                    shape:
-                                                        RoundedRectangleBorder(
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                              10),
+                                                    backgroundColor: Colors.green,
+                                                    behavior: SnackBarBehavior.floating,
+                                                    shape: RoundedRectangleBorder(
+                                                      borderRadius: BorderRadius.circular(10),
                                                     ),
                                                   ),
                                                 );
                                               }
+                                            } catch (e) {
+                                              Navigator.pop(context);
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                SnackBar(
+                                                  content: Text('Error al actualizar: $e'),
+                                                  backgroundColor: Colors.red,
+                                                ),
+                                              );
                                             }
-                                          },
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor: cocepOrange,
-                                            padding: EdgeInsets.symmetric(
-                                                vertical: 14),
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(12),
-                                            ),
+                                          }
+                                        },
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: cocepOrange,
+                                          padding: EdgeInsets.symmetric(vertical: 14),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(12),
                                           ),
-                                          child: Text(
-                                            'Actualizar',
-                                            style: TextStyle(
-                                              fontSize: 15,
-                                              fontWeight: FontWeight.w600,
-                                            ),
+                                        ),
+                                        child: Text(
+                                          'Actualizar',
+                                          style: TextStyle(
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w600,
                                           ),
                                         ),
                                       ),
-                                    ],
-                                  ),
-                                ],
-                              ),
+                                    ),
+                                  ],
+                                ),
+                              ],
                             ),
                           ),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
-              );
-            },
-          ),
+              ),
+            );
+          },
         ),
       ),
-    );
-  }
+    ),
+  );
+}
+
+
 
   void _mostrarDialogoTomarAsistencia(
       List<Map<String, dynamic>> discipulos) async {
@@ -3299,273 +3299,289 @@ class _MaestroDiscipuladoScreenState extends State<MaestroDiscipuladoScreen>
     }
   }
 
-  void _mostrarDialogoRecuperarModulos(
-    String personaId,
-    List<int> modulosFaltados,
-    String nombreUnidad,
-    String prefijoUnidad,
-  ) async {
-    Map<int, bool> modulosSeleccionados = {
-      for (var modulo in modulosFaltados) modulo: false
-    };
 
-    final resultado = await showDialog<Map<int, bool>>(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => Dialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          child: Container(
-            constraints: BoxConstraints(maxWidth: 500),
-            padding: EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [cocepOrange, Color(0xFFE67635)],
-                        ),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Icon(Icons.restore, color: Colors.white, size: 24),
-                    ),
-                    SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        'Marcar $nombreUnidad Recuperadas',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: cocepDarkTeal,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 20),
-                Container(
-                  padding: EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.blue[50],
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.blue[200]!),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.info_outline,
-                          color: Colors.blue[700], size: 20),
-                      SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          'Selecciona las $nombreUnidad que el discípulo ya recuperó',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Colors.blue[900],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                SizedBox(height: 16),
-                ...modulosFaltados.map((modulo) {
-                  return Container(
-                    margin: EdgeInsets.only(bottom: 8),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                        color: modulosSeleccionados[modulo]!
-                            ? Colors.green.withOpacity(0.3)
-                            : Colors.grey.withOpacity(0.3),
-                        width: 1.5,
-                      ),
-                    ),
-                    child: CheckboxListTile(
-                      title: Text(
-                        '$prefijoUnidad$modulo',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          color: cocepDarkTeal,
-                          fontSize: 14,
-                        ),
-                      ),
-                      value: modulosSeleccionados[modulo],
-                      activeColor: Colors.green,
-                      onChanged: (value) {
-                        setDialogState(() {
-                          modulosSeleccionados[modulo] = value ?? false;
-                        });
-                      },
-                      secondary: CircleAvatar(
-                        radius: 18,
-                        backgroundColor: modulosSeleccionados[modulo]!
-                            ? Colors.green.withOpacity(0.2)
-                            : Colors.grey.withOpacity(0.2),
-                        child: Icon(
-                          modulosSeleccionados[modulo]!
-                              ? Icons.check
-                              : Icons.close,
-                          color: modulosSeleccionados[modulo]!
-                              ? Colors.green
-                              : Colors.grey,
-                          size: 18,
-                        ),
-                      ),
-                    ),
-                  );
-                }).toList(),
-                SizedBox(height: 20),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: Text(
-                          'Cancelar',
-                          style: TextStyle(color: Colors.grey[700]),
-                        ),
-                      ),
-                    ),
-                    SizedBox(width: 12),
-                    Expanded(
-                      flex: 2,
-                      child: ElevatedButton(
-                        onPressed: () =>
-                            Navigator.pop(context, modulosSeleccionados),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: cocepOrange,
-                          padding: EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        child: Text(
-                          'Guardar',
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
 
-    if (resultado == null) return;
+void _mostrarDialogoRecuperarModulos(
+  String personaId,
+  List<int> modulosFaltados,
+  String nombreUnidad,
+  String prefijoUnidad,
+) async {
+  Map<int, bool> modulosSeleccionados = {
+    for (var modulo in modulosFaltados) modulo: false
+  };
 
-    final modulosRecuperados = resultado.entries
-        .where((entry) => entry.value)
-        .map((entry) => entry.key)
-        .toList();
+  // ✅ CRÍTICO: Obtener claseAsignadaId ACTUAL
+  final maestroDoc = await FirebaseFirestore.instance
+      .collection('maestrosDiscipulado')
+      .doc(widget.maestroId)
+      .get();
 
-    if (modulosRecuperados.isEmpty) {
+  if (!maestroDoc.exists) {
+    if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('No seleccionaste ninguna $nombreUnidad'),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      return;
-    }
-
-    try {
-      // ✅ Actualizar asistencias
-      final asistenciasSnap = await FirebaseFirestore.instance
-          .collection('asistenciasDiscipulado')
-          .where('claseId', isEqualTo: widget.claseAsignadaId)
-          .where('discipuloId', isEqualTo: personaId)
-          .get();
-
-      for (var doc in asistenciasSnap.docs) {
-        final data = doc.data();
-        final numeroModulo = data['numeroModulo'] as int;
-
-        if (modulosRecuperados.contains(numeroModulo) &&
-            data['asistio'] == false) {
-          await doc.reference.update({
-            'asistio': true,
-            'recuperado': true,
-            'fechaRecuperacion': FieldValue.serverTimestamp(),
-          });
-        }
-      }
-
-      // ✅ Actualizar también en resultadosDiscipulado si existe
-      final resultadosSnap = await FirebaseFirestore.instance
-          .collection('resultadosDiscipulado')
-          .where('claseId', isEqualTo: widget.claseAsignadaId)
-          .where('discipuloId', isEqualTo: personaId)
-          .get();
-
-      for (var doc in resultadosSnap.docs) {
-        final data = doc.data();
-        final faltasDetalle = List<int>.from(data['faltasDetalle'] ?? []);
-        final modulosRecuperadosActuales =
-            List<int>.from(data['modulosRecuperados'] ?? []);
-
-        // ✅ Agregar módulos recuperados
-        for (var modulo in modulosRecuperados) {
-          if (!modulosRecuperadosActuales.contains(modulo)) {
-            modulosRecuperadosActuales.add(modulo);
-          }
-          faltasDetalle.remove(modulo);
-        }
-
-        // ✅ Recalcular total de faltas
-        final nuevoTotalFaltas = faltasDetalle.length;
-        final nuevoAprobado = nuevoTotalFaltas < 2;
-
-        await doc.reference.update({
-          'faltasDetalle': faltasDetalle,
-          'modulosRecuperados': modulosRecuperadosActuales,
-          'totalFaltas': nuevoTotalFaltas,
-          'aprobado': nuevoAprobado,
-        });
-      }
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              Icon(Icons.check_circle, color: Colors.white),
-              SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  '${modulosRecuperados.length} $nombreUnidad ${modulosRecuperados.length == 1 ? "marcada" : "marcadas"} como recuperada${modulosRecuperados.length == 1 ? "" : "s"}',
-                ),
-              ),
-            ],
-          ),
-          backgroundColor: Colors.green,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-        ),
-      );
-
-      setState(() {});
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error al guardar: $e'),
+          content: Text('Error: No se encontró el maestro'),
           backgroundColor: Colors.red,
         ),
       );
     }
+    return;
   }
+
+  final maestroData = maestroDoc.data() as Map<String, dynamic>;
+  final claseAsignadaIdActual = maestroData['claseAsignadaId'];
+
+  if (claseAsignadaIdActual == null) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('No hay clase asignada actualmente'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+    return;
+  }
+
+  final resultado = await showDialog<Map<int, bool>>(
+    context: context,
+    builder: (context) => StatefulBuilder(
+      builder: (context, setDialogState) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Container(
+          constraints: BoxConstraints(maxWidth: 500),
+          padding: EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [cocepOrange, Color(0xFFE67635)],
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(Icons.restore, color: Colors.white, size: 24),
+                  ),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Marcar $nombreUnidad Recuperadas',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: cocepDarkTeal,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 20),
+              Container(
+                padding: EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.blue[50],
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.blue[200]!),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.info_outline, color: Colors.blue[700], size: 20),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Selecciona las $nombreUnidad que el discípulo ya recuperó',
+                        style: TextStyle(fontSize: 13, color: Colors.blue[900]),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(height: 16),
+              ...modulosFaltados.map((modulo) {
+                return Container(
+                  margin: EdgeInsets.only(bottom: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: modulosSeleccionados[modulo]!
+                          ? Colors.green.withOpacity(0.3)
+                          : Colors.grey.withOpacity(0.3),
+                      width: 1.5,
+                    ),
+                  ),
+                  child: CheckboxListTile(
+                    title: Text(
+                      '$prefijoUnidad$modulo',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: cocepDarkTeal,
+                        fontSize: 14,
+                      ),
+                    ),
+                    value: modulosSeleccionados[modulo],
+                    activeColor: Colors.green,
+                    onChanged: (value) {
+                      setDialogState(() {
+                        modulosSeleccionados[modulo] = value ?? false;
+                      });
+                    },
+                    secondary: CircleAvatar(
+                      radius: 18,
+                      backgroundColor: modulosSeleccionados[modulo]!
+                          ? Colors.green.withOpacity(0.2)
+                          : Colors.grey.withOpacity(0.2),
+                      child: Icon(
+                        modulosSeleccionados[modulo]! ? Icons.check : Icons.close,
+                        color: modulosSeleccionados[modulo]! ? Colors.green : Colors.grey,
+                        size: 18,
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+              SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: Text('Cancelar', style: TextStyle(color: Colors.grey[700])),
+                    ),
+                  ),
+                  SizedBox(width: 12),
+                  Expanded(
+                    flex: 2,
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.pop(context, modulosSeleccionados),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: cocepOrange,
+                        padding: EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: Text(
+                        'Guardar',
+                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+
+  if (resultado == null) return;
+
+  final modulosRecuperados = resultado.entries
+      .where((entry) => entry.value)
+      .map((entry) => entry.key)
+      .toList();
+
+  if (modulosRecuperados.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('No seleccionaste ninguna $nombreUnidad'),
+        backgroundColor: Colors.orange,
+      ),
+    );
+    return;
+  }
+
+  try {
+    // ✅ Actualizar asistencias SOLO de la clase ACTUAL
+    final asistenciasSnap = await FirebaseFirestore.instance
+        .collection('asistenciasDiscipulado')
+        .where('claseId', isEqualTo: claseAsignadaIdActual)
+        .where('discipuloId', isEqualTo: personaId)
+        .get();
+
+    for (var doc in asistenciasSnap.docs) {
+      final data = doc.data();
+      final numeroModulo = data['numeroModulo'] as int;
+
+      if (modulosRecuperados.contains(numeroModulo) && data['asistio'] == false) {
+        await doc.reference.update({
+          'asistio': true,
+          'recuperado': true,
+          'fechaRecuperacion': FieldValue.serverTimestamp(),
+        });
+      }
+    }
+
+    // ✅ Actualizar resultados SOLO de la clase ACTUAL
+    final resultadosSnap = await FirebaseFirestore.instance
+        .collection('resultadosDiscipulado')
+        .where('claseId', isEqualTo: claseAsignadaIdActual)
+        .where('discipuloId', isEqualTo: personaId)
+        .get();
+
+    for (var doc in resultadosSnap.docs) {
+      final data = doc.data();
+      final faltasDetalle = List<int>.from(data['faltasDetalle'] ?? []);
+      final modulosRecuperadosActuales = List<int>.from(data['modulosRecuperados'] ?? []);
+
+      for (var modulo in modulosRecuperados) {
+        if (!modulosRecuperadosActuales.contains(modulo)) {
+          modulosRecuperadosActuales.add(modulo);
+        }
+        faltasDetalle.remove(modulo);
+      }
+
+      final nuevoTotalFaltas = faltasDetalle.length;
+      final nuevoAprobado = nuevoTotalFaltas < 2;
+
+      await doc.reference.update({
+        'faltasDetalle': faltasDetalle,
+        'modulosRecuperados': modulosRecuperadosActuales,
+        'totalFaltas': nuevoTotalFaltas,
+        'aprobado': nuevoAprobado,
+      });
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(Icons.check_circle, color: Colors.white),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                '${modulosRecuperados.length} $nombreUnidad ${modulosRecuperados.length == 1 ? "marcada" : "marcadas"} como recuperada${modulosRecuperados.length == 1 ? "" : "s"}',
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: Colors.green,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
+
+    setState(() {});
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Error al guardar: $e'),
+        backgroundColor: Colors.red,
+      ),
+    );
+  }
+}
+
+
+
 
   Widget _buildInfoRow(IconData icon, String text) {
     return Row(
