@@ -4209,7 +4209,10 @@ class _TribusScreenState extends State<TribusScreen>
                     tribuNombre: widget.tribuNombre,
                   ),
                 ),
-                _buildTabContent(AsistenciasTab(tribuId: widget.tribuId)),
+                _buildTabContent(AsistenciasTab(
+                  tribuId: widget.tribuId,
+                  tribuNombre: widget.tribuNombre,
+                )),
                 _buildTabContent(InscripcionesTab(tribuId: widget.tribuId)),
               ],
             ),
@@ -16769,10 +16772,16 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
 ///------------------------------
 
 //--------------------------PESTAÑA DE ASISTENCIA
+
 class AsistenciasTab extends StatefulWidget {
   final String tribuId;
+  final String tribuNombre;
 
-  const AsistenciasTab({Key? key, required this.tribuId}) : super(key: key);
+  const AsistenciasTab({
+    Key? key,
+    required this.tribuId,
+    required this.tribuNombre, // ✅ AGREGADO
+  }) : super(key: key);
 
   @override
   State<AsistenciasTab> createState() => _AsistenciasTabState();
@@ -17081,7 +17090,10 @@ class _AsistenciasTabState extends State<AsistenciasTab>
         itemCount: asistenciasAgrupadas.keys.length,
         cacheExtent: 1000,
         itemBuilder: (context, yearIndex) {
-          final year = asistenciasAgrupadas.keys.elementAt(yearIndex);
+          // Ordenar años de más reciente a más antiguo
+          final yearsOrdenados = asistenciasAgrupadas.keys.toList()
+            ..sort((a, b) => int.parse(b).compareTo(int.parse(a)));
+          final year = yearsOrdenados[yearIndex];
           final months = asistenciasAgrupadas[year]!;
 
           return Card(
@@ -17448,11 +17460,6 @@ class _AsistenciasTabState extends State<AsistenciasTab>
     );
   }
 
-  // ========================================
-  // FUNCIÓN MODIFICADA: Ahora recibe parámetro mostrarAsistencias
-  // Cambia los colores y el ícono final según el tipo
-  // ========================================
-
   Widget _buildServicioSection(
     String servicio,
     String ministerio,
@@ -17508,12 +17515,37 @@ class _AsistenciasTabState extends State<AsistenciasTab>
               ),
               child: LayoutBuilder(
                 builder: (context, constraints) {
-                  final isNarrow = constraints.maxWidth < 400;
+                  final screenWidth = MediaQuery.of(context).size.width;
+                  final isVerySmallScreen = screenWidth < 360;
+                  final isSmallScreen = screenWidth < 500;
+                  final isMediumScreen =
+                      screenWidth >= 500 && screenWidth < 700;
+
+                  // Tamaños adaptativos
+                  final iconSize =
+                      isVerySmallScreen ? 16.0 : (isSmallScreen ? 18.0 : 20.0);
+                  final titleFontSize = isVerySmallScreen
+                      ? 12.0
+                      : (isSmallScreen ? 13.0 : (isMediumScreen ? 14.0 : 16.0));
+                  final subtitleFontSize = isVerySmallScreen
+                      ? 9.0
+                      : (isSmallScreen ? 10.0 : (isMediumScreen ? 11.0 : 12.0));
+                  final countFontSize = isVerySmallScreen
+                      ? 11.0
+                      : (isSmallScreen ? 12.0 : (isMediumScreen ? 13.0 : 14.0));
+                  final badgePadding =
+                      isVerySmallScreen ? 6.0 : (isSmallScreen ? 8.0 : 10.0);
+                  final iconPadding =
+                      isVerySmallScreen ? 4.0 : (isSmallScreen ? 6.0 : 8.0);
+                  final spacing =
+                      isVerySmallScreen ? 6.0 : (isSmallScreen ? 8.0 : 12.0);
+                  final expandIconSize =
+                      isVerySmallScreen ? 18.0 : (isSmallScreen ? 20.0 : 24.0);
 
                   return Row(
                     children: [
                       Container(
-                        padding: EdgeInsets.all(isNarrow ? 6 : 8),
+                        padding: EdgeInsets.all(iconPadding),
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.3),
                           borderRadius: BorderRadius.circular(10),
@@ -17521,38 +17553,47 @@ class _AsistenciasTabState extends State<AsistenciasTab>
                         child: Icon(
                           icon,
                           color: Colors.white,
-                          size: isNarrow ? 18 : 20,
+                          size: iconSize,
                         ),
                       ),
-                      SizedBox(width: isNarrow ? 8 : 12),
+                      SizedBox(width: spacing),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
                           children: [
                             Text(
-                              servicioNormalizado, // ✅ CAMBIADO: era "_displayServiceName(servicio)"
+                              servicioNormalizado,
                               style: TextStyle(
-                                fontSize: isNarrow ? 14 : 16,
+                                fontSize: titleFontSize,
                                 fontWeight: FontWeight.bold,
                                 color: Colors.white,
+                                height: 1.2,
                               ),
-                              maxLines: 1,
+                              maxLines: 2,
                               overflow: TextOverflow.ellipsis,
+                              softWrap: true,
                             ),
+                            SizedBox(height: 2),
                             Text(
                               ministerio,
                               style: TextStyle(
-                                fontSize: isNarrow ? 10 : 12,
-                                color: Colors.white.withOpacity(0.8),
+                                fontSize: subtitleFontSize,
+                                color: Colors.white.withOpacity(0.85),
+                                height: 1.2,
                               ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              softWrap: true,
                             ),
                           ],
                         ),
                       ),
+                      SizedBox(width: 6),
                       Container(
                         padding: EdgeInsets.symmetric(
-                          horizontal: isNarrow ? 8 : 10,
-                          vertical: isNarrow ? 4 : 6,
+                          horizontal: badgePadding,
+                          vertical: badgePadding * 0.6,
                         ),
                         decoration: BoxDecoration(
                           color: Colors.white,
@@ -17563,18 +17604,18 @@ class _AsistenciasTabState extends State<AsistenciasTab>
                           style: TextStyle(
                             color: color,
                             fontWeight: FontWeight.bold,
-                            fontSize: isNarrow ? 12 : 14,
+                            fontSize: countFontSize,
                           ),
                         ),
                       ),
-                      SizedBox(width: 8),
+                      SizedBox(width: 6),
                       AnimatedRotation(
                         turns: isOpen ? 0.5 : 0.0,
                         duration: Duration(milliseconds: 200),
                         child: Icon(
                           Icons.expand_more,
                           color: Colors.white,
-                          size: isNarrow ? 20 : 24,
+                          size: expandIconSize,
                         ),
                       ),
                     ],
@@ -17818,13 +17859,10 @@ class _AsistenciasTabState extends State<AsistenciasTab>
     );
   }
 
-  // ========================================
-  // FUNCIÓN MODIFICADA: Ahora recibe parámetro mostrarAsistencias
-  // ========================================
   Widget _buildTotalSection(
     Map<String, int> resumen,
     bool mostrarAsistencias,
-    Map<String, List<Map<String, dynamic>>> porServicio, // ⬅️ NUEVO parámetro
+    Map<String, List<Map<String, dynamic>>> porServicio,
   ) {
     final totalKey =
         mostrarAsistencias ? 'Total del Fin de Semana' : 'Total de Fallas';
@@ -17844,8 +17882,7 @@ class _AsistenciasTabState extends State<AsistenciasTab>
                 ]
               : [
                   Colors.white,
-                  const Color(0xFFE74C3C)
-                      .withOpacity(0.1), // ⬅️ Rojo para fallas
+                  const Color(0xFFE74C3C).withOpacity(0.1),
                 ],
         ),
         boxShadow: [
@@ -17887,47 +17924,77 @@ class _AsistenciasTabState extends State<AsistenciasTab>
               ),
               borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
             ),
-            child: Row(
-              children: [
-                Container(
-                  padding: EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(
-                    Icons.summarize_rounded,
-                    color: Colors.white,
-                    size: 18,
-                  ),
-                ),
-                SizedBox(width: 12),
-                Text(
-                  mostrarAsistencias
-                      ? 'Resumen de Asistencia'
-                      : 'Resumen de Inasistencias',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-              ],
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final screenWidth = MediaQuery.of(context).size.width;
+                final isVerySmallScreen = screenWidth < 360;
+                final isSmallScreen = screenWidth < 500;
+                final isMediumScreen = screenWidth >= 500 && screenWidth < 700;
+
+                // Tamaños adaptativos
+                final iconSize =
+                    isVerySmallScreen ? 14.0 : (isSmallScreen ? 16.0 : 18.0);
+                final titleFontSize = isVerySmallScreen
+                    ? 11.0
+                    : (isSmallScreen ? 12.5 : (isMediumScreen ? 14.0 : 16.0));
+                final spacing =
+                    isVerySmallScreen ? 6.0 : (isSmallScreen ? 8.0 : 12.0);
+                final iconPadding =
+                    isVerySmallScreen ? 5.0 : (isSmallScreen ? 6.0 : 8.0);
+
+                return Row(
+                  children: [
+                    Container(
+                      padding: EdgeInsets.all(iconPadding),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
+                        Icons.summarize_rounded,
+                        color: Colors.white,
+                        size: iconSize,
+                      ),
+                    ),
+                    SizedBox(width: spacing),
+
+                    Expanded(
+                      flex: 3,
+                      child: Text(
+                        mostrarAsistencias
+                            ? 'Resumen de Asistencia'
+                            : 'Resumen de Inasistencias',
+                        style: TextStyle(
+                          fontSize: titleFontSize,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                          height: 1.2,
+                          letterSpacing: isVerySmallScreen ? -0.2 : 0.0,
+                        ),
+                        maxLines: 3,
+                        softWrap: true,
+                        overflow: TextOverflow.visible,
+                      ),
+                    ),
+
+                    SizedBox(width: spacing * 0.5),
+                    // ✅ Botón de copiar responsivo
+                    _buildBotonCopiar(
+                        resumen, mostrarAsistencias, porServicio, context),
+                  ],
+                );
+              },
             ),
           ),
           Padding(
             padding: EdgeInsets.all(16),
             child: Column(
               children: [
-                // ⬅️ NUEVO: Ordenar resumen por fecha real de asistencia
                 ...(() {
-                  // Filtrar y convertir a lista
                   final resumenList =
                       resumen.entries.where((e) => e.key != totalKey).toList();
 
-                  // Ordenar por fecha real del servicio
                   resumenList.sort((a, b) {
-                    // Obtener fecha real del servicio desde porServicio
                     final fechaA = porServicio[a.key]?.isNotEmpty == true
                         ? porServicio[a.key]!.first['fecha'] as DateTime
                         : DateTime.now();
@@ -17938,7 +18005,6 @@ class _AsistenciasTabState extends State<AsistenciasTab>
                     return fechaA.weekday.compareTo(fechaB.weekday);
                   });
 
-                  // Mapear a widgets
                   return resumenList
                       .map((entry) => _buildTotalRow(
                           entry.key, entry.value, mostrarAsistencias))
@@ -17963,9 +18029,356 @@ class _AsistenciasTabState extends State<AsistenciasTab>
     );
   }
 
-  // ========================================
-  // FUNCIÓN MODIFICADA: Ahora recibe parámetro mostrarAsistencias
-  // ========================================
+  /// Construye el botón de copiar resumen con diseño responsivo
+  Widget _buildBotonCopiar(
+    Map<String, int> resumen,
+    bool mostrarAsistencias,
+    Map<String, List<Map<String, dynamic>>> porServicio,
+    BuildContext context,
+  ) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final mediaQuery = MediaQuery.of(context);
+        final screenWidth = mediaQuery.size.width;
+        final isVerySmallScreen = screenWidth < 360;
+        final isSmallScreen = screenWidth < 500;
+        final isMediumScreen = screenWidth >= 500 && screenWidth < 700;
+
+        // Tamaños adaptativos
+        final iconSize = isVerySmallScreen
+            ? 16.0
+            : (isSmallScreen ? 17.0 : (isMediumScreen ? 18.0 : 20.0));
+        final fontSize = isVerySmallScreen
+            ? 11.0
+            : (isSmallScreen ? 12.0 : (isMediumScreen ? 13.0 : 14.0));
+        final horizontalPadding = isVerySmallScreen
+            ? 6.0
+            : (isSmallScreen ? 8.0 : (isMediumScreen ? 10.0 : 12.0));
+        final verticalPadding = isVerySmallScreen
+            ? 5.0
+            : (isSmallScreen ? 6.0 : (isMediumScreen ? 8.0 : 10.0));
+        final borderRadius = isVerySmallScreen ? 8.0 : 10.0;
+        final spacing = isVerySmallScreen
+            ? 4.0
+            : (isSmallScreen ? 5.0 : (isMediumScreen ? 6.0 : 8.0));
+
+        return Container(
+          constraints: BoxConstraints(
+            minWidth: isVerySmallScreen ? 40 : 60,
+            maxWidth: isVerySmallScreen ? 80 : (isSmallScreen ? 100 : 120),
+          ),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Colors.white.withOpacity(0.25),
+                Colors.white.withOpacity(0.15),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(borderRadius),
+            border: Border.all(
+              color: Colors.white.withOpacity(0.6),
+              width: isVerySmallScreen ? 1.5 : 2,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.15),
+                blurRadius: 6,
+                offset: Offset(0, 3),
+              ),
+            ],
+          ),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () => _copiarResumen(resumen, mostrarAsistencias,
+                  porServicio, context, widget.tribuNombre),
+              borderRadius: BorderRadius.circular(borderRadius),
+              splashColor: Colors.white.withOpacity(0.3),
+              highlightColor: Colors.white.withOpacity(0.2),
+              child: Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: horizontalPadding,
+                  vertical: verticalPadding,
+                ),
+                child: isVerySmallScreen
+                    ? Center(
+                        child: Icon(
+                          Icons.content_copy_rounded,
+                          color: Colors.white,
+                          size: iconSize,
+                        ),
+                      )
+                    : Row(
+                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.content_copy_rounded,
+                            color: Colors.white,
+                            size: iconSize,
+                          ),
+                          SizedBox(width: spacing),
+                          Flexible(
+                            child: Text(
+                              'Copiar',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: fontSize,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.3,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  /// Copia el resumen formateado al portapapeles
+  Future<void> _copiarResumen(
+    Map<String, int> resumen,
+    bool mostrarAsistencias,
+    Map<String, List<Map<String, dynamic>>> porServicio,
+    BuildContext context,
+    String tribuNombre,
+  ) async {
+    try {
+      // Obtener el rango de fechas del resumen
+      String rangoFechas = _obtenerRangoFechasResumen(porServicio);
+
+      // Construir el texto formateado
+      final StringBuffer texto = StringBuffer();
+
+      // Título con negrilla
+      texto.writeln('*Tribu $tribuNombre*');
+
+      // Subtítulo con cursiva
+      texto.writeln(
+          '_${mostrarAsistencias ? 'Asistencia' : 'Inasistencias'} $rangoFechas' +
+              '_');
+
+      // Separador
+      texto.writeln('');
+
+      // ✅ NUEVO: Agrupar por día de la semana en lugar de por servicio
+      Map<String, int> asistenciasPorDia = {};
+      Set<String> personasUnicas = {};
+
+      // Recorrer todos los servicios y agrupar por día
+      for (var entry in porServicio.entries) {
+        final servicio = entry.key;
+        final listaAsistencias = entry.value;
+
+        for (var asistencia in listaAsistencias) {
+          final fecha = asistencia['fecha'] as DateTime;
+          final nombrePersona = asistencia['nombre'] ?? '';
+
+          // Obtener el día de la semana
+          String diaSemana = _obtenerNombreDiaSemana(fecha.weekday);
+
+          // Inicializar el contador del día si no existe
+          if (!asistenciasPorDia.containsKey(diaSemana)) {
+            asistenciasPorDia[diaSemana] = 0;
+          }
+
+          // Contar personas únicas por día (no duplicar si asistió a varios servicios el mismo día)
+          String claveDiaPersona = '$diaSemana-$nombrePersona';
+          if (!personasUnicas.contains(claveDiaPersona)) {
+            asistenciasPorDia[diaSemana] = asistenciasPorDia[diaSemana]! + 1;
+            personasUnicas.add(claveDiaPersona);
+          }
+        }
+      }
+
+      // Ordenar los días de la semana
+      final diasOrdenados = _ordenarDiasSemana(asistenciasPorDia.keys.toList());
+
+      // Agregar cada día con negrilla
+      for (var dia in diasOrdenados) {
+        final cantidad = asistenciasPorDia[dia] ?? 0;
+        texto.writeln('*$dia:* $cantidad');
+      }
+
+      // Separador
+      texto.writeln('');
+
+      // Total con negrilla (contar personas únicas en todo el fin de semana)
+      Set<String> personasTotales = {};
+      for (var servicio in porServicio.values) {
+        for (var asistencia in servicio) {
+          personasTotales.add(asistencia['nombre'] ?? '');
+        }
+      }
+
+      texto.write('*Total FDS:* ${personasTotales.length}');
+
+      // Copiar al portapapeles
+      await Clipboard.setData(ClipboardData(text: texto.toString()));
+
+      // Mostrar confirmación
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.check_circle,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                ),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Resumen copiado al portapapeles',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: const Color(0xFF27AE60),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            margin: EdgeInsets.all(16),
+            duration: Duration(seconds: 2),
+            elevation: 6,
+          ),
+        );
+      }
+    } catch (e) {
+      print('Error al copiar resumen: $e');
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.error_outline, color: Colors.white),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Error al copiar el resumen',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            margin: EdgeInsets.all(16),
+          ),
+        );
+      }
+    }
+  }
+
+  /// Obtiene el nombre del día de la semana a partir del número (1=Lunes, 7=Domingo)
+  String _obtenerNombreDiaSemana(int weekday) {
+    switch (weekday) {
+      case DateTime.monday:
+        return 'Lunes';
+      case DateTime.tuesday:
+        return 'Martes';
+      case DateTime.wednesday:
+        return 'Miércoles';
+      case DateTime.thursday:
+        return 'Jueves';
+      case DateTime.friday:
+        return 'Viernes';
+      case DateTime.saturday:
+        return 'Sábado';
+      case DateTime.sunday:
+        return 'Domingo';
+      default:
+        return 'Desconocido';
+    }
+  }
+
+  /// Ordena los días de la semana en orden cronológico
+  List<String> _ordenarDiasSemana(List<String> dias) {
+    final ordenDias = {
+      'Lunes': 1,
+      'Martes': 2,
+      'Miércoles': 3,
+      'Jueves': 4,
+      'Viernes': 5,
+      'Sábado': 6,
+      'Domingo': 7,
+    };
+
+    dias.sort((a, b) {
+      final ordenA = ordenDias[a] ?? 999;
+      final ordenB = ordenDias[b] ?? 999;
+      return ordenA.compareTo(ordenB);
+    });
+
+    return dias;
+  }
+
+  /// Obtiene el rango de fechas del resumen (ej: "16-18 Enero 2026")
+  String _obtenerRangoFechasResumen(
+      Map<String, List<Map<String, dynamic>>> porServicio) {
+    if (porServicio.isEmpty) return '';
+
+    // Obtener todas las fechas
+    List<DateTime> todasFechas = [];
+    for (var servicio in porServicio.values) {
+      for (var asistencia in servicio) {
+        todasFechas.add(asistencia['fecha'] as DateTime);
+      }
+    }
+
+    if (todasFechas.isEmpty) return '';
+
+    // Ordenar fechas
+    todasFechas.sort();
+
+    final fechaInicio = todasFechas.first;
+    final fechaFin = todasFechas.last;
+
+    // Formatear según si son del mismo mes o no
+    if (fechaInicio.month == fechaFin.month &&
+        fechaInicio.year == fechaFin.year) {
+      // Mismo mes: "16-18 Enero 2026"
+      final mes = _getSpanishMonth(_getNombreMesIngles(fechaInicio.month));
+      return '${fechaInicio.day}-${fechaFin.day} $mes ${fechaInicio.year}';
+    } else if (fechaInicio.year == fechaFin.year) {
+      // Mismo año, diferente mes: "28 Dic - 3 Ene 2026"
+      final mesInicio = _obtenerMesAbreviado(fechaInicio.month);
+      final mesFin = _obtenerMesAbreviado(fechaFin.month);
+      return '${fechaInicio.day} $mesInicio - ${fechaFin.day} $mesFin ${fechaInicio.year}';
+    } else {
+      // Años diferentes: "28 Dic 2025 - 3 Ene 2026"
+      final mesInicio = _obtenerMesAbreviado(fechaInicio.month);
+      final mesFin = _obtenerMesAbreviado(fechaFin.month);
+      return '${fechaInicio.day} $mesInicio ${fechaInicio.year} - ${fechaFin.day} $mesFin ${fechaFin.year}';
+    }
+  }
+
   Widget _buildTotalRow(String label, int count, bool mostrarAsistencias,
       {bool isTotal = false}) {
     final color =
