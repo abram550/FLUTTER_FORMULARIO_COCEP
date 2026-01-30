@@ -26,6 +26,11 @@ class _MaestroDiscipuladoScreenState extends State<MaestroDiscipuladoScreen>
   late TabController _tabController;
   final ScrollController _scrollController = ScrollController();
 
+  final TextEditingController _searchController = TextEditingController();
+  final ValueNotifier<String> _searchQueryNotifier = ValueNotifier<String>('');
+  final ValueNotifier<bool> _isSearchActiveNotifier =
+      ValueNotifier<bool>(false);
+
   // Colores COCEP
   static const Color cocepTeal = Color(0xFF1B7F7A);
   static const Color cocepOrange = Color(0xFFFF8C42);
@@ -42,6 +47,9 @@ class _MaestroDiscipuladoScreenState extends State<MaestroDiscipuladoScreen>
   void dispose() {
     _tabController.dispose();
     _scrollController.dispose();
+    _searchController.dispose();
+    _searchQueryNotifier.dispose();
+    _isSearchActiveNotifier.dispose();
     super.dispose();
   }
 
@@ -747,10 +755,91 @@ class _MaestroDiscipuladoScreenState extends State<MaestroDiscipuladoScreen>
     );
   }
 
+  Widget _buildSearchBar() {
+    return ValueListenableBuilder<bool>(
+      valueListenable: _isSearchActiveNotifier,
+      builder: (context, isActive, _) {
+        return Container(
+          margin: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.white, Colors.grey[50]!],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: cocepTeal.withOpacity(0.15),
+                blurRadius: 12,
+                offset: Offset(0, 4),
+              ),
+            ],
+            border: Border.all(
+              color: isActive ? cocepTeal : Colors.grey[300]!,
+              width: isActive ? 2 : 1,
+            ),
+          ),
+          child: TextField(
+            controller: _searchController,
+            onChanged: (value) {
+              _searchQueryNotifier.value = value;
+              _isSearchActiveNotifier.value = value.isNotEmpty;
+            },
+            decoration: InputDecoration(
+              hintText: 'Buscar discípulo por nombre...',
+              hintStyle: TextStyle(
+                color: Colors.grey[400],
+                fontSize: 15,
+              ),
+              prefixIcon: Container(
+                padding: EdgeInsets.all(12),
+                child: Icon(
+                  Icons.search_rounded,
+                  color: isActive ? cocepTeal : Colors.grey[400],
+                  size: 24,
+                ),
+              ),
+              suffixIcon: isActive
+                  ? IconButton(
+                      icon: Container(
+                        padding: EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: cocepTeal.withOpacity(0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.close_rounded,
+                          color: cocepTeal,
+                          size: 18,
+                        ),
+                      ),
+                      onPressed: () {
+                        _searchController.clear();
+                        _searchQueryNotifier.value = '';
+                        _isSearchActiveNotifier.value = false;
+                      },
+                      tooltip: 'Limpiar búsqueda',
+                    )
+                  : null,
+              border: InputBorder.none,
+              contentPadding:
+                  EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            ),
+            style: TextStyle(
+              fontSize: 15,
+              color: cocepDarkTeal,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildTomarAsistenciaTab(Map<String, dynamic> claseData) {
     var discipulos =
         List<Map<String, dynamic>>.from(claseData['discipulosInscritos'] ?? []);
-
     discipulos.sort((a, b) {
       final nombreA = (a['nombre'] ?? '').toString().toLowerCase();
       final nombreB = (b['nombre'] ?? '').toString().toLowerCase();
@@ -762,7 +851,7 @@ class _MaestroDiscipuladoScreenState extends State<MaestroDiscipuladoScreen>
       children: [
         _buildClassHeader(claseData),
 
-        // ✅ REEMPLAZAR SECCIÓN DE BOTONES (después de _buildClassHeader)
+        // ✅ BOTONES DE ACCIÓN (SE MUEVEN CON EL SCROLL)
         Padding(
           padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           child: Row(
@@ -787,7 +876,6 @@ class _MaestroDiscipuladoScreenState extends State<MaestroDiscipuladoScreen>
                 ),
               ),
               SizedBox(width: 12),
-              // ✅ OCULTAR BOTÓN SI INSCRIPCIONES CERRADAS
               if (claseData['inscripcionesCerradas'] != true)
                 ElevatedButton(
                   onPressed: () => _mostrarDialogoRegistrarDiscipulo(),
@@ -806,22 +894,94 @@ class _MaestroDiscipuladoScreenState extends State<MaestroDiscipuladoScreen>
           ),
         ),
 
-        if (discipulos.isEmpty)
-          Container(
-            height: 300,
-            child: _buildEmptyState(),
-          )
-        else
-          Padding(
-            padding: EdgeInsets.fromLTRB(16, 8, 16, 100),
-            child: Column(
-              children: discipulos
-                  .map((discipulo) => _buildDiscipuloCard(discipulo))
-                  .toList(),
-            ),
-          ),
+        // ✅ BARRA DE BÚSQUEDA (SE MUEVE CON EL SCROLL)
+        _buildSearchBar(),
+
+        // ✅ LISTA CON VALUELISTENABLEBUILDER (NO HACE REBUILD COMPLETO)
+        ValueListenableBuilder<String>(
+          valueListenable: _searchQueryNotifier,
+          builder: (context, searchQuery, _) {
+            // ✅ FILTRAR DISCÍPULOS
+            List<Map<String, dynamic>> discipulosFiltrados = discipulos;
+            if (searchQuery.isNotEmpty) {
+              discipulosFiltrados = discipulos.where((discipulo) {
+                final nombre = _normalizeText(discipulo['nombre'] ?? '');
+                final query = _normalizeText(searchQuery);
+                return nombre.contains(query);
+              }).toList();
+            }
+
+            if (discipulosFiltrados.isEmpty) {
+              return Container(
+                height: 300,
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        padding: EdgeInsets.all(24),
+                        decoration: BoxDecoration(
+                          color: cocepOrange.withOpacity(0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.search_off_rounded,
+                          size: 64,
+                          color: cocepOrange.withOpacity(0.5),
+                        ),
+                      ),
+                      SizedBox(height: 16),
+                      Text(
+                        'No se encontraron resultados',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey[700],
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        'Intenta con otro término de búsqueda',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey[500],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }
+
+            return Padding(
+              padding: EdgeInsets.fromLTRB(16, 8, 16, 100),
+              child: Column(
+                children: discipulosFiltrados
+                    .map((discipulo) => _buildDiscipuloCard(discipulo))
+                    .toList(),
+              ),
+            );
+          },
+        ),
       ],
     );
+  }
+
+  String _normalizeText(String text) {
+    final withoutAccents = text
+        .replaceAll('á', 'a')
+        .replaceAll('é', 'e')
+        .replaceAll('í', 'i')
+        .replaceAll('ó', 'o')
+        .replaceAll('ú', 'u')
+        .replaceAll('Á', 'a')
+        .replaceAll('É', 'e')
+        .replaceAll('Í', 'i')
+        .replaceAll('Ó', 'o')
+        .replaceAll('Ú', 'u')
+        .replaceAll('ñ', 'n')
+        .replaceAll('Ñ', 'n');
+    return withoutAccents.toLowerCase();
   }
 
   Widget _buildEmptyState() {
@@ -2681,14 +2841,88 @@ class _MaestroDiscipuladoScreenState extends State<MaestroDiscipuladoScreen>
                   }
                 });
 
-                return ListView.builder(
-                  padding: EdgeInsets.fromLTRB(16, 16, 16, 100),
-                  itemCount: estadisticas.length,
-                  itemBuilder: (context, index) {
-                    final personaId = estadisticas.keys.elementAt(index);
-                    final stats = estadisticas[personaId]!;
-                    return _buildEstadisticaCard(stats, claseData);
-                  },
+                return ListView(
+                  padding: EdgeInsets.zero,
+                  children: [
+                    // ✅ BARRA DE BÚSQUEDA (SE MUEVE CON EL SCROLL)
+                    _buildSearchBar(),
+
+                    // ✅ LISTA CON VALUELISTENABLEBUILDER
+                    ValueListenableBuilder<String>(
+                      valueListenable: _searchQueryNotifier,
+                      builder: (context, searchQuery, _) {
+                        // ✅ FILTRAR ESTADÍSTICAS
+                        Map<String, Map<String, dynamic>>
+                            estadisticasFiltradas = {};
+
+                        estadisticas.forEach((personaId, stats) {
+                          if (searchQuery.isEmpty) {
+                            estadisticasFiltradas[personaId] = stats;
+                          } else {
+                            final nombre =
+                                _normalizeText(stats['nombre'] ?? '');
+                            final query = _normalizeText(searchQuery);
+                            if (nombre.contains(query)) {
+                              estadisticasFiltradas[personaId] = stats;
+                            }
+                          }
+                        });
+
+                        if (estadisticasFiltradas.isEmpty) {
+                          return Container(
+                            height: 300,
+                            child: Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Container(
+                                    padding: EdgeInsets.all(24),
+                                    decoration: BoxDecoration(
+                                      color: cocepOrange.withOpacity(0.1),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(
+                                      Icons.search_off_rounded,
+                                      size: 64,
+                                      color: cocepOrange.withOpacity(0.5),
+                                    ),
+                                  ),
+                                  SizedBox(height: 16),
+                                  Text(
+                                    'No se encontraron resultados',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.grey[700],
+                                    ),
+                                  ),
+                                  SizedBox(height: 8),
+                                  Text(
+                                    'Intenta con otro término de búsqueda',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.grey[500],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        }
+
+                        return Padding(
+                          padding: EdgeInsets.fromLTRB(16, 0, 16, 100),
+                          child: Column(
+                            children:
+                                estadisticasFiltradas.entries.map((entry) {
+                              return _buildEstadisticaCard(
+                                  entry.value, claseData);
+                            }).toList(),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
                 );
               },
             );
