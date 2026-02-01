@@ -3985,9 +3985,14 @@ class _TribusScreenState extends State<TribusScreen>
                                   tribuNombre, isSmallScreen, isMediumScreen),
                     ),
 
-                    SizedBox(width: isVerySmallScreen ? 4 : 8),
-                    // Botón de cerrar sesión responsivo mejorado
+                    SizedBox(
+                        width: isVerySmallScreen ? 4 : (isSmallScreen ? 6 : 8)),
+                    //Container del boton de cerrar Session
                     Container(
+                      constraints: BoxConstraints(
+                        maxWidth:
+                            isVerySmallScreen ? 58 : (isSmallScreen ? 65 : 90),
+                      ),
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           begin: Alignment.topLeft,
@@ -3998,16 +4003,16 @@ class _TribusScreenState extends State<TribusScreen>
                           ],
                         ),
                         borderRadius:
-                            BorderRadius.circular(isVerySmallScreen ? 10 : 12),
+                            BorderRadius.circular(isVerySmallScreen ? 8 : 10),
                         border: Border.all(
                           color: Colors.white.withOpacity(0.6),
-                          width: isVerySmallScreen ? 1.5 : 2,
+                          width: isVerySmallScreen ? 1 : 1.5,
                         ),
                         boxShadow: [
                           BoxShadow(
                             color: Colors.black.withOpacity(0.15),
-                            blurRadius: 6,
-                            offset: Offset(0, 3),
+                            blurRadius: 4,
+                            offset: Offset(0, 2),
                           ),
                         ],
                       ),
@@ -4015,100 +4020,55 @@ class _TribusScreenState extends State<TribusScreen>
                         color: Colors.transparent,
                         child: InkWell(
                           onTap: _confirmarCerrarSesion,
-                          borderRadius: BorderRadius.circular(
-                              isVerySmallScreen ? 10 : 12),
+                          borderRadius:
+                              BorderRadius.circular(isVerySmallScreen ? 8 : 10),
                           splashColor: Colors.white.withOpacity(0.3),
                           highlightColor: Colors.white.withOpacity(0.2),
                           child: Padding(
                             padding: EdgeInsets.symmetric(
                               horizontal: isVerySmallScreen
-                                  ? 8
-                                  : (isSmallScreen ? 10 : 12),
+                                  ? 4
+                                  : (isSmallScreen ? 6 : 8),
                               vertical: isVerySmallScreen
-                                  ? 6
-                                  : (isSmallScreen ? 8 : 10),
+                                  ? 5
+                                  : (isSmallScreen ? 6 : 8),
                             ),
-                            child: isVerySmallScreen || isSmallScreen
-                                ? Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        Icons.logout_rounded,
-                                        color: Colors.white,
-                                        size: isVerySmallScreen ? 16 : 18,
-                                      ),
-                                      SizedBox(height: 2),
-                                      Text(
-                                        'Cerrar',
-                                        textAlign: TextAlign.center,
-                                        style: GoogleFonts.poppins(
-                                          color: Colors.white,
-                                          fontSize: isVerySmallScreen ? 9 : 10,
-                                          fontWeight: FontWeight.w700,
-                                          height: 1.1,
-                                          letterSpacing: 0.2,
-                                          shadows: [
-                                            Shadow(
-                                              offset: Offset(0, 1),
-                                              blurRadius: 2,
-                                              color:
-                                                  Colors.black.withOpacity(0.3),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      Text(
-                                        'Sesión',
-                                        textAlign: TextAlign.center,
-                                        style: GoogleFonts.poppins(
-                                          color: Colors.white,
-                                          fontSize: isVerySmallScreen ? 9 : 10,
-                                          fontWeight: FontWeight.w700,
-                                          height: 1.1,
-                                          letterSpacing: 0.2,
-                                          shadows: [
-                                            Shadow(
-                                              offset: Offset(0, 1),
-                                              blurRadius: 2,
-                                              color:
-                                                  Colors.black.withOpacity(0.3),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  )
-                                : Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        Icons.logout_rounded,
-                                        color: Colors.white,
-                                        size: isMediumScreen ? 20 : 22,
-                                      ),
-                                      SizedBox(width: 6),
-                                      Text(
-                                        'Cerrar\nSesión',
-                                        textAlign: TextAlign.center,
-                                        style: GoogleFonts.poppins(
-                                          color: Colors.white,
-                                          fontSize: isMediumScreen ? 11 : 12,
-                                          fontWeight: FontWeight.w700,
-                                          height: 1.1,
-                                          letterSpacing: 0.3,
-                                          shadows: [
-                                            Shadow(
-                                              offset: Offset(0, 1),
-                                              blurRadius: 2,
-                                              color:
-                                                  Colors.black.withOpacity(0.3),
-                                            ),
-                                          ],
-                                        ),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.logout_rounded,
+                                  color: Colors.white,
+                                  size: isVerySmallScreen
+                                      ? 15
+                                      : (isSmallScreen ? 17 : 20),
+                                ),
+                                SizedBox(height: isVerySmallScreen ? 1 : 2),
+                                Text(
+                                  'Cerrar\nSesión',
+                                  textAlign: TextAlign.center,
+                                  style: GoogleFonts.poppins(
+                                    color: Colors.white,
+                                    fontSize: isVerySmallScreen
+                                        ? 7.5
+                                        : (isSmallScreen ? 8.5 : 10),
+                                    fontWeight: FontWeight.w700,
+                                    height: 1.05,
+                                    letterSpacing: 0.2,
+                                    shadows: [
+                                      Shadow(
+                                        offset: Offset(0, 1),
+                                        blurRadius: 2,
+                                        color: Colors.black.withOpacity(0.3),
                                       ),
                                     ],
                                   ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.clip,
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ),
