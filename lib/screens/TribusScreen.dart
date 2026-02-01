@@ -17189,9 +17189,6 @@ class _AsistenciasTabState extends State<AsistenciasTab>
     );
   }
 
-  // ========================================
-  // FUNCIÓN MODIFICADA: Ahora recibe parámetro mostrarAsistencias
-  // ========================================
   Widget _buildMonthSection(
       BuildContext context,
       String month,
@@ -17227,8 +17224,7 @@ class _AsistenciasTabState extends State<AsistenciasTab>
                   ]
                 : [
                     Colors.white,
-                    const Color(0xFFE74C3C)
-                        .withOpacity(0.08), // ⬅️ Rojo para fallas
+                    const Color(0xFFE74C3C).withOpacity(0.08),
                   ],
           ),
         ),
@@ -17282,7 +17278,7 @@ class _AsistenciasTabState extends State<AsistenciasTab>
               ? const Color(0xFF1D8A8A)
               : const Color(0xFFE74C3C),
           children: (() {
-            // Ordenar las semanas por la fecha REAL del primer registro
+            // ✅ CORRECCIÓN: Ordenar las semanas por la fecha del MARTES de cada semana
             final sortedWeeks = weeks.entries.toList()
               ..sort((a, b) {
                 // Obtener la fecha real del primer registro de cada semana
@@ -17293,11 +17289,11 @@ class _AsistenciasTabState extends State<AsistenciasTab>
                     ? b.value.first['fecha'] as DateTime
                     : DateTime.now();
 
-                // Obtener el martes de cada semana
+                // Obtener el MARTES de cada semana para comparar
                 final martesA = _obtenerLunesDeLaSemana(fechaA);
                 final martesB = _obtenerLunesDeLaSemana(fechaB);
 
-                // Comparar las fechas completas (año, mes, día)
+                // Comparar las fechas completas del martes
                 return martesA.compareTo(martesB);
               });
 
@@ -18460,18 +18456,21 @@ class _AsistenciasTabState extends State<AsistenciasTab>
         agrupadas = {};
 
     for (var asistencia in asistencias) {
-      final fecha = asistencia['fecha'];
+      final fecha = asistencia['fecha'] as DateTime;
       final year = DateFormat('yyyy').format(fecha);
-      final month = DateFormat('MMMM').format(fecha);
 
-      final DateTime lunes = _obtenerLunesDeLaSemana(fecha);
-      final String semanaKey =
-          '${lunes.day}-${_obtenerDomingoDeLaSemana(lunes).day}';
+      // ✅ CORRECCIÓN: Obtener el martes de la semana para determinar el mes correcto
+      final DateTime martes = _obtenerLunesDeLaSemana(fecha);
+      final String monthKey = DateFormat('MMMM').format(martes);
+
+      // ✅ CORRECCIÓN: Usar el martes como referencia para la semana
+      final DateTime lunes = _obtenerDomingoDeLaSemana(martes);
+      final String semanaKey = '${martes.day}-${lunes.day}';
 
       agrupadas.putIfAbsent(year, () => {});
-      agrupadas[year]!.putIfAbsent(month, () => {});
-      agrupadas[year]![month]!.putIfAbsent(semanaKey, () => []);
-      agrupadas[year]![month]![semanaKey]!.add(asistencia);
+      agrupadas[year]!.putIfAbsent(monthKey, () => {});
+      agrupadas[year]![monthKey]!.putIfAbsent(semanaKey, () => []);
+      agrupadas[year]![monthKey]![semanaKey]!.add(asistencia);
     }
 
     return agrupadas;
@@ -18504,14 +18503,20 @@ class _AsistenciasTabState extends State<AsistenciasTab>
     final martes = _obtenerLunesDeLaSemana(fechaInicial);
     final lunes = _obtenerDomingoDeLaSemana(martes);
 
-    // Formatear según si cruza meses o no
+    // ✅ CORRECCIÓN: Formatear considerando que puede cruzar meses
     if (martes.month == lunes.month) {
       // Mismo mes: "Semana 7-13"
       return 'Semana ${martes.day}-${lunes.day}';
     } else {
-      // Meses diferentes: "Semana 28 Oct - 3 Nov"
+      // ✅ NUEVO: Meses diferentes - mostrar ambos meses
       final mesMartes = _obtenerMesAbreviado(martes.month);
       final mesLunes = _obtenerMesAbreviado(lunes.month);
+
+      // Si además cruza años, mostrar ambos años
+      if (martes.year != lunes.year) {
+        return 'Semana ${martes.day} $mesMartes ${martes.year} - ${lunes.day} $mesLunes ${lunes.year}';
+      }
+
       return 'Semana ${martes.day} $mesMartes - ${lunes.day} $mesLunes';
     }
   }
@@ -18524,11 +18529,15 @@ class _AsistenciasTabState extends State<AsistenciasTab>
     final martes = _obtenerLunesDeLaSemana(fechaInicial);
     final lunes = _obtenerDomingoDeLaSemana(martes);
 
-    // Formato: "1 de octubre - 7 de octubre de 2025"
-    if (martes.month == lunes.month) {
+    if (martes.month == lunes.month && martes.year == lunes.year) {
+      // Mismo mes y año: "1 - 7 de octubre de 2025"
       return '${martes.day} - ${lunes.day} de ${_getSpanishMonth(_getNombreMesIngles(martes.month))} ${martes.year}';
-    } else {
+    } else if (martes.year == lunes.year) {
+      // Mismo año, diferente mes: "28 de enero - 3 de febrero de 2025"
       return '${martes.day} de ${_getSpanishMonth(_getNombreMesIngles(martes.month))} - ${lunes.day} de ${_getSpanishMonth(_getNombreMesIngles(lunes.month))} ${lunes.year}';
+    } else {
+      // ✅ NUEVO: Años diferentes: "28 de diciembre de 2024 - 3 de enero de 2025"
+      return '${martes.day} de ${_getSpanishMonth(_getNombreMesIngles(martes.month))} de ${martes.year} - ${lunes.day} de ${_getSpanishMonth(_getNombreMesIngles(lunes.month))} de ${lunes.year}';
     }
   }
 
