@@ -4721,6 +4721,8 @@ Widget _buildRegistroCard(
   );
 }
 
+
+
 class PersonasAsignadasTab extends StatelessWidget {
   final String coordinadorId;
 
@@ -10446,6 +10448,9 @@ class _PersonasAsignadasContentState extends State<_PersonasAsignadasContent> {
   }
 }
 
+
+
+
 // ✅ NUEVA CLASE AUXILIAR PARA EVITAR RECONSTRUCCIÓN COMPLETA
 class _RegistroNuevoMiembroModal extends StatefulWidget {
   final BuildContext dialogContext;
@@ -11174,6 +11179,8 @@ class _RegistroNuevoMiembroModalState
     );
   }
 }
+
+
 
 class _RegistroNuevoMiembroStateful extends StatefulWidget {
   final String coordinadorId;

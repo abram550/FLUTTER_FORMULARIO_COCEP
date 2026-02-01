@@ -6345,7 +6345,8 @@ class CoordinadoresTab extends StatelessWidget {
                                           ],
                                         ),
                                         content: Text(
-                                          '¿Desasignar este timoteo del coordinador?',
+                                          '¿Desasignar este timoteo del coordinador?\n\nSe desasignarán también todas las personas que tenga asignadas.',
+                                          style: TextStyle(height: 1.5),
                                         ),
                                         actions: [
                                           TextButton(
@@ -6366,23 +6367,100 @@ class CoordinadoresTab extends StatelessWidget {
                                     );
 
                                     if (confirm == true) {
-                                      await FirebaseFirestore.instance
-                                          .collection('timoteos')
-                                          .doc(timoteo.id)
-                                          .update({
-                                        'coordinadorId': null,
-                                        'nombreCoordinador': null,
-                                      });
+                                      try {
+                                        // ✅ CORRECCIÓN: Usar batch para transacción atómica
+                                        final batch =
+                                            FirebaseFirestore.instance.batch();
 
-                                      if (context.mounted) {
-                                        ScaffoldMessenger.of(context)
-                                            .showSnackBar(
-                                          SnackBar(
-                                            content: Text(
-                                                'Timoteo desasignado correctamente'),
-                                            backgroundColor: Colors.green,
-                                          ),
+                                        // 1. Desasignar el timoteo del coordinador
+                                        batch.update(
+                                          FirebaseFirestore.instance
+                                              .collection('timoteos')
+                                              .doc(timoteo.id),
+                                          {
+                                            'coordinadorId': null,
+                                            'nombreCoordinador': null,
+                                          },
                                         );
+
+                                        // 2. Desasignar todas las personas del timoteo
+                                        final registrosAsignados =
+                                            await FirebaseFirestore.instance
+                                                .collection('registros')
+                                                .where('timoteoAsignado',
+                                                    isEqualTo: timoteo.id)
+                                                .get();
+
+                                        for (var registro
+                                            in registrosAsignados.docs) {
+                                          batch.update(
+                                            registro.reference,
+                                            {
+                                              'timoteoAsignado': null,
+                                              'nombreTimoteo': null,
+                                              'fechaAsignacion': null,
+                                            },
+                                          );
+                                        }
+
+                                        // 3. Ejecutar todas las actualizaciones
+                                        await batch.commit();
+
+                                        if (context.mounted) {
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(
+                                            SnackBar(
+                                              content: Row(
+                                                children: [
+                                                  Icon(Icons.check_circle,
+                                                      color: Colors.white),
+                                                  SizedBox(width: 12),
+                                                  Expanded(
+                                                    child: Text(
+                                                      'Timoteo desasignado correctamente${registrosAsignados.docs.isNotEmpty ? " (${registrosAsignados.docs.length} ${registrosAsignados.docs.length == 1 ? "persona desasignada" : "personas desasignadas"})" : ""}',
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                              backgroundColor: Colors.green,
+                                              behavior:
+                                                  SnackBarBehavior.floating,
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(10),
+                                              ),
+                                            ),
+                                          );
+                                        }
+                                      } catch (e) {
+                                        print(
+                                            '❌ Error al desasignar timoteo: $e');
+                                        if (context.mounted) {
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(
+                                            SnackBar(
+                                              content: Row(
+                                                children: [
+                                                  Icon(Icons.error_outline,
+                                                      color: Colors.white),
+                                                  SizedBox(width: 12),
+                                                  Expanded(
+                                                    child: Text(
+                                                      'Error al desasignar: $e',
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                              backgroundColor: Colors.red,
+                                              behavior:
+                                                  SnackBarBehavior.floating,
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(10),
+                                              ),
+                                            ),
+                                          );
+                                        }
                                       }
                                     }
                                   },
