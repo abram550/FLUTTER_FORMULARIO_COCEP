@@ -3056,6 +3056,155 @@ class _MaestroDiscipuladoScreenState extends State<MaestroDiscipuladoScreen>
                   SizedBox(width: 6),
                   Text('$faltas',
                       style: TextStyle(fontWeight: FontWeight.w600)),
+                  // ✅ NUEVO: Botón para agregar módulos/lecciones vistos (CONDICIONAL)
+                  if (claseActiva) ...[
+                    Spacer(),
+                    // ✅ StreamBuilder para verificar si hay módulos disponibles
+                    StreamBuilder<DocumentSnapshot>(
+                      stream: FirebaseFirestore.instance
+                          .collection('maestrosDiscipulado')
+                          .doc(widget.maestroId)
+                          .snapshots(),
+                      builder: (context, maestroSnap) {
+                        if (!maestroSnap.hasData) {
+                          return SizedBox.shrink();
+                        }
+
+                        final maestroData =
+                            maestroSnap.data!.data() as Map<String, dynamic>?;
+                        final claseActualId = maestroData?['claseAsignadaId'];
+
+                        if (claseActualId == null) {
+                          return SizedBox.shrink();
+                        }
+
+                        // ✅ Consultar módulos registrados para este discípulo
+                        return FutureBuilder<QuerySnapshot>(
+                          future: FirebaseFirestore.instance
+                              .collection('asistenciasDiscipulado')
+                              .where('claseId', isEqualTo: claseActualId)
+                              .where('discipuloId',
+                                  isEqualTo: stats['personaId'])
+                              .get(),
+                          builder: (context, asistenciasDiscipuloSnap) {
+                            if (asistenciasDiscipuloSnap.connectionState ==
+                                ConnectionState.waiting) {
+                              return SizedBox.shrink();
+                            }
+
+                            Set<int> modulosYaRegistrados = {};
+                            if (asistenciasDiscipuloSnap.hasData) {
+                              for (var doc
+                                  in asistenciasDiscipuloSnap.data!.docs) {
+                                final data = doc.data() as Map<String, dynamic>;
+                                modulosYaRegistrados
+                                    .add(data['numeroModulo'] as int);
+                              }
+                            }
+
+                            // ✅ Consultar todos los módulos vistos en la clase
+                            return FutureBuilder<QuerySnapshot>(
+                              future: FirebaseFirestore.instance
+                                  .collection('asistenciasDiscipulado')
+                                  .where('claseId', isEqualTo: claseActualId)
+                                  .get(),
+                              builder: (context, todasAsistenciasSnap) {
+                                if (todasAsistenciasSnap.connectionState ==
+                                    ConnectionState.waiting) {
+                                  return SizedBox.shrink();
+                                }
+
+                                Set<int> modulosVistos = {};
+                                if (todasAsistenciasSnap.hasData) {
+                                  for (var doc
+                                      in todasAsistenciasSnap.data!.docs) {
+                                    final data =
+                                        doc.data() as Map<String, dynamic>;
+                                    modulosVistos
+                                        .add(data['numeroModulo'] as int);
+                                  }
+                                }
+
+                                // ✅ Determinar módulos disponibles
+                                final moduloInicialPermitido =
+                                    claseData['moduloInicialPermitido']
+                                            as int? ??
+                                        1;
+                                final totalModulos =
+                                    claseData['totalModulos'] as int;
+
+                                List<int> modulosDisponibles = [];
+                                for (int i = moduloInicialPermitido;
+                                    i <= totalModulos;
+                                    i++) {
+                                  if (modulosVistos.contains(i) &&
+                                      !modulosYaRegistrados.contains(i)) {
+                                    modulosDisponibles.add(i);
+                                  }
+                                }
+
+                                // ✅ SOLO mostrar botón si hay módulos disponibles
+                                if (modulosDisponibles.isEmpty) {
+                                  return SizedBox.shrink();
+                                }
+
+                                // ✅ Mostrar botón
+                                return Material(
+                                  color: Colors.transparent,
+                                  child: InkWell(
+                                    onTap: () =>
+                                        _mostrarDialogoAgregarModuloVisto(
+                                      stats,
+                                      claseData,
+                                      nombreUnidad,
+                                      prefijoUnidad,
+                                    ),
+                                    borderRadius: BorderRadius.circular(8),
+                                    child: Container(
+                                      padding: EdgeInsets.symmetric(
+                                          horizontal: 10, vertical: 6),
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          colors: [
+                                            cocepOrange.withOpacity(0.2),
+                                            cocepOrange.withOpacity(0.1),
+                                          ],
+                                        ),
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(
+                                          color: cocepOrange.withOpacity(0.5),
+                                          width: 1.5,
+                                        ),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(
+                                            Icons.add_circle_outline,
+                                            size: 16,
+                                            color: cocepOrange,
+                                          ),
+                                          SizedBox(width: 4),
+                                          Text(
+                                            'Agregar',
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.bold,
+                                              color: cocepOrange,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                            );
+                          },
+                        );
+                      },
+                    ),
+                  ],
                 ],
               ),
               // ✅ Mostrar estado según tipo de clase
@@ -4274,6 +4423,585 @@ class _MaestroDiscipuladoScreenState extends State<MaestroDiscipuladoScreen>
         );
       }
     }
+  }
+
+  void _mostrarDialogoAgregarModuloVisto(
+    Map<String, dynamic> stats,
+    Map<String, dynamic> claseData,
+    String nombreUnidad,
+    String prefijoUnidad,
+  ) async {
+    // ✅ Obtener claseAsignadaId ACTUAL
+    final maestroDoc = await FirebaseFirestore.instance
+        .collection('maestrosDiscipulado')
+        .doc(widget.maestroId)
+        .get();
+
+    if (!maestroDoc.exists) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: No se encontró el maestro'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
+    }
+
+    final maestroData = maestroDoc.data() as Map<String, dynamic>;
+    final claseAsignadaIdActual = maestroData['claseAsignadaId'];
+
+    if (claseAsignadaIdActual == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('No hay clase asignada actualmente'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
+    }
+
+    // ✅ Obtener módulos ya registrados para este discípulo
+    final asistenciasSnap = await FirebaseFirestore.instance
+        .collection('asistenciasDiscipulado')
+        .where('claseId', isEqualTo: claseAsignadaIdActual)
+        .where('discipuloId', isEqualTo: stats['personaId'])
+        .get();
+
+    Set<int> modulosYaRegistrados = {};
+    for (var doc in asistenciasSnap.docs) {
+      final data = doc.data();
+      modulosYaRegistrados.add(data['numeroModulo'] as int);
+    }
+
+    // ✅ Obtener todos los módulos registrados en la clase (por cualquier discípulo)
+    final todasAsistenciasSnap = await FirebaseFirestore.instance
+        .collection('asistenciasDiscipulado')
+        .where('claseId', isEqualTo: claseAsignadaIdActual)
+        .get();
+
+    Set<int> modulosVistos = {};
+    for (var doc in todasAsistenciasSnap.docs) {
+      final data = doc.data();
+      modulosVistos.add(data['numeroModulo'] as int);
+    }
+
+    // ✅ Determinar módulos disponibles (vistos pero no registrados para este discípulo)
+    final moduloInicialPermitido =
+        claseData['moduloInicialPermitido'] as int? ?? 1;
+    final totalModulos = claseData['totalModulos'] as int;
+
+    List<int> modulosDisponibles = [];
+    for (int i = moduloInicialPermitido; i <= totalModulos; i++) {
+      if (modulosVistos.contains(i) && !modulosYaRegistrados.contains(i)) {
+        modulosDisponibles.add(i);
+      }
+    }
+
+    if (modulosDisponibles.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.info_outline, color: Colors.white),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'No hay $nombreUnidad vistos disponibles para agregar',
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.orange,
+            behavior: SnackBarBehavior.floating,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      }
+      return;
+    }
+
+    modulosDisponibles.sort();
+
+    // ✅ Mostrar diálogo
+    int? moduloSeleccionado;
+    bool? aprobo;
+
+    final resultado = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => Dialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final screenWidth = MediaQuery.of(context).size.width;
+              final isSmallScreen = screenWidth < 600;
+
+              return SingleChildScrollView(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxWidth: 500,
+                    minHeight: 100,
+                  ),
+                  child: IntrinsicHeight(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Header
+                        Container(
+                          padding: EdgeInsets.all(isSmallScreen ? 16 : 20),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [cocepOrange, Color(0xFFE67635)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.only(
+                              topLeft: Radius.circular(20),
+                              topRight: Radius.circular(20),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding:
+                                    EdgeInsets.all(isSmallScreen ? 10 : 12),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Icon(
+                                  Icons.add_task,
+                                  color: Colors.white,
+                                  size: isSmallScreen ? 22 : 26,
+                                ),
+                              ),
+                              SizedBox(width: isSmallScreen ? 10 : 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Agregar $nombreUnidad',
+                                      style: TextStyle(
+                                        fontSize: isSmallScreen ? 16 : 18,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                    SizedBox(height: 2),
+                                    Text(
+                                      stats['nombre'] ?? '',
+                                      style: TextStyle(
+                                        fontSize: isSmallScreen ? 12 : 13,
+                                        color: Colors.white.withOpacity(0.9),
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        // Body
+                        Flexible(
+                          child: SingleChildScrollView(
+                            padding: EdgeInsets.all(isSmallScreen ? 16 : 20),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                // Info banner
+                                Container(
+                                  padding:
+                                      EdgeInsets.all(isSmallScreen ? 10 : 12),
+                                  decoration: BoxDecoration(
+                                    color: Colors.blue[50],
+                                    borderRadius: BorderRadius.circular(12),
+                                    border:
+                                        Border.all(color: Colors.blue[200]!),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.info_outline,
+                                          color: Colors.blue[700],
+                                          size: isSmallScreen ? 18 : 20),
+                                      SizedBox(width: isSmallScreen ? 8 : 12),
+                                      Expanded(
+                                        child: Text(
+                                          'Selecciona la $nombreUnidad que el discípulo vio e indica si aprobó o no',
+                                          style: TextStyle(
+                                            fontSize: isSmallScreen ? 12 : 13,
+                                            color: Colors.blue[900],
+                                            height: 1.4,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                SizedBox(height: isSmallScreen ? 16 : 20),
+
+                                // Dropdown de módulos
+                                DropdownButtonFormField<int>(
+                                  decoration: InputDecoration(
+                                    labelText: 'Seleccionar $nombreUnidad',
+                                    labelStyle: TextStyle(
+                                        fontSize: isSmallScreen ? 13 : 14),
+                                    prefixIcon: Icon(
+                                      Icons.bookmark,
+                                      color: cocepOrange,
+                                      size: isSmallScreen ? 20 : 24,
+                                    ),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: BorderSide(
+                                          color: cocepOrange, width: 2),
+                                    ),
+                                    contentPadding: EdgeInsets.symmetric(
+                                      horizontal: isSmallScreen ? 10 : 12,
+                                      vertical: isSmallScreen ? 12 : 16,
+                                    ),
+                                  ),
+                                  value: moduloSeleccionado,
+                                  isExpanded: true,
+                                  items: modulosDisponibles.map((modulo) {
+                                    return DropdownMenuItem<int>(
+                                      value: modulo,
+                                      child: Text(
+                                        '$nombreUnidad $prefijoUnidad$modulo',
+                                        style: TextStyle(
+                                          fontSize: isSmallScreen ? 13 : 14,
+                                          fontWeight: FontWeight.w600,
+                                          color: cocepDarkTeal,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    );
+                                  }).toList(),
+                                  onChanged: (value) {
+                                    setDialogState(() {
+                                      moduloSeleccionado = value;
+                                    });
+                                  },
+                                ),
+
+                                if (moduloSeleccionado != null) ...[
+                                  SizedBox(height: isSmallScreen ? 16 : 20),
+
+                                  // Pregunta de aprobación
+                                  Text(
+                                    '¿El discípulo aprobó esta $nombreUnidad?',
+                                    style: TextStyle(
+                                      fontSize: isSmallScreen ? 14 : 15,
+                                      fontWeight: FontWeight.w600,
+                                      color: cocepDarkTeal,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                  SizedBox(height: isSmallScreen ? 12 : 16),
+
+                                  // Botones de selección
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: _buildOpcionButton(
+                                          label: 'Aprobó',
+                                          icon: Icons.check_circle,
+                                          color: Colors.green,
+                                          isSelected: aprobo == true,
+                                          onTap: () {
+                                            setDialogState(() {
+                                              aprobo = true;
+                                            });
+                                          },
+                                          isSmallScreen: isSmallScreen,
+                                        ),
+                                      ),
+                                      SizedBox(width: 12),
+                                      Expanded(
+                                        child: _buildOpcionButton(
+                                          label: 'Reprobó',
+                                          icon: Icons.cancel,
+                                          color: Colors.red,
+                                          isSelected: aprobo == false,
+                                          onTap: () {
+                                            setDialogState(() {
+                                              aprobo = false;
+                                            });
+                                          },
+                                          isSmallScreen: isSmallScreen,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ),
+
+                        // Footer
+                        Container(
+                          padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
+                          decoration: BoxDecoration(
+                            color: Colors.grey[100],
+                            borderRadius: BorderRadius.only(
+                              bottomLeft: Radius.circular(20),
+                              bottomRight: Radius.circular(20),
+                            ),
+                          ),
+                          child: isSmallScreen
+                              ? Column(
+                                  children: [
+                                    SizedBox(
+                                      width: double.infinity,
+                                      child: TextButton(
+                                        onPressed: () => Navigator.pop(context),
+                                        child: Text('Cancelar',
+                                            style: TextStyle(
+                                                color: Colors.grey[700],
+                                                fontSize: 14)),
+                                      ),
+                                    ),
+                                    SizedBox(height: 8),
+                                    SizedBox(
+                                      width: double.infinity,
+                                      child: ElevatedButton(
+                                        onPressed: (moduloSeleccionado !=
+                                                    null &&
+                                                aprobo != null)
+                                            ? () => Navigator.pop(context, {
+                                                  'modulo': moduloSeleccionado,
+                                                  'aprobo': aprobo,
+                                                })
+                                            : null,
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: cocepOrange,
+                                          padding: EdgeInsets.symmetric(
+                                              vertical: 14),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(12),
+                                          ),
+                                          disabledBackgroundColor:
+                                              Colors.grey[300],
+                                        ),
+                                        child: Text(
+                                          'Guardar',
+                                          style: TextStyle(
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w600,
+                                            color:
+                                                (moduloSeleccionado != null &&
+                                                        aprobo != null)
+                                                    ? Colors.white
+                                                    : Colors.grey[600],
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                )
+                              : Row(
+                                  children: [
+                                    Expanded(
+                                      child: TextButton(
+                                        onPressed: () => Navigator.pop(context),
+                                        child: Text('Cancelar',
+                                            style: TextStyle(
+                                                color: Colors.grey[700])),
+                                      ),
+                                    ),
+                                    SizedBox(width: 12),
+                                    Expanded(
+                                      flex: 2,
+                                      child: ElevatedButton(
+                                        onPressed: (moduloSeleccionado !=
+                                                    null &&
+                                                aprobo != null)
+                                            ? () => Navigator.pop(context, {
+                                                  'modulo': moduloSeleccionado,
+                                                  'aprobo': aprobo,
+                                                })
+                                            : null,
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: cocepOrange,
+                                          padding: EdgeInsets.symmetric(
+                                              vertical: 14),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(12),
+                                          ),
+                                          disabledBackgroundColor:
+                                              Colors.grey[300],
+                                        ),
+                                        child: Text(
+                                          'Guardar',
+                                          style: TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w600,
+                                            color:
+                                                (moduloSeleccionado != null &&
+                                                        aprobo != null)
+                                                    ? Colors.white
+                                                    : Colors.grey[600],
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+
+    if (resultado == null) return;
+
+    final modulo = resultado['modulo'] as int;
+    final aproboModulo = resultado['aprobo'] as bool;
+
+    try {
+      // ✅ Registrar la asistencia
+      await FirebaseFirestore.instance
+          .collection('asistenciasDiscipulado')
+          .add({
+        'claseId': claseAsignadaIdActual,
+        'discipuloId': stats['personaId'],
+        'discipuloNombre': stats['nombre'],
+        'numeroModulo': modulo,
+        'asistio': aproboModulo,
+        'fecha': Timestamp.now(),
+        'maestroId': widget.maestroId,
+        'agregadoManualmente': true,
+        'fechaRegistroManual': FieldValue.serverTimestamp(),
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.white),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    '$nombreUnidad $prefijoUnidad$modulo agregado correctamente como ${aproboModulo ? "APROBADO" : "REPROBADO"}',
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+
+        setState(() {}); // Refrescar para mostrar cambios
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al guardar: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+// ============================================
+// BLOQUE 3: Agregar este NUEVO método auxiliar al final de la clase _MaestroDiscipuladoScreenState
+// Ubicación: Antes del último cierre de llave } de la clase
+// Acción: Agrega este método completo como un nuevo método de la clase
+// ============================================
+
+  Widget _buildOpcionButton({
+    required String label,
+    required IconData icon,
+    required Color color,
+    required bool isSelected,
+    required VoidCallback onTap,
+    required bool isSmallScreen,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: AnimatedContainer(
+          duration: Duration(milliseconds: 200),
+          padding: EdgeInsets.symmetric(
+            vertical: isSmallScreen ? 14 : 16,
+            horizontal: isSmallScreen ? 12 : 16,
+          ),
+          decoration: BoxDecoration(
+            gradient: isSelected
+                ? LinearGradient(
+                    colors: [color, color.withOpacity(0.8)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  )
+                : null,
+            color: isSelected ? null : color.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isSelected ? color : color.withOpacity(0.3),
+              width: isSelected ? 2.5 : 1.5,
+            ),
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: color.withOpacity(0.4),
+                      blurRadius: 8,
+                      offset: Offset(0, 4),
+                    ),
+                  ]
+                : [],
+          ),
+          child: Column(
+            children: [
+              Icon(
+                icon,
+                color: isSelected ? Colors.white : color,
+                size: isSmallScreen ? 32 : 40,
+              ),
+              SizedBox(height: isSmallScreen ? 6 : 8),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: isSmallScreen ? 13 : 15,
+                  fontWeight: FontWeight.bold,
+                  color: isSelected ? Colors.white : color,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 
