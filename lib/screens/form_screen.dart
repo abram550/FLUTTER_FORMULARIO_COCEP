@@ -7,7 +7,6 @@ import 'package:google_fonts/google_fonts.dart';
 
 // Proyecto
 import 'package:formulario_app/models/registro.dart';
-import 'package:formulario_app/screens/login_screen.dart';
 import 'package:formulario_app/services/database_service.dart';
 import 'package:formulario_app/services/firestore_service.dart';
 import 'package:formulario_app/services/sync_service.dart';

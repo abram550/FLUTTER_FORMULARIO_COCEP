@@ -243,10 +243,11 @@ class AuthService {
   Future<void> _guardarSesion(Map<String, dynamic> userData) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      
+
       // ✅ NUEVO: Guardar timestamp de login
-      await prefs.setInt('loginTimestamp', DateTime.now().millisecondsSinceEpoch);
-      
+      await prefs.setInt(
+          'loginTimestamp', DateTime.now().millisecondsSinceEpoch);
+
       await prefs.setString('userId', userData['userId']?.toString() ?? '');
       await prefs.setString('userRole', userData['role']?.toString() ?? '');
       await prefs.setString('userName', userData['userName']?.toString() ?? '');
@@ -293,23 +294,23 @@ class AuthService {
       final prefs = await SharedPreferences.getInstance();
       final userId = prefs.getString('userId');
       final loginTimestamp = prefs.getInt('loginTimestamp');
-      
+
       // ✅ NUEVO: Verificar que existe userId Y timestamp de login
       if (userId == null || userId.isEmpty || loginTimestamp == null) {
         print('❌ No hay sesión activa (userId o timestamp faltante)');
         return false;
       }
-      
+
       // ✅ OPCIONAL: Verificar que la sesión no sea muy antigua (ej. 30 días)
       final loginDate = DateTime.fromMillisecondsSinceEpoch(loginTimestamp);
       final daysSinceLogin = DateTime.now().difference(loginDate).inDays;
-      
+
       if (daysSinceLogin > 30) {
         print('❌ Sesión expirada (más de 30 días)');
         await logout(); // Limpiar sesión expirada
         return false;
       }
-      
+
       print('✅ Sesión activa verificada');
       return true;
     } catch (e) {
@@ -437,22 +438,21 @@ class AuthService {
     }
   }
 
-  // ✅ CORREGIDO: Logout ahora limpia COMPLETAMENTE SharedPreferences
   Future<void> logout() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      
+
       print('🔄 Cerrando sesión...');
       print('📋 Datos antes de limpiar:');
       print('   - userId: ${prefs.getString('userId')}');
       print('   - userRole: ${prefs.getString('userRole')}');
-      
+
       // ✅ CRÍTICO: Limpiar TODO el SharedPreferences
       final cleared = await prefs.clear();
-      
+
       if (cleared) {
         print('✅ SharedPreferences limpiado exitosamente');
-        
+
         // Verificar que realmente se limpió
         final userIdAfter = prefs.getString('userId');
         if (userIdAfter == null) {
@@ -463,7 +463,7 @@ class AuthService {
       } else {
         print('❌ FALLO: clear() retornó false');
       }
-      
+
       print('✅ Sesión cerrada completamente');
     } catch (e) {
       print('❌ Error al cerrar sesión: $e');

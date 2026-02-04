@@ -7,12 +7,9 @@ import 'package:go_router/go_router.dart';
 // Proyecto
 import 'package:formulario_app/services/auth_service.dart';
 import 'package:formulario_app/utils/error_handler.dart';
-import 'package:formulario_app/screens/TimoteosScreen.dart';
-import 'package:formulario_app/screens/admin_screen.dart';
 
-// Locales
-import 'CoordinadorScreen.dart';
-import 'TribusScreen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:html' as html;
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -44,6 +41,9 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
   void initState() {
     super.initState();
 
+    // ✅ NUEVO: Refrescar página automáticamente solo UNA VEZ
+    _verificarYRefrescarPagina();
+
     // Animación de fade-in
     _fadeController = AnimationController(
       vsync: this,
@@ -66,6 +66,35 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     );
 
     _fadeController.forward();
+  }
+
+// ============================================================
+// AGREGAR este método NUEVO después del método initState():
+// ============================================================
+
+  /// Verifica si la página necesita refrescarse y lo hace solo UNA VEZ
+  Future<void> _verificarYRefrescarPagina() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final yaRefrescado = prefs.getBool('loginPageRefreshed') ?? false;
+
+      // Solo refrescar si NO se ha refrescado antes en esta sesión
+      if (!yaRefrescado) {
+        print('🔄 Refrescando página del login para cargar última versión...');
+
+        // Marcar como refrescado ANTES de refrescar para evitar bucles
+        await prefs.setBool('loginPageRefreshed', true);
+
+        // Refrescar la página en Flutter Web
+        html.window.location.reload();
+      } else {
+        print('✅ Página ya refrescada previamente, no se volverá a refrescar');
+      }
+    } catch (e) {
+      print(
+          '⚠️ Error al verificar refresh (probablemente no es Flutter Web): $e');
+      // No hacer nada si falla (por ejemplo, en app móvil nativa)
+    }
   }
 
   @override
