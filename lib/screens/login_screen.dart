@@ -140,21 +140,21 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
               context.go('/departamento_discipulado');
             }
             break;
-            
+
           case 'maestroDiscipulado':
             if (mounted) {
               final maestroId = result['maestroId'] ?? '';
               final maestroNombre = result['maestroNombre'] ?? '';
               final claseAsignadaId = result['claseAsignadaId'];
-              
+
               if (claseAsignadaId != null) {
-                context.go('/maestro_discipulado/$maestroId/$maestroNombre?claseAsignadaId=$claseAsignadaId');
+                context.go(
+                    '/maestro_discipulado/$maestroId/$maestroNombre?claseAsignadaId=$claseAsignadaId');
               } else {
                 context.go('/maestro_discipulado/$maestroId/$maestroNombre');
               }
             }
             break;
-
 
           default:
             if (mounted) {

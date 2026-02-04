@@ -139,27 +139,31 @@ class _AdminPastoresState extends State<AdminPastores>
     }
   }
 
+
+
+
+
+
+
+
   Future<void> _confirmarCerrarSesion() async {
-    // Resetear timer mientras se muestra el diálogo
     _resetInactivityTimer();
 
     final confirm = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(15),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(
           children: [
             Container(
               padding: EdgeInsets.all(8),
               decoration: BoxDecoration(
                 color: Colors.orange.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(
-                Icons.logout,
+                Icons.logout_rounded,
                 color: Colors.orange,
                 size: 24,
               ),
@@ -187,8 +191,7 @@ class _AdminPastoresState extends State<AdminPastores>
             style: TextButton.styleFrom(
               padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
+                  borderRadius: BorderRadius.circular(10)),
             ),
             child: Text(
               'Cancelar',
@@ -205,15 +208,12 @@ class _AdminPastoresState extends State<AdminPastores>
               foregroundColor: Colors.white,
               padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
+                  borderRadius: BorderRadius.circular(10)),
               elevation: 2,
             ),
             child: Text(
               'Cerrar Sesión',
-              style: GoogleFonts.poppins(
-                fontWeight: FontWeight.w600,
-              ),
+              style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
             ),
           ),
         ],
@@ -222,13 +222,61 @@ class _AdminPastoresState extends State<AdminPastores>
 
     if (confirm == true) {
       _inactivityTimer?.cancel();
-      _mostrarSnackBar('Cerrando sesión...', isSuccess: true);
-      await Future.delayed(Duration(milliseconds: 300));
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Container(
+                padding: EdgeInsets.all(2),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.check, color: Colors.white, size: 20),
+              ),
+              SizedBox(width: 12),
+              Text(
+                'Cerrando sesión...',
+                style: GoogleFonts.poppins(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: Color(0xFF1B998B),
+          behavior: SnackBarBehavior.floating,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          margin: EdgeInsets.all(16),
+          duration: Duration(seconds: 1), // ✅ Reducido a 1 segundo
+        ),
+      );
+
+      // ✅ CRÍTICO: Usar AuthService().logout() para limpiar SharedPreferences
+      final authService = AuthService();
+      await authService.logout();
+      
+      // ✅ NUEVO: Verificar que se limpió correctamente
+      final stillAuth = await authService.isAuthenticated();
+      if (stillAuth) {
+        print('⚠️ ADVERTENCIA: Usuario todavía aparece autenticado después de logout');
+      } else {
+        print('✅ Logout exitoso - Usuario NO autenticado');
+      }
+
+      await Future.delayed(Duration(milliseconds: 500));
+      
       if (mounted) {
-        context.go('/login'); // Cambia esta ruta si tu login tiene otra ruta
+        // ✅ NUEVO: Usar pushReplacement en lugar de go para limpiar el stack
+        context.go('/login');
       }
     }
   }
+
+
+
 
   Future<void> _verificarLiderConsolidacion() async {
     final snapshot = await _firestore

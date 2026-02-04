@@ -13,7 +13,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 // Paquetes externos
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:formulario_app/services/auth_service.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
 // Proyecto
@@ -146,29 +148,28 @@ class _TimoteoScreenState extends State<TimoteoScreen>
             Container(
               padding: EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: kSecondaryColor.withOpacity(0.1),
+                color: Colors.orange.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(
                 Icons.logout_rounded,
-                color: kSecondaryColor,
+                color: Colors.orange,
                 size: 24,
               ),
             ),
             SizedBox(width: 12),
             Text(
               'Cerrar Sesión',
-              style: TextStyle(
+              style: GoogleFonts.poppins(
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
-                color: kTextDarkColor,
               ),
             ),
           ],
         ),
         content: Text(
           '¿Estás seguro que deseas cerrar sesión?',
-          style: TextStyle(
+          style: GoogleFonts.poppins(
             fontSize: 14,
             color: Colors.grey[700],
           ),
@@ -183,7 +184,7 @@ class _TimoteoScreenState extends State<TimoteoScreen>
             ),
             child: Text(
               'Cancelar',
-              style: TextStyle(
+              style: GoogleFonts.poppins(
                 color: Colors.grey[600],
                 fontWeight: FontWeight.w500,
               ),
@@ -201,7 +202,7 @@ class _TimoteoScreenState extends State<TimoteoScreen>
             ),
             child: Text(
               'Cerrar Sesión',
-              style: TextStyle(fontWeight: FontWeight.w600),
+              style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
             ),
           ),
         ],
@@ -226,23 +227,39 @@ class _TimoteoScreenState extends State<TimoteoScreen>
               SizedBox(width: 12),
               Text(
                 'Cerrando sesión...',
-                style: TextStyle(
+                style: GoogleFonts.poppins(
                   color: Colors.white,
                   fontWeight: FontWeight.w500,
                 ),
               ),
             ],
           ),
-          backgroundColor: kPrimaryColor,
+          backgroundColor: Color(0xFF1B998B),
           behavior: SnackBarBehavior.floating,
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           margin: EdgeInsets.all(16),
+          duration: Duration(seconds: 1), // ✅ Reducido a 1 segundo
         ),
       );
 
-      await Future.delayed(Duration(milliseconds: 300));
+      // ✅ CRÍTICO: Usar AuthService().logout() para limpiar SharedPreferences
+      final authService = AuthService();
+      await authService.logout();
+
+      // ✅ NUEVO: Verificar que se limpió correctamente
+      final stillAuth = await authService.isAuthenticated();
+      if (stillAuth) {
+        print(
+            '⚠️ ADVERTENCIA: Usuario todavía aparece autenticado después de logout');
+      } else {
+        print('✅ Logout exitoso - Usuario NO autenticado');
+      }
+
+      await Future.delayed(Duration(milliseconds: 500));
+
       if (mounted) {
+        // ✅ NUEVO: Usar pushReplacement en lugar de go para limpiar el stack
         context.go('/login');
       }
     }

@@ -258,11 +258,27 @@ class _TribusScreenState extends State<TribusScreen>
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           margin: EdgeInsets.all(16),
+          duration: Duration(seconds: 1), // ✅ Reducido a 1 segundo
         ),
       );
 
-      await Future.delayed(Duration(milliseconds: 300));
+      // ✅ CRÍTICO: Usar AuthService().logout() para limpiar SharedPreferences
+      final authService = AuthService();
+      await authService.logout();
+
+      // ✅ NUEVO: Verificar que se limpió correctamente
+      final stillAuth = await authService.isAuthenticated();
+      if (stillAuth) {
+        print(
+            '⚠️ ADVERTENCIA: Usuario todavía aparece autenticado después de logout');
+      } else {
+        print('✅ Logout exitoso - Usuario NO autenticado');
+      }
+
+      await Future.delayed(Duration(milliseconds: 500));
+
       if (mounted) {
+        // ✅ NUEVO: Usar pushReplacement en lugar de go para limpiar el stack
         context.go('/login');
       }
     }

@@ -1,11 +1,7 @@
-// ========================================
-// UBICACIÓN: formulario_app/lib/router.dart
-// REEMPLAZA TODO EL CONTENIDO del archivo por este código
-// ========================================
-
 import 'package:flutter/material.dart';
-import 'package:formulario_app/screens/ministerio_lider_screen.dart';
 import 'package:go_router/go_router.dart';
+
+// Screens
 import 'package:formulario_app/screens/login_screen.dart';
 import 'package:formulario_app/screens/social_profile_screen.dart';
 import 'package:formulario_app/screens/TimoteosScreen.dart';
@@ -14,75 +10,145 @@ import 'package:formulario_app/screens/CoordinadorScreen.dart';
 import 'package:formulario_app/screens/admin_pastores.dart';
 import 'package:formulario_app/screens/admin_screen.dart';
 import 'package:formulario_app/screens/TribusScreen.dart';
+import 'package:formulario_app/screens/ministerio_lider_screen.dart';
 import 'package:formulario_app/screens/departamento_discipulado_screen.dart';
 import 'package:formulario_app/screens/maestro_discipulado_screen.dart';
 
+// Middleware
+import 'package:formulario_app/middleware/auth_guard.dart';
+
+final AuthGuard _authGuard = AuthGuard();
+
 final GoRouter router = GoRouter(
   initialLocation: '/login',
+  redirect: (BuildContext context, GoRouterState state) async {
+    final path = state.matchedLocation;
+
+    // Rutas públicas que NO requieren autenticación
+    const publicRoutes = ['/login'];
+    if (publicRoutes.contains(path)) {
+      return null; // Permitir acceso
+    }
+
+    // Todas las demás rutas requieren autenticación
+    final isAuth = await _authGuard.isAuthenticated();
+    if (!isAuth) {
+      return '/login';
+    }
+
+    return null; // Usuario autenticado, permitir navegación
+  },
   routes: [
+    // ============================================================
+    // RUTA PÚBLICA - LOGIN
+    // ============================================================
     GoRoute(
       path: '/login',
       builder: (context, state) => const LoginPage(),
     ),
+
+    // ============================================================
+    // RUTAS PROTEGIDAS - Requieren autenticación
+    // ============================================================
+
     GoRoute(
       path: '/social_profile',
+      redirect: (context, state) =>
+          _authGuard.redirect(context, state, ['liderConsolidacion']),
       builder: (context, state) => const SocialProfileScreen(),
     ),
+
+    GoRoute(
+      path: '/form',
+      redirect: (context, state) =>
+          _authGuard.redirect(context, state, ['liderConsolidacion']),
+      builder: (context, state) => const FormularioPage(),
+    ),
+
+    GoRoute(
+      path: '/admin_pastores',
+      redirect: (context, state) =>
+          _authGuard.redirect(context, state, ['adminPastores']),
+      builder: (context, state) => const AdminPastores(),
+    ),
+
+    GoRoute(
+      path: '/admin',
+      redirect: (context, state) =>
+          _authGuard.redirect(context, state, ['liderConsolidacion']),
+      builder: (context, state) => const AdminPanel(),
+    ),
+
     GoRoute(
       path: '/timoteos/:timoteoId/:timoteoNombre',
+      redirect: (context, state) =>
+          _authGuard.redirect(context, state, ['timoteo', 'coordinador']),
       builder: (context, state) {
         final timoteoId = state.pathParameters['timoteoId']!;
         final timoteoNombre = state.pathParameters['timoteoNombre']!;
         return TimoteoScreen(
-            timoteoId: timoteoId, timoteoNombre: timoteoNombre);
+          timoteoId: timoteoId,
+          timoteoNombre: timoteoNombre,
+        );
       },
     ),
+
+    GoRoute(
+      path: '/coordinador/:coordinadorId/:coordinadorNombre',
+      redirect: (context, state) =>
+          _authGuard.redirect(context, state, ['coordinador']),
+      builder: (context, state) {
+        final coordinadorId = state.pathParameters['coordinadorId']!;
+        final coordinadorNombre = state.pathParameters['coordinadorNombre']!;
+        return CoordinadorScreen(
+          coordinadorId: coordinadorId,
+          coordinadorNombre: coordinadorNombre,
+        );
+      },
+    ),
+
+    GoRoute(
+      path: '/tribus/:tribuId/:tribuNombre',
+      redirect: (context, state) => _authGuard.redirect(
+        context,
+        state,
+        ['tribu', 'timoteo', 'coordinador'],
+      ),
+      builder: (context, state) {
+        final tribuId = state.pathParameters['tribuId']!;
+        final tribuNombre = state.pathParameters['tribuNombre']!;
+        return TribusScreen(
+          tribuId: tribuId,
+          tribuNombre: tribuNombre,
+        );
+      },
+    ),
+
     GoRoute(
       path: '/ministerio_lider',
+      redirect: (context, state) =>
+          _authGuard.redirect(context, state, ['liderMinisterio']),
       builder: (context, state) {
         final params = state.extra as Map<String, dynamic>;
         return MinisterioLiderScreen(ministerio: params['ministerio']);
       },
     ),
-    GoRoute(
-      path: '/form',
-      builder: (context, state) => const FormularioPage(),
-    ),
-    GoRoute(
-      path: '/coordinador/:coordinadorId/:coordinadorNombre',
-      builder: (context, state) {
-        final coordinadorId = state.pathParameters['coordinadorId']!;
-        final coordinadorNombre = state.pathParameters['coordinadorNombre']!;
-        return CoordinadorScreen(
-            coordinadorId: coordinadorId, coordinadorNombre: coordinadorNombre);
-      },
-    ),
-    GoRoute(
-      path: '/admin_pastores',
-      builder: (context, state) => const AdminPastores(),
-    ),
-    GoRoute(
-      path: '/admin',
-      builder: (context, state) => const AdminPanel(),
-    ),
-    GoRoute(
-      path: '/tribus/:tribuId/:tribuNombre',
-      builder: (context, state) {
-        final tribuId = state.pathParameters['tribuId']!;
-        final tribuNombre = state.pathParameters['tribuNombre']!;
-        return TribusScreen(tribuId: tribuId, tribuNombre: tribuNombre);
-      },
-    ),
-    // ✅ NUEVAS RUTAS - Departamento de Discipulado
-    // Departamento de Discipulado
+
+    // ============================================================
+    // DEPARTAMENTO DE DISCIPULADO
+    // ============================================================
+
     GoRoute(
       path: '/departamento_discipulado',
+      redirect: (context, state) =>
+          _authGuard.redirect(context, state, ['departamentoDiscipulado']),
       builder: (context, state) => const DepartamentoDiscipuladoScreen(),
     ),
 
-// Maestro de Discipulado
     GoRoute(
       path: '/maestro_discipulado/:maestroId/:maestroNombre',
+      redirect: (context, state) =>
+          _authGuard.redirect(context, state, ['maestroDiscipulado']),
       builder: (context, state) {
         final maestroId = state.pathParameters['maestroId']!;
         final maestroNombre = state.pathParameters['maestroNombre']!;

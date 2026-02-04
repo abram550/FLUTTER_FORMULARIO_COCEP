@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/services.dart';
+import 'package:formulario_app/services/auth_service.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
@@ -400,7 +401,23 @@ class _MaestroDiscipuladoScreenState extends State<MaestroDiscipuladoScreen>
           child: IconButton(
             icon: Icon(Icons.logout_rounded, color: Colors.white),
             tooltip: 'Cerrar Sesión',
-            onPressed: () => context.go('/login'),
+            onPressed: () async {
+              // ✅ CRÍTICO: Limpiar SharedPreferences
+              final authService = AuthService();
+              await authService.logout();
+
+              // ✅ Verificar limpieza
+              final stillAuth = await authService.isAuthenticated();
+              if (stillAuth) {
+                print(
+                    '⚠️ ADVERTENCIA: Usuario todavía autenticado después de logout');
+              }
+
+              // ✅ Redirigir a login
+              if (mounted) {
+                context.go('/login');
+              }
+            },
           ),
         ),
       ],

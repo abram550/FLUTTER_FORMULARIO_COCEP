@@ -144,7 +144,24 @@ class _DepartamentoDiscipuladoScreenState
                             _buildHeaderButton(
                               icon: Icons.logout,
                               tooltip: 'Cerrar Sesión',
-                              onPressed: () => context.go('/login'),
+                              onPressed: () async {
+                                // ✅ CRÍTICO: Limpiar SharedPreferences
+                                final authService = AuthService();
+                                await authService.logout();
+
+                                // ✅ Verificar limpieza
+                                final stillAuth =
+                                    await authService.isAuthenticated();
+                                if (stillAuth) {
+                                  print(
+                                      '⚠️ ADVERTENCIA: Usuario todavía autenticado después de logout');
+                                }
+
+                                // ✅ Redirigir a login
+                                if (context.mounted) {
+                                  context.go('/login');
+                                }
+                              },
                             ),
                           ],
                         ),
