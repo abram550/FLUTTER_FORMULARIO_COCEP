@@ -25,7 +25,7 @@ final GoRouter router = GoRouter(
     final path = state.matchedLocation;
 
     // Rutas públicas que NO requieren autenticación
-    const publicRoutes = ['/login'];
+    const publicRoutes = ['/login', '/form', '/social_profile'];
     if (publicRoutes.contains(path)) {
       return null; // Permitir acceso
     }
@@ -47,23 +47,18 @@ final GoRouter router = GoRouter(
       builder: (context, state) => const LoginPage(),
     ),
 
-    // ============================================================
-    // RUTAS PROTEGIDAS - Requieren autenticación
-    // ============================================================
+    GoRoute(
+      path: '/form',
+      builder: (context, state) => const FormularioPage(),
+    ),
 
     GoRoute(
       path: '/social_profile',
-      redirect: (context, state) =>
-          _authGuard.redirect(context, state, ['liderConsolidacion']),
       builder: (context, state) => const SocialProfileScreen(),
     ),
-
-    GoRoute(
-      path: '/form',
-      redirect: (context, state) =>
-          _authGuard.redirect(context, state, ['liderConsolidacion']),
-      builder: (context, state) => const FormularioPage(),
-    ),
+    // ============================================================
+    // RUTAS PROTEGIDAS - Requieren autenticación
+    // ============================================================
 
     GoRoute(
       path: '/admin_pastores',
