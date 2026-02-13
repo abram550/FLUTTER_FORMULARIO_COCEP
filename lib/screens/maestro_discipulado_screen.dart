@@ -396,34 +396,137 @@ class _MaestroDiscipuladoScreenState extends State<MaestroDiscipuladoScreen>
         ],
       ),
       actions: [
-// ✅ NUEVO: Botón para limpiar duplicados
-        Container(
-          margin: EdgeInsets.only(right: 8),
-          child: IconButton(
-            icon: Icon(Icons.cleaning_services, color: Colors.white),
-            tooltip: 'Limpiar Duplicados',
-            onPressed: _limpiarDuplicadosEnBaseDeDatos,
-          ),
-        ),
-        Container(
-          margin: EdgeInsets.only(right: 8),
-          child: IconButton(
-            icon: Icon(Icons.logout_rounded, color: Colors.white),
-            tooltip: 'Cerrar Sesión',
-            onPressed: () async {
-              final authService = AuthService();
-              await authService.logout();
-              final stillAuth = await authService.isAuthenticated();
-              if (stillAuth) {
-                print(
-                    '⚠️ ADVERTENCIA: Usuario todavía autenticado después de logout');
-              }
+        LayoutBuilder(
+          builder: (context, constraints) {
+// ✅ Detectar tamaño de pantalla
+            final screenWidth = MediaQuery.of(context).size.width;
+            final isVerySmall = screenWidth < 360; // Móviles muy pequeños
+            final isSmall = screenWidth < 600; // Móviles normales
+            final isMedium = screenWidth < 900; // Tablets
+            return Container(
+              margin: EdgeInsets.only(
+                right: isVerySmall ? 4 : (isSmall ? 8 : 12),
+              ),
+              constraints: BoxConstraints(
+                maxWidth: isVerySmall ? 100 : (isSmall ? 120 : 140),
+              ),
+              child: TextButton.icon(
+                onPressed: () async {
+                  // ✅ Mostrar diálogo de confirmación
+                  final confirmar = await showDialog<bool>(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      title: Row(
+                        children: [
+                          Icon(Icons.logout_rounded,
+                              color: cocepOrange, size: 24),
+                          SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              'Cerrar Sesión',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      content: Text(
+                        '¿Estás seguro de que deseas cerrar sesión?',
+                        style: TextStyle(fontSize: 15, height: 1.5),
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context, false),
+                          child: Text(
+                            'Cancelar',
+                            style: TextStyle(color: Colors.grey[700]),
+                          ),
+                        ),
+                        ElevatedButton(
+                          onPressed: () => Navigator.pop(context, true),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: cocepOrange,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                          child: Text(
+                            'Cerrar Sesión',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
 
-              if (mounted) {
-                context.go('/login');
-              }
-            },
-          ),
+                  if (confirmar != true) return;
+
+                  // ✅ CRÍTICO: Limpiar SharedPreferences
+                  final authService = AuthService();
+                  await authService.logout();
+
+                  // ✅ Verificar limpieza
+                  final stillAuth = await authService.isAuthenticated();
+                  if (stillAuth) {
+                    print(
+                        '⚠️ ADVERTENCIA: Usuario todavía autenticado después de logout');
+                  }
+
+                  // ✅ Redirigir a login
+                  if (mounted) {
+                    context.go('/login');
+                  }
+                },
+                icon: Icon(
+                  Icons.logout_rounded,
+                  color: Colors.white,
+                  size: isVerySmall ? 16 : (isSmall ? 18 : 20),
+                ),
+                label: isVerySmall
+                    ? Text(
+                        'Cerrar\nSesión',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          height: 1.2,
+                        ),
+                        textAlign: TextAlign.center,
+                        maxLines: 2,
+                        overflow: TextOverflow.visible,
+                      )
+                    : Text(
+                        isSmall ? 'Cerrar\nSesión' : 'Cerrar Sesión',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: isSmall ? 11 : 13,
+                          fontWeight: FontWeight.w600,
+                          height: isSmall ? 1.2 : 1.0,
+                        ),
+                        textAlign: TextAlign.center,
+                        maxLines: isSmall ? 2 : 1,
+                        overflow: TextOverflow.visible,
+                      ),
+                style: TextButton.styleFrom(
+                  backgroundColor: Colors.white.withOpacity(0.15),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isVerySmall ? 6 : (isSmall ? 8 : 12),
+                    vertical: isVerySmall ? 6 : (isSmall ? 8 : 10),
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  minimumSize: Size(0, 0),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+              ),
+            );
+          },
         ),
       ],
       bottom: PreferredSize(
