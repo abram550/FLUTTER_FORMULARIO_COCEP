@@ -131,39 +131,225 @@ class _DepartamentoDiscipuladoScreenState
                           ),
                         ),
                         // Botones de acción
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            if (_puedeEditarCredenciales)
-                              _buildHeaderButton(
-                                icon: Icons.vpn_key,
-                                tooltip: 'Cambiar Credenciales',
-                                onPressed: _mostrarDialogoCambiarCredenciales,
-                              ),
-                            SizedBox(width: 8),
-                            _buildHeaderButton(
-                              icon: Icons.logout,
-                              tooltip: 'Cerrar Sesión',
-                              onPressed: () async {
-                                // ✅ CRÍTICO: Limpiar SharedPreferences
-                                final authService = AuthService();
-                                await authService.logout();
+                        LayoutBuilder(
+                          builder: (context, constraints) {
+                          // Detectar tamaño de pantalla
+                            final screenWidth =
+                                MediaQuery.of(context).size.width;
+                            final isVerySmall =
+                                screenWidth < 360; // Móviles muy pequeños
+                            final isSmall =
+                                screenWidth < 600; // Móviles normales
+                            final isMedium = screenWidth < 900; // Tablets
+                            return Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                // ✅ Botón de cambiar credenciales (si está disponible)
+                                if (_puedeEditarCredenciales)
+                                  Container(
+                                    margin: EdgeInsets.only(
+                                      right:
+                                          isVerySmall ? 4 : (isSmall ? 6 : 8),
+                                    ),
+                                    child: Tooltip(
+                                      message: 'Cambiar Credenciales',
+                                      child: Material(
+                                        color: Colors.white.withOpacity(0.15),
+                                        borderRadius: BorderRadius.circular(10),
+                                        child: InkWell(
+                                          onTap:
+                                              _mostrarDialogoCambiarCredenciales,
+                                          borderRadius:
+                                              BorderRadius.circular(10),
+                                          child: Container(
+                                            padding: EdgeInsets.symmetric(
+                                              horizontal: isVerySmall
+                                                  ? 8
+                                                  : (isSmall ? 10 : 12),
+                                              vertical: isVerySmall
+                                                  ? 8
+                                                  : (isSmall ? 10 : 12),
+                                            ),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Icon(
+                                                  Icons.vpn_key,
+                                                  color: Colors.white,
+                                                  size: isVerySmall
+                                                      ? 16
+                                                      : (isSmall ? 18 : 20),
+                                                ),
+                                                if (!isVerySmall) ...[
+                                                  SizedBox(width: 6),
+                                                  Text(
+                                                    isSmall
+                                                        ? 'Clave'
+                                                        : 'Credenciales',
+                                                    style: TextStyle(
+                                                      color: Colors.white,
+                                                      fontSize:
+                                                          isSmall ? 11 : 13,
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
 
-                                // ✅ Verificar limpieza
-                                final stillAuth =
-                                    await authService.isAuthenticated();
-                                if (stillAuth) {
-                                  print(
-                                      '⚠️ ADVERTENCIA: Usuario todavía autenticado después de logout');
-                                }
+                                // ✅ Botón de cerrar sesión adaptativo
+                                Container(
+                                  constraints: BoxConstraints(
+                                    maxWidth: isVerySmall
+                                        ? 110
+                                        : (isSmall ? 130 : 150),
+                                  ),
+                                  child: TextButton.icon(
+                                    onPressed: () async {
+                                      // ✅ Mostrar diálogo de confirmación
+                                      final confirmar = await showDialog<bool>(
+                                        context: context,
+                                        builder: (context) => AlertDialog(
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(20),
+                                          ),
+                                          title: Row(
+                                            children: [
+                                              Icon(Icons.logout_rounded,
+                                                  color: Color(0xFFF7941D),
+                                                  size: 24),
+                                              SizedBox(width: 12),
+                                              Expanded(
+                                                child: Text(
+                                                  'Cerrar Sesión',
+                                                  style: TextStyle(
+                                                    fontSize: 18,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          content: Text(
+                                            '¿Estás seguro de que deseas cerrar sesión?',
+                                            style: TextStyle(
+                                                fontSize: 15, height: 1.5),
+                                          ),
+                                          actions: [
+                                            TextButton(
+                                              onPressed: () =>
+                                                  Navigator.pop(context, false),
+                                              child: Text(
+                                                'Cancelar',
+                                                style: TextStyle(
+                                                    color: Colors.grey[700]),
+                                              ),
+                                            ),
+                                            ElevatedButton(
+                                              onPressed: () =>
+                                                  Navigator.pop(context, true),
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor:
+                                                    Color(0xFFF7941D),
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(10),
+                                                ),
+                                              ),
+                                              child: Text(
+                                                'Cerrar Sesión',
+                                                style: TextStyle(
+                                                    fontWeight:
+                                                        FontWeight.bold),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      );
 
-                                // ✅ Redirigir a login
-                                if (context.mounted) {
-                                  context.go('/login');
-                                }
-                              },
-                            ),
-                          ],
+                                      if (confirmar != true) return;
+
+                                      // ✅ CRÍTICO: Limpiar SharedPreferences
+                                      final authService = AuthService();
+                                      await authService.logout();
+
+                                      // ✅ Verificar limpieza
+                                      final stillAuth =
+                                          await authService.isAuthenticated();
+                                      if (stillAuth) {
+                                        print(
+                                            '⚠️ ADVERTENCIA: Usuario todavía autenticado después de logout');
+                                      }
+
+                                      // ✅ Redirigir a login
+                                      if (context.mounted) {
+                                        context.go('/login');
+                                      }
+                                    },
+                                    icon: Icon(
+                                      Icons.logout_rounded,
+                                      color: Colors.white,
+                                      size: isVerySmall
+                                          ? 16
+                                          : (isSmall ? 18 : 20),
+                                    ),
+                                    label: isVerySmall
+                                        ? Text(
+                                            'Cerrar\nSesión',
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w600,
+                                              height: 1.2,
+                                            ),
+                                            textAlign: TextAlign.center,
+                                            maxLines: 2,
+                                            overflow: TextOverflow.visible,
+                                          )
+                                        : Text(
+                                            isSmall
+                                                ? 'Cerrar\nSesión'
+                                                : 'Cerrar Sesión',
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: isSmall ? 11 : 13,
+                                              fontWeight: FontWeight.w600,
+                                              height: isSmall ? 1.2 : 1.0,
+                                            ),
+                                            textAlign: TextAlign.center,
+                                            maxLines: isSmall ? 2 : 1,
+                                            overflow: TextOverflow.visible,
+                                          ),
+                                    style: TextButton.styleFrom(
+                                      backgroundColor:
+                                          Colors.white.withOpacity(0.15),
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: isVerySmall
+                                            ? 6
+                                            : (isSmall ? 8 : 12),
+                                        vertical: isVerySmall
+                                            ? 6
+                                            : (isSmall ? 8 : 10),
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      minimumSize: Size(0, 0),
+                                      tapTargetSize:
+                                          MaterialTapTargetSize.shrinkWrap,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            );
+                          },
                         ),
                       ],
                     ),
@@ -247,27 +433,7 @@ class _DepartamentoDiscipuladoScreenState
     );
   }
 
-  Widget _buildHeaderButton({
-    required IconData icon,
-    required String tooltip,
-    required VoidCallback onPressed,
-  }) {
-    return Tooltip(
-      message: tooltip,
-      child: Material(
-        color: Colors.white.withOpacity(0.2),
-        borderRadius: BorderRadius.circular(12),
-        child: InkWell(
-          onTap: onPressed,
-          borderRadius: BorderRadius.circular(12),
-          child: Container(
-            padding: EdgeInsets.all(12),
-            child: Icon(icon, color: Colors.white, size: 22),
-          ),
-        ),
-      ),
-    );
-  }
+
 
   Widget _buildMaestrosTab() {
     return Column(
