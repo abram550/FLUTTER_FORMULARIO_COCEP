@@ -396,24 +396,29 @@ class _MaestroDiscipuladoScreenState extends State<MaestroDiscipuladoScreen>
         ],
       ),
       actions: [
+// ✅ NUEVO: Botón para limpiar duplicados
+        Container(
+          margin: EdgeInsets.only(right: 8),
+          child: IconButton(
+            icon: Icon(Icons.cleaning_services, color: Colors.white),
+            tooltip: 'Limpiar Duplicados',
+            onPressed: _limpiarDuplicadosEnBaseDeDatos,
+          ),
+        ),
         Container(
           margin: EdgeInsets.only(right: 8),
           child: IconButton(
             icon: Icon(Icons.logout_rounded, color: Colors.white),
             tooltip: 'Cerrar Sesión',
             onPressed: () async {
-              // ✅ CRÍTICO: Limpiar SharedPreferences
               final authService = AuthService();
               await authService.logout();
-
-              // ✅ Verificar limpieza
               final stillAuth = await authService.isAuthenticated();
               if (stillAuth) {
                 print(
                     '⚠️ ADVERTENCIA: Usuario todavía autenticado después de logout');
               }
 
-              // ✅ Redirigir a login
               if (mounted) {
                 context.go('/login');
               }
@@ -2010,13 +2015,11 @@ class _MaestroDiscipuladoScreenState extends State<MaestroDiscipuladoScreen>
     Map<String, bool> asistencias = {
       for (var d in discipulos) d['personaId']: true
     };
-
-    // ✅ CORRECCIÓN CRÍTICA: Obtener claseAsignadaId ACTUAL del maestro en tiempo real
+// ✅ CORRECCIÓN CRÍTICA: Obtener claseAsignadaId ACTUAL del maestro en tiempo real
     final maestroDoc = await FirebaseFirestore.instance
         .collection('maestrosDiscipulado')
         .doc(widget.maestroId)
         .get();
-
     if (!maestroDoc.exists) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -2028,10 +2031,8 @@ class _MaestroDiscipuladoScreenState extends State<MaestroDiscipuladoScreen>
       }
       return;
     }
-
     final maestroData = maestroDoc.data() as Map<String, dynamic>;
     final claseAsignadaId = maestroData['claseAsignadaId'];
-
     if (claseAsignadaId == null) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -2043,13 +2044,11 @@ class _MaestroDiscipuladoScreenState extends State<MaestroDiscipuladoScreen>
       }
       return;
     }
-
-    // ✅ Ahora obtener la clase con el ID correcto
+// ✅ Ahora obtener la clase con el ID correcto
     final claseDoc = await FirebaseFirestore.instance
         .collection('clasesDiscipulado')
         .doc(claseAsignadaId)
         .get();
-
     if (!claseDoc.exists) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -2061,7 +2060,6 @@ class _MaestroDiscipuladoScreenState extends State<MaestroDiscipuladoScreen>
       }
       return;
     }
-
     final claseData = claseDoc.data();
     if (claseData == null) {
       if (mounted) {
@@ -2075,41 +2073,34 @@ class _MaestroDiscipuladoScreenState extends State<MaestroDiscipuladoScreen>
       }
       return;
     }
-
     final totalModulos = claseData['totalModulos'] as int;
     final tipoClase = claseData['tipo'] ?? 'Clase de Discipulado';
-
-    // ✅ Determinar si usar "Lección" o "Módulo"
+// ✅ Determinar si usar "Lección" o "Módulo"
     final usarLeccion = tipoClase == 'Discipulado 1' ||
         tipoClase == 'Discipulado 2' ||
         tipoClase == 'Discipulado 3' ||
         tipoClase == 'Consolidación';
     final nombreUnidad = usarLeccion ? 'Lección' : 'Módulo';
-
-    // ✅ Obtener módulo inicial permitido (por defecto 1)
+// ✅ Obtener módulo inicial permitido (por defecto 1)
     final moduloInicialPermitido =
         claseData['moduloInicialPermitido'] as int? ?? 1;
-
-    // ✅ CORRECCIÓN: Obtener asistencias SOLO de la clase ACTUAL
+// ✅ CORRECCIÓN: Obtener asistencias SOLO de la clase ACTUAL
     final asistenciasRegistradas = await FirebaseFirestore.instance
         .collection('asistenciasDiscipulado')
         .where('claseId',
             isEqualTo: claseAsignadaId) // ✅ Usar claseAsignadaId ACTUAL
         .get();
-
     Set<int> modulosYaRegistrados = {};
     for (var doc in asistenciasRegistradas.docs) {
       final data = doc.data();
       modulosYaRegistrados.add(data['numeroModulo'] as int);
     }
-
-    // ✅ Calcular siguiente módulo considerando el inicial permitido
+// ✅ Calcular siguiente módulo considerando el inicial permitido
     int siguienteModulo = moduloInicialPermitido;
     while (modulosYaRegistrados.contains(siguienteModulo) &&
         siguienteModulo <= totalModulos) {
       siguienteModulo++;
     }
-
     showDialog(
       context: context,
       builder: (context) => Dialog(
@@ -2120,7 +2111,6 @@ class _MaestroDiscipuladoScreenState extends State<MaestroDiscipuladoScreen>
             builder: (context, constraints) {
               final screenWidth = MediaQuery.of(context).size.width;
               final isSmallScreen = screenWidth < 600;
-
               return SingleChildScrollView(
                 child: ConstrainedBox(
                   constraints: BoxConstraints(
@@ -2548,50 +2538,88 @@ class _MaestroDiscipuladoScreenState extends State<MaestroDiscipuladoScreen>
                                         );
                                         return;
                                       }
-                                      // ✅ Guardar con claseAsignadaId ACTUAL
-                                      for (var discipulo in discipulos) {
-                                        final personaId =
-                                            discipulo['personaId'];
-                                        final asistio =
-                                            asistencias[personaId] ?? false;
-                                        await FirebaseFirestore.instance
-                                            .collection(
-                                                'asistenciasDiscipulado')
-                                            .add({
-                                          'claseId':
-                                              claseAsignadaId, // ✅ ID ACTUAL
-                                          'discipuloId': personaId,
-                                          'discipuloNombre':
-                                              discipulo['nombre'],
-                                          'numeroModulo': numeroModulo,
-                                          'asistio': asistio,
-                                          'fecha': Timestamp.fromDate(
-                                              fechaSeleccionada),
-                                          'maestroId': widget.maestroId,
-                                        });
-                                      }
-                                      Navigator.pop(context);
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(
-                                        SnackBar(
-                                          content: Row(
-                                            children: [
-                                              Icon(Icons.check_circle,
-                                                  color: Colors.white),
-                                              SizedBox(width: 12),
-                                              Flexible(
+
+                                      // ✅ PROTECCIÓN ANTI-DUPLICADOS: Verificar que no existan registros previos
+                                      try {
+                                        for (var discipulo in discipulos) {
+                                          final personaId =
+                                              discipulo['personaId'];
+
+                                          // ✅ Verificar si ya existe un registro para este discípulo + módulo + clase
+                                          final registrosExistentes =
+                                              await FirebaseFirestore.instance
+                                                  .collection(
+                                                      'asistenciasDiscipulado')
+                                                  .where('claseId',
+                                                      isEqualTo:
+                                                          claseAsignadaId)
+                                                  .where('discipuloId',
+                                                      isEqualTo: personaId)
+                                                  .where('numeroModulo',
+                                                      isEqualTo: numeroModulo)
+                                                  .get();
+
+                                          // ✅ Si ya existe, saltar este discípulo
+                                          if (registrosExistentes
+                                              .docs.isNotEmpty) {
+                                            continue;
+                                          }
+
+                                          // ✅ Si no existe, crear el registro
+                                          final asistio =
+                                              asistencias[personaId] ?? false;
+                                          await FirebaseFirestore.instance
+                                              .collection(
+                                                  'asistenciasDiscipulado')
+                                              .add({
+                                            'claseId': claseAsignadaId,
+                                            'discipuloId': personaId,
+                                            'discipuloNombre':
+                                                discipulo['nombre'],
+                                            'numeroModulo': numeroModulo,
+                                            'asistio': asistio,
+                                            'fecha': Timestamp.fromDate(
+                                                fechaSeleccionada),
+                                            'maestroId': widget.maestroId,
+                                            'recuperado': false,
+                                          });
+                                        }
+
+                                        Navigator.pop(context);
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          SnackBar(
+                                            content: Row(
+                                              children: [
+                                                Icon(Icons.check_circle,
+                                                    color: Colors.white),
+                                                SizedBox(width: 12),
+                                                Flexible(
                                                   child: Text(
-                                                      'Asistencia de $nombreUnidad $numeroModulo registrada')),
-                                            ],
-                                          ),
-                                          backgroundColor: Colors.green,
-                                          behavior: SnackBarBehavior.floating,
-                                          shape: RoundedRectangleBorder(
+                                                      'Asistencia de $nombreUnidad $numeroModulo registrada'),
+                                                ),
+                                              ],
+                                            ),
+                                            backgroundColor: Colors.green,
+                                            behavior: SnackBarBehavior.floating,
+                                            shape: RoundedRectangleBorder(
                                               borderRadius:
-                                                  BorderRadius.circular(10)),
-                                        ),
-                                      );
-                                      setState(() {});
+                                                  BorderRadius.circular(10),
+                                            ),
+                                          ),
+                                        );
+                                        setState(() {});
+                                      } catch (e) {
+                                        Navigator.pop(context);
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          SnackBar(
+                                            content: Text(
+                                                'Error al registrar asistencia: $e'),
+                                            backgroundColor: Colors.red,
+                                          ),
+                                        );
+                                      }
                                     },
                                     icon: Icon(Icons.save, size: 18),
                                     label: Text('Guardar',
@@ -2635,52 +2663,92 @@ class _MaestroDiscipuladoScreenState extends State<MaestroDiscipuladoScreen>
                                             );
                                             return;
                                           }
-                                          // ✅ Guardar con claseAsignadaId ACTUAL
-                                          for (var discipulo in discipulos) {
-                                            final personaId =
-                                                discipulo['personaId'];
-                                            final asistio =
-                                                asistencias[personaId] ?? false;
-                                            await FirebaseFirestore.instance
-                                                .collection(
-                                                    'asistenciasDiscipulado')
-                                                .add({
-                                              'claseId':
-                                                  claseAsignadaId, // ✅ ID ACTUAL
-                                              'discipuloId': personaId,
-                                              'discipuloNombre':
-                                                  discipulo['nombre'],
-                                              'numeroModulo': numeroModulo,
-                                              'asistio': asistio,
-                                              'fecha': Timestamp.fromDate(
-                                                  fechaSeleccionada),
-                                              'maestroId': widget.maestroId,
-                                            });
-                                          }
-                                          Navigator.pop(context);
-                                          ScaffoldMessenger.of(context)
-                                              .showSnackBar(
-                                            SnackBar(
-                                              content: Row(
-                                                children: [
-                                                  Icon(Icons.check_circle,
-                                                      color: Colors.white),
-                                                  SizedBox(width: 12),
-                                                  Flexible(
+
+                                          // ✅ PROTECCIÓN ANTI-DUPLICADOS: Verificar que no existan registros previos
+                                          try {
+                                            for (var discipulo in discipulos) {
+                                              final personaId =
+                                                  discipulo['personaId'];
+
+                                              // ✅ Verificar si ya existe un registro para este discípulo + módulo + clase
+                                              final registrosExistentes =
+                                                  await FirebaseFirestore
+                                                      .instance
+                                                      .collection(
+                                                          'asistenciasDiscipulado')
+                                                      .where('claseId',
+                                                          isEqualTo:
+                                                              claseAsignadaId)
+                                                      .where('discipuloId',
+                                                          isEqualTo: personaId)
+                                                      .where('numeroModulo',
+                                                          isEqualTo:
+                                                              numeroModulo)
+                                                      .get();
+
+                                              // ✅ Si ya existe, saltar este discípulo
+                                              if (registrosExistentes
+                                                  .docs.isNotEmpty) {
+                                                continue;
+                                              }
+
+                                              // ✅ Si no existe, crear el registro
+                                              final asistio =
+                                                  asistencias[personaId] ??
+                                                      false;
+                                              await FirebaseFirestore.instance
+                                                  .collection(
+                                                      'asistenciasDiscipulado')
+                                                  .add({
+                                                'claseId': claseAsignadaId,
+                                                'discipuloId': personaId,
+                                                'discipuloNombre':
+                                                    discipulo['nombre'],
+                                                'numeroModulo': numeroModulo,
+                                                'asistio': asistio,
+                                                'fecha': Timestamp.fromDate(
+                                                    fechaSeleccionada),
+                                                'maestroId': widget.maestroId,
+                                                'recuperado': false,
+                                              });
+                                            }
+
+                                            Navigator.pop(context);
+                                            ScaffoldMessenger.of(context)
+                                                .showSnackBar(
+                                              SnackBar(
+                                                content: Row(
+                                                  children: [
+                                                    Icon(Icons.check_circle,
+                                                        color: Colors.white),
+                                                    SizedBox(width: 12),
+                                                    Flexible(
                                                       child: Text(
-                                                          'Asistencia de $nombreUnidad $numeroModulo registrada')),
-                                                ],
-                                              ),
-                                              backgroundColor: Colors.green,
-                                              behavior:
-                                                  SnackBarBehavior.floating,
-                                              shape: RoundedRectangleBorder(
+                                                          'Asistencia de $nombreUnidad $numeroModulo registrada'),
+                                                    ),
+                                                  ],
+                                                ),
+                                                backgroundColor: Colors.green,
+                                                behavior:
+                                                    SnackBarBehavior.floating,
+                                                shape: RoundedRectangleBorder(
                                                   borderRadius:
-                                                      BorderRadius.circular(
-                                                          10)),
-                                            ),
-                                          );
-                                          setState(() {});
+                                                      BorderRadius.circular(10),
+                                                ),
+                                              ),
+                                            );
+                                            setState(() {});
+                                          } catch (e) {
+                                            Navigator.pop(context);
+                                            ScaffoldMessenger.of(context)
+                                                .showSnackBar(
+                                              SnackBar(
+                                                content: Text(
+                                                    'Error al registrar asistencia: $e'),
+                                                backgroundColor: Colors.red,
+                                              ),
+                                            );
+                                          }
                                         },
                                         icon: Icon(Icons.save),
                                         label: Text('Guardar',
@@ -4948,12 +5016,6 @@ class _MaestroDiscipuladoScreenState extends State<MaestroDiscipuladoScreen>
     }
   }
 
-// ============================================
-// BLOQUE 3: Agregar este NUEVO método auxiliar al final de la clase _MaestroDiscipuladoScreenState
-// Ubicación: Antes del último cierre de llave } de la clase
-// Acción: Agrega este método completo como un nuevo método de la clase
-// ============================================
-
   Widget _buildOpcionButton({
     required String label,
     required IconData icon,
@@ -5019,6 +5081,164 @@ class _MaestroDiscipuladoScreenState extends State<MaestroDiscipuladoScreen>
         ),
       ),
     );
+  }
+
+  Future<void> _limpiarDuplicadosEnBaseDeDatos() async {
+    try {
+// Mostrar diálogo de confirmación
+      final confirmar = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Row(
+            children: [
+              Icon(Icons.cleaning_services, color: cocepOrange, size: 28),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Limpiar Duplicados',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+          content: Text(
+            '¿Deseas eliminar todos los registros duplicados de asistencias?\n\nEsta acción no se puede deshacer.',
+            style: TextStyle(fontSize: 15, height: 1.5),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child:
+                  Text('Cancelar', style: TextStyle(color: Colors.grey[700])),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: cocepOrange,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              child: Text('Limpiar',
+                  style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      );
+      if (confirmar != true) return;
+
+// Mostrar indicador de carga
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => Center(
+          child: Card(
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            child: Padding(
+              padding: EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(color: cocepTeal),
+                  SizedBox(height: 16),
+                  Text(
+                    'Limpiando duplicados...',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+
+// ✅ Obtener TODAS las asistencias
+      final asistenciasSnap = await FirebaseFirestore.instance
+          .collection('asistenciasDiscipulado')
+          .get();
+
+// ✅ Agrupar por claseId + discipuloId + numeroModulo
+      Map<String, List<QueryDocumentSnapshot>> grupos = {};
+
+      for (var doc in asistenciasSnap.docs) {
+        final data = doc.data();
+        final claseId = data['claseId'] ?? '';
+        final discipuloId = data['discipuloId'] ?? '';
+        final numeroModulo = data['numeroModulo']?.toString() ?? '';
+
+        final clave = '$claseId|$discipuloId|$numeroModulo';
+
+        if (!grupos.containsKey(clave)) {
+          grupos[clave] = [];
+        }
+        grupos[clave]!.add(doc);
+      }
+
+      int registrosEliminados = 0;
+
+// ✅ Para cada grupo, mantener solo el más reciente
+      for (var grupo in grupos.values) {
+        if (grupo.length > 1) {
+          // Ordenar por fecha (el más reciente primero)
+          grupo.sort((a, b) {
+            final dataA = a.data() as Map<String, dynamic>;
+            final dataB = b.data() as Map<String, dynamic>;
+
+            final fechaA = dataA['fecha'] as Timestamp? ?? Timestamp.now();
+            final fechaB = dataB['fecha'] as Timestamp? ?? Timestamp.now();
+
+            return fechaB.compareTo(fechaA);
+          });
+
+          // ✅ Mantener el primero (más reciente), eliminar el resto
+          for (int i = 1; i < grupo.length; i++) {
+            await grupo[i].reference.delete();
+            registrosEliminados++;
+          }
+        }
+      }
+
+// Cerrar diálogo de carga
+      Navigator.pop(context);
+
+// Mostrar resultado
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.check_circle, color: Colors.white),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Limpieza completada: $registrosEliminados registros duplicados eliminados',
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.green,
+          behavior: SnackBarBehavior.floating,
+          duration: Duration(seconds: 4),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+
+      setState(() {});
+    } catch (e) {
+// Cerrar diálogo de carga si está abierto
+      if (Navigator.canPop(context)) {
+        Navigator.pop(context);
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al limpiar duplicados: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 }
 
