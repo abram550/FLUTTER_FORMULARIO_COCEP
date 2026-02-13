@@ -4400,9 +4400,6 @@ Widget _buildListView(
   );
 }
 
-// ============================================================
-// WIDGET AUXILIAR: GridView para desktop
-// ============================================================
 Widget _buildGridView(
   List<QueryDocumentSnapshot> registros,
   Color primaryTeal,
@@ -4432,9 +4429,6 @@ Widget _buildGridView(
   );
 }
 
-// ============================================================
-// WIDGET AUXILIAR: Card de registro (reutilizable)
-// ============================================================
 Widget _buildRegistroCard(
   BuildContext context,
   QueryDocumentSnapshot registro,
@@ -9282,440 +9276,537 @@ class _PersonasAsignadasContentState extends State<_PersonasAsignadasContent> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: widget.backgroundGrey,
-      child: Column(
-        children: [
-          // ============================================================
-          // CONTENIDO PRINCIPAL CON SCROLL
-          // ============================================================
-          Expanded(
-            child: StreamBuilder(
-              stream: FirebaseFirestore.instance
-                  .collection('registros')
-                  .where('coordinadorAsignado', isEqualTo: widget.coordinadorId)
-                  .snapshots(),
-              builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
-                final List<QueryDocumentSnapshot> allDocs =
-                    snapshot.hasData ? snapshot.data!.docs : [];
+    // ============================================================
+    // ✅ DETECTAR TAMAÑO DE PANTALLA PARA RESPONSIVIDAD
+    // ============================================================
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+    final isVerySmallScreen = screenWidth < 360;
+    final isSmallScreen = screenWidth < 600;
 
-                if (snapshot.hasError) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.error_outline, size: 48, color: Colors.red),
-                        SizedBox(height: 16),
-                        Text('Error al cargar datos'),
-                        TextButton(
-                          onPressed: () => setState(() {}),
-                          child: Text('Reintentar'),
-                        ),
-                      ],
-                    ),
-                  );
-                }
+    return Stack(
+      children: [
+        Container(
+          color: widget.backgroundGrey,
+          child: Column(
+            children: [
+              // ============================================================
+              // CONTENIDO PRINCIPAL CON SCROLL
+              // ============================================================
+              Expanded(
+                child: StreamBuilder(
+                  stream: FirebaseFirestore.instance
+                      .collection('registros')
+                      .where('coordinadorAsignado',
+                          isEqualTo: widget.coordinadorId)
+                      .snapshots(),
+                  builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
+                    final List<QueryDocumentSnapshot> allDocs =
+                        snapshot.hasData ? snapshot.data!.docs : [];
 
-                if (allDocs.isEmpty &&
-                    snapshot.connectionState != ConnectionState.waiting) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.person_off,
-                            size: 64, color: widget.accentGrey),
-                        SizedBox(height: 16),
-                        Text(
-                          'No hay personas registradas',
-                          style: TextStyle(
-                              fontSize: 18,
-                              color: widget.accentGrey,
-                              fontWeight: FontWeight.w500),
-                        ),
-                        SizedBox(height: 24),
-                        ElevatedButton.icon(
-                          onPressed: () => widget.onRegistrarNuevo(context),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: widget.primaryTeal,
-                            foregroundColor: Colors.white,
-                            padding: EdgeInsets.symmetric(
-                                horizontal: 24, vertical: 16),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12)),
-                            elevation: 3,
-                          ),
-                          icon: Icon(Icons.person_add, size: 20),
-                          label: Text('Registrar Primer Miembro',
-                              style: TextStyle(
-                                  fontSize: 16, fontWeight: FontWeight.bold)),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-
-                String searchText = _searchQuery.toLowerCase();
-                allDocs.sort((a, b) {
-                  bool aEsReciente = esRegistroReciente(a);
-                  bool bEsReciente = esRegistroReciente(b);
-                  if (aEsReciente == bEsReciente) {
-                    final dataA = a.data() as Map<String, dynamic>?;
-                    final dataB = b.data() as Map<String, dynamic>?;
-                    final fechaA =
-                        (dataA?['fechaAsignacionCoordinador'] as Timestamp?)
-                                ?.toDate() ??
-                            DateTime(2000);
-                    final fechaB =
-                        (dataB?['fechaAsignacionCoordinador'] as Timestamp?)
-                                ?.toDate() ??
-                            DateTime(2000);
-                    return fechaB.compareTo(fechaA);
-                  }
-                  return (bEsReciente ? 1 : 0) - (aEsReciente ? 1 : 0);
-                });
-
-                var filteredDocs = searchText.isEmpty
-                    ? allDocs
-                    : allDocs.where((doc) {
-                        try {
-                          final nombre =
-                              (doc.data() as Map<String, dynamic>?)?['nombre']
-                                      ?.toString()
-                                      .toLowerCase() ??
-                                  '';
-                          final apellido =
-                              (doc.data() as Map<String, dynamic>?)?['apellido']
-                                      ?.toString()
-                                      .toLowerCase() ??
-                                  '';
-                          final nombreCompleto = '$nombre $apellido';
-                          return nombreCompleto.contains(searchText);
-                        } catch (e) {
-                          return false;
-                        }
-                      }).toList();
-
-                final asignados = filteredDocs.where((doc) {
-                  try {
-                    return doc.get('timoteoAsignado') != null;
-                  } catch (e) {
-                    return false;
-                  }
-                }).toList();
-
-                final noAsignados = filteredDocs.where((doc) {
-                  try {
-                    return doc.get('timoteoAsignado') == null;
-                  } catch (e) {
-                    return true;
-                  }
-                }).toList();
-
-                return CustomScrollView(
-                  slivers: [
-                    // Header con título y descripción (NO FIJO)
-                    SliverToBoxAdapter(
-                      child: Container(
-                        padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
-                        color: Colors.white,
-                        child: Row(
+                    if (snapshot.hasError) {
+                      return Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Container(
-                              padding: EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: widget.primaryTeal.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Icon(
-                                Icons.assignment_ind,
-                                color: widget.primaryTeal,
-                                size: 24,
-                              ),
-                            ),
-                            SizedBox(width: 16),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Personas Asignadas',
-                                    style: TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                      color: widget.primaryTeal,
-                                    ),
-                                  ),
-                                  Text(
-                                    'Administra las personas asignadas a tu grupo',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: Colors.grey.shade600,
-                                    ),
-                                  ),
-                                ],
-                              ),
+                            Icon(Icons.error_outline,
+                                size: 48, color: Colors.red),
+                            SizedBox(height: 16),
+                            Text('Error al cargar datos'),
+                            TextButton(
+                              onPressed: () => setState(() {}),
+                              child: Text('Reintentar'),
                             ),
                           ],
                         ),
-                      ),
-                    ),
+                      );
+                    }
 
-                    // Divider
-                    SliverToBoxAdapter(
-                      child: Divider(height: 1),
-                    ),
-
-                    // Buscador (NO FIJO)
-                    SliverToBoxAdapter(
-                      child: Container(
-                        color: widget.backgroundGrey,
-                        padding: EdgeInsets.all(16),
-                        child: LayoutBuilder(
-                          builder: (context, constraints) {
-                            final screenWidth =
-                                MediaQuery.of(context).size.width;
-                            final isVerySmall = screenWidth < 360;
-
-                            return Container(
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(
-                                    isVerySmall ? 10 : 12),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.05),
-                                    blurRadius: 10,
-                                    offset: Offset(0, 4),
-                                  ),
-                                ],
+                    if (allDocs.isEmpty &&
+                        snapshot.connectionState != ConnectionState.waiting) {
+                      return Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.person_off,
+                                size: 64, color: widget.accentGrey),
+                            SizedBox(height: 16),
+                            Text(
+                              'No hay personas registradas',
+                              style: TextStyle(
+                                  fontSize: 18,
+                                  color: widget.accentGrey,
+                                  fontWeight: FontWeight.w500),
+                            ),
+                            SizedBox(height: 24),
+                            ElevatedButton.icon(
+                              onPressed: () => widget.onRegistrarNuevo(context),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: widget.primaryTeal,
+                                foregroundColor: Colors.white,
+                                padding: EdgeInsets.symmetric(
+                                    horizontal: 24, vertical: 16),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12)),
+                                elevation: 3,
                               ),
-                              child: TextField(
-                                controller: _searchController,
-                                onChanged: (value) {
-                                  setState(() {
-                                    _searchQuery = value;
-                                    if (value.isNotEmpty) {
-                                      _isAsignadosExpanded = true;
-                                      _isNoAsignadosExpanded = true;
-                                    }
-                                  });
-                                },
-                                style: TextStyle(
-                                  fontSize: isVerySmall ? 13 : 15,
-                                  color: Colors.black87,
-                                ),
-                                decoration: InputDecoration(
-                                  hintText: 'Buscar por nombre o apellido...',
-                                  hintStyle: TextStyle(
-                                    fontSize: isVerySmall ? 12 : 14,
-                                    color: Colors.grey[400],
+                              icon: Icon(Icons.person_add, size: 20),
+                              label: Text('Registrar Primer Miembro',
+                                  style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold)),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+
+                    String searchText = _searchQuery.toLowerCase();
+                    allDocs.sort((a, b) {
+                      bool aEsReciente = esRegistroReciente(a);
+                      bool bEsReciente = esRegistroReciente(b);
+                      if (aEsReciente == bEsReciente) {
+                        final dataA = a.data() as Map<String, dynamic>?;
+                        final dataB = b.data() as Map<String, dynamic>?;
+                        final fechaA =
+                            (dataA?['fechaAsignacionCoordinador'] as Timestamp?)
+                                    ?.toDate() ??
+                                DateTime(2000);
+                        final fechaB =
+                            (dataB?['fechaAsignacionCoordinador'] as Timestamp?)
+                                    ?.toDate() ??
+                                DateTime(2000);
+                        return fechaB.compareTo(fechaA);
+                      }
+                      return (bEsReciente ? 1 : 0) - (aEsReciente ? 1 : 0);
+                    });
+
+                    var filteredDocs = searchText.isEmpty
+                        ? allDocs
+                        : allDocs.where((doc) {
+                            try {
+                              final nombre = (doc.data()
+                                          as Map<String, dynamic>?)?['nombre']
+                                      ?.toString()
+                                      .toLowerCase() ??
+                                  '';
+                              final apellido = (doc.data()
+                                          as Map<String, dynamic>?)?['apellido']
+                                      ?.toString()
+                                      .toLowerCase() ??
+                                  '';
+                              final nombreCompleto = '$nombre $apellido';
+                              return nombreCompleto.contains(searchText);
+                            } catch (e) {
+                              return false;
+                            }
+                          }).toList();
+
+                    final asignados = filteredDocs.where((doc) {
+                      try {
+                        return doc.get('timoteoAsignado') != null;
+                      } catch (e) {
+                        return false;
+                      }
+                    }).toList();
+
+                    final noAsignados = filteredDocs.where((doc) {
+                      try {
+                        return doc.get('timoteoAsignado') == null;
+                      } catch (e) {
+                        return true;
+                      }
+                    }).toList();
+
+                    return CustomScrollView(
+                      slivers: [
+                        // Header con título y descripción (NO FIJO)
+                        SliverToBoxAdapter(
+                          child: Container(
+                            padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+                            color: Colors.white,
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: widget.primaryTeal.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(12),
                                   ),
-                                  prefixIcon: Container(
-                                    margin: EdgeInsets.all(isVerySmall ? 6 : 8),
-                                    padding:
-                                        EdgeInsets.all(isVerySmall ? 4 : 6),
+                                  child: Icon(
+                                    Icons.assignment_ind,
+                                    color: widget.primaryTeal,
+                                    size: 24,
+                                  ),
+                                ),
+                                SizedBox(width: 16),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Personas Asignadas',
+                                        style: TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
+                                          color: widget.primaryTeal,
+                                        ),
+                                      ),
+                                      Text(
+                                        'Administra las personas asignadas a tu grupo',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          color: Colors.grey.shade600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+
+                        // Divider
+                        SliverToBoxAdapter(
+                          child: Divider(height: 1),
+                        ),
+
+                        // Buscador (NO FIJO)
+                        SliverToBoxAdapter(
+                          child: Container(
+                            color: widget.backgroundGrey,
+                            padding: EdgeInsets.all(16),
+                            child: LayoutBuilder(
+                              builder: (context, constraints) {
+                                final screenWidth =
+                                    MediaQuery.of(context).size.width;
+                                final isVerySmall = screenWidth < 360;
+
+                                return Container(
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(
+                                        isVerySmall ? 10 : 12),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.05),
+                                        blurRadius: 10,
+                                        offset: Offset(0, 4),
+                                      ),
+                                    ],
+                                  ),
+                                  child: TextField(
+                                    controller: _searchController,
+                                    onChanged: (value) {
+                                      setState(() {
+                                        _searchQuery = value;
+                                        if (value.isNotEmpty) {
+                                          _isAsignadosExpanded = true;
+                                          _isNoAsignadosExpanded = true;
+                                        }
+                                      });
+                                    },
+                                    style: TextStyle(
+                                      fontSize: isVerySmall ? 13 : 15,
+                                      color: Colors.black87,
+                                    ),
+                                    decoration: InputDecoration(
+                                      hintText:
+                                          'Buscar por nombre o apellido...',
+                                      hintStyle: TextStyle(
+                                        fontSize: isVerySmall ? 12 : 14,
+                                        color: Colors.grey[400],
+                                      ),
+                                      prefixIcon: Container(
+                                        margin:
+                                            EdgeInsets.all(isVerySmall ? 6 : 8),
+                                        padding:
+                                            EdgeInsets.all(isVerySmall ? 4 : 6),
+                                        decoration: BoxDecoration(
+                                          color: widget.primaryTeal
+                                              .withOpacity(0.1),
+                                          borderRadius:
+                                              BorderRadius.circular(8),
+                                        ),
+                                        child: Icon(
+                                          Icons.search,
+                                          color: widget.primaryTeal,
+                                          size: isVerySmall ? 18 : 20,
+                                        ),
+                                      ),
+                                      suffixIcon: _searchQuery.isNotEmpty
+                                          ? IconButton(
+                                              icon: Icon(
+                                                Icons.clear,
+                                                color: widget.accentGrey,
+                                                size: isVerySmall ? 18 : 20,
+                                              ),
+                                              onPressed: () {
+                                                setState(() {
+                                                  _searchController.clear();
+                                                  _searchQuery = '';
+                                                });
+                                              },
+                                            )
+                                          : null,
+                                      border: InputBorder.none,
+                                      contentPadding: EdgeInsets.symmetric(
+                                        horizontal: isVerySmall ? 12 : 16,
+                                        vertical: isVerySmall ? 12 : 14,
+                                      ),
+                                      isDense: true,
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ),
+
+                        // Badge de resultados
+                        if (_searchQuery.isNotEmpty)
+                          SliverToBoxAdapter(
+                            child: Container(
+                              color: widget.backgroundGrey,
+                              padding: EdgeInsets.symmetric(horizontal: 16),
+                              child: LayoutBuilder(
+                                builder: (context, constraints) {
+                                  final screenWidth =
+                                      MediaQuery.of(context).size.width;
+                                  final isVerySmall = screenWidth < 360;
+
+                                  return Container(
+                                    margin: EdgeInsets.only(bottom: 16),
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: isVerySmall ? 10 : 12,
+                                      vertical: isVerySmall ? 6 : 8,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color:
+                                          widget.primaryTeal.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(
+                                          isVerySmall ? 16 : 20),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          Icons.filter_alt_outlined,
+                                          size: isVerySmall ? 14 : 16,
+                                          color: widget.primaryTeal,
+                                        ),
+                                        SizedBox(width: isVerySmall ? 4 : 6),
+                                        Flexible(
+                                          child: Text(
+                                            'Mostrando ${filteredDocs.length} de ${allDocs.length} registros',
+                                            style: TextStyle(
+                                              color: widget.primaryTeal,
+                                              fontWeight: FontWeight.w500,
+                                              fontSize: isVerySmall ? 11 : 13,
+                                            ),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                          ),
+
+                        // Resto del contenido
+                        SliverToBoxAdapter(
+                          child: Container(
+                            color: widget.backgroundGrey,
+                            padding: EdgeInsets.symmetric(horizontal: 16),
+                            child: Column(
+                              children: [
+                                if (snapshot.connectionState ==
+                                        ConnectionState.waiting &&
+                                    allDocs.isNotEmpty)
+                                  Container(
+                                    padding: EdgeInsets.all(8),
+                                    margin: EdgeInsets.only(bottom: 12),
                                     decoration: BoxDecoration(
                                       color:
                                           widget.primaryTeal.withOpacity(0.1),
                                       borderRadius: BorderRadius.circular(8),
                                     ),
-                                    child: Icon(
-                                      Icons.search,
-                                      color: widget.primaryTeal,
-                                      size: isVerySmall ? 18 : 20,
-                                    ),
-                                  ),
-                                  suffixIcon: _searchQuery.isNotEmpty
-                                      ? IconButton(
-                                          icon: Icon(
-                                            Icons.clear,
-                                            color: widget.accentGrey,
-                                            size: isVerySmall ? 18 : 20,
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        SizedBox(
+                                          width: 16,
+                                          height: 16,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            valueColor:
+                                                AlwaysStoppedAnimation<Color>(
+                                                    widget.primaryTeal),
                                           ),
-                                          onPressed: () {
-                                            setState(() {
-                                              _searchController.clear();
-                                              _searchQuery = '';
-                                            });
-                                          },
-                                        )
-                                      : null,
-                                  border: InputBorder.none,
-                                  contentPadding: EdgeInsets.symmetric(
-                                    horizontal: isVerySmall ? 12 : 16,
-                                    vertical: isVerySmall ? 12 : 14,
-                                  ),
-                                  isDense: true,
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                    ),
-
-                    // Badge de resultados
-                    if (_searchQuery.isNotEmpty)
-                      SliverToBoxAdapter(
-                        child: Container(
-                          color: widget.backgroundGrey,
-                          padding: EdgeInsets.symmetric(horizontal: 16),
-                          child: LayoutBuilder(
-                            builder: (context, constraints) {
-                              final screenWidth =
-                                  MediaQuery.of(context).size.width;
-                              final isVerySmall = screenWidth < 360;
-
-                              return Container(
-                                margin: EdgeInsets.only(bottom: 16),
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: isVerySmall ? 10 : 12,
-                                  vertical: isVerySmall ? 6 : 8,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: widget.primaryTeal.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(
-                                      isVerySmall ? 16 : 20),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      Icons.filter_alt_outlined,
-                                      size: isVerySmall ? 14 : 16,
-                                      color: widget.primaryTeal,
-                                    ),
-                                    SizedBox(width: isVerySmall ? 4 : 6),
-                                    Flexible(
-                                      child: Text(
-                                        'Mostrando ${filteredDocs.length} de ${allDocs.length} registros',
-                                        style: TextStyle(
-                                          color: widget.primaryTeal,
-                                          fontWeight: FontWeight.w500,
-                                          fontSize: isVerySmall ? 11 : 13,
                                         ),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
+                                        SizedBox(width: 8),
+                                        Text('Actualizando...',
+                                            style: TextStyle(
+                                                color: widget.primaryTeal,
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w500)),
+                                      ],
                                     ),
-                                  ],
-                                ),
-                              );
-                            },
+                                  ),
+
+                                if (allDocs.isNotEmpty)
+                                  _buildContadorPersonas(
+                                      allDocs.length, allDocs),
+
+                                if (noAsignados.isNotEmpty) ...[
+                                  GestureDetector(
+                                    onTap: () {
+                                      setState(() {
+                                        _isNoAsignadosExpanded =
+                                            !_isNoAsignadosExpanded;
+                                      });
+                                    },
+                                    child: _buildExpandableHeader(
+                                      'Personas por asignar (${noAsignados.length})',
+                                      Icons.person_add_alt,
+                                      widget.secondaryOrange,
+                                      _isNoAsignadosExpanded,
+                                    ),
+                                  ),
+                                  if (_isNoAsignadosExpanded)
+                                    ...noAsignados
+                                        .map((registro) => _buildPersonCard(
+                                            context, registro,
+                                            isAssigned: false,
+                                            esReciente:
+                                                esRegistroReciente(registro)))
+                                        .toList(),
+                                  SizedBox(height: 24),
+                                ],
+
+                                if (asignados.isNotEmpty) ...[
+                                  GestureDetector(
+                                    onTap: () {
+                                      setState(() {
+                                        _isAsignadosExpanded =
+                                            !_isAsignadosExpanded;
+                                      });
+                                    },
+                                    child: _buildExpandableHeader(
+                                      'Personas asignadas (${asignados.length})',
+                                      Icons.people,
+                                      widget.primaryTeal,
+                                      _isAsignadosExpanded,
+                                    ),
+                                  ),
+                                  if (_isAsignadosExpanded)
+                                    ...asignados
+                                        .map((registro) => _buildPersonCard(
+                                            context, registro,
+                                            isAssigned: true,
+                                            esReciente:
+                                                esRegistroReciente(registro)))
+                                        .toList(),
+                                ],
+
+                                // ✅ Espacio para el FAB (responsive)
+                                SizedBox(
+                                    height: isVerySmallScreen
+                                        ? 80
+                                        : (isSmallScreen ? 90 : 100)),
+                              ],
+                            ),
                           ),
                         ),
-                      ),
+                      ],
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
 
-                    // Resto del contenido
-                    SliverToBoxAdapter(
-                      child: Container(
-                        color: widget.backgroundGrey,
-                        padding: EdgeInsets.symmetric(horizontal: 16),
-                        child: Column(
-                          children: [
-                            if (snapshot.connectionState ==
-                                    ConnectionState.waiting &&
-                                allDocs.isNotEmpty)
-                              Container(
-                                padding: EdgeInsets.all(8),
-                                margin: EdgeInsets.only(bottom: 12),
-                                decoration: BoxDecoration(
-                                  color: widget.primaryTeal.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    SizedBox(
-                                      width: 16,
-                                      height: 16,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        valueColor:
-                                            AlwaysStoppedAnimation<Color>(
-                                                widget.primaryTeal),
-                                      ),
-                                    ),
-                                    SizedBox(width: 8),
-                                    Text('Actualizando...',
-                                        style: TextStyle(
-                                            color: widget.primaryTeal,
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w500)),
-                                  ],
-                                ),
-                              ),
-
-                            if (allDocs.isNotEmpty)
-                              _buildContadorPersonas(allDocs.length, allDocs),
-
-                            if (noAsignados.isNotEmpty) ...[
-                              GestureDetector(
-                                onTap: () {
-                                  setState(() {
-                                    _isNoAsignadosExpanded =
-                                        !_isNoAsignadosExpanded;
-                                  });
-                                },
-                                child: _buildExpandableHeader(
-                                  'Personas por asignar (${noAsignados.length})',
-                                  Icons.person_add_alt,
-                                  widget.secondaryOrange,
-                                  _isNoAsignadosExpanded,
-                                ),
-                              ),
-                              if (_isNoAsignadosExpanded)
-                                ...noAsignados
-                                    .map((registro) => _buildPersonCard(
-                                        context, registro,
-                                        isAssigned: false,
-                                        esReciente:
-                                            esRegistroReciente(registro)))
-                                    .toList(),
-                              SizedBox(height: 24),
-                            ],
-
-                            if (asignados.isNotEmpty) ...[
-                              GestureDetector(
-                                onTap: () {
-                                  setState(() {
-                                    _isAsignadosExpanded =
-                                        !_isAsignadosExpanded;
-                                  });
-                                },
-                                child: _buildExpandableHeader(
-                                  'Personas asignadas (${asignados.length})',
-                                  Icons.people,
-                                  widget.primaryTeal,
-                                  _isAsignadosExpanded,
-                                ),
-                              ),
-                              if (_isAsignadosExpanded)
-                                ...asignados
-                                    .map((registro) => _buildPersonCard(
-                                        context, registro,
-                                        isAssigned: true,
-                                        esReciente:
-                                            esRegistroReciente(registro)))
-                                    .toList(),
-                            ],
-
-                            // Espacio para el FAB
-                            SizedBox(height: 100),
-                          ],
+        // ============================================================
+        // ✅ BOTÓN FLOTANTE RESPONSIVE (SIEMPRE VISIBLE)
+        // ============================================================
+        Positioned(
+          bottom: isVerySmallScreen ? 16 : (isSmallScreen ? 20 : 24),
+          right: isVerySmallScreen ? 16 : (isSmallScreen ? 20 : 24),
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(isVerySmallScreen ? 14 : 16),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  widget.secondaryOrange,
+                  widget.secondaryOrange.withOpacity(0.8),
+                ],
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: widget.secondaryOrange.withOpacity(0.4),
+                  blurRadius: isVerySmallScreen ? 12 : 16,
+                  offset: Offset(0, isVerySmallScreen ? 4 : 6),
+                  spreadRadius: isVerySmallScreen ? 1 : 2,
+                ),
+              ],
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () => widget.onRegistrarNuevo(context),
+                borderRadius:
+                    BorderRadius.circular(isVerySmallScreen ? 14 : 16),
+                child: Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal:
+                        isVerySmallScreen ? 16 : (isSmallScreen ? 20 : 24),
+                    vertical:
+                        isVerySmallScreen ? 12 : (isSmallScreen ? 14 : 16),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        padding: EdgeInsets.all(isVerySmallScreen ? 6 : 8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.25),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.person_add_rounded,
+                          color: Colors.white,
+                          size: isVerySmallScreen
+                              ? 18
+                              : (isSmallScreen ? 20 : 22),
                         ),
                       ),
-                    ),
-                  ],
-                );
-              },
+                      SizedBox(width: isVerySmallScreen ? 8 : 12),
+                      Text(
+                        'Registrar',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: isVerySmallScreen
+                              ? 14
+                              : (isSmallScreen ? 15 : 16),
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ),
           ),
-
-          // ============================================================
-          // BOTÓN FLOTANTE (POSICIÓN ORIGINAL)
-          // ============================================================
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -10462,7 +10553,7 @@ class _PersonasAsignadasContentState extends State<_PersonasAsignadasContent> {
   }
 }
 
-// ✅ NUEVA CLASE AUXILIAR PARA EVITAR RECONSTRUCCIÓN COMPLETA
+// CLASE AUXILIAR PARA EVITAR RECONSTRUCCIÓN COMPLETA
 class _RegistroNuevoMiembroModal extends StatefulWidget {
   final BuildContext dialogContext;
   final Color backgroundGrey;
