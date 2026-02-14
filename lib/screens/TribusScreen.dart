@@ -20,6 +20,9 @@ import 'package:intl/intl.dart';
 import 'package:formulario_app/services/auth_service.dart';
 import 'package:formulario_app/utils/excel_exporter.dart';
 import 'package:formulario_app/utils/theme_constants.dart';
+import 'package:formulario_app/screens/peticiones_form_screen.dart';
+import 'package:excel/excel.dart' as excel_pkg;
+import 'dart:html' as html;
 
 // Locales
 import 'CoordinadorScreen.dart';
@@ -62,6 +65,7 @@ class _TribusScreenState extends State<TribusScreen>
     },
     {'title': 'Asistencias', 'icon': Icons.list_alt, 'key': 'asistencias'},
     {'title': 'Eventos', 'icon': Icons.event_note, 'key': 'inscripciones'},
+    {'title': 'Peticiones', 'icon': Icons.favorite_border, 'key': 'peticiones'},
   ];
 
 // Variables para almacenar los filtros seleccionados
@@ -81,7 +85,7 @@ class _TribusScreenState extends State<TribusScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 5, vsync: this);
+    _tabController = TabController(length: 6, vsync: this);
     _resetInactivityTimer();
 
     // Detectar interacciones del usuario
@@ -3904,6 +3908,65 @@ class _TribusScreenState extends State<TribusScreen>
           );
   }
 
+  Future<void> _copiarEnlacePeticiones(BuildContext context) async {
+    try {
+      // ✅ CORREGIDO: Obtener la URL base del servidor
+      final uri = Uri.base;
+      final baseUrl =
+          '${uri.scheme}://${uri.host}${(uri.port != 80 && uri.port != 443) ? ':${uri.port}' : ''}';
+
+      final enlace = '$baseUrl/#/peticiones/${widget.tribuId}';
+
+      await Clipboard.setData(ClipboardData(text: enlace));
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(2),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.check, color: Colors.white, size: 20),
+                ),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Enlace copiado al portapapeles',
+                    style: GoogleFonts.poppins(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: Color(0xFF1B998B),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            margin: EdgeInsets.all(16),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      print('Error copiando enlace: $e');
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al copiar enlace'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final Color primaryTeal = Color(0xFF1B998B);
@@ -4158,6 +4221,8 @@ class _TribusScreenState extends State<TribusScreen>
                           isVerySmallScreen,
                           isSmallScreen,
                         ),
+                        _buildResponsiveTab(Icons.favorite_border, 'Peticiones',
+                            isVerySmallScreen, isSmallScreen),
                       ],
                     );
                   },
@@ -4190,6 +4255,12 @@ class _TribusScreenState extends State<TribusScreen>
                   tribuNombre: widget.tribuNombre,
                 )),
                 _buildTabContent(InscripcionesTab(tribuId: widget.tribuId)),
+                _buildTabContent(PeticionesTab(
+                  // ✅ NUEVA PESTAÑA
+                  tribuId: widget.tribuId,
+                  tribuNombre: widget.tribuNombre,
+                  onCopiarEnlace: () => _copiarEnlacePeticiones(context),
+                )),
               ],
             ),
           ),
@@ -24379,3 +24450,596 @@ class _ReorderableWrapState extends State<ReorderableWrap>
   }
 }
 //--------------------------------------------------------------------------------------------------------
+
+// ═══════════════════════════════════════════════════════════════
+// PESTAÑA DE PETICIONES
+// ═══════════════════════════════════════════════════════════════
+
+class PeticionesTab extends StatefulWidget {
+  final String tribuId;
+  final String tribuNombre;
+  final VoidCallback onCopiarEnlace;
+
+  const PeticionesTab({
+    Key? key,
+    required this.tribuId,
+    required this.tribuNombre,
+    required this.onCopiarEnlace,
+  }) : super(key: key);
+
+  @override
+  State<PeticionesTab> createState() => _PeticionesTabState();
+}
+
+class _PeticionesTabState extends State<PeticionesTab> {
+  final Color primaryTeal = Color(0xFF1B998B);
+  final Color secondaryOrange = Color(0xFFFF7E00);
+  final Color lightTeal = Color(0xFFE0F7FA);
+
+  // ✅ NUEVO: Marcar petición como leída
+  Future<void> _marcarComoLeida(String peticionId, bool yaLeida) async {
+    if (yaLeida) return;
+
+    try {
+      await FirebaseFirestore.instance
+          .collection('peticiones')
+          .doc(peticionId)
+          .update({'leida': true});
+    } catch (e) {
+      print('Error marcando petición: $e');
+    }
+  }
+
+  Future<void> _descargarPeticionesExcel() async {
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('peticiones')
+          .where('tribuId', isEqualTo: widget.tribuId)
+          .orderBy('fecha', descending: true)
+          .get();
+
+      if (snapshot.docs.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  Icon(Icons.info_outline, color: Colors.white, size: 20),
+                  SizedBox(width: 12),
+                  Expanded(child: Text('No hay peticiones para exportar')),
+                ],
+              ),
+              backgroundColor: Colors.orange[700],
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+              margin: EdgeInsets.all(12),
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+        return;
+      }
+
+      // ✅ Crear Excel
+      var excelFile = excel_pkg.Excel.createExcel();
+      var sheet = excelFile['Sheet1'];
+
+      // ✅ DISEÑO PROFESIONAL - Estilos predefinidos
+      final headerStyle = excel_pkg.CellStyle(
+        bold: true,
+        fontSize: 12,
+        fontColorHex: '#FFFFFF',
+        backgroundColorHex: '#1B998B', // Verde corporativo
+        horizontalAlign: excel_pkg.HorizontalAlign.Center,
+        verticalAlign: excel_pkg.VerticalAlign.Center,
+      );
+
+      final evenRowStyle = excel_pkg.CellStyle(
+        fontSize: 11,
+        fontColorHex: '#000000',
+        backgroundColorHex: '#FFFFFF',
+        verticalAlign: excel_pkg.VerticalAlign.Top,
+        textWrapping:
+            excel_pkg.TextWrapping.WrapText, // ✅ Ajuste automático de texto
+      );
+
+      final oddRowStyle = excel_pkg.CellStyle(
+        fontSize: 11,
+        fontColorHex: '#000000',
+        backgroundColorHex: '#F0F9F8', // Verde muy claro
+        verticalAlign: excel_pkg.VerticalAlign.Top,
+        textWrapping:
+            excel_pkg.TextWrapping.WrapText, // ✅ Ajuste automático de texto
+      );
+
+      // ✅ Agregar encabezados con estilo
+      final headers = ['FECHA', 'NOMBRE', 'PETICIÓN', 'ESTADO'];
+      for (int col = 0; col < headers.length; col++) {
+        var cell = sheet.cell(excel_pkg.CellIndex.indexByColumnRow(
+            columnIndex: col, rowIndex: 0));
+        cell.value = headers[col];
+        cell.cellStyle = headerStyle;
+      }
+
+      // ✅ Agregar datos con estilos alternados
+      int rowIndex = 1;
+      for (var doc in snapshot.docs) {
+        final data = doc.data();
+        final fecha = (data['fecha'] as Timestamp?)?.toDate();
+        final leida = data['leida'] ?? false;
+
+        final rowStyle = (rowIndex % 2 == 0) ? evenRowStyle : oddRowStyle;
+
+        // Preparar datos de la fila
+        List<String> rowData = [
+          fecha != null
+              ? DateFormat('dd/MM/yyyy HH:mm', 'es').format(fecha)
+              : 'Sin fecha',
+          data['nombrePersona'] ?? 'Anónimo',
+          data['mensaje'] ?? '',
+          leida ? 'Leída' : 'Pendiente',
+        ];
+
+        // ✅ Agregar celdas con estilos
+        for (int col = 0; col < rowData.length; col++) {
+          var cell = sheet.cell(excel_pkg.CellIndex.indexByColumnRow(
+              columnIndex: col, rowIndex: rowIndex));
+          cell.value = rowData[col];
+
+          // ✅ Aplicar estilo según columna
+          if (col == 0 || col == 3) {
+            // Fecha y Estado: centrados
+            cell.cellStyle = rowStyle.copyWith(
+              horizontalAlignVal: excel_pkg.HorizontalAlign.Center,
+            );
+          } else {
+            // Nombre y Petición: alineados a la izquierda
+            cell.cellStyle = rowStyle;
+          }
+        }
+
+        rowIndex++;
+      }
+
+      // ✅ Generar archivo
+      var fileBytes = excelFile.encode();
+
+      if (fileBytes == null) {
+        throw Exception('No se pudieron generar los bytes del archivo');
+      }
+
+      // ✅ Nombre personalizado
+      final nombreArchivo =
+          'Peticiones_de_${widget.tribuNombre.replaceAll(' ', '_')}_${DateFormat('dd-MM-yyyy').format(DateTime.now())}.xlsx';
+
+      // ✅ Descargar
+      final blob = html.Blob([fileBytes]);
+      final url = html.Url.createObjectUrlFromBlob(blob);
+
+      html.AnchorElement(href: url)
+        ..setAttribute('download', nombreArchivo)
+        ..click();
+
+      html.Url.revokeObjectUrl(url);
+
+      // ✅ Notificación de éxito
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.white, size: 20),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    '✅ Excel descargado correctamente',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.green[700],
+            behavior: SnackBarBehavior.floating,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            margin: EdgeInsets.all(12),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e, stackTrace) {
+      print('❌ Error descargando Excel: $e');
+      print('Stack trace: $stackTrace');
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.error_outline, color: Colors.white, size: 20),
+                SizedBox(width: 12),
+                Expanded(child: Text('Error: No se pudo generar el Excel')),
+              ],
+            ),
+            backgroundColor: Colors.red[700],
+            behavior: SnackBarBehavior.floating,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            margin: EdgeInsets.all(12),
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
+
+  Map<int, Map<int, List<QueryDocumentSnapshot>>> _agruparPeticionesPorFecha(
+      List<QueryDocumentSnapshot> peticiones) {
+    Map<int, Map<int, List<QueryDocumentSnapshot>>> agrupadas = {};
+    for (var peticion in peticiones) {
+      try {
+        final data = peticion.data() as Map<String, dynamic>;
+        final fecha = (data['fecha'] as Timestamp?)?.toDate();
+        if (fecha == null) continue;
+        final anio = fecha.year;
+        final mes = fecha.month;
+        if (agrupadas[anio] == null) agrupadas[anio] = {};
+        if (agrupadas[anio]![mes] == null) agrupadas[anio]![mes] = [];
+        agrupadas[anio]![mes]!.add(peticion);
+      } catch (e) {
+        print('Error: $e');
+      }
+    }
+    return agrupadas;
+  }
+
+  String _nombreMes(int mes) {
+    const meses = [
+      '',
+      'Enero',
+      'Febrero',
+      'Marzo',
+      'Abril',
+      'Mayo',
+      'Junio',
+      'Julio',
+      'Agosto',
+      'Septiembre',
+      'Octubre',
+      'Noviembre',
+      'Diciembre'
+    ];
+    return meses[mes];
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenWidth < 600;
+
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [lightTeal, Colors.white],
+          stops: [0.0, 0.5],
+        ),
+      ),
+      child: Column(
+        children: [
+          Container(
+            padding: EdgeInsets.all(isSmallScreen ? 14 : 18),
+            decoration: BoxDecoration(
+              color: primaryTeal,
+              borderRadius: BorderRadius.only(
+                bottomLeft: Radius.circular(20),
+                bottomRight: Radius.circular(20),
+              ),
+            ),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.favorite,
+                        color: Colors.white, size: isSmallScreen ? 24 : 28),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Peticiones de Oración',
+                              style: TextStyle(
+                                  fontSize: isSmallScreen ? 17 : 19,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white)),
+                          Text('Comparte el enlace',
+                              style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.white.withOpacity(0.9))),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 16),
+                isSmallScreen
+                    ? Column(
+                        children: [
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              onPressed: widget.onCopiarEnlace,
+                              icon: Icon(Icons.link, size: 18),
+                              label: Text('Copiar Enlace'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: secondaryOrange,
+                                foregroundColor: Colors.white,
+                                padding: EdgeInsets.symmetric(vertical: 12),
+                              ),
+                            ),
+                          ),
+                          SizedBox(height: 8),
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              onPressed: _descargarPeticionesExcel,
+                              icon: Icon(Icons.download, size: 18),
+                              label: Text('Descargar Excel'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.white,
+                                foregroundColor: primaryTeal,
+                                padding: EdgeInsets.symmetric(vertical: 12),
+                              ),
+                            ),
+                          ),
+                        ],
+                      )
+                    : Row(
+                        children: [
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: widget.onCopiarEnlace,
+                              icon: Icon(Icons.link),
+                              label: Text('Copiar Enlace'),
+                              style: ElevatedButton.styleFrom(
+                                  backgroundColor: secondaryOrange,
+                                  foregroundColor: Colors.white,
+                                  padding: EdgeInsets.symmetric(vertical: 14)),
+                            ),
+                          ),
+                          SizedBox(width: 12),
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: _descargarPeticionesExcel,
+                              icon: Icon(Icons.download),
+                              label: Text('Descargar Excel'),
+                              style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.white,
+                                  foregroundColor: primaryTeal,
+                                  padding: EdgeInsets.symmetric(vertical: 14)),
+                            ),
+                          ),
+                        ],
+                      ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('peticiones')
+                  .where('tribuId', isEqualTo: widget.tribuId)
+                  .orderBy('fecha', descending: true)
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return Center(
+                      child: CircularProgressIndicator(
+                          valueColor:
+                              AlwaysStoppedAnimation<Color>(primaryTeal)));
+                }
+                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.favorite_border,
+                            size: 80, color: Colors.grey[400]),
+                        SizedBox(height: 16),
+                        Text('No hay peticiones aún',
+                            style: TextStyle(
+                                fontSize: 18, color: Colors.grey[600])),
+                      ],
+                    ),
+                  );
+                }
+
+                final peticiones = snapshot.data!.docs;
+                final noLeidas = peticiones
+                    .where((d) => !((d.data() as Map)['leida'] ?? false))
+                    .length;
+                final agrupadas = _agruparPeticionesPorFecha(peticiones);
+
+                return Column(
+                  children: [
+                    if (noLeidas > 0)
+                      Container(
+                        margin: EdgeInsets.all(12),
+                        padding: EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(colors: [
+                            secondaryOrange,
+                            secondaryOrange.withOpacity(0.8)
+                          ]),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.notifications_active,
+                                color: Colors.white, size: 20),
+                            SizedBox(width: 10),
+                            Text(
+                                '$noLeidas ${noLeidas == 1 ? 'pendiente' : 'pendientes'}',
+                                style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold)),
+                          ],
+                        ),
+                      ),
+                    Expanded(
+                      child: ListView(
+                        padding: EdgeInsets.all(16),
+                        children: agrupadas.entries.map((anioEntry) {
+                          return Card(
+                            margin: EdgeInsets.only(bottom: 12),
+                            child: ExpansionTile(
+                              leading: Icon(Icons.calendar_today,
+                                  color: primaryTeal),
+                              title: Text('Año ${anioEntry.key}',
+                                  style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: primaryTeal)),
+                              subtitle: Text(
+                                  '${anioEntry.value.values.expand((x) => x).length} peticiones'),
+                              children: anioEntry.value.entries.map((mesEntry) {
+                                return ExpansionTile(
+                                  leading: Icon(Icons.date_range,
+                                      color: secondaryOrange, size: 20),
+                                  title: Text(_nombreMes(mesEntry.key),
+                                      style: TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          color: secondaryOrange)),
+                                  subtitle: Text(
+                                      '${mesEntry.value.length} peticiones'),
+                                  children: mesEntry.value.map((doc) {
+                                    final data =
+                                        doc.data() as Map<String, dynamic>;
+                                    final fecha =
+                                        (data['fecha'] as Timestamp?)?.toDate();
+                                    final leida = data['leida'] ?? false;
+
+                                    return Card(
+                                      margin: EdgeInsets.symmetric(
+                                          horizontal: 12, vertical: 6),
+                                      color: leida
+                                          ? Colors.white
+                                          : secondaryOrange.withOpacity(0.05),
+                                      elevation: leida ? 1 : 3,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                        side: BorderSide(
+                                            color: leida
+                                                ? Colors.grey.shade200
+                                                : secondaryOrange
+                                                    .withOpacity(0.3),
+                                            width: leida ? 1 : 2),
+                                      ),
+                                      child: InkWell(
+                                        onTap: () =>
+                                            _marcarComoLeida(doc.id, leida),
+                                        child: Padding(
+                                          padding: EdgeInsets.all(12),
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Row(
+                                                children: [
+                                                  if (!leida)
+                                                    Container(
+                                                      margin: EdgeInsets.only(
+                                                          right: 8),
+                                                      padding:
+                                                          EdgeInsets.symmetric(
+                                                              horizontal: 8,
+                                                              vertical: 3),
+                                                      decoration: BoxDecoration(
+                                                          color:
+                                                              secondaryOrange,
+                                                          borderRadius:
+                                                              BorderRadius
+                                                                  .circular(6)),
+                                                      child: Text('NUEVA',
+                                                          style: TextStyle(
+                                                              color:
+                                                                  Colors.white,
+                                                              fontSize: 10,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold)),
+                                                    ),
+                                                  Icon(Icons.person,
+                                                      size: 16,
+                                                      color: primaryTeal),
+                                                  SizedBox(width: 6),
+                                                  Expanded(
+                                                      child: Text(
+                                                          data['nombrePersona'] ??
+                                                              'Anónimo',
+                                                          style: TextStyle(
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold,
+                                                              fontSize: 14))),
+                                                  if (fecha != null)
+                                                    Text(
+                                                        DateFormat(
+                                                                'dd/MM HH:mm',
+                                                                'es')
+                                                            .format(fecha),
+                                                        style: TextStyle(
+                                                            fontSize: 11,
+                                                            color: Colors
+                                                                .grey[600])),
+                                                ],
+                                              ),
+                                              SizedBox(height: 8),
+                                              Text(data['mensaje'] ?? '',
+                                                  style: TextStyle(
+                                                      fontSize: 13,
+                                                      height: 1.4)),
+                                              if (leida)
+                                                Padding(
+                                                  padding:
+                                                      EdgeInsets.only(top: 8),
+                                                  child: Row(
+                                                    children: [
+                                                      Icon(Icons.check_circle,
+                                                          size: 14,
+                                                          color: Colors
+                                                              .green[600]),
+                                                      SizedBox(width: 4),
+                                                      Text('Leída',
+                                                          style: TextStyle(
+                                                              fontSize: 11,
+                                                              color: Colors
+                                                                  .green[600])),
+                                                    ],
+                                                  ),
+                                                ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  }).toList(),
+                                );
+                              }).toList(),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

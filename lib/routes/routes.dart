@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 // Screens
 import 'package:formulario_app/screens/login_screen.dart';
 import 'package:formulario_app/screens/social_profile_screen.dart';
+import 'package:formulario_app/screens/peticiones_form_screen.dart';
 import 'package:formulario_app/screens/TimoteosScreen.dart';
 import 'package:formulario_app/screens/form_screen.dart';
 import 'package:formulario_app/screens/CoordinadorScreen.dart';
@@ -24,10 +25,12 @@ final GoRouter router = GoRouter(
   redirect: (BuildContext context, GoRouterState state) async {
     final path = state.matchedLocation;
 
-    // Rutas públicas que NO requieren autenticación
+    // ✅ CORREGIDO: Rutas públicas que NO requieren autenticación
     const publicRoutes = ['/login', '/form', '/social_profile'];
-    if (publicRoutes.contains(path)) {
-      return null; // Permitir acceso
+
+    // ✅ NUEVO: Verificar si es una ruta de peticiones (dinámica)
+    if (publicRoutes.contains(path) || path.startsWith('/peticiones/')) {
+      return null; // Permitir acceso sin autenticación
     }
 
     // Todas las demás rutas requieren autenticación
@@ -56,6 +59,16 @@ final GoRouter router = GoRouter(
       path: '/social_profile',
       builder: (context, state) => const SocialProfileScreen(),
     ),
+
+    // RUTA PÚBLICA - FORMULARIO DE PETICIONES
+    GoRoute(
+      path: '/peticiones/:tribuId',
+      builder: (context, state) {
+        final tribuId = state.pathParameters['tribuId']!;
+        return PeticionesFormScreen(tribuId: tribuId);
+      },
+    ),
+
     // ============================================================
     // RUTAS PROTEGIDAS - Requieren autenticación
     // ============================================================
