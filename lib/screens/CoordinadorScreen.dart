@@ -62,9 +62,16 @@ class _CoordinadorScreenState extends State<CoordinadorScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
+
+    // ✅ Listener para sincronización instantánea
+    _tabController.animation!.addListener(() {
+      if (mounted) {
+        setState(() {});
+      }
+    });
+
     _resetInactivityTimer();
 
-    // Detectar interacciones del usuario
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         GestureBinding.instance.pointerRouter.addGlobalRoute((event) {
@@ -379,12 +386,10 @@ class _CoordinadorScreenState extends State<CoordinadorScreen>
                   final isMediumScreen =
                       screenWidth >= 400 && screenWidth < 600;
 
-                  // Analizar nombre del coordinador
                   final coordinadorNombre = widget.coordinadorNombre;
                   final palabras = coordinadorNombre.split(' ');
                   final nombreLargo = coordinadorNombre.length > 18;
 
-                  // Determinar estructura de líneas basado en longitud y pantalla
                   final usarDosLineas = (nombreLargo && isSmallScreen) ||
                       (coordinadorNombre.length > 24 && isMediumScreen);
                   final usarTresLineas =
@@ -392,7 +397,6 @@ class _CoordinadorScreenState extends State<CoordinadorScreen>
 
                   return Row(
                     children: [
-                      // Logo COCEP con animación Hero
                       Hero(
                         tag: 'coordinador_logo_${widget.coordinadorId}',
                         child: Container(
@@ -446,8 +450,6 @@ class _CoordinadorScreenState extends State<CoordinadorScreen>
                         ),
                       ),
                       SizedBox(width: isVerySmallScreen ? 8 : 12),
-
-                      // Nombre del coordinador con diseño adaptativo
                       Expanded(
                         child: usarTresLineas
                             ? _buildCoordinadorTresLineas(
@@ -458,10 +460,7 @@ class _CoordinadorScreenState extends State<CoordinadorScreen>
                                 : _buildCoordinadorUnaLinea(coordinadorNombre,
                                     isSmallScreen, isMediumScreen),
                       ),
-
                       SizedBox(width: isVerySmallScreen ? 4 : 8),
-
-                      // Botón de salir mejorado
                       Container(
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
@@ -536,7 +535,8 @@ class _CoordinadorScreenState extends State<CoordinadorScreen>
                 },
               ),
               bottom: PreferredSize(
-                preferredSize: Size.fromHeight(kToolbarHeight + 15),
+                preferredSize: _calcularAlturaTabBarCoordinador(
+                    MediaQuery.of(context).size.width),
                 child: Container(
                   decoration: BoxDecoration(
                     color: kPrimaryColor,
@@ -550,62 +550,68 @@ class _CoordinadorScreenState extends State<CoordinadorScreen>
                   ),
                   child: LayoutBuilder(
                     builder: (context, constraints) {
-                      final screenWidth = MediaQuery.of(context).size.width;
+                      final screenWidth = constraints.maxWidth;
                       final isVerySmallScreen = screenWidth < 360;
                       final isSmallScreen = screenWidth < 500;
 
-                      return TabBar(
-                        controller: _tabController,
-                        indicatorWeight: 3,
-                        indicator: BoxDecoration(
-                          border: Border(
-                            bottom: BorderSide(
-                              color: kAccentColor,
-                              width: 3,
-                            ),
-                          ),
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [
-                              Colors.transparent,
-                              kAccentColor.withOpacity(0.1),
-                            ],
-                          ),
+                      // ✅ Calcular pestañas por fila (4 pestañas totales)
+                      int tabsPorFila;
+                      if (isVerySmallScreen) {
+                        tabsPorFila = 2; // 2 pestañas por fila → 2 filas
+                      } else if (isSmallScreen) {
+                        tabsPorFila = 2; // 2 pestañas por fila → 2 filas
+                      } else {
+                        tabsPorFila = 4; // Todas en 1 fila
+                      }
+
+                      final spacing =
+                          isVerySmallScreen ? 3.0 : (isSmallScreen ? 4.0 : 6.0);
+                      final runSpacing = isVerySmallScreen ? 4.0 : 6.0;
+                      final verticalPadding = isVerySmallScreen ? 6.0 : 8.0;
+                      final horizontalPadding = isVerySmallScreen ? 8.0 : 12.0;
+
+                      // ✅ Lista de pestañas
+                      final tabs = [
+                        {'icon': Icons.people, 'label': 'Timoteos', 'index': 0},
+                        {
+                          'icon': Icons.assignment_ind,
+                          'label': 'Asignados',
+                          'index': 1
+                        },
+                        {
+                          'icon': Icons.warning_amber_rounded,
+                          'label': 'Alertas',
+                          'index': 2
+                        },
+                        {
+                          'icon': Icons.calendar_today,
+                          'label': 'Asistencia',
+                          'index': 3
+                        },
+                      ];
+
+                      return Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: horizontalPadding,
+                          vertical: verticalPadding,
                         ),
-                        labelColor: Colors.white,
-                        unselectedLabelColor: Colors.white60,
-                        isScrollable: isSmallScreen,
-                        labelPadding: EdgeInsets.symmetric(
-                          horizontal: isVerySmallScreen ? 8 : 12,
+                        child: Wrap(
+                          spacing: spacing,
+                          runSpacing: runSpacing,
+                          alignment: WrapAlignment.center,
+                          children: tabs.map((tab) {
+                            return _buildAutoSyncCoordinadorTab(
+                              index: tab['index'] as int,
+                              icon: tab['icon'] as IconData,
+                              label: tab['label'] as String,
+                              screenWidth: screenWidth,
+                              tabsPorFila: tabsPorFila,
+                              spacing: spacing,
+                              isVerySmallScreen: isVerySmallScreen,
+                              isSmallScreen: isSmallScreen,
+                            );
+                          }).toList(),
                         ),
-                        labelStyle: TextStyle(
-                          fontSize: isVerySmallScreen ? 12 : 14,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 0.3,
-                        ),
-                        tabs: [
-                          _buildCoordinadorTab(
-                            Icons.people,
-                            'Timoteos',
-                            isVerySmallScreen,
-                          ),
-                          _buildCoordinadorTab(
-                            Icons.assignment_ind,
-                            'Asignados',
-                            isVerySmallScreen,
-                          ),
-                          _buildCoordinadorTab(
-                            Icons.warning_amber_rounded,
-                            'Alertas',
-                            isVerySmallScreen,
-                          ),
-                          _buildCoordinadorTab(
-                            Icons.calendar_today,
-                            'Asistencia',
-                            isVerySmallScreen,
-                          ),
-                        ],
                       );
                     },
                   ),
@@ -645,6 +651,215 @@ class _CoordinadorScreenState extends State<CoordinadorScreen>
           ),
         );
       },
+    );
+  }
+
+  Size _calcularAlturaTabBarCoordinador(double screenWidth) {
+    final isVerySmallScreen = screenWidth < 360;
+    final isSmallScreen = screenWidth < 500;
+
+    // Determinar si necesitamos 1 o 2 filas
+    final necesitaDosFilas = isVerySmallScreen || isSmallScreen;
+
+    final verticalPadding = isVerySmallScreen ? 6.0 : 8.0;
+    final runSpacing = isVerySmallScreen ? 4.0 : 6.0;
+    final iconSize = isVerySmallScreen ? 20.0 : (isSmallScreen ? 22.0 : 24.0);
+    final fontSize = isVerySmallScreen ? 11.0 : (isSmallScreen ? 12.0 : 14.0);
+    final buttonVerticalPadding =
+        isVerySmallScreen ? 6.0 : (isSmallScreen ? 8.0 : 10.0);
+
+    final alturaBoton =
+        (buttonVerticalPadding * 2) + iconSize + 3 + (fontSize * 1.3);
+
+    if (necesitaDosFilas) {
+      final alturaTotal =
+          (verticalPadding * 2) + (alturaBoton * 2) + runSpacing;
+      return Size.fromHeight(alturaTotal);
+    } else {
+      final alturaTotal = (verticalPadding * 2) + alturaBoton;
+      return Size.fromHeight(alturaTotal);
+    }
+  }
+
+  Widget _buildAutoSyncCoordinadorTab({
+    required int index,
+    required IconData icon,
+    required String label,
+    required double screenWidth,
+    required int tabsPorFila,
+    required double spacing,
+    required bool isVerySmallScreen,
+    required bool isSmallScreen,
+  }) {
+    // ✅ Obtener índice actual con animación
+    final currentIndex = _tabController.animation!.value.round();
+    final isSelected = currentIndex == index;
+
+    // ✅ Animación suave durante el swipe
+    final animationValue = _tabController.animation!.value;
+    final distanceFromCurrent = (animationValue - index).abs();
+    final opacity = (1.0 - (distanceFromCurrent * 0.3)).clamp(0.65, 1.0);
+
+    // Calcular ancho del botón
+    final buttonWidth =
+        (screenWidth - (spacing * (tabsPorFila - 1)) - 24) / tabsPorFila;
+
+    final iconSize = isVerySmallScreen ? 20.0 : (isSmallScreen ? 22.0 : 24.0);
+    final fontSize = isVerySmallScreen ? 11.0 : (isSmallScreen ? 12.0 : 14.0);
+    final verticalPadding =
+        isVerySmallScreen ? 6.0 : (isSmallScreen ? 8.0 : 10.0);
+
+    return SizedBox(
+      width: buttonWidth,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            _tabController.animateTo(index);
+          },
+          borderRadius: BorderRadius.circular(10),
+          child: AnimatedContainer(
+            duration: Duration(milliseconds: 200),
+            padding: EdgeInsets.symmetric(vertical: verticalPadding),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(10),
+              // ✅ Fondo amarillo COCEP para pestaña activa
+              gradient: isSelected
+                  ? LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        kAccentColor,
+                        kAccentColor.withOpacity(0.8),
+                      ],
+                    )
+                  : null,
+              color: !isSelected ? Colors.white.withOpacity(0.05) : null,
+              boxShadow: isSelected
+                  ? [
+                      BoxShadow(
+                        color: kAccentColor.withOpacity(0.3),
+                        blurRadius: 8,
+                        offset: Offset(0, 3),
+                      ),
+                    ]
+                  : null,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  icon,
+                  size: iconSize,
+                  color: Colors.white.withOpacity(opacity),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: fontSize,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                    color: Colors.white.withOpacity(opacity),
+                    height: 1.1,
+                    letterSpacing: 0.3,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Construye una pestaña responsiva con diseño adaptativo
+  Widget _buildResponsiveCoordinadorTab({
+    required int index,
+    required IconData icon,
+    required String label,
+    required double screenWidth,
+    required int totalTabs,
+    required double spacing,
+    required bool isVerySmallScreen,
+    required bool isSmallScreen,
+  }) {
+    final isSelected = _tabController.index == index;
+
+    // Calcular ancho del botón (2 pestañas por fila en pantallas pequeñas)
+    final tabsPorFila = 2;
+    final buttonWidth =
+        (screenWidth - (spacing * (tabsPorFila - 1)) - 24) / tabsPorFila;
+
+    // Tamaños adaptativos
+    final iconSize = isVerySmallScreen ? 20.0 : (isSmallScreen ? 22.0 : 24.0);
+    final fontSize = isVerySmallScreen ? 11.0 : (isSmallScreen ? 12.0 : 14.0);
+    final verticalPadding =
+        isVerySmallScreen ? 6.0 : (isSmallScreen ? 8.0 : 10.0);
+
+    return SizedBox(
+      width: buttonWidth,
+      child: Material(
+        color: isSelected
+            ? kAccentColor.withOpacity(0.15)
+            : Colors.white.withOpacity(0.05),
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(10),
+          topRight: Radius.circular(10),
+        ),
+        child: InkWell(
+          onTap: () {
+            setState(() {
+              _tabController.animateTo(index);
+            });
+          },
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(10),
+            topRight: Radius.circular(10),
+          ),
+          child: Container(
+            padding: EdgeInsets.symmetric(vertical: verticalPadding),
+            decoration: BoxDecoration(
+              border: isSelected
+                  ? Border(
+                      bottom: BorderSide(
+                        color: kAccentColor,
+                        width: 3,
+                      ),
+                    )
+                  : null,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  icon,
+                  size: iconSize,
+                  color: isSelected ? Colors.white : Colors.white60,
+                ),
+                SizedBox(height: 3),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: fontSize,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                    color: isSelected ? Colors.white : Colors.white60,
+                    height: 1.1,
+                    letterSpacing: 0.2,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 

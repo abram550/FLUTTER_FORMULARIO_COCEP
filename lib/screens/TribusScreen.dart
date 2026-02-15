@@ -65,7 +65,6 @@ class _TribusScreenState extends State<TribusScreen>
     },
     {'title': 'Asistencias', 'icon': Icons.list_alt, 'key': 'asistencias'},
     {'title': 'Eventos', 'icon': Icons.event_note, 'key': 'inscripciones'},
-    {'title': 'Peticiones', 'icon': Icons.favorite_border, 'key': 'peticiones'},
   ];
 
 // Variables para almacenar los filtros seleccionados
@@ -85,10 +84,17 @@ class _TribusScreenState extends State<TribusScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 6, vsync: this);
+    _tabController = TabController(length: 5, vsync: this);
+
+    // ✅ Listener para sincronización instantánea
+    _tabController.animation!.addListener(() {
+      if (mounted) {
+        setState(() {});
+      }
+    });
+
     _resetInactivityTimer();
 
-    // Detectar interacciones del usuario
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         GestureBinding.instance.pointerRouter.addGlobalRoute((event) {
@@ -4003,11 +4009,9 @@ class _TribusScreenState extends State<TribusScreen>
                 final isSmallScreen = screenWidth < 400;
                 final isMediumScreen = screenWidth >= 400 && screenWidth < 600;
 
-                // Dividir nombre de tribu inteligentemente
                 final tribuNombre = widget.tribuNombre;
                 final palabras = tribuNombre.split(' ');
 
-                // Determinar si necesitamos múltiples líneas basado en longitud
                 final necesitaDosLineas = tribuNombre.length > 20 &&
                     (isVerySmallScreen || isSmallScreen);
                 final necesitaTresLineas =
@@ -4015,7 +4019,6 @@ class _TribusScreenState extends State<TribusScreen>
 
                 return Row(
                   children: [
-                    // Logo con efecto Hero
                     Hero(
                       tag: 'logo_tribu_${widget.tribuId}',
                       child: Container(
@@ -4052,8 +4055,6 @@ class _TribusScreenState extends State<TribusScreen>
                       ),
                     ),
                     SizedBox(width: isVerySmallScreen ? 8 : 12),
-
-                    // Título de la tribu responsivo con múltiples líneas
                     Expanded(
                       child: necesitaTresLineas
                           ? _buildTituloTresLineas(palabras, isVerySmallScreen)
@@ -4063,10 +4064,8 @@ class _TribusScreenState extends State<TribusScreen>
                               : _buildTituloUnaLinea(
                                   tribuNombre, isSmallScreen, isMediumScreen),
                     ),
-
                     SizedBox(
                         width: isVerySmallScreen ? 4 : (isSmallScreen ? 6 : 8)),
-                    //Container del boton de cerrar Session
                     Container(
                       constraints: BoxConstraints(
                         maxWidth:
@@ -4157,7 +4156,8 @@ class _TribusScreenState extends State<TribusScreen>
               },
             ),
             bottom: PreferredSize(
-              preferredSize: Size.fromHeight(60),
+              preferredSize:
+                  _calcularAlturaTabBar(MediaQuery.of(context).size.width),
               child: Container(
                 decoration: BoxDecoration(
                   color: primaryTeal,
@@ -4171,65 +4171,80 @@ class _TribusScreenState extends State<TribusScreen>
                 ),
                 child: LayoutBuilder(
                   builder: (context, constraints) {
-                    final screenWidth = MediaQuery.of(context).size.width;
+                    final screenWidth = constraints.maxWidth;
                     final isVerySmallScreen = screenWidth < 360;
                     final isSmallScreen = screenWidth < 500;
 
-                    return TabBar(
-                      controller: _tabController,
-                      indicator: BoxDecoration(
-                        color: secondaryOrange,
-                        borderRadius: BorderRadius.only(
-                          topLeft: Radius.circular(10),
-                          topRight: Radius.circular(10),
-                        ),
+                    // ✅ Calcular pestañas por fila
+                    int tabsPorFila;
+                    if (isVerySmallScreen) {
+                      tabsPorFila = 3; // 3 pestañas por fila
+                    } else if (isSmallScreen) {
+                      tabsPorFila = 3; // 3 pestañas por fila
+                    } else {
+                      tabsPorFila = 5; // Todas en 1 fila
+                    }
+
+                    final spacing =
+                        isVerySmallScreen ? 3.0 : (isSmallScreen ? 4.0 : 6.0);
+                    final runSpacing = isVerySmallScreen ? 4.0 : 6.0;
+                    final verticalPadding = isVerySmallScreen ? 6.0 : 8.0;
+                    final horizontalPadding = isVerySmallScreen ? 8.0 : 12.0;
+
+                    // ✅ Lista de pestañas
+                    final tabs = [
+                      {'icon': Icons.people, 'label': 'Timoteos', 'index': 0},
+                      {
+                        'icon': Icons.supervised_user_circle,
+                        'label': 'Coordinadores',
+                        'index': 1
+                      },
+                      {
+                        'icon': Icons.assignment_ind,
+                        'label': 'Personas',
+                        'index': 2
+                      },
+                      {
+                        'icon': Icons.list_alt,
+                        'label': 'Asistencias',
+                        'index': 3
+                      },
+                      {
+                        'icon': Icons.event_note,
+                        'label': 'Eventos',
+                        'index': 4
+                      },
+                    ];
+
+                    return Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: horizontalPadding,
+                        vertical: verticalPadding,
                       ),
-                      labelColor: Colors.white,
-                      unselectedLabelColor: Colors.white.withOpacity(0.7),
-                      isScrollable: isSmallScreen,
-                      labelPadding: EdgeInsets.symmetric(
-                        horizontal: isVerySmallScreen ? 8 : 12,
+                      child: Wrap(
+                        spacing: spacing,
+                        runSpacing: runSpacing,
+                        alignment: WrapAlignment.center,
+                        children: tabs.map((tab) {
+                          return _buildAutoSyncTab(
+                            index: tab['index'] as int,
+                            icon: tab['icon'] as IconData,
+                            label: tab['label'] as String,
+                            screenWidth: screenWidth,
+                            tabsPorFila: tabsPorFila,
+                            spacing: spacing,
+                            isVerySmallScreen: isVerySmallScreen,
+                            isSmallScreen: isSmallScreen,
+                          );
+                        }).toList(),
                       ),
-                      tabs: [
-                        _buildResponsiveTab(
-                          Icons.people,
-                          'Timoteos',
-                          isVerySmallScreen,
-                          isSmallScreen,
-                        ),
-                        _buildResponsiveTab(
-                          Icons.supervised_user_circle,
-                          'Coordinadores',
-                          isVerySmallScreen,
-                          isSmallScreen,
-                        ),
-                        _buildResponsiveTab(
-                          Icons.assignment_ind,
-                          'Personas',
-                          isVerySmallScreen,
-                          isSmallScreen,
-                        ),
-                        _buildResponsiveTab(
-                          Icons.list_alt,
-                          'Asistencias',
-                          isVerySmallScreen,
-                          isSmallScreen,
-                        ),
-                        _buildResponsiveTab(
-                          Icons.event_note,
-                          'Eventos',
-                          isVerySmallScreen,
-                          isSmallScreen,
-                        ),
-                        _buildResponsiveTab(Icons.favorite_border, 'Peticiones',
-                            isVerySmallScreen, isSmallScreen),
-                      ],
                     );
                   },
                 ),
               ),
             ),
           ),
+
           body: Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -4254,18 +4269,177 @@ class _TribusScreenState extends State<TribusScreen>
                   tribuId: widget.tribuId,
                   tribuNombre: widget.tribuNombre,
                 )),
-                _buildTabContent(InscripcionesTab(tribuId: widget.tribuId)),
-                _buildTabContent(PeticionesTab(
-                  // ✅ NUEVA PESTAÑA
+                _buildTabContent(InscripcionesTab(
                   tribuId: widget.tribuId,
-                  tribuNombre: widget.tribuNombre,
-                  onCopiarEnlace: () => _copiarEnlacePeticiones(context),
+                  tribuNombre: widget.tribuNombre, // ✅ AGREGADO
                 )),
               ],
             ),
           ),
           // FloatingActionButton eliminado - Botón movido a pestaña Personas
         ),
+      ),
+    );
+  }
+
+
+
+
+  Size _calcularAlturaTabBar(double screenWidth) {
+    final isVerySmallScreen = screenWidth < 360;
+    final isSmallScreen = screenWidth < 500;
+
+    // Determinar si necesitamos 1 o 2 filas
+    final necesitaDosFilas = isVerySmallScreen || isSmallScreen;
+
+    final verticalPadding = isVerySmallScreen ? 6.0 : 8.0;
+    final runSpacing = isVerySmallScreen ? 4.0 : 6.0;
+    final iconSize = isVerySmallScreen ? 16.0 : (isSmallScreen ? 18.0 : 20.0);
+    final fontSize = isVerySmallScreen ? 9.0 : (isSmallScreen ? 10.0 : 11.0);
+    final buttonVerticalPadding =
+        isVerySmallScreen ? 6.0 : (isSmallScreen ? 8.0 : 10.0);
+
+    final alturaBoton =
+        (buttonVerticalPadding * 2) + iconSize + 3 + (fontSize * 1.3);
+
+    if (necesitaDosFilas) {
+      final alturaTotal =
+          (verticalPadding * 2) + (alturaBoton * 2) + runSpacing;
+      return Size.fromHeight(alturaTotal);
+    } else {
+      final alturaTotal = (verticalPadding * 2) + alturaBoton;
+      return Size.fromHeight(alturaTotal);
+    }
+  }
+
+  Widget _buildAutoSyncTab({
+    required int index,
+    required IconData icon,
+    required String label,
+    required double screenWidth,
+    required int tabsPorFila,
+    required double spacing,
+    required bool isVerySmallScreen,
+    required bool isSmallScreen,
+  }) {
+    // ✅ Obtener índice actual con animación
+    final currentIndex = _tabController.animation!.value.round();
+    final isSelected = currentIndex == index;
+
+    // ✅ Animación suave durante el swipe
+    final animationValue = _tabController.animation!.value;
+    final distanceFromCurrent = (animationValue - index).abs();
+    final opacity = (1.0 - (distanceFromCurrent * 0.3)).clamp(0.65, 1.0);
+
+    // Calcular ancho del botón
+    final buttonWidth =
+        (screenWidth - (spacing * (tabsPorFila - 1)) - 24) / tabsPorFila;
+
+    final iconSize = isVerySmallScreen ? 16.0 : (isSmallScreen ? 18.0 : 20.0);
+    final fontSize = isVerySmallScreen ? 9.0 : (isSmallScreen ? 10.0 : 11.0);
+    final verticalPadding =
+        isVerySmallScreen ? 6.0 : (isSmallScreen ? 8.0 : 10.0);
+
+    return SizedBox(
+      width: buttonWidth,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            _tabController.animateTo(index);
+          },
+          borderRadius: BorderRadius.circular(10),
+          child: AnimatedContainer(
+            duration: Duration(milliseconds: 200),
+            padding: EdgeInsets.symmetric(vertical: verticalPadding),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(10),
+              // ✅ Fondo naranja para pestaña activa
+              gradient: isSelected
+                  ? LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        Color(0xFFFF8C00),
+                        Color(0xFFFF7E00),
+                      ],
+                    )
+                  : null,
+              color: !isSelected ? Colors.white.withOpacity(0.05) : null,
+              boxShadow: isSelected
+                  ? [
+                      BoxShadow(
+                        color: Color(0xFFFF8C00).withOpacity(0.3),
+                        blurRadius: 8,
+                        offset: Offset(0, 3),
+                      ),
+                    ]
+                  : null,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  icon,
+                  size: iconSize,
+                  color: Colors.white.withOpacity(opacity),
+                ),
+                SizedBox(height: 3),
+                Text(
+                  label,
+                  style: GoogleFonts.poppins(
+                    fontSize: fontSize,
+                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                    color: Colors.white.withOpacity(opacity),
+                    height: 1.1,
+                    letterSpacing: 0.2,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProfessionalTab(
+    IconData icon,
+    String text,
+    bool isVerySmallScreen,
+    bool isSmallScreen,
+  ) {
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: isVerySmallScreen ? 8 : (isSmallScreen ? 10 : 12),
+        vertical: isVerySmallScreen ? 8 : 10,
+      ),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(
+            isVerySmallScreen ? 8 : (isSmallScreen ? 10 : 12)),
+        // ✅ Fondo semi-transparente elegante
+        color: Colors.white.withOpacity(0.05),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            icon,
+            size: isVerySmallScreen ? 16 : (isSmallScreen ? 18 : 20),
+          ),
+          SizedBox(height: 3),
+          Text(
+            text,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+          ),
+        ],
       ),
     );
   }
@@ -18845,8 +19019,13 @@ class _AsistenciasTabState extends State<AsistenciasTab>
 
 class InscripcionesTab extends StatefulWidget {
   final String tribuId;
+  final String tribuNombre; // ✅ AGREGADO
 
-  const InscripcionesTab({Key? key, required this.tribuId}) : super(key: key);
+  const InscripcionesTab({
+    Key? key,
+    required this.tribuId,
+    required this.tribuNombre, // ✅ AGREGADO
+  }) : super(key: key);
 
   @override
   _InscripcionesTabState createState() => _InscripcionesTabState();
@@ -18859,7 +19038,7 @@ class _InscripcionesTabState extends State<InscripcionesTab> {
 
   // Estado para alternar entre eventos y cumpleaños
   bool mostrandoCumpleanos = false;
-  String _vistaMostrada = 'eventos';
+  String _vistaMostrada = 'clases';
   bool isLoading = false;
 
   Future<String> _obtenerNombreTribu(String tribuId) async {
@@ -18970,12 +19149,14 @@ class _InscripcionesTabState extends State<InscripcionesTab> {
     // ✅ Definir textos dinámicos según la pestaña activa
     String getTituloActual() {
       switch (_vistaMostrada) {
+        case 'clases':
+          return 'Clases de Discipulado';
+        case 'peticiones':
+          return 'Peticiones de Oración';
         case 'eventos':
           return 'Eventos e Inscripciones';
         case 'cumpleanos':
           return 'Cumpleaños del Mes';
-        case 'clases':
-          return 'Clases de Discipulado';
         default:
           return 'Eventos e Inscripciones';
       }
@@ -18983,12 +19164,14 @@ class _InscripcionesTabState extends State<InscripcionesTab> {
 
     String getSubtituloActual() {
       switch (_vistaMostrada) {
+        case 'clases':
+          return 'Inscribe discípulos en las clases activas';
+        case 'peticiones':
+          return 'Comparte el enlace para recibir peticiones';
         case 'eventos':
           return 'Gestiona encuentros, raíces y reencuentros';
         case 'cumpleanos':
           return 'Celebra con los cumpleañeros de este mes';
-        case 'clases':
-          return 'Inscribe discípulos en las clases activas';
         default:
           return '';
       }
@@ -18996,12 +19179,14 @@ class _InscripcionesTabState extends State<InscripcionesTab> {
 
     IconData getIconoActual() {
       switch (_vistaMostrada) {
+        case 'clases':
+          return Icons.school;
+        case 'peticiones':
+          return Icons.favorite;
         case 'eventos':
           return Icons.event_note;
         case 'cumpleanos':
           return Icons.cake;
-        case 'clases':
-          return Icons.school;
         default:
           return Icons.event_note;
       }
@@ -19019,7 +19204,7 @@ class _InscripcionesTabState extends State<InscripcionesTab> {
       child: Column(
         children: [
           // ═══════════════════════════════════════════════════════════════
-          // HEADER RESPONSIVO CON PESTAÑAS Y BOTÓN CONDICIONAL
+          // HEADER RESPONSIVO CON 4 PESTAÑAS Y BOTONES CONDICIONALES
           // ═══════════════════════════════════════════════════════════════
           Container(
             padding: EdgeInsets.symmetric(
@@ -19043,209 +19228,86 @@ class _InscripcionesTabState extends State<InscripcionesTab> {
             child: Column(
               children: [
                 // ───────────────────────────────────────────────────────────
-                // FILA DE 3 PESTAÑAS - COMPLETAMENTE RESPONSIVA
+                // FILA DE 4 PESTAÑAS - LAYOUT ADAPTATIVO AUTOMÁTICO
                 // ───────────────────────────────────────────────────────────
                 Container(
                   margin: EdgeInsets.only(bottom: isVerySmall ? 10 : 12),
                   child: LayoutBuilder(
                     builder: (context, constraints) {
                       final availableWidth = constraints.maxWidth;
-                      final buttonSpacing = isVerySmall
+
+                      // ✅ Determinar cuántas pestañas caben por fila
+                      int pestanasPorFila;
+                      if (availableWidth < 350) {
+                        pestanasPorFila =
+                            2; // Pantallas muy pequeñas: 2 por fila
+                      } else if (availableWidth < 600) {
+                        pestanasPorFila = 2; // Pantallas pequeñas: 2 por fila
+                      } else {
+                        pestanasPorFila =
+                            4; // Pantallas grandes: todas en 1 fila
+                      }
+
+                      // Calcular espaciado
+                      final spacing = isVerySmall
                           ? 4.0
                           : isSmall
                               ? 6.0
                               : 8.0;
-                      final totalSpacing =
-                          buttonSpacing * 2; // Espacios entre 3 botones
-                      final buttonWidth = (availableWidth - totalSpacing) / 3;
+                      final totalRows = (4 / pestanasPorFila).ceil();
+                      final runSpacing = isVerySmall ? 6.0 : 8.0;
 
-                      return Row(
+                      return Wrap(
+                        spacing: spacing,
+                        runSpacing: runSpacing,
+                        alignment: WrapAlignment.center,
                         children: [
                           // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-                          // BOTÓN 1: EVENTOS
+                          // BOTÓN 1: CLASES
                           // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-                          Flexible(
-                            flex: 1,
-                            child: SizedBox(
-                              width: buttonWidth,
-                              child: ElevatedButton(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: _vistaMostrada == 'eventos'
-                                      ? Colors.white
-                                      : Colors.white.withOpacity(0.3),
-                                  foregroundColor: _vistaMostrada == 'eventos'
-                                      ? primaryTeal
-                                      : Colors.white,
-                                  elevation:
-                                      _vistaMostrada == 'eventos' ? 2 : 0,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(
-                                        isVerySmall ? 10 : 12),
-                                  ),
-                                  padding: EdgeInsets.symmetric(
-                                    horizontal: isVerySmall
-                                        ? 4
-                                        : isSmall
-                                            ? 6
-                                            : 8,
-                                    vertical: isVerySmall
-                                        ? 8
-                                        : isSmall
-                                            ? 10
-                                            : 12,
-                                  ),
-                                ),
-                                onPressed: () =>
-                                    setState(() => _vistaMostrada = 'eventos'),
-                                child: FittedBox(
-                                  fit: BoxFit.scaleDown,
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(Icons.event_note,
-                                          size: buttonIconSize),
-                                      if (screenWidth > 380) ...[
-                                        SizedBox(width: 4),
-                                        Text(
-                                          'Eventos',
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: buttonFontSize,
-                                          ),
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ],
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
+                          _buildSubTab(
+                            'clases',
+                            Icons.school,
+                            'Clases',
+                            availableWidth,
+                            pestanasPorFila,
+                            spacing,
                           ),
-                          SizedBox(width: buttonSpacing),
 
                           // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-                          // BOTÓN 2: CUMPLEAÑOS
+                          // BOTÓN 2: PETICIONES
                           // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-                          Flexible(
-                            flex: 1,
-                            child: SizedBox(
-                              width: buttonWidth,
-                              child: ElevatedButton(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor:
-                                      _vistaMostrada == 'cumpleanos'
-                                          ? Colors.white
-                                          : Colors.white.withOpacity(0.3),
-                                  foregroundColor:
-                                      _vistaMostrada == 'cumpleanos'
-                                          ? primaryTeal
-                                          : Colors.white,
-                                  elevation:
-                                      _vistaMostrada == 'cumpleanos' ? 2 : 0,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(
-                                        isVerySmall ? 10 : 12),
-                                  ),
-                                  padding: EdgeInsets.symmetric(
-                                    horizontal: isVerySmall
-                                        ? 4
-                                        : isSmall
-                                            ? 6
-                                            : 8,
-                                    vertical: isVerySmall
-                                        ? 8
-                                        : isSmall
-                                            ? 10
-                                            : 12,
-                                  ),
-                                ),
-                                onPressed: () => setState(
-                                    () => _vistaMostrada = 'cumpleanos'),
-                                child: FittedBox(
-                                  fit: BoxFit.scaleDown,
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(Icons.cake, size: buttonIconSize),
-                                      if (screenWidth > 380) ...[
-                                        SizedBox(width: 4),
-                                        Text(
-                                          'Cumpleaños',
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: buttonFontSize,
-                                          ),
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ],
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
+                          _buildSubTab(
+                            'peticiones',
+                            Icons.favorite,
+                            'Peticiones',
+                            availableWidth,
+                            pestanasPorFila,
+                            spacing,
                           ),
-                          SizedBox(width: buttonSpacing),
 
                           // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-                          // BOTÓN 3: CLASES
+                          // BOTÓN 3: EVENTOS
                           // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-                          Flexible(
-                            flex: 1,
-                            child: SizedBox(
-                              width: buttonWidth,
-                              child: ElevatedButton(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: _vistaMostrada == 'clases'
-                                      ? Colors.white
-                                      : Colors.white.withOpacity(0.3),
-                                  foregroundColor: _vistaMostrada == 'clases'
-                                      ? primaryTeal
-                                      : Colors.white,
-                                  elevation: _vistaMostrada == 'clases' ? 2 : 0,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(
-                                        isVerySmall ? 10 : 12),
-                                  ),
-                                  padding: EdgeInsets.symmetric(
-                                    horizontal: isVerySmall
-                                        ? 4
-                                        : isSmall
-                                            ? 6
-                                            : 8,
-                                    vertical: isVerySmall
-                                        ? 8
-                                        : isSmall
-                                            ? 10
-                                            : 12,
-                                  ),
-                                ),
-                                onPressed: () =>
-                                    setState(() => _vistaMostrada = 'clases'),
-                                child: FittedBox(
-                                  fit: BoxFit.scaleDown,
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(Icons.school, size: buttonIconSize),
-                                      if (screenWidth > 380) ...[
-                                        SizedBox(width: 4),
-                                        Text(
-                                          'Clases',
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: buttonFontSize,
-                                          ),
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ],
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
+                          _buildSubTab(
+                            'eventos',
+                            Icons.event_note,
+                            'Eventos',
+                            availableWidth,
+                            pestanasPorFila,
+                            spacing,
+                          ),
+
+                          // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                          // BOTÓN 4: CUMPLEAÑOS
+                          // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                          _buildSubTab(
+                            'cumpleanos',
+                            Icons.cake,
+                            'Cumpleaños',
+                            availableWidth,
+                            pestanasPorFila,
+                            spacing,
                           ),
                         ],
                       );
@@ -19254,7 +19316,7 @@ class _InscripcionesTabState extends State<InscripcionesTab> {
                 ),
 
                 // ───────────────────────────────────────────────────────────
-                // TÍTULO DINÁMICO Y BOTÓN CREAR EVENTO (SOLO EN EVENTOS)
+                // TÍTULO DINÁMICO Y BOTONES CONDICIONALES
                 // ───────────────────────────────────────────────────────────
                 LayoutBuilder(
                   builder: (context, constraints) {
@@ -19318,12 +19380,12 @@ class _InscripcionesTabState extends State<InscripcionesTab> {
                         ),
 
                         // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-                        // BOTÓN "CREAR EVENTO" - SOLO EN PESTAÑA EVENTOS
+                        // BOTONES CONDICIONALES SEGÚN LA PESTAÑA ACTIVA
                         // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+                        // BOTÓN "CREAR EVENTO" - Solo en pestaña EVENTOS
                         if (_vistaMostrada == 'eventos') ...[
                           SizedBox(width: isVerySmall ? 6 : 8),
-
-                          // Versión completa (pantallas grandes)
                           if (showFullButton)
                             ElevatedButton.icon(
                               style: ElevatedButton.styleFrom(
@@ -19347,8 +19409,6 @@ class _InscripcionesTabState extends State<InscripcionesTab> {
                               ),
                               onPressed: () => _mostrarDialogoCrearEvento(),
                             )
-
-                          // Versión compacta (pantallas medianas)
                           else if (showCompactButton)
                             ElevatedButton(
                               style: ElevatedButton.styleFrom(
@@ -19378,8 +19438,6 @@ class _InscripcionesTabState extends State<InscripcionesTab> {
                                 ],
                               ),
                             )
-
-                          // Versión solo icono (pantallas pequeñas)
                           else
                             Container(
                               decoration: BoxDecoration(
@@ -19411,6 +19469,70 @@ class _InscripcionesTabState extends State<InscripcionesTab> {
                               ),
                             ),
                         ],
+
+                        // BOTONES PARA PETICIONES - Solo en pestaña PETICIONES
+                        if (_vistaMostrada == 'peticiones') ...[
+                          SizedBox(width: isVerySmall ? 4 : 6),
+                          // Botón Copiar Enlace
+                          Container(
+                            decoration: BoxDecoration(
+                              color: secondaryOrange,
+                              borderRadius: BorderRadius.circular(10),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.2),
+                                  blurRadius: 4,
+                                  offset: Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(10),
+                                onTap: () => _copiarEnlacePeticiones(context),
+                                child: Padding(
+                                  padding: EdgeInsets.all(isVerySmall ? 7 : 9),
+                                  child: Icon(
+                                    Icons.link,
+                                    color: Colors.white,
+                                    size: buttonIconSize,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          SizedBox(width: isVerySmall ? 4 : 6),
+                          // Botón Descargar Excel
+                          Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(10),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.15),
+                                  blurRadius: 4,
+                                  offset: Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(10),
+                                onTap: _descargarPeticionesExcel,
+                                child: Padding(
+                                  padding: EdgeInsets.all(isVerySmall ? 7 : 9),
+                                  child: Icon(
+                                    Icons.download,
+                                    color: primaryTeal,
+                                    size: buttonIconSize,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ],
                     );
                   },
@@ -19427,11 +19549,613 @@ class _InscripcionesTabState extends State<InscripcionesTab> {
                 ? _buildCumpleanosView()
                 : _vistaMostrada == 'clases'
                     ? _buildClasesDiscipuladoView()
-                    : _buildEventosView(),
+                    : _vistaMostrada == 'peticiones'
+                        ? _buildPeticionesView()
+                        : _buildEventosView(),
           ),
         ],
       ),
     );
+  }
+
+  Widget _buildSubTab(
+    String vista,
+    IconData icon,
+    String label,
+    double availableWidth,
+    int pestanasPorFila,
+    double spacing,
+  ) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isVerySmall = screenWidth < 360;
+    final isSmall = screenWidth < 600;
+
+    // Calcular ancho del botón
+    double buttonWidth;
+    if (pestanasPorFila == 4) {
+      buttonWidth = (availableWidth - (spacing * 3)) / 4;
+    } else {
+      buttonWidth = (availableWidth - spacing) / 2;
+    }
+
+    final buttonFontSize = isVerySmall
+        ? 11.0
+        : isSmall
+            ? 12.0
+            : 13.0;
+    final buttonIconSize = isVerySmall
+        ? 16.0
+        : isSmall
+            ? 18.0
+            : 20.0;
+
+    return SizedBox(
+      width: buttonWidth,
+      child: ElevatedButton(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: _vistaMostrada == vista
+              ? Colors.white
+              : Colors.white.withOpacity(0.3),
+          foregroundColor: _vistaMostrada == vista ? primaryTeal : Colors.white,
+          elevation: _vistaMostrada == vista ? 2 : 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(isVerySmall ? 10 : 12),
+          ),
+          padding: EdgeInsets.symmetric(
+            horizontal: isVerySmall
+                ? 4
+                : isSmall
+                    ? 6
+                    : 8,
+            vertical: isVerySmall
+                ? 8
+                : isSmall
+                    ? 10
+                    : 12,
+          ),
+        ),
+        onPressed: () => setState(() => _vistaMostrada = vista),
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: buttonIconSize),
+              if (screenWidth > 380) ...[
+                SizedBox(width: 4),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: buttonFontSize,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// NUEVO MÉTODO: Vista de Peticiones (adaptado de la clase eliminada)
+// Ubicación: Agregar dentro de la clase _InscripcionesTabState
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Widget _buildPeticionesView() {
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('peticiones')
+          .where('tribuId', isEqualTo: widget.tribuId)
+          .orderBy('fecha', descending: true)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Center(
+            child: CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(primaryTeal),
+            ),
+          );
+        }
+
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.favorite_border, size: 80, color: Colors.grey[400]),
+                SizedBox(height: 16),
+                Text(
+                  'No hay peticiones aún',
+                  style: TextStyle(fontSize: 18, color: Colors.grey[600]),
+                ),
+              ],
+            ),
+          );
+        }
+
+        final peticiones = snapshot.data!.docs;
+        final noLeidas = peticiones
+            .where((d) => !((d.data() as Map)['leida'] ?? false))
+            .length;
+        final agrupadas = _agruparPeticionesPorFecha(peticiones);
+
+        return Column(
+          children: [
+            if (noLeidas > 0)
+              Container(
+                margin: EdgeInsets.all(12),
+                padding: EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [secondaryOrange, secondaryOrange.withOpacity(0.8)],
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.notifications_active,
+                        color: Colors.white, size: 20),
+                    SizedBox(width: 10),
+                    Text(
+                      '$noLeidas ${noLeidas == 1 ? 'pendiente' : 'pendientes'}',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            Expanded(
+              child: ListView(
+                padding: EdgeInsets.all(16),
+                children: agrupadas.entries.map((anioEntry) {
+                  return Card(
+                    margin: EdgeInsets.only(bottom: 12),
+                    child: ExpansionTile(
+                      leading: Icon(Icons.calendar_today, color: primaryTeal),
+                      title: Text(
+                        'Año ${anioEntry.key}',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: primaryTeal,
+                        ),
+                      ),
+                      subtitle: Text(
+                        '${anioEntry.value.values.expand((x) => x).length} peticiones',
+                      ),
+                      children: anioEntry.value.entries.map((mesEntry) {
+                        return ExpansionTile(
+                          leading: Icon(Icons.date_range,
+                              color: secondaryOrange, size: 20),
+                          title: Text(
+                            _nombreMes(mesEntry.key),
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: secondaryOrange,
+                            ),
+                          ),
+                          subtitle: Text('${mesEntry.value.length} peticiones'),
+                          children: mesEntry.value.map((doc) {
+                            final data = doc.data() as Map<String, dynamic>;
+                            final fecha =
+                                (data['fecha'] as Timestamp?)?.toDate();
+                            final leida = data['leida'] ?? false;
+
+                            return Card(
+                              margin: EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 6),
+                              color: leida
+                                  ? Colors.white
+                                  : secondaryOrange.withOpacity(0.05),
+                              elevation: leida ? 1 : 3,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                side: BorderSide(
+                                  color: leida
+                                      ? Colors.grey.shade200
+                                      : secondaryOrange.withOpacity(0.3),
+                                  width: leida ? 1 : 2,
+                                ),
+                              ),
+                              child: InkWell(
+                                onTap: () => _marcarComoLeida(doc.id, leida),
+                                child: Padding(
+                                  padding: EdgeInsets.all(12),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          if (!leida)
+                                            Container(
+                                              margin: EdgeInsets.only(right: 8),
+                                              padding: EdgeInsets.symmetric(
+                                                horizontal: 8,
+                                                vertical: 3,
+                                              ),
+                                              decoration: BoxDecoration(
+                                                color: secondaryOrange,
+                                                borderRadius:
+                                                    BorderRadius.circular(6),
+                                              ),
+                                              child: Text(
+                                                'NUEVA',
+                                                style: TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ),
+                                          Icon(Icons.person,
+                                              size: 16, color: primaryTeal),
+                                          SizedBox(width: 6),
+                                          Expanded(
+                                            child: Text(
+                                              data['nombrePersona'] ??
+                                                  'Anónimo',
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 14,
+                                              ),
+                                            ),
+                                          ),
+                                          if (fecha != null)
+                                            Text(
+                                              DateFormat('dd/MM HH:mm', 'es')
+                                                  .format(fecha),
+                                              style: TextStyle(
+                                                fontSize: 11,
+                                                color: Colors.grey[600],
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                      SizedBox(height: 8),
+                                      Text(
+                                        data['mensaje'] ?? '',
+                                        style: TextStyle(
+                                            fontSize: 13, height: 1.4),
+                                      ),
+                                      if (leida)
+                                        Padding(
+                                          padding: EdgeInsets.only(top: 8),
+                                          child: Row(
+                                            children: [
+                                              Icon(
+                                                Icons.check_circle,
+                                                size: 14,
+                                                color: Colors.green[600],
+                                              ),
+                                              SizedBox(width: 4),
+                                              Text(
+                                                'Leída',
+                                                style: TextStyle(
+                                                  fontSize: 11,
+                                                  color: Colors.green[600],
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        );
+                      }).toList(),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _marcarComoLeida(String peticionId, bool yaLeida) async {
+    if (yaLeida) return;
+    try {
+      await FirebaseFirestore.instance
+          .collection('peticiones')
+          .doc(peticionId)
+          .update({'leida': true});
+    } catch (e) {
+      print('Error marcando petición: $e');
+    }
+  }
+
+  Future<void> _copiarEnlacePeticiones(BuildContext context) async {
+    try {
+      final uri = Uri.base;
+      final baseUrl =
+          '${uri.scheme}://${uri.host}${(uri.port != 80 && uri.port != 443) ? ':${uri.port}' : ''}';
+      final enlace = '$baseUrl/#/peticiones/${widget.tribuId}';
+
+      await Clipboard.setData(ClipboardData(text: enlace));
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(2),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.check, color: Colors.white, size: 20),
+                ),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Enlace copiado al portapapeles',
+                    style: GoogleFonts.poppins(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: Color(0xFF1B998B),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            margin: EdgeInsets.all(16),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      print('Error copiando enlace: $e');
+    }
+  }
+
+  Future<void> _descargarPeticionesExcel() async {
+    try {
+      // Obtener nombre de la tribu
+      String tribuNombre = 'Tribu';
+      try {
+        final tribuDoc = await FirebaseFirestore.instance
+            .collection('tribus')
+            .doc(widget.tribuId)
+            .get();
+
+        if (tribuDoc.exists) {
+          tribuNombre = tribuDoc.data()?['nombre'] ?? 'Tribu';
+        }
+      } catch (e) {
+        print('Error obteniendo nombre de tribu: $e');
+      }
+
+      final snapshot = await FirebaseFirestore.instance
+          .collection('peticiones')
+          .where('tribuId', isEqualTo: widget.tribuId)
+          .orderBy('fecha', descending: true)
+          .get();
+
+      if (snapshot.docs.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  Icon(Icons.info_outline, color: Colors.white, size: 20),
+                  SizedBox(width: 12),
+                  Expanded(child: Text('No hay peticiones para exportar')),
+                ],
+              ),
+              backgroundColor: Colors.orange[700],
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+              margin: EdgeInsets.all(12),
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+        return;
+      }
+
+      var excelFile = excel_pkg.Excel.createExcel();
+      var sheet = excelFile['Sheet1'];
+
+      // ✅ ESTILOS MEJORADOS
+      final headerStyle = excel_pkg.CellStyle(
+        bold: true,
+        fontSize: 12,
+        fontColorHex: '#FFFFFF',
+        backgroundColorHex: '#1B998B',
+        horizontalAlign: excel_pkg.HorizontalAlign.Center,
+        verticalAlign: excel_pkg.VerticalAlign.Center,
+      );
+
+      final evenRowStyle = excel_pkg.CellStyle(
+        fontSize: 11,
+        fontColorHex: '#000000',
+        backgroundColorHex: '#FFFFFF',
+        verticalAlign: excel_pkg.VerticalAlign.Top,
+        textWrapping: excel_pkg.TextWrapping.WrapText,
+      );
+
+      final oddRowStyle = excel_pkg.CellStyle(
+        fontSize: 11,
+        fontColorHex: '#000000',
+        backgroundColorHex: '#F0F9F8',
+        verticalAlign: excel_pkg.VerticalAlign.Top,
+        textWrapping: excel_pkg.TextWrapping.WrapText,
+      );
+
+      // ✅ DEFINIR ANCHOS DE COLUMNAS
+      final headers = ['FECHA', 'NOMBRE', 'PETICIÓN', 'ESTADO'];
+
+      // Agregar encabezados
+      for (int col = 0; col < headers.length; col++) {
+        var cell = sheet.cell(
+          excel_pkg.CellIndex.indexByColumnRow(columnIndex: col, rowIndex: 0),
+        );
+        cell.value = headers[col];
+        cell.cellStyle = headerStyle;
+      }
+
+      // ✅ RASTREAR ANCHOS MÁXIMOS PARA CADA COLUMNA
+      List<double> maxWidths = [
+        20.0,
+        30.0,
+        80.0,
+        15.0
+      ]; // Anchos iniciales base
+
+      int rowIndex = 1;
+      for (var doc in snapshot.docs) {
+        final data = doc.data();
+        final fecha = (data['fecha'] as Timestamp?)?.toDate();
+        final leida = data['leida'] ?? false;
+
+        List<String> rowData = [
+          fecha != null
+              ? DateFormat('dd/MM/yyyy HH:mm', 'es').format(fecha)
+              : 'Sin fecha',
+          data['nombrePersona'] ?? 'Anónimo',
+          data['mensaje'] ?? '',
+          leida ? 'Leída' : 'Pendiente',
+        ];
+
+        // ✅ ACTUALIZAR ANCHOS MÁXIMOS
+        for (int col = 0; col < rowData.length; col++) {
+          final contentLength = rowData[col].length.toDouble();
+          if (contentLength > maxWidths[col]) {
+            maxWidths[col] = contentLength;
+          }
+        }
+
+        final rowStyle = (rowIndex % 2 == 0) ? evenRowStyle : oddRowStyle;
+
+        for (int col = 0; col < rowData.length; col++) {
+          var cell = sheet.cell(
+            excel_pkg.CellIndex.indexByColumnRow(
+                columnIndex: col, rowIndex: rowIndex),
+          );
+          cell.value = rowData[col];
+
+          // Aplicar estilo según columna
+          if (col == 0 || col == 3) {
+            // Fecha y Estado: centrados
+            cell.cellStyle = rowStyle.copyWith(
+              horizontalAlignVal: excel_pkg.HorizontalAlign.Center,
+            );
+          } else {
+            // Nombre y Petición: alineados a la izquierda
+            cell.cellStyle = rowStyle;
+          }
+        }
+        rowIndex++;
+      }
+
+      // ✅ APLICAR ANCHOS DE COLUMNA AJUSTADOS AUTOMÁTICAMENTE
+      // MÉTODO CORRECTO: setColWidth() (no setColumnWidth)
+      sheet.setColWidth(0, maxWidths[0] * 1.2); // FECHA (con 20% extra)
+      sheet.setColWidth(1, maxWidths[1] * 1.2); // NOMBRE (con 20% extra)
+      sheet.setColWidth(2, maxWidths[2] * 1.1); // PETICIÓN (con 10% extra)
+      sheet.setColWidth(3, maxWidths[3] * 1.2); // ESTADO (con 20% extra)
+
+      var fileBytes = excelFile.encode();
+      if (fileBytes == null) throw Exception('Error generando Excel');
+
+      final nombreArchivo =
+          'Peticiones_${tribuNombre.replaceAll(' ', '_')}_${DateFormat('dd-MM-yyyy').format(DateTime.now())}.xlsx';
+      final blob = html.Blob([fileBytes]);
+      final url = html.Url.createObjectUrlFromBlob(blob);
+
+      html.AnchorElement(href: url)
+        ..setAttribute('download', nombreArchivo)
+        ..click();
+
+      html.Url.revokeObjectUrl(url);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.white, size: 20),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    '✅ Excel descargado correctamente',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.green[700],
+            behavior: SnackBarBehavior.floating,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            margin: EdgeInsets.all(12),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e, stackTrace) {
+      print('❌ Error descargando Excel: $e');
+      print('Stack trace: $stackTrace');
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.error_outline, color: Colors.white, size: 20),
+                SizedBox(width: 12),
+                Expanded(child: Text('Error: No se pudo generar el Excel')),
+              ],
+            ),
+            backgroundColor: Colors.red[700],
+            behavior: SnackBarBehavior.floating,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            margin: EdgeInsets.all(12),
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
+
+  Map<int, Map<int, List<QueryDocumentSnapshot>>> _agruparPeticionesPorFecha(
+    List<QueryDocumentSnapshot> peticiones,
+  ) {
+    Map<int, Map<int, List<QueryDocumentSnapshot>>> agrupadas = {};
+    for (var peticion in peticiones) {
+      try {
+        final data = peticion.data() as Map<String, dynamic>;
+        final fecha = (data['fecha'] as Timestamp?)?.toDate();
+        if (fecha == null) continue;
+        final anio = fecha.year;
+        final mes = fecha.month;
+        if (agrupadas[anio] == null) agrupadas[anio] = {};
+        if (agrupadas[anio]![mes] == null) agrupadas[anio]![mes] = [];
+        agrupadas[anio]![mes]!.add(peticion);
+      } catch (e) {
+        print('Error: $e');
+      }
+    }
+    return agrupadas;
   }
 
   // AÑADIR AL FINAL DE LA CLASE _InscripcionesTabState
@@ -24450,596 +25174,3 @@ class _ReorderableWrapState extends State<ReorderableWrap>
   }
 }
 //--------------------------------------------------------------------------------------------------------
-
-// ═══════════════════════════════════════════════════════════════
-// PESTAÑA DE PETICIONES
-// ═══════════════════════════════════════════════════════════════
-
-class PeticionesTab extends StatefulWidget {
-  final String tribuId;
-  final String tribuNombre;
-  final VoidCallback onCopiarEnlace;
-
-  const PeticionesTab({
-    Key? key,
-    required this.tribuId,
-    required this.tribuNombre,
-    required this.onCopiarEnlace,
-  }) : super(key: key);
-
-  @override
-  State<PeticionesTab> createState() => _PeticionesTabState();
-}
-
-class _PeticionesTabState extends State<PeticionesTab> {
-  final Color primaryTeal = Color(0xFF1B998B);
-  final Color secondaryOrange = Color(0xFFFF7E00);
-  final Color lightTeal = Color(0xFFE0F7FA);
-
-  // ✅ NUEVO: Marcar petición como leída
-  Future<void> _marcarComoLeida(String peticionId, bool yaLeida) async {
-    if (yaLeida) return;
-
-    try {
-      await FirebaseFirestore.instance
-          .collection('peticiones')
-          .doc(peticionId)
-          .update({'leida': true});
-    } catch (e) {
-      print('Error marcando petición: $e');
-    }
-  }
-
-  Future<void> _descargarPeticionesExcel() async {
-    try {
-      final snapshot = await FirebaseFirestore.instance
-          .collection('peticiones')
-          .where('tribuId', isEqualTo: widget.tribuId)
-          .orderBy('fecha', descending: true)
-          .get();
-
-      if (snapshot.docs.isEmpty) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Row(
-                children: [
-                  Icon(Icons.info_outline, color: Colors.white, size: 20),
-                  SizedBox(width: 12),
-                  Expanded(child: Text('No hay peticiones para exportar')),
-                ],
-              ),
-              backgroundColor: Colors.orange[700],
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10)),
-              margin: EdgeInsets.all(12),
-              duration: Duration(seconds: 2),
-            ),
-          );
-        }
-        return;
-      }
-
-      // ✅ Crear Excel
-      var excelFile = excel_pkg.Excel.createExcel();
-      var sheet = excelFile['Sheet1'];
-
-      // ✅ DISEÑO PROFESIONAL - Estilos predefinidos
-      final headerStyle = excel_pkg.CellStyle(
-        bold: true,
-        fontSize: 12,
-        fontColorHex: '#FFFFFF',
-        backgroundColorHex: '#1B998B', // Verde corporativo
-        horizontalAlign: excel_pkg.HorizontalAlign.Center,
-        verticalAlign: excel_pkg.VerticalAlign.Center,
-      );
-
-      final evenRowStyle = excel_pkg.CellStyle(
-        fontSize: 11,
-        fontColorHex: '#000000',
-        backgroundColorHex: '#FFFFFF',
-        verticalAlign: excel_pkg.VerticalAlign.Top,
-        textWrapping:
-            excel_pkg.TextWrapping.WrapText, // ✅ Ajuste automático de texto
-      );
-
-      final oddRowStyle = excel_pkg.CellStyle(
-        fontSize: 11,
-        fontColorHex: '#000000',
-        backgroundColorHex: '#F0F9F8', // Verde muy claro
-        verticalAlign: excel_pkg.VerticalAlign.Top,
-        textWrapping:
-            excel_pkg.TextWrapping.WrapText, // ✅ Ajuste automático de texto
-      );
-
-      // ✅ Agregar encabezados con estilo
-      final headers = ['FECHA', 'NOMBRE', 'PETICIÓN', 'ESTADO'];
-      for (int col = 0; col < headers.length; col++) {
-        var cell = sheet.cell(excel_pkg.CellIndex.indexByColumnRow(
-            columnIndex: col, rowIndex: 0));
-        cell.value = headers[col];
-        cell.cellStyle = headerStyle;
-      }
-
-      // ✅ Agregar datos con estilos alternados
-      int rowIndex = 1;
-      for (var doc in snapshot.docs) {
-        final data = doc.data();
-        final fecha = (data['fecha'] as Timestamp?)?.toDate();
-        final leida = data['leida'] ?? false;
-
-        final rowStyle = (rowIndex % 2 == 0) ? evenRowStyle : oddRowStyle;
-
-        // Preparar datos de la fila
-        List<String> rowData = [
-          fecha != null
-              ? DateFormat('dd/MM/yyyy HH:mm', 'es').format(fecha)
-              : 'Sin fecha',
-          data['nombrePersona'] ?? 'Anónimo',
-          data['mensaje'] ?? '',
-          leida ? 'Leída' : 'Pendiente',
-        ];
-
-        // ✅ Agregar celdas con estilos
-        for (int col = 0; col < rowData.length; col++) {
-          var cell = sheet.cell(excel_pkg.CellIndex.indexByColumnRow(
-              columnIndex: col, rowIndex: rowIndex));
-          cell.value = rowData[col];
-
-          // ✅ Aplicar estilo según columna
-          if (col == 0 || col == 3) {
-            // Fecha y Estado: centrados
-            cell.cellStyle = rowStyle.copyWith(
-              horizontalAlignVal: excel_pkg.HorizontalAlign.Center,
-            );
-          } else {
-            // Nombre y Petición: alineados a la izquierda
-            cell.cellStyle = rowStyle;
-          }
-        }
-
-        rowIndex++;
-      }
-
-      // ✅ Generar archivo
-      var fileBytes = excelFile.encode();
-
-      if (fileBytes == null) {
-        throw Exception('No se pudieron generar los bytes del archivo');
-      }
-
-      // ✅ Nombre personalizado
-      final nombreArchivo =
-          'Peticiones_de_${widget.tribuNombre.replaceAll(' ', '_')}_${DateFormat('dd-MM-yyyy').format(DateTime.now())}.xlsx';
-
-      // ✅ Descargar
-      final blob = html.Blob([fileBytes]);
-      final url = html.Url.createObjectUrlFromBlob(blob);
-
-      html.AnchorElement(href: url)
-        ..setAttribute('download', nombreArchivo)
-        ..click();
-
-      html.Url.revokeObjectUrl(url);
-
-      // ✅ Notificación de éxito
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                Icon(Icons.check_circle, color: Colors.white, size: 20),
-                SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    '✅ Excel descargado correctamente',
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-                  ),
-                ),
-              ],
-            ),
-            backgroundColor: Colors.green[700],
-            behavior: SnackBarBehavior.floating,
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            margin: EdgeInsets.all(12),
-            duration: Duration(seconds: 2),
-          ),
-        );
-      }
-    } catch (e, stackTrace) {
-      print('❌ Error descargando Excel: $e');
-      print('Stack trace: $stackTrace');
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                Icon(Icons.error_outline, color: Colors.white, size: 20),
-                SizedBox(width: 12),
-                Expanded(child: Text('Error: No se pudo generar el Excel')),
-              ],
-            ),
-            backgroundColor: Colors.red[700],
-            behavior: SnackBarBehavior.floating,
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            margin: EdgeInsets.all(12),
-            duration: Duration(seconds: 3),
-          ),
-        );
-      }
-    }
-  }
-
-  Map<int, Map<int, List<QueryDocumentSnapshot>>> _agruparPeticionesPorFecha(
-      List<QueryDocumentSnapshot> peticiones) {
-    Map<int, Map<int, List<QueryDocumentSnapshot>>> agrupadas = {};
-    for (var peticion in peticiones) {
-      try {
-        final data = peticion.data() as Map<String, dynamic>;
-        final fecha = (data['fecha'] as Timestamp?)?.toDate();
-        if (fecha == null) continue;
-        final anio = fecha.year;
-        final mes = fecha.month;
-        if (agrupadas[anio] == null) agrupadas[anio] = {};
-        if (agrupadas[anio]![mes] == null) agrupadas[anio]![mes] = [];
-        agrupadas[anio]![mes]!.add(peticion);
-      } catch (e) {
-        print('Error: $e');
-      }
-    }
-    return agrupadas;
-  }
-
-  String _nombreMes(int mes) {
-    const meses = [
-      '',
-      'Enero',
-      'Febrero',
-      'Marzo',
-      'Abril',
-      'Mayo',
-      'Junio',
-      'Julio',
-      'Agosto',
-      'Septiembre',
-      'Octubre',
-      'Noviembre',
-      'Diciembre'
-    ];
-    return meses[mes];
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isSmallScreen = screenWidth < 600;
-
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [lightTeal, Colors.white],
-          stops: [0.0, 0.5],
-        ),
-      ),
-      child: Column(
-        children: [
-          Container(
-            padding: EdgeInsets.all(isSmallScreen ? 14 : 18),
-            decoration: BoxDecoration(
-              color: primaryTeal,
-              borderRadius: BorderRadius.only(
-                bottomLeft: Radius.circular(20),
-                bottomRight: Radius.circular(20),
-              ),
-            ),
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    Icon(Icons.favorite,
-                        color: Colors.white, size: isSmallScreen ? 24 : 28),
-                    SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Peticiones de Oración',
-                              style: TextStyle(
-                                  fontSize: isSmallScreen ? 17 : 19,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white)),
-                          Text('Comparte el enlace',
-                              style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.white.withOpacity(0.9))),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 16),
-                isSmallScreen
-                    ? Column(
-                        children: [
-                          SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton.icon(
-                              onPressed: widget.onCopiarEnlace,
-                              icon: Icon(Icons.link, size: 18),
-                              label: Text('Copiar Enlace'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: secondaryOrange,
-                                foregroundColor: Colors.white,
-                                padding: EdgeInsets.symmetric(vertical: 12),
-                              ),
-                            ),
-                          ),
-                          SizedBox(height: 8),
-                          SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton.icon(
-                              onPressed: _descargarPeticionesExcel,
-                              icon: Icon(Icons.download, size: 18),
-                              label: Text('Descargar Excel'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.white,
-                                foregroundColor: primaryTeal,
-                                padding: EdgeInsets.symmetric(vertical: 12),
-                              ),
-                            ),
-                          ),
-                        ],
-                      )
-                    : Row(
-                        children: [
-                          Expanded(
-                            child: ElevatedButton.icon(
-                              onPressed: widget.onCopiarEnlace,
-                              icon: Icon(Icons.link),
-                              label: Text('Copiar Enlace'),
-                              style: ElevatedButton.styleFrom(
-                                  backgroundColor: secondaryOrange,
-                                  foregroundColor: Colors.white,
-                                  padding: EdgeInsets.symmetric(vertical: 14)),
-                            ),
-                          ),
-                          SizedBox(width: 12),
-                          Expanded(
-                            child: ElevatedButton.icon(
-                              onPressed: _descargarPeticionesExcel,
-                              icon: Icon(Icons.download),
-                              label: Text('Descargar Excel'),
-                              style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.white,
-                                  foregroundColor: primaryTeal,
-                                  padding: EdgeInsets.symmetric(vertical: 14)),
-                            ),
-                          ),
-                        ],
-                      ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance
-                  .collection('peticiones')
-                  .where('tribuId', isEqualTo: widget.tribuId)
-                  .orderBy('fecha', descending: true)
-                  .snapshots(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return Center(
-                      child: CircularProgressIndicator(
-                          valueColor:
-                              AlwaysStoppedAnimation<Color>(primaryTeal)));
-                }
-                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.favorite_border,
-                            size: 80, color: Colors.grey[400]),
-                        SizedBox(height: 16),
-                        Text('No hay peticiones aún',
-                            style: TextStyle(
-                                fontSize: 18, color: Colors.grey[600])),
-                      ],
-                    ),
-                  );
-                }
-
-                final peticiones = snapshot.data!.docs;
-                final noLeidas = peticiones
-                    .where((d) => !((d.data() as Map)['leida'] ?? false))
-                    .length;
-                final agrupadas = _agruparPeticionesPorFecha(peticiones);
-
-                return Column(
-                  children: [
-                    if (noLeidas > 0)
-                      Container(
-                        margin: EdgeInsets.all(12),
-                        padding: EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(colors: [
-                            secondaryOrange,
-                            secondaryOrange.withOpacity(0.8)
-                          ]),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.notifications_active,
-                                color: Colors.white, size: 20),
-                            SizedBox(width: 10),
-                            Text(
-                                '$noLeidas ${noLeidas == 1 ? 'pendiente' : 'pendientes'}',
-                                style: TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold)),
-                          ],
-                        ),
-                      ),
-                    Expanded(
-                      child: ListView(
-                        padding: EdgeInsets.all(16),
-                        children: agrupadas.entries.map((anioEntry) {
-                          return Card(
-                            margin: EdgeInsets.only(bottom: 12),
-                            child: ExpansionTile(
-                              leading: Icon(Icons.calendar_today,
-                                  color: primaryTeal),
-                              title: Text('Año ${anioEntry.key}',
-                                  style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      color: primaryTeal)),
-                              subtitle: Text(
-                                  '${anioEntry.value.values.expand((x) => x).length} peticiones'),
-                              children: anioEntry.value.entries.map((mesEntry) {
-                                return ExpansionTile(
-                                  leading: Icon(Icons.date_range,
-                                      color: secondaryOrange, size: 20),
-                                  title: Text(_nombreMes(mesEntry.key),
-                                      style: TextStyle(
-                                          fontWeight: FontWeight.w600,
-                                          color: secondaryOrange)),
-                                  subtitle: Text(
-                                      '${mesEntry.value.length} peticiones'),
-                                  children: mesEntry.value.map((doc) {
-                                    final data =
-                                        doc.data() as Map<String, dynamic>;
-                                    final fecha =
-                                        (data['fecha'] as Timestamp?)?.toDate();
-                                    final leida = data['leida'] ?? false;
-
-                                    return Card(
-                                      margin: EdgeInsets.symmetric(
-                                          horizontal: 12, vertical: 6),
-                                      color: leida
-                                          ? Colors.white
-                                          : secondaryOrange.withOpacity(0.05),
-                                      elevation: leida ? 1 : 3,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(10),
-                                        side: BorderSide(
-                                            color: leida
-                                                ? Colors.grey.shade200
-                                                : secondaryOrange
-                                                    .withOpacity(0.3),
-                                            width: leida ? 1 : 2),
-                                      ),
-                                      child: InkWell(
-                                        onTap: () =>
-                                            _marcarComoLeida(doc.id, leida),
-                                        child: Padding(
-                                          padding: EdgeInsets.all(12),
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Row(
-                                                children: [
-                                                  if (!leida)
-                                                    Container(
-                                                      margin: EdgeInsets.only(
-                                                          right: 8),
-                                                      padding:
-                                                          EdgeInsets.symmetric(
-                                                              horizontal: 8,
-                                                              vertical: 3),
-                                                      decoration: BoxDecoration(
-                                                          color:
-                                                              secondaryOrange,
-                                                          borderRadius:
-                                                              BorderRadius
-                                                                  .circular(6)),
-                                                      child: Text('NUEVA',
-                                                          style: TextStyle(
-                                                              color:
-                                                                  Colors.white,
-                                                              fontSize: 10,
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .bold)),
-                                                    ),
-                                                  Icon(Icons.person,
-                                                      size: 16,
-                                                      color: primaryTeal),
-                                                  SizedBox(width: 6),
-                                                  Expanded(
-                                                      child: Text(
-                                                          data['nombrePersona'] ??
-                                                              'Anónimo',
-                                                          style: TextStyle(
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .bold,
-                                                              fontSize: 14))),
-                                                  if (fecha != null)
-                                                    Text(
-                                                        DateFormat(
-                                                                'dd/MM HH:mm',
-                                                                'es')
-                                                            .format(fecha),
-                                                        style: TextStyle(
-                                                            fontSize: 11,
-                                                            color: Colors
-                                                                .grey[600])),
-                                                ],
-                                              ),
-                                              SizedBox(height: 8),
-                                              Text(data['mensaje'] ?? '',
-                                                  style: TextStyle(
-                                                      fontSize: 13,
-                                                      height: 1.4)),
-                                              if (leida)
-                                                Padding(
-                                                  padding:
-                                                      EdgeInsets.only(top: 8),
-                                                  child: Row(
-                                                    children: [
-                                                      Icon(Icons.check_circle,
-                                                          size: 14,
-                                                          color: Colors
-                                                              .green[600]),
-                                                      SizedBox(width: 4),
-                                                      Text('Leída',
-                                                          style: TextStyle(
-                                                              fontSize: 11,
-                                                              color: Colors
-                                                                  .green[600])),
-                                                    ],
-                                                  ),
-                                                ),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
-                                    );
-                                  }).toList(),
-                                );
-                              }).toList(),
-                            ),
-                          );
-                        }).toList(),
-                      ),
-                    ),
-                  ],
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
