@@ -2231,8 +2231,6 @@ class _TribusScreenState extends State<TribusScreen>
         return;
       }
 
-      print('🔍 Cargando estado de bloqueo para userId: $userId');
-
       final doc = await FirebaseFirestore.instance
           .collection('bloqueos_usuarios')
           .doc(userId)
@@ -4281,9 +4279,6 @@ class _TribusScreenState extends State<TribusScreen>
       ),
     );
   }
-
-
-
 
   Size _calcularAlturaTabBar(double screenWidth) {
     final isVerySmallScreen = screenWidth < 360;
@@ -20170,14 +20165,8 @@ class _InscripcionesTabState extends State<InscripcionesTab> {
           .snapshots(),
       builder: (context, snapshot) {
         // Debug info
-        print('StreamBuilder state: ${snapshot.connectionState}');
-        print('Has data: ${snapshot.hasData}');
-        if (snapshot.hasData) {
-          print('Documents count: ${snapshot.data!.docs.length}');
-        }
-        if (snapshot.hasError) {
-          print('StreamBuilder error: ${snapshot.error}');
-        }
+        if (snapshot.hasData) {}
+        if (snapshot.hasError) {}
 
         if (snapshot.connectionState == ConnectionState.waiting) {
           return Center(
@@ -20322,12 +20311,10 @@ class _InscripcionesTabState extends State<InscripcionesTab> {
         }
 
         final eventos = snapshot.data!.docs;
-        print('Eventos encontrados: ${eventos.length}');
 
         // Debug: imprimir información de cada evento
         for (var evento in eventos) {
           final data = evento.data() as Map<String, dynamic>;
-          print('Evento: ${data['nombre']}, TribuId: ${data['tribuId']}');
         }
 
         final eventosAgrupados = _agruparEventosPorFecha(eventos);
@@ -21506,8 +21493,6 @@ class _InscripcionesTabState extends State<InscripcionesTab> {
         final anio = fechaInicio.year;
         final mes = fechaInicio.month;
 
-        print('Evento: ${data['nombre']}, Año: $anio, Mes: $mes');
-
         // Inicializar estructuras si no existen
         if (agrupados[anio] == null) {
           agrupados[anio] = {};
@@ -21539,8 +21524,6 @@ class _InscripcionesTabState extends State<InscripcionesTab> {
         });
       });
     });
-
-    print('Eventos agrupados por año: ${agrupados.keys.toList()}');
 
     return agrupados;
   }
@@ -23616,13 +23599,10 @@ class _DialogoCrearEventoState extends State<DialogoCrearEvento> {
 
   /// Función principal para crear un nuevo evento en Firebase
   /// Incluye validaciones, formato automático del nombre y eliminación automática
-  void _crearEvento() async {
-    // ===== VALIDACIONES INICIALES =====
 
-    // Validar que el formulario esté correctamente llenado
+  void _crearEvento() async {
     if (!_formKey.currentState!.validate()) return;
 
-    // Validar que ambas fechas estén seleccionadas
     if (fechaInicio == null || fechaFin == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -23633,12 +23613,10 @@ class _DialogoCrearEventoState extends State<DialogoCrearEvento> {
       return;
     }
 
-    // ===== MOSTRAR INDICADOR DE CARGA =====
-
-    // Mostrar diálogo de loading mientras se procesa
+    // Mostrar loading
     showDialog(
       context: context,
-      barrierDismissible: false, // No se puede cerrar tocando fuera
+      barrierDismissible: false,
       builder: (context) => Center(
         child: CircularProgressIndicator(
           valueColor: AlwaysStoppedAnimation<Color>(widget.primaryColor),
@@ -23647,80 +23625,57 @@ class _DialogoCrearEventoState extends State<DialogoCrearEvento> {
     );
 
     try {
-      // ===== CONSTRUCCIÓN DEL NOMBRE AUTOMÁTICO =====
-
-      // Determinar el nombre base según el tipo seleccionado
       final nombreBase = tipoSeleccionado == 'Personalizado'
-          ? _nombreController.text.trim() // Usar texto personalizado
-          : tipoSeleccionado; // Usar tipo predefinido (Encuentro, Raíces, etc.)
+          ? _nombreController.text.trim()
+          : tipoSeleccionado;
 
-      // Construir nombre completo: "TipoEvento - NombreTribu"
       final nombre =
           '$nombreBase - ${await _obtenerNombreTribu(widget.tribuId)}';
 
-      // ===== CONFIGURACIÓN DE FECHAS =====
+      final fechaInicioConHora = DateTime(
+        fechaInicio!.year,
+        fechaInicio!.month,
+        fechaInicio!.day,
+        0,
+        0,
+        0,
+      );
 
-      // Crear fecha de inicio con hora 00:00:00 para que empiece al inicio del día
-      final fechaInicioConHora = DateTime(fechaInicio!.year, fechaInicio!.month,
-          fechaInicio!.day, 0, 0, 0 // Hora: 00:00:00
-          );
+      final fechaFinConHora = DateTime(
+        fechaFin!.year,
+        fechaFin!.month,
+        fechaFin!.day,
+        23,
+        59,
+        59,
+      );
 
-      // Crear fecha de fin con hora 23:59:59 para que termine al final del día
-      final fechaFinConHora = DateTime(fechaFin!.year, fechaFin!.month,
-          fechaFin!.day, 23, 59, 59 // Hora: 23:59:59
-          );
-
-      // ===== FECHA DE ELIMINACIÓN AUTOMÁTICA =====
-
-      // Calcular cuándo se eliminará automáticamente (1 año después del fin)
       final fechaEliminacionAutomatica = DateTime(
-          fechaFinConHora.year + 1, // Agregar 1 año
-          fechaFinConHora.month,
-          fechaFinConHora.day,
-          23,
-          59,
-          59 // Al final del día de eliminación
-          );
+        fechaFinConHora.year + 1,
+        fechaFinConHora.month,
+        fechaFinConHora.day,
+        23,
+        59,
+        59,
+      );
 
-      // ===== GUARDAR EN FIREBASE =====
-
-      // Crear el documento del evento en la colección 'eventos'
       await FirebaseFirestore.instance.collection('eventos').add({
-        // Información básica del evento
-        'nombre': nombre, // Nombre con formato: "Tipo - Tribu"
-        'tipo': tipoSeleccionado, // Tipo original seleccionado
-
-        // Fechas del evento (convertidas a Timestamp de Firebase)
+        'nombre': nombre,
+        'tipo': tipoSeleccionado,
         'fechaInicio': Timestamp.fromDate(fechaInicioConHora),
         'fechaFin': Timestamp.fromDate(fechaFinConHora),
-
-        // NUEVO: Fecha de eliminación automática
         'fechaEliminacionAutomatica':
             Timestamp.fromDate(fechaEliminacionAutomatica),
-
-        // Relación con la tribu
         'tribuId': widget.tribuId,
-
-        // Lista vacía para inscripciones (se llenará después)
         'inscripciones': <Map<String, dynamic>>[],
-
-        // Metadatos del evento
-        'fechaCreacion':
-            FieldValue.serverTimestamp(), // Fecha actual del servidor
-        'estado': 'activo', // Estado inicial del evento
-
-        // Información adicional para el sistema de eliminación
-        'eliminacionAutomatica':
-            true, // Indica que se eliminará automáticamente
-        'añosParaEliminar': 1, // Configuración: eliminar después de 1 año
+        'fechaCreacion': FieldValue.serverTimestamp(),
+        'estado': 'activo',
+        'eliminacionAutomatica': true,
+        'añosParaEliminar': 1,
       });
 
-      // ===== CERRAR LOADING Y DIÁLOGO =====
-
       Navigator.of(context, rootNavigator: true).pop(); // Cerrar loading
-      Navigator.pop(context); // Cerrar diálogo de crear evento
-
-      // ===== MOSTRAR CONFIRMACIÓN DE ÉXITO =====
+      Navigator.pop(context); // Cerrar diálogo
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -23728,43 +23683,25 @@ class _DialogoCrearEventoState extends State<DialogoCrearEvento> {
             children: [
               Icon(Icons.check_circle, color: Colors.white),
               SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Evento "$nombre" creado correctamente'),
-                    Text(
-                      'Se eliminará automáticamente el ${DateFormat('dd/MM/yyyy').format(fechaEliminacionAutomatica)}',
-                      style: TextStyle(fontSize: 12, color: Colors.white70),
-                    ),
-                  ],
-                ),
-              ),
+              Expanded(child: Text('Evento "$nombre" creado correctamente')),
             ],
           ),
           backgroundColor: Colors.green,
           behavior: SnackBarBehavior.floating,
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          duration: Duration(seconds: 4), // Mostrar por 4 segundos
+          duration: Duration(seconds: 2),
         ),
       );
     } catch (e) {
-      // ===== MANEJO DE ERRORES =====
+      Navigator.of(context, rootNavigator: true).pop();
 
-      Navigator.of(context, rootNavigator: true).pop(); // Cerrar loading
-
-      // Mostrar mensaje de error al usuario
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error al crear el evento: $e'),
+          content: Text('Error al crear el evento'),
           backgroundColor: Colors.red,
         ),
       );
-
-      // Log detallado para debugging (solo visible en consola de desarrollo)
-      print('Error detallado al crear evento: $e');
     }
   }
 
@@ -24317,8 +24254,32 @@ class _DetalleEventoModalState extends State<DetalleEventoModal> {
     final ahora = DateTime.now();
     final cumplido = ahora.isAfter(fechaFin);
 
+    // ✅ NUEVO: Ordenar inscripciones alfabéticamente por nombre
+    final inscripcionesOrdenadas =
+        List<Map<String, dynamic>>.from(inscripciones)
+          ..sort((a, b) {
+            final nombreA = (a['nombre'] ?? '').toString().toLowerCase();
+            final nombreB = (b['nombre'] ?? '').toString().toLowerCase();
+            return nombreA.compareTo(nombreB);
+          });
+
+    // ✅ Calcular totales
+    final totalAbonos = inscripcionesOrdenadas.fold<int>(
+      0,
+      (sum, i) => sum + ((i['totalAbonado'] ?? i['abono'] ?? 0) as int),
+    );
+    final totalConfirmados =
+        inscripcionesOrdenadas.where((i) => i['asistio'] == true).length;
+
+    // ✅ Responsive breakpoints
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+    final isVerySmallScreen = screenWidth < 360;
+    final isSmallScreen = screenWidth < 600;
+    final isMediumScreen = screenWidth >= 600 && screenWidth < 900;
+
     return DraggableScrollableSheet(
-      initialChildSize: 0.9,
+      initialChildSize: 0.92,
       minChildSize: 0.5,
       maxChildSize: 0.95,
       builder: (context, scrollController) {
@@ -24326,60 +24287,103 @@ class _DetalleEventoModalState extends State<DetalleEventoModal> {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(20),
-              topRight: Radius.circular(20),
+              topLeft: Radius.circular(28),
+              topRight: Radius.circular(28),
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black26,
-                blurRadius: 10,
-                offset: Offset(0, -5),
+                color: Colors.black45,
+                blurRadius: 25,
+                spreadRadius: 3,
+                offset: Offset(0, -10),
               ),
             ],
           ),
           child: Column(
             children: [
-              // Handle para arrastrar
+              // ═══════════════════════════════════════════════════════════
+              // HANDLE PARA ARRASTRAR
+              // ═══════════════════════════════════════════════════════════
               Container(
-                margin: EdgeInsets.only(top: 8),
-                width: 40,
-                height: 4,
+                margin: EdgeInsets.only(top: 12),
+                width: 60,
+                height: 5,
                 decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(2),
+                  color: Colors.grey[350],
+                  borderRadius: BorderRadius.circular(3),
                 ),
               ),
 
-              // Header del evento
+              // ═══════════════════════════════════════════════════════════
+              // HEADER MEJORADO CON DISEÑO PREMIUM
+              // ═══════════════════════════════════════════════════════════
               Container(
-                padding: EdgeInsets.all(20),
+                padding: EdgeInsets.fromLTRB(
+                  isVerySmallScreen ? 14 : (isSmallScreen ? 16 : 18),
+                  isVerySmallScreen ? 12 : (isSmallScreen ? 14 : 16),
+                  isVerySmallScreen ? 14 : (isSmallScreen ? 16 : 18),
+                  isVerySmallScreen ? 12 : (isSmallScreen ? 14 : 16),
+                ),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
                       widget.primaryColor,
-                      widget.primaryColor.withOpacity(0.8)
+                      widget.primaryColor.withOpacity(0.88),
                     ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
                   borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(20),
-                    topRight: Radius.circular(20),
+                    topLeft: Radius.circular(28),
+                    topRight: Radius.circular(28),
                   ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: widget.primaryColor.withOpacity(0.3),
+                      blurRadius: 12,
+                      offset: Offset(0, 4),
+                    ),
+                  ],
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Fila principal: Avatar + Título + Estado
                     Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        CircleAvatar(
-                          backgroundColor: Colors.white,
-                          child: Icon(
-                            cumplido ? Icons.check : Icons.event,
-                            color: widget.primaryColor,
+                        // Avatar compacto
+                        Hero(
+                          tag: 'avatar_${widget.eventoDoc.id}',
+                          child: Container(
+                            padding: EdgeInsets.all(isVerySmallScreen
+                                ? 8
+                                : (isSmallScreen ? 9 : 10)),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black26,
+                                  blurRadius: 6,
+                                  offset: Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Icon(
+                              cumplido
+                                  ? Icons.check_circle_rounded
+                                  : Icons.event_note_rounded,
+                              color: widget.primaryColor,
+                              size: isVerySmallScreen
+                                  ? 20
+                                  : (isSmallScreen ? 22 : 24),
+                            ),
                           ),
                         ),
-                        SizedBox(width: 12),
+                        SizedBox(width: isVerySmallScreen ? 10 : 12),
+
+                        // Título y fechas compactas
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -24387,61 +24391,137 @@ class _DetalleEventoModalState extends State<DetalleEventoModal> {
                               Text(
                                 nombre,
                                 style: TextStyle(
-                                  fontSize: 22,
+                                  fontSize: isVerySmallScreen
+                                      ? 15
+                                      : (isSmallScreen ? 17 : 19),
                                   fontWeight: FontWeight.bold,
                                   color: Colors.white,
+                                  letterSpacing: 0.3,
+                                  height: 1.1,
                                 ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
                               ),
-                              Text(
-                                'Del ${DateFormat('dd/MM/yyyy').format(fechaInicio)} al ${DateFormat('dd/MM/yyyy').format(fechaFin)}',
-                                style: TextStyle(
-                                  color: Colors.white.withOpacity(0.9),
-                                  fontSize: 14,
+                              SizedBox(height: 6),
+
+                              // Fechas ultra-compactas
+                              Container(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: isVerySmallScreen ? 8 : 10,
+                                  vertical: isVerySmallScreen ? 4 : 5,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.22),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: Colors.white.withOpacity(0.35),
+                                    width: 1,
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.calendar_today,
+                                        color: Colors.white, size: 11),
+                                    SizedBox(width: 6),
+                                    Flexible(
+                                      child: Text(
+                                        '${_formatearFechaLegible(fechaInicio)} → ${_formatearFechaLegible(fechaFin)}',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: isVerySmallScreen
+                                              ? 9
+                                              : (isSmallScreen ? 10 : 11),
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ],
                           ),
                         ),
+
+                        // Badge de estado compacto
                         if (cumplido)
                           Container(
                             padding: EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: Colors.green,
-                              borderRadius: BorderRadius.circular(12),
+                              horizontal: isVerySmallScreen ? 6 : 8,
+                              vertical: isVerySmallScreen ? 6 : 8,
                             ),
-                            child: Text(
-                              'CUMPLIDO',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  Colors.green.shade500,
+                                  Colors.green.shade700
+                                ],
                               ),
+                              borderRadius: BorderRadius.circular(10),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.green.withOpacity(0.35),
+                                  blurRadius: 6,
+                                  offset: Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.check_circle_rounded,
+                                    color: Colors.white, size: 14),
+                                SizedBox(height: 2),
+                                Text(
+                                  'CUMPLIDO',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 7,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                       ],
                     ),
-                    SizedBox(height: 16),
+
+                    SizedBox(height: isVerySmallScreen ? 10 : 12),
+
+                    // Estadísticas ultra-compactas
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
-                        _buildStatCard(
-                          'Inscritos',
-                          inscripciones.length.toString(),
-                          Icons.people,
+                        Expanded(
+                          child: _buildStatCompacta(
+                            inscripcionesOrdenadas.length.toString(),
+                            'Inscritos',
+                            Icons.people_rounded,
+                            isVerySmallScreen,
+                            isSmallScreen,
+                          ),
                         ),
-                        _buildStatCard(
-                          'Confirmados',
-                          inscripciones
-                              .where((i) => i['asistio'] == true)
-                              .length
-                              .toString(),
-                          Icons.check_circle,
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: _buildStatCompacta(
+                            totalConfirmados.toString(),
+                            'Asistieron',
+                            Icons.check_circle_rounded,
+                            isVerySmallScreen,
+                            isSmallScreen,
+                          ),
                         ),
-                        _buildStatCard(
-                          'Total Abonos',
-                          '\$${inscripciones.fold<int>(0, (sum, i) => sum + (i['abono'] as int? ?? 0))}',
-                          Icons.monetization_on,
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: _buildStatCompacta(
+                            '\$${_formatearMoneda(totalAbonos)}',
+                            'Recaudado',
+                            Icons.monetization_on_rounded,
+                            isVerySmallScreen,
+                            isSmallScreen,
+                          ),
                         ),
                       ],
                     ),
@@ -24449,139 +24529,94 @@ class _DetalleEventoModalState extends State<DetalleEventoModal> {
                 ),
               ),
 
-              // Boton para agregar persona
+              // ═══════════════════════════════════════════════════════════
+              // BOTÓN INSCRIBIR (SI EL EVENTO NO HA TERMINADO)
+              // ═══════════════════════════════════════════════════════════
               if (!cumplido)
                 Container(
-                  padding: EdgeInsets.all(16),
-                  child: ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: widget.secondaryColor,
-                      padding:
-                          EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
+                  padding: EdgeInsets.symmetric(
+                    horizontal:
+                        isVerySmallScreen ? 14 : (isSmallScreen ? 18 : 22),
+                    vertical:
+                        isVerySmallScreen ? 12 : (isSmallScreen ? 14 : 16),
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    border: Border(
+                      bottom: BorderSide(color: Colors.grey.shade200, width: 1),
                     ),
-                    icon: Icon(Icons.person_add, color: Colors.white),
-                    label: Text(
-                      'Inscribir Persona',
-                      style: TextStyle(
+                  ),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: widget.secondaryColor,
+                        padding: EdgeInsets.symmetric(
+                          vertical: isVerySmallScreen
+                              ? 13
+                              : (isSmallScreen ? 15 : 17),
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        elevation: 4,
+                        shadowColor: widget.secondaryColor.withOpacity(0.4),
+                      ),
+                      icon: Icon(
+                        Icons.person_add_rounded,
                         color: Colors.white,
-                        fontWeight: FontWeight.bold,
+                        size:
+                            isVerySmallScreen ? 19 : (isSmallScreen ? 21 : 23),
                       ),
+                      label: Text(
+                        'Inscribir Persona',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: isVerySmallScreen
+                              ? 14
+                              : (isSmallScreen ? 16 : 18),
+                          letterSpacing: 0.4,
+                        ),
+                      ),
+                      onPressed: isLoading ? null : _mostrarDialogoInscribir,
                     ),
-                    onPressed: isLoading ? null : _mostrarDialogoInscribir,
                   ),
                 ),
 
-              // Lista de inscritos
+              // ═══════════════════════════════════════════════════════════
+              // LISTA DE INSCRITOS (ORDENADA ALFABÉTICAMENTE Y COLAPSABLE)
+              // ═══════════════════════════════════════════════════════════
               Expanded(
-                child: inscripciones.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.person_add_disabled,
-                              size: 64,
-                              color: Colors.grey[400],
-                            ),
-                            SizedBox(height: 16),
-                            Text(
-                              'No hay personas inscritas',
-                              style: TextStyle(
-                                fontSize: 16,
-                                color: Colors.grey[600],
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            SizedBox(height: 8),
-                            Text(
-                              'Agrega la primera persona al evento',
-                              style: TextStyle(color: Colors.grey[500]),
-                            ),
-                          ],
-                        ),
-                      )
+                child: inscripcionesOrdenadas.isEmpty
+                    ? _buildEmptyStateModerno(isVerySmallScreen, isSmallScreen)
                     : ListView.builder(
                         controller: scrollController,
-                        padding: EdgeInsets.symmetric(horizontal: 16),
-                        itemCount: inscripciones.length,
+                        padding: EdgeInsets.symmetric(
+                          horizontal: isVerySmallScreen
+                              ? 10
+                              : (isSmallScreen ? 14 : 18),
+                          vertical: isVerySmallScreen ? 8 : 12,
+                        ),
+                        physics: BouncingScrollPhysics(),
+                        itemCount: inscripcionesOrdenadas.length,
                         itemBuilder: (context, index) {
-                          final inscripcion = inscripciones[index];
-                          return Card(
-                            margin: EdgeInsets.symmetric(vertical: 4),
-                            elevation: 2,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: ListTile(
-                              leading: CircleAvatar(
-                                backgroundColor:
-                                    widget.primaryColor.withOpacity(0.1),
-                                child: Text(
-                                  inscripcion['nombre'][0].toUpperCase(),
-                                  style: TextStyle(
-                                    color: widget.primaryColor,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                              title: Text(
-                                inscripcion['nombre'],
-                                style: TextStyle(fontWeight: FontWeight.w600),
-                              ),
-                              subtitle: Text(
-                                'Abono: \$${inscripcion['abono']}',
-                                style: TextStyle(color: Colors.grey[600]),
-                              ),
-                              trailing: cumplido
-                                  ? Container(
-                                      padding: EdgeInsets.symmetric(
-                                          horizontal: 8, vertical: 4),
-                                      decoration: BoxDecoration(
-                                        color: inscripcion['asistio'] == true
-                                            ? Colors.green.withOpacity(0.1)
-                                            : Colors.red.withOpacity(0.1),
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: Text(
-                                        inscripcion['asistio'] == true
-                                            ? 'Asistio'
-                                            : 'No asistio',
-                                        style: TextStyle(
-                                          color: inscripcion['asistio'] == true
-                                              ? Colors.green
-                                              : Colors.red,
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    )
-                                  : Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        IconButton(
-                                          icon: Icon(Icons.edit,
-                                              color: widget.secondaryColor),
-                                          onPressed: () => _editarAbono(index),
-                                        ),
-                                        IconButton(
-                                          icon: Icon(
-                                            inscripcion['asistio'] == true
-                                                ? Icons.check_circle
-                                                : Icons.radio_button_unchecked,
-                                            color:
-                                                inscripcion['asistio'] == true
-                                                    ? Colors.green
-                                                    : Colors.grey,
-                                          ),
-                                          onPressed: () =>
-                                              _toggleAsistencia(index),
-                                        ),
-                                      ],
-                                    ),
-                            ),
+                          // ✅ CRÍTICO: Encontrar el índice original para poder editar
+                          final inscripcionOrdenada =
+                              inscripcionesOrdenadas[index];
+                          final indiceOriginal = inscripciones.indexWhere(
+                            (i) =>
+                                i['personaId'] ==
+                                inscripcionOrdenada['personaId'],
+                          );
+
+                          return _buildInscritoCardColapsable(
+                            indiceOriginal,
+                            inscripcionOrdenada,
+                            cumplido,
+                            isVerySmallScreen,
+                            isSmallScreen,
+                            isMediumScreen,
                           );
                         },
                       ),
@@ -24593,31 +24628,49 @@ class _DetalleEventoModalState extends State<DetalleEventoModal> {
     );
   }
 
-  Widget _buildStatCard(String title, String value, IconData icon) {
+  /// Tarjeta de estadística ultra-compacta
+  Widget _buildStatCompacta(
+    String value,
+    String label,
+    IconData icon,
+    bool isVerySmallScreen,
+    bool isSmallScreen,
+  ) {
     return Container(
-      padding: EdgeInsets.all(12),
+      padding: EdgeInsets.symmetric(
+        horizontal: isVerySmallScreen ? 6 : 8,
+        vertical: isVerySmallScreen ? 8 : 10,
+      ),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.2),
-        borderRadius: BorderRadius.circular(12),
+        color: Colors.white.withOpacity(0.22),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.white.withOpacity(0.3), width: 1.2),
       ),
       child: Column(
         children: [
-          Icon(icon, color: Colors.white, size: 20),
+          Icon(icon, color: Colors.white, size: isVerySmallScreen ? 16 : 18),
           SizedBox(height: 4),
           Text(
             value,
             style: TextStyle(
               color: Colors.white,
               fontWeight: FontWeight.bold,
-              fontSize: 16,
+              fontSize: isVerySmallScreen ? 13 : 15,
+              letterSpacing: 0.3,
             ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
           Text(
-            title,
+            label,
             style: TextStyle(
-              color: Colors.white.withOpacity(0.9),
-              fontSize: 12,
+              color: Colors.white.withOpacity(0.95),
+              fontSize: isVerySmallScreen ? 9 : 10,
+              fontWeight: FontWeight.w500,
             ),
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
@@ -24628,13 +24681,18 @@ class _DetalleEventoModalState extends State<DetalleEventoModal> {
     setState(() => isLoading = true);
 
     try {
+      // ✅ Obtener información del evento actual
+      final eventoActualData = widget.eventoDoc.data() as Map<String, dynamic>;
+      final tipoEventoActual = eventoActualData['tipo'] ?? '';
+      final esEventoPersonalizado = tipoEventoActual == 'Personalizado';
+
       // ✅ OPTIMIZACIÓN: Consultas en paralelo
       final results = await Future.wait([
         // Consulta 1: Obtener personas de la tribu
         FirebaseFirestore.instance
             .collection('registros')
             .where('tribuAsignada', isEqualTo: widget.tribuId)
-            .where('activo', isEqualTo: true) // ✅ Solo personas activas
+            .where('activo', isEqualTo: true)
             .get(),
 
         // Consulta 2: Obtener eventos activos de la tribu
@@ -24648,7 +24706,7 @@ class _DetalleEventoModalState extends State<DetalleEventoModal> {
       final personasSnapshot = results[0] as QuerySnapshot;
       final eventosActivosSnapshot = results[1] as QuerySnapshot;
 
-      // ✅ OPTIMIZACIÓN: Crear Set de personas con inscripciones activas
+      // ✅ NUEVA LÓGICA: Crear Set de personas según el tipo de evento
       final Set<String> personasConInscripcionActiva = {};
       final ahora = DateTime.now();
 
@@ -24657,21 +24715,38 @@ class _DetalleEventoModalState extends State<DetalleEventoModal> {
         if (eventoDoc.id == widget.eventoDoc.id) continue;
 
         final eventoData = eventoDoc.data() as Map<String, dynamic>;
+        final tipoEvento = eventoData['tipo'] ?? '';
         final fechaFin = (eventoData['fechaFin'] as Timestamp).toDate();
 
         // Solo verificar eventos que no han terminado
-        if (fechaFin.isAfter(ahora)) {
-          final inscripciones = List<Map<String, dynamic>>.from(
-              eventoData['inscripciones'] ?? []);
+        if (!fechaFin.isAfter(ahora)) continue;
 
-          for (var inscripcion in inscripciones) {
-            personasConInscripcionActiva
-                .add(inscripcion['personaId'] as String);
-          }
+        // ✅ NUEVA REGLA: Los eventos personalizados NO bloquean inscripciones
+        // Solo bloquear si AMBOS eventos son NO personalizados
+        final eventoEsPersonalizado = tipoEvento == 'Personalizado';
+
+        // Si el evento actual es personalizado, puede coexistir con cualquier otro
+        if (esEventoPersonalizado) {
+          // No agregamos restricciones - los personalizados pueden convivir con todo
+          continue;
+        }
+
+        // Si el evento en revisión es personalizado, tampoco bloquea
+        if (eventoEsPersonalizado) {
+          continue;
+        }
+
+        // Solo bloqueamos si ambos son eventos NO personalizados
+        // (Encuentro, Raíces, Reencuentro)
+        final inscripciones =
+            List<Map<String, dynamic>>.from(eventoData['inscripciones'] ?? []);
+
+        for (var inscripcion in inscripciones) {
+          personasConInscripcionActiva.add(inscripcion['personaId'] as String);
         }
       }
 
-      // ✅ OPTIMIZACIÓN: Filtrar usando Set (O(1) lookup)
+      // ✅ Filtrar personas disponibles
       final personasDisponibles = personasSnapshot.docs.where((doc) {
         // Filtrar personas ya inscritas en este evento
         if (inscripciones.any((i) => i['personaId'] == doc.id)) {
@@ -24679,7 +24754,9 @@ class _DetalleEventoModalState extends State<DetalleEventoModal> {
         }
 
         // Filtrar personas con inscripciones activas en otros eventos
-        if (personasConInscripcionActiva.contains(doc.id)) {
+        // (solo si el evento actual NO es personalizado)
+        if (!esEventoPersonalizado &&
+            personasConInscripcionActiva.contains(doc.id)) {
           return false;
         }
 
@@ -24702,7 +24779,7 @@ class _DetalleEventoModalState extends State<DetalleEventoModal> {
         if (yaInscritas == totalPersonas) {
           mensaje =
               'Todas las personas de la tribu ya están inscritas en este evento';
-        } else if (conInscripcionesActivas > 0) {
+        } else if (conInscripcionesActivas > 0 && !esEventoPersonalizado) {
           mensaje =
               'Las personas restantes tienen inscripciones activas en otros eventos. Deben completar esos eventos primero.';
         } else {
@@ -24813,11 +24890,12 @@ class _DetalleEventoModalState extends State<DetalleEventoModal> {
         return;
       }
 
-      // ✅ Crear inscripción con validación
+      // ✅ NUEVO: Crear inscripción con sistema de abonos acumulativos
       final nuevaInscripcion = {
         'personaId': personaDoc.id,
         'nombre': nombreCompleto,
-        'abono': 0,
+        'historialAbonos': <Map<String, dynamic>>[], // ✅ Lista de abonos
+        'totalAbonado': 0, // ✅ Total acumulado
         'asistio': false,
         'fechaInscripcion': Timestamp.now(),
       };
@@ -24891,57 +24969,77 @@ class _DetalleEventoModalState extends State<DetalleEventoModal> {
     }
   }
 
-  void _editarAbono(int index) async {
-    final controller =
-        TextEditingController(text: inscripciones[index]['abono'].toString());
+  /// Toggle de asistencia
+  void _toggleAsistencia(int index) async {
+    final nuevaAsistencia = !(inscripciones[index]['asistio'] ?? false);
+    await _actualizarInscripcion(index, {'asistio': nuevaAsistencia});
 
-    final resultado = await showDialog<String>(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-        title: Row(
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
           children: [
-            Icon(Icons.monetization_on, color: widget.primaryColor),
-            SizedBox(width: 8),
-            Text('Editar Abono'),
+            Icon(
+              nuevaAsistencia ? Icons.check_circle : Icons.cancel,
+              color: Colors.white,
+              size: 20,
+            ),
+            SizedBox(width: 12),
+            Text(
+              nuevaAsistencia
+                  ? 'Marcado como asistió'
+                  : 'Marcado como no asistió',
+            ),
           ],
         ),
-        content: TextField(
-          controller: controller,
-          keyboardType: TextInputType.number,
-          decoration: InputDecoration(
-            prefixText: '\$ ',
-            labelText: 'Abono en COP',
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Cancelar'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: widget.secondaryColor,
-            ),
-            onPressed: () => Navigator.pop(context, controller.text),
-            child: Text('Guardar', style: TextStyle(color: Colors.white)),
-          ),
-        ],
+        backgroundColor: nuevaAsistencia ? Colors.green : Colors.orange,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        duration: Duration(seconds: 2),
+      ),
+    );
+  }
+
+  void _mostrarDialogoAbonos(int index) async {
+    final inscripcion = inscripciones[index];
+    final nombre = inscripcion['nombre'] ?? 'Sin nombre';
+
+    // Migrar datos antiguos si es necesario
+    List<Map<String, dynamic>> historialAbonos = [];
+    if (inscripcion.containsKey('historialAbonos')) {
+      historialAbonos =
+          List<Map<String, dynamic>>.from(inscripcion['historialAbonos'] ?? []);
+    } else if (inscripcion.containsKey('abono')) {
+      final abonoAntiguo = inscripcion['abono'] as int? ?? 0;
+      if (abonoAntiguo > 0) {
+        historialAbonos = [
+          {
+            'monto': abonoAntiguo,
+            'fecha': inscripcion['fechaInscripcion'] ?? Timestamp.now(),
+          }
+        ];
+      }
+    }
+
+    final resultado = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (context) => _DialogoGestionAbonos(
+        nombre: nombre,
+        historialAbonos: historialAbonos,
+        primaryColor: widget.primaryColor,
+        secondaryColor: widget.secondaryColor,
       ),
     );
 
     if (resultado != null) {
-      final abono = int.tryParse(resultado.replaceAll(',', '')) ?? 0;
-      await _actualizarInscripcion(index, {'abono': abono});
-    }
-  }
+      final nuevosAbonos =
+          resultado['historialAbonos'] as List<Map<String, dynamic>>;
+      final totalAbonado = resultado['totalAbonado'] as int;
 
-  void _toggleAsistencia(int index) async {
-    final nuevaAsistencia = !inscripciones[index]['asistio'];
-    await _actualizarInscripcion(index, {'asistio': nuevaAsistencia});
+      await _actualizarInscripcion(index, {
+        'historialAbonos': nuevosAbonos,
+        'totalAbonado': totalAbonado,
+      });
+    }
   }
 
   Future<void> _actualizarInscripcion(
@@ -24957,21 +25055,669 @@ class _DetalleEventoModalState extends State<DetalleEventoModal> {
           .update({
         'inscripciones': inscripciones,
       });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Actualizado correctamente'),
-          backgroundColor: Colors.green,
-        ),
-      );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error al actualizar: $e'),
+          content: Row(
+            children: [
+              Icon(Icons.error_outline, color: Colors.white),
+              SizedBox(width: 12),
+              Expanded(child: Text('Error al actualizar: $e')),
+            ],
+          ),
           backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
       );
     }
+  }
+
+// ═════════════════════════════════════════════════════════════════════════════
+// MÉTODOS AUXILIARES PARA EL NUEVO DISEÑO PROFESIONAL
+// ═════════════════════════════════════════════════════════════════════════════
+
+  /// ✅ NUEVO: Formatear fecha de forma legible (ej: "15 de Febrero, 2026")
+  String _formatearFechaLegible(DateTime fecha) {
+    final meses = [
+      '',
+      'Enero',
+      'Febrero',
+      'Marzo',
+      'Abril',
+      'Mayo',
+      'Junio',
+      'Julio',
+      'Agosto',
+      'Septiembre',
+      'Octubre',
+      'Noviembre',
+      'Diciembre'
+    ];
+
+    return '${fecha.day} de ${meses[fecha.month]}, ${fecha.year}';
+  }
+
+  /// Tarjeta de estadística moderna
+  Widget _buildStatCardModerno(
+    String title,
+    String value,
+    IconData icon,
+    Color color,
+    bool isVerySmallScreen,
+    bool isSmallScreen, {
+    bool fullWidth = false,
+  }) {
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: isVerySmallScreen ? 10 : (isSmallScreen ? 12 : 14),
+        vertical: isVerySmallScreen ? 12 : (isSmallScreen ? 14 : 16),
+      ),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.25),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withOpacity(0.35), width: 1.8),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.12),
+            blurRadius: 10,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: fullWidth
+          ? Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  padding: EdgeInsets.all(isVerySmallScreen ? 8 : 10),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.25),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(icon,
+                      color: Colors.white, size: isVerySmallScreen ? 20 : 24),
+                ),
+                SizedBox(width: 12),
+                Flexible(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        value,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: isVerySmallScreen
+                              ? 17
+                              : (isSmallScreen ? 19 : 22),
+                          letterSpacing: 0.4,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Text(
+                        title,
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.95),
+                          fontSize: isVerySmallScreen
+                              ? 11
+                              : (isSmallScreen ? 12 : 13),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            )
+          : Column(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(isVerySmallScreen ? 8 : 10),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.25),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(icon,
+                      color: Colors.white, size: isVerySmallScreen ? 22 : 26),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  value,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize:
+                        isVerySmallScreen ? 16 : (isSmallScreen ? 18 : 20),
+                    letterSpacing: 0.4,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                SizedBox(height: 2),
+                Text(
+                  title,
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.95),
+                    fontSize:
+                        isVerySmallScreen ? 11 : (isSmallScreen ? 12 : 13),
+                    fontWeight: FontWeight.w500,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+    );
+  }
+
+  /// Estado vacío moderno
+  Widget _buildEmptyStateModerno(bool isVerySmallScreen, bool isSmallScreen) {
+    return Center(
+      child: Padding(
+        padding:
+            EdgeInsets.all(isVerySmallScreen ? 20 : (isSmallScreen ? 28 : 36)),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: EdgeInsets.all(
+                  isVerySmallScreen ? 18 : (isSmallScreen ? 22 : 26)),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Colors.grey.shade100, Colors.grey.shade50],
+                ),
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.08),
+                    blurRadius: 15,
+                    offset: Offset(0, 5),
+                  ),
+                ],
+              ),
+              child: Icon(
+                Icons.person_add_disabled_rounded,
+                size: isVerySmallScreen ? 56 : (isSmallScreen ? 68 : 80),
+                color: Colors.grey.shade400,
+              ),
+            ),
+            SizedBox(
+                height: isVerySmallScreen ? 16 : (isSmallScreen ? 20 : 24)),
+            Text(
+              'No hay personas inscritas',
+              style: TextStyle(
+                fontSize: isVerySmallScreen ? 16 : (isSmallScreen ? 18 : 20),
+                color: Colors.grey[700],
+                fontWeight: FontWeight.w700,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            SizedBox(height: 8),
+            Text(
+              'Presiona el botón naranja para\nagregar la primera persona',
+              style: TextStyle(
+                color: Colors.grey[500],
+                fontSize: isVerySmallScreen ? 12 : (isSmallScreen ? 14 : 15),
+                height: 1.4,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// ✅ NUEVO: Card colapsable para inscrito (inicia cerrada)
+  Widget _buildInscritoCardColapsable(
+    int indiceOriginal,
+    Map<String, dynamic> inscripcion,
+    bool cumplido,
+    bool isVerySmallScreen,
+    bool isSmallScreen,
+    bool isMediumScreen,
+  ) {
+    final nombre = inscripcion['nombre'] ?? 'Sin nombre';
+
+    // ✅ Sistema de abonos: Compatibilidad con versión anterior
+    List<Map<String, dynamic>> historialAbonos = [];
+    int totalAbonado = 0;
+
+    if (inscripcion.containsKey('historialAbonos')) {
+      historialAbonos =
+          List<Map<String, dynamic>>.from(inscripcion['historialAbonos'] ?? []);
+      totalAbonado = inscripcion['totalAbonado'] ?? 0;
+    } else if (inscripcion.containsKey('abono')) {
+      final abonoAntiguo = inscripcion['abono'] as int? ?? 0;
+      if (abonoAntiguo > 0) {
+        historialAbonos = [
+          {
+            'monto': abonoAntiguo,
+            'fecha': inscripcion['fechaInscripcion'] ?? Timestamp.now(),
+          }
+        ];
+        totalAbonado = abonoAntiguo;
+      }
+    }
+
+    final asistio = inscripcion['asistio'] ?? false;
+
+    return Card(
+      margin: EdgeInsets.only(
+        bottom: isVerySmallScreen ? 8 : (isSmallScreen ? 10 : 12),
+      ),
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(isVerySmallScreen ? 14 : 16),
+        side: BorderSide(
+          color:
+              asistio ? Colors.green.withOpacity(0.35) : Colors.grey.shade300,
+          width: asistio ? 2 : 1,
+        ),
+      ),
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          // ✅ CRÍTICO: initiallyExpanded: false (inicia cerrada)
+          initiallyExpanded: false,
+          tilePadding: EdgeInsets.symmetric(
+            horizontal: isVerySmallScreen ? 12 : (isSmallScreen ? 14 : 16),
+            vertical: isVerySmallScreen ? 6 : 8,
+          ),
+          childrenPadding: EdgeInsets.only(
+            left: isVerySmallScreen ? 12 : (isSmallScreen ? 14 : 16),
+            right: isVerySmallScreen ? 12 : (isSmallScreen ? 14 : 16),
+            bottom: isVerySmallScreen ? 12 : 14,
+          ),
+          leading: Hero(
+            tag: 'inscrito_${widget.eventoDoc.id}_$indiceOriginal',
+            child: CircleAvatar(
+              backgroundColor: widget.primaryColor.withOpacity(0.15),
+              radius: isVerySmallScreen ? 20 : (isSmallScreen ? 24 : 28),
+              child: Text(
+                nombre.isNotEmpty ? nombre[0].toUpperCase() : '?',
+                style: TextStyle(
+                  color: widget.primaryColor,
+                  fontWeight: FontWeight.bold,
+                  fontSize: isVerySmallScreen ? 16 : (isSmallScreen ? 18 : 20),
+                ),
+              ),
+            ),
+          ),
+          title: Text(
+            nombre,
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: isVerySmallScreen ? 14 : (isSmallScreen ? 16 : 17),
+              color: Colors.black87,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          subtitle: Padding(
+            padding: EdgeInsets.only(top: 6),
+            child: Row(
+              children: [
+                // Badge de asistencia
+                if (cumplido)
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: asistio
+                          ? Colors.green.withOpacity(0.2)
+                          : Colors.red.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: asistio
+                            ? Colors.green.shade500
+                            : Colors.red.shade500,
+                        width: 1.2,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          asistio ? Icons.check_circle : Icons.cancel,
+                          size: 12,
+                          color: asistio
+                              ? Colors.green.shade700
+                              : Colors.red.shade700,
+                        ),
+                        SizedBox(width: 4),
+                        Text(
+                          asistio ? 'Asistió' : 'No asistió',
+                          style: TextStyle(
+                            color: asistio
+                                ? Colors.green.shade900
+                                : Colors.red.shade900,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                // Mostrar total abonado
+                if (totalAbonado > 0) ...[
+                  if (cumplido) SizedBox(width: 8),
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: Colors.amber.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(8),
+                      border:
+                          Border.all(color: Colors.amber.shade600, width: 1.2),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.monetization_on,
+                            size: 12, color: Colors.amber.shade800),
+                        SizedBox(width: 4),
+                        Text(
+                          '\$${_formatearMoneda(totalAbonado)}',
+                          style: TextStyle(
+                            color: Colors.amber.shade900,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (!cumplido) ...[
+                // Botón editar abono
+                Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(10),
+                    onTap: () => _mostrarDialogoAbonos(indiceOriginal),
+                    child: Container(
+                      padding: EdgeInsets.all(isVerySmallScreen ? 7 : 9),
+                      decoration: BoxDecoration(
+                        color: widget.secondaryColor.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: widget.secondaryColor.withOpacity(0.35),
+                        ),
+                      ),
+                      child: Icon(
+                        Icons.monetization_on_rounded,
+                        color: widget.secondaryColor,
+                        size: isVerySmallScreen ? 18 : 20,
+                      ),
+                    ),
+                  ),
+                ),
+                SizedBox(width: 6),
+                // Botón toggle asistencia
+                Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(10),
+                    onTap: () => _toggleAsistencia(indiceOriginal),
+                    child: Container(
+                      padding: EdgeInsets.all(isVerySmallScreen ? 7 : 9),
+                      decoration: BoxDecoration(
+                        color: asistio
+                            ? Colors.green.withOpacity(0.12)
+                            : Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: asistio
+                              ? Colors.green.withOpacity(0.4)
+                              : Colors.grey.shade300,
+                        ),
+                      ),
+                      child: Icon(
+                        asistio
+                            ? Icons.check_circle
+                            : Icons.radio_button_unchecked,
+                        color: asistio ? Colors.green : Colors.grey,
+                        size: isVerySmallScreen ? 18 : 20,
+                      ),
+                    ),
+                  ),
+                ),
+                SizedBox(width: 4),
+              ],
+              // Icono de expansión
+              Icon(
+                Icons.expand_more,
+                color: Colors.grey[600],
+                size: isVerySmallScreen ? 20 : 22,
+              ),
+            ],
+          ),
+          // ═══════════════════════════════════════════════════════════
+          // CONTENIDO COLAPSABLE (HISTORIAL DE ABONOS)
+          // ═══════════════════════════════════════════════════════════
+          children: [
+            if (historialAbonos.isNotEmpty) ...[
+              Container(
+                padding: EdgeInsets.all(isVerySmallScreen ? 10 : 12),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Colors.amber.shade50,
+                      Colors.amber.shade100.withOpacity(0.4),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.amber.shade300, width: 1.5),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Header
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.account_balance_wallet_rounded,
+                          color: Colors.amber.shade800,
+                          size: isVerySmallScreen ? 16 : 18,
+                        ),
+                        SizedBox(width: 8),
+                        Text(
+                          'Historial de Abonos',
+                          style: TextStyle(
+                            fontSize: isVerySmallScreen ? 12 : 13,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.amber.shade900,
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 10),
+
+                    // Fórmula de abonos con fechas
+                    ...historialAbonos.asMap().entries.map((entry) {
+                      final index = entry.key;
+                      final abono = entry.value;
+                      final monto = abono['monto'] as int;
+                      final fecha = (abono['fecha'] as Timestamp).toDate();
+
+                      return Padding(
+                        padding: EdgeInsets.only(
+                            bottom: index < historialAbonos.length - 1 ? 6 : 0),
+                        child: Row(
+                          children: [
+                            if (index > 0) ...[
+                              Text(
+                                '+',
+                                style: TextStyle(
+                                  fontSize: isVerySmallScreen ? 12 : 14,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.amber.shade800,
+                                ),
+                              ),
+                              SizedBox(width: 6),
+                            ],
+                            Expanded(
+                              child: Container(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: isVerySmallScreen ? 8 : 10,
+                                  vertical: isVerySmallScreen ? 6 : 7,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.85),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: Colors.amber.shade400,
+                                    width: 1,
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      '\$${_formatearMoneda(monto)}',
+                                      style: TextStyle(
+                                        fontSize: isVerySmallScreen ? 12 : 13,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.amber.shade900,
+                                      ),
+                                    ),
+                                    Text(
+                                      DateFormat('dd/MM/yy HH:mm')
+                                          .format(fecha),
+                                      style: TextStyle(
+                                        fontSize: isVerySmallScreen ? 9 : 10,
+                                        color: Colors.grey[600],
+                                        fontStyle: FontStyle.italic,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+
+                    // Línea divisoria
+                    Padding(
+                      padding: EdgeInsets.symmetric(vertical: 10),
+                      child: Container(
+                        height: 1,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              Colors.transparent,
+                              Colors.amber.shade400,
+                              Colors.transparent,
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    // Total
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Total Abonado:',
+                          style: TextStyle(
+                            fontSize: isVerySmallScreen ? 13 : 14,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.amber.shade900,
+                          ),
+                        ),
+                        Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: isVerySmallScreen ? 10 : 12,
+                            vertical: isVerySmallScreen ? 6 : 7,
+                          ),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                Colors.amber.shade600,
+                                Colors.amber.shade700,
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(10),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.amber.withOpacity(0.35),
+                                blurRadius: 8,
+                                offset: Offset(0, 3),
+                              ),
+                            ],
+                          ),
+                          child: Text(
+                            '\$${_formatearMoneda(totalAbonado)}',
+                            style: TextStyle(
+                              fontSize: isVerySmallScreen ? 14 : 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ] else ...[
+              // Mensaje si no hay abonos
+              Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: isVerySmallScreen ? 10 : 12,
+                  vertical: isVerySmallScreen ? 8 : 10,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.grey.shade300),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.info_outline_rounded,
+                      size: 16,
+                      color: Colors.grey.shade600,
+                    ),
+                    SizedBox(width: 8),
+                    Text(
+                      'Sin abonos registrados',
+                      style: TextStyle(
+                        fontSize: isVerySmallScreen ? 11 : 12,
+                        color: Colors.grey.shade600,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Formateador de moneda colombiana
+  String _formatearMoneda(int monto) {
+    return monto.toString().replaceAllMapped(
+          RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+          (Match m) => '${m[1]}.',
+        );
   }
 }
 
@@ -25174,3 +25920,571 @@ class _ReorderableWrapState extends State<ReorderableWrap>
   }
 }
 //--------------------------------------------------------------------------------------------------------
+
+// ═════════════════════════════════════════════════════════════════════════════
+// DIÁLOGO DE GESTIÓN DE ABONOS (AGREGAR, EDITAR, ELIMINAR)
+// ═════════════════════════════════════════════════════════════════════════════
+
+class _DialogoGestionAbonos extends StatefulWidget {
+  final String nombre;
+  final List<Map<String, dynamic>> historialAbonos;
+  final Color primaryColor;
+  final Color secondaryColor;
+
+  const _DialogoGestionAbonos({
+    Key? key,
+    required this.nombre,
+    required this.historialAbonos,
+    required this.primaryColor,
+    required this.secondaryColor,
+  }) : super(key: key);
+
+  @override
+  _DialogoGestionAbonosState createState() => _DialogoGestionAbonosState();
+}
+
+class _DialogoGestionAbonosState extends State<_DialogoGestionAbonos> {
+  late List<Map<String, dynamic>> _abonos;
+  final _nuevoAbonoController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _abonos = List<Map<String, dynamic>>.from(widget.historialAbonos);
+  }
+
+  @override
+  void dispose() {
+    _nuevoAbonoController.dispose();
+    super.dispose();
+  }
+
+  int get _totalAbonado =>
+      _abonos.fold<int>(0, (sum, abono) => sum + (abono['monto'] as int));
+
+  String _formatearMoneda(int monto) {
+    return monto.toString().replaceAllMapped(
+          RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+          (Match m) => '${m[1]}.',
+        );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+    final isSmallScreen = screenWidth < 600;
+
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      insetPadding: EdgeInsets.symmetric(
+        horizontal: isSmallScreen ? 16 : 24,
+        vertical: 20,
+      ),
+      child: Container(
+        constraints: BoxConstraints(
+          maxWidth: isSmallScreen ? screenWidth * 0.95 : 500,
+          maxHeight: screenHeight * 0.85,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // ═══════════════════════════════════════════════════════════
+            // HEADER
+            // ═══════════════════════════════════════════════════════════
+            Container(
+              padding: EdgeInsets.all(isSmallScreen ? 16 : 20),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    widget.primaryColor,
+                    widget.primaryColor.withOpacity(0.85)
+                  ],
+                ),
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(20),
+                  topRight: Radius.circular(20),
+                ),
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.account_balance_wallet_rounded,
+                        color: Colors.white,
+                        size: isSmallScreen ? 26 : 30,
+                      ),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'Gestión de Abonos',
+                          style: TextStyle(
+                            fontSize: isSmallScreen ? 19 : 22,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: Icon(Icons.close, color: Colors.white),
+                        style: IconButton.styleFrom(
+                          backgroundColor: Colors.white.withOpacity(0.2),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 12),
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.person, color: Colors.white, size: 18),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            widget.nombre,
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: isSmallScreen ? 14 : 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // ═══════════════════════════════════════════════════════════
+            // TOTAL ACTUAL
+            // ═══════════════════════════════════════════════════════════
+            Container(
+              padding: EdgeInsets.all(isSmallScreen ? 14 : 16),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Colors.amber.shade50, Colors.amber.shade100],
+                ),
+                border: Border(
+                  bottom: BorderSide(color: Colors.amber.shade300, width: 2),
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.monetization_on,
+                    color: Colors.amber.shade700,
+                    size: isSmallScreen ? 24 : 28,
+                  ),
+                  SizedBox(width: 10),
+                  Text(
+                    'Total: ',
+                    style: TextStyle(
+                      fontSize: isSmallScreen ? 16 : 18,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.amber.shade900,
+                    ),
+                  ),
+                  Text(
+                    '\$${_formatearMoneda(_totalAbonado)}',
+                    style: TextStyle(
+                      fontSize: isSmallScreen ? 22 : 26,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.amber.shade900,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // ═══════════════════════════════════════════════════════════
+            // LISTA DE ABONOS (SCROLLABLE)
+            // ═══════════════════════════════════════════════════════════
+            Expanded(
+              child: _abonos.isEmpty
+                  ? Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(24),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.payment_outlined,
+                              size: 64,
+                              color: Colors.grey.shade400,
+                            ),
+                            SizedBox(height: 16),
+                            Text(
+                              'No hay abonos registrados',
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: Colors.grey[600],
+                                fontWeight: FontWeight.w500,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                            SizedBox(height: 8),
+                            Text(
+                              'Agrega el primer abono abajo',
+                              style: TextStyle(color: Colors.grey[500]),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  : ListView.builder(
+                      padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
+                      itemCount: _abonos.length,
+                      itemBuilder: (context, index) {
+                        final abono = _abonos[index];
+                        final monto = abono['monto'] as int;
+                        final fecha = (abono['fecha'] as Timestamp).toDate();
+
+                        return Card(
+                          margin: EdgeInsets.only(bottom: 8),
+                          elevation: 2,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: ListTile(
+                            contentPadding: EdgeInsets.symmetric(
+                              horizontal: isSmallScreen ? 12 : 16,
+                              vertical: 4,
+                            ),
+                            leading: CircleAvatar(
+                              backgroundColor:
+                                  Colors.green.shade100.withOpacity(0.8),
+                              child: Text(
+                                '${index + 1}',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.green.shade800,
+                                ),
+                              ),
+                            ),
+                            title: Text(
+                              '\$${_formatearMoneda(monto)}',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: isSmallScreen ? 16 : 18,
+                                color: Colors.green.shade800,
+                              ),
+                            ),
+                            subtitle: Text(
+                              DateFormat('dd/MM/yyyy HH:mm', 'es')
+                                  .format(fecha),
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                // Botón editar
+                                IconButton(
+                                  icon: Icon(Icons.edit_outlined,
+                                      color: widget.secondaryColor, size: 20),
+                                  onPressed: () => _editarAbono(index),
+                                  style: IconButton.styleFrom(
+                                    backgroundColor:
+                                        widget.secondaryColor.withOpacity(0.1),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                  ),
+                                ),
+                                SizedBox(width: 4),
+                                // Botón eliminar
+                                IconButton(
+                                  icon: Icon(Icons.delete_outline,
+                                      color: Colors.red, size: 20),
+                                  onPressed: () => _eliminarAbono(index),
+                                  style: IconButton.styleFrom(
+                                    backgroundColor:
+                                        Colors.red.withOpacity(0.1),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+            ),
+
+            // ═══════════════════════════════════════════════════════════
+            // SECCIÓN AGREGAR NUEVO ABONO
+            // ═══════════════════════════════════════════════════════════
+            Container(
+              padding: EdgeInsets.all(isSmallScreen ? 14 : 18),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade50,
+                border: Border(
+                  top: BorderSide(color: Colors.grey.shade300),
+                ),
+              ),
+              child: Column(
+                children: [
+                  // Campo de entrada
+                  TextField(
+                    controller: _nuevoAbonoController,
+                    keyboardType: TextInputType.number,
+                    style: TextStyle(fontSize: isSmallScreen ? 15 : 17),
+                    decoration: InputDecoration(
+                      labelText: 'Nuevo Abono',
+                      hintText: 'Ej: 50000',
+                      prefixIcon:
+                          Icon(Icons.attach_money, color: widget.primaryColor),
+                      prefixText: '\$ ',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(
+                          color: widget.primaryColor,
+                          width: 2,
+                        ),
+                      ),
+                      filled: true,
+                      fillColor: Colors.white,
+                    ),
+                  ),
+                  SizedBox(height: 12),
+
+                  // Botones de acción
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          style: TextButton.styleFrom(
+                            padding: EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: Text(
+                            'Cancelar',
+                            style: TextStyle(
+                              fontSize: isSmallScreen ? 14 : 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 10),
+                      Expanded(
+                        flex: 2,
+                        child: ElevatedButton.icon(
+                          onPressed: _agregarAbono,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: widget.secondaryColor,
+                            padding: EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          icon: Icon(Icons.add_circle, color: Colors.white),
+                          label: Text(
+                            'Agregar Abono',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: isSmallScreen ? 14 : 16,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 8),
+
+                  // Botón guardar y salir
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: _guardarYSalir,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: widget.primaryColor,
+                        padding: EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      icon: Icon(Icons.save, color: Colors.white),
+                      label: Text(
+                        'Guardar Cambios',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: isSmallScreen ? 15 : 17,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // MÉTODOS DE GESTIÓN
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  void _agregarAbono() {
+    final texto = _nuevoAbonoController.text.trim();
+    if (texto.isEmpty) return;
+
+    final monto = int.tryParse(texto.replaceAll('.', '').replaceAll(',', ''));
+    if (monto == null || monto <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Por favor ingresa un monto válido'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _abonos.add({
+        'monto': monto,
+        'fecha': Timestamp.now(),
+      });
+      _nuevoAbonoController.clear();
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Abono de \$${_formatearMoneda(monto)} agregado'),
+        backgroundColor: Colors.green,
+        duration: Duration(seconds: 1),
+      ),
+    );
+  }
+
+  void _editarAbono(int index) async {
+    final abonoActual = _abonos[index]['monto'] as int;
+    final controller = TextEditingController(text: abonoActual.toString());
+
+    final nuevoMonto = await showDialog<int>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        title: Text('Editar Abono'),
+        content: TextField(
+          controller: controller,
+          keyboardType: TextInputType.number,
+          autofocus: true,
+          decoration: InputDecoration(
+            prefixText: '\$ ',
+            labelText: 'Monto',
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final texto = controller.text.trim();
+              final monto =
+                  int.tryParse(texto.replaceAll('.', '').replaceAll(',', ''));
+              if (monto != null && monto > 0) {
+                Navigator.pop(context, monto);
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: widget.secondaryColor,
+            ),
+            child: Text('Guardar', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (nuevoMonto != null) {
+      setState(() {
+        _abonos[index]['monto'] = nuevoMonto;
+        _abonos[index]['fecha'] = Timestamp.now();
+      });
+    }
+  }
+
+  void _eliminarAbono(int index) async {
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        title: Row(
+          children: [
+            Icon(Icons.warning, color: Colors.orange),
+            SizedBox(width: 8),
+            Text('Eliminar Abono'),
+          ],
+        ),
+        content: Text('¿Estás seguro de eliminar este abono?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: Text('Eliminar', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmar == true) {
+      setState(() {
+        _abonos.removeAt(index);
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Abono eliminado'),
+          backgroundColor: Colors.orange,
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  void _guardarYSalir() {
+    Navigator.pop(context, {
+      'historialAbonos': _abonos,
+      'totalAbonado': _totalAbonado,
+    });
+  }
+}
