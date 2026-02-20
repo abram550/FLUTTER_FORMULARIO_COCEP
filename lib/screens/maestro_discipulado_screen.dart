@@ -965,130 +965,401 @@ class _MaestroDiscipuladoScreenState extends State<MaestroDiscipuladoScreen>
   Widget _buildTomarAsistenciaTab(Map<String, dynamic> claseData) {
     var discipulos =
         List<Map<String, dynamic>>.from(claseData['discipulosInscritos'] ?? []);
-    discipulos.sort((a, b) {
-      final nombreA = (a['nombre'] ?? '').toString().toLowerCase();
-      final nombreB = (b['nombre'] ?? '').toString().toLowerCase();
-      return nombreA.compareTo(nombreB);
-    });
 
-    return ListView(
-      controller: _scrollController,
-      children: [
-        _buildClassHeader(claseData),
+    final tipoClase = claseData['tipo'] ?? '';
+    final claseActualId = claseData['claseId'] ?? '';
 
-        // ✅ BOTONES DE ACCIÓN (SE MUEVEN CON EL SCROLL)
-        Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          child: Row(
-            children: [
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: () => _mostrarDialogoTomarAsistencia(discipulos),
-                  icon: Icon(Icons.how_to_reg, size: 20),
-                  label: Text(
-                    'Registrar Asistencia',
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: cocepTeal,
-                    foregroundColor: Colors.white,
-                    padding: EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    elevation: 3,
-                  ),
-                ),
-              ),
-              SizedBox(width: 12),
-              if (claseData['inscripcionesCerradas'] != true)
-                ElevatedButton(
-                  onPressed: () => _mostrarDialogoRegistrarDiscipulo(),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: cocepOrange,
-                    foregroundColor: Colors.white,
-                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    elevation: 3,
-                  ),
-                  child: Icon(Icons.person_add, size: 24),
-                ),
-            ],
-          ),
-        ),
+    // ✅ Obtener claseAsignadaId ACTUAL del maestro para saber quiénes están reprobados
+    return StreamBuilder<DocumentSnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('maestrosDiscipulado')
+          .doc(widget.maestroId)
+          .snapshots(),
+      builder: (context, maestroSnap) {
+        final maestroData = maestroSnap.data?.data() as Map<String, dynamic>?;
+        final claseIdActual = maestroData?['claseAsignadaId'] as String?;
 
-        // ✅ BARRA DE BÚSQUEDA (SE MUEVE CON EL SCROLL)
-        _buildSearchBar(),
+        // ✅ Leer reprobaciones manuales (solo para tipos sin reprobación automática)
+        final esConReprobacionAutomatica = tipoClase == 'Discipulado 1' ||
+            tipoClase == 'Discipulado 2' ||
+            tipoClase == 'Discipulado 3';
 
-        // ✅ LISTA CON VALUELISTENABLEBUILDER (NO HACE REBUILD COMPLETO)
-        ValueListenableBuilder<String>(
-          valueListenable: _searchQueryNotifier,
-          builder: (context, searchQuery, _) {
-            // ✅ FILTRAR DISCÍPULOS
-            List<Map<String, dynamic>> discipulosFiltrados = discipulos;
-            if (searchQuery.isNotEmpty) {
-              discipulosFiltrados = discipulos.where((discipulo) {
-                final nombre = _normalizeText(discipulo['nombre'] ?? '');
-                final query = _normalizeText(searchQuery);
-                return nombre.contains(query);
-              }).toList();
+        return StreamBuilder<QuerySnapshot>(
+          stream: claseIdActual != null && !esConReprobacionAutomatica
+              ? FirebaseFirestore.instance
+                  .collection('reprobacionesManualesdiscipulado')
+                  .where('claseId', isEqualTo: claseIdActual)
+                  .snapshots()
+              : const Stream.empty(),
+          builder: (context, reprobSnap) {
+            Set<String> reprobadosIds = {};
+            if (reprobSnap.hasData) {
+              for (var doc in reprobSnap.data!.docs) {
+                final d = doc.data() as Map<String, dynamic>;
+                reprobadosIds.add(d['discipuloId'] as String);
+              }
             }
 
-            if (discipulosFiltrados.isEmpty) {
-              return Container(
-                height: 300,
-                child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
+            // ✅ Para reprobación automática, leer asistencias
+            return StreamBuilder<QuerySnapshot>(
+              stream: claseIdActual != null && esConReprobacionAutomatica
+                  ? FirebaseFirestore.instance
+                      .collection('asistenciasDiscipulado')
+                      .where('claseId', isEqualTo: claseIdActual)
+                      .snapshots()
+                  : const Stream.empty(),
+              builder: (context, asistSnap) {
+                // ✅ Calcular reprobados por faltas automáticas
+                if (esConReprobacionAutomatica && asistSnap.hasData) {
+                  Map<String, int> faltasPorDiscipulo = {};
+                  for (var doc in asistSnap.data!.docs) {
+                    final d = doc.data() as Map<String, dynamic>;
+                    if (d['asistio'] == false &&
+                        (d['recuperado'] ?? false) == false) {
+                      final pid = d['discipuloId'] as String;
+                      faltasPorDiscipulo[pid] =
+                          (faltasPorDiscipulo[pid] ?? 0) + 1;
+                    }
+                  }
+                  faltasPorDiscipulo.forEach((pid, faltas) {
+                    if (faltas >= 3) reprobadosIds.add(pid);
+                  });
+                }
+
+                // ✅ Separar: activos vs reprobados
+                List<Map<String, dynamic>> discipulosActivos = [];
+                List<Map<String, dynamic>> discipulosReprobados = [];
+
+                for (var d in discipulos) {
+                  final pid = d['personaId'] as String? ?? '';
+                  if (reprobadosIds.contains(pid)) {
+                    discipulosReprobados.add(d);
+                  } else {
+                    discipulosActivos.add(d);
+                  }
+                }
+
+                // ✅ Ordenar cada lista alfabéticamente
+                discipulosActivos.sort((a, b) => (a['nombre'] ?? '')
+                    .toString()
+                    .toLowerCase()
+                    .compareTo((b['nombre'] ?? '').toString().toLowerCase()));
+                discipulosReprobados.sort((a, b) => (a['nombre'] ?? '')
+                    .toString()
+                    .toLowerCase()
+                    .compareTo((b['nombre'] ?? '').toString().toLowerCase()));
+
+                final todosOrdenados = [
+                  ...discipulosActivos,
+                  ...discipulosReprobados
+                ];
+
+                return ListView(
+                  controller: _scrollController,
+                  children: [
+                    _buildClassHeader(claseData),
+
+                    // ✅ BOTONES DE ACCIÓN
+                    Padding(
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: () => _mostrarDialogoTomarAsistencia(
+                                  discipulosActivos),
+                              icon: Icon(Icons.how_to_reg, size: 20),
+                              label: Text(
+                                'Registrar Asistencia',
+                                style: TextStyle(
+                                    fontSize: 15, fontWeight: FontWeight.w600),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: cocepTeal,
+                                foregroundColor: Colors.white,
+                                padding: EdgeInsets.symmetric(vertical: 16),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                elevation: 3,
+                              ),
+                            ),
+                          ),
+                          SizedBox(width: 12),
+                          if (claseData['inscripcionesCerradas'] != true)
+                            ElevatedButton(
+                              onPressed: () =>
+                                  _mostrarDialogoRegistrarDiscipulo(),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: cocepOrange,
+                                foregroundColor: Colors.white,
+                                padding: EdgeInsets.symmetric(
+                                    horizontal: 20, vertical: 16),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                elevation: 3,
+                              ),
+                              child: Icon(Icons.person_add, size: 24),
+                            ),
+                        ],
+                      ),
+                    ),
+
+                    // ✅ BARRA DE BÚSQUEDA
+                    _buildSearchBar(),
+
+                    // ✅ LISTA CON VALUELISTENABLEBUILDER
+                    ValueListenableBuilder<String>(
+                      valueListenable: _searchQueryNotifier,
+                      builder: (context, searchQuery, _) {
+                        List<Map<String, dynamic>> filtrados = todosOrdenados;
+                        if (searchQuery.isNotEmpty) {
+                          filtrados = todosOrdenados.where((discipulo) {
+                            final nombre =
+                                _normalizeText(discipulo['nombre'] ?? '');
+                            final query = _normalizeText(searchQuery);
+                            return nombre.contains(query);
+                          }).toList();
+                        }
+
+                        if (filtrados.isEmpty) {
+                          return Container(
+                            height: 300,
+                            child: Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Container(
+                                    padding: EdgeInsets.all(24),
+                                    decoration: BoxDecoration(
+                                      color: cocepOrange.withOpacity(0.1),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(
+                                      Icons.search_off_rounded,
+                                      size: 64,
+                                      color: cocepOrange.withOpacity(0.5),
+                                    ),
+                                  ),
+                                  SizedBox(height: 16),
+                                  Text(
+                                    'No se encontraron resultados',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.grey[700],
+                                    ),
+                                  ),
+                                  SizedBox(height: 8),
+                                  Text(
+                                    'Intenta con otro término de búsqueda',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.grey[500],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        }
+
+                        return Padding(
+                          padding: EdgeInsets.fromLTRB(16, 8, 16, 100),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // ✅ Separador visual si hay reprobados
+                              ...discipulosActivos
+                                  .where((d) =>
+                                      searchQuery.isEmpty ||
+                                      _normalizeText(d['nombre'] ?? '')
+                                          .contains(
+                                              _normalizeText(searchQuery)))
+                                  .map((d) => _buildDiscipuloCard(d))
+                                  .toList(),
+
+                              if (discipulosReprobados
+                                  .where((d) =>
+                                      searchQuery.isEmpty ||
+                                      _normalizeText(d['nombre'] ?? '')
+                                          .contains(
+                                              _normalizeText(searchQuery)))
+                                  .isNotEmpty) ...[
+                                Padding(
+                                  padding: EdgeInsets.symmetric(vertical: 12),
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                          child:
+                                              Divider(color: Colors.red[300])),
+                                      Padding(
+                                        padding:
+                                            EdgeInsets.symmetric(horizontal: 8),
+                                        child: Text(
+                                          'REPROBADOS',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.red[400],
+                                            letterSpacing: 1.5,
+                                          ),
+                                        ),
+                                      ),
+                                      Expanded(
+                                          child:
+                                              Divider(color: Colors.red[300])),
+                                    ],
+                                  ),
+                                ),
+                                ...discipulosReprobados
+                                    .where((d) =>
+                                        searchQuery.isEmpty ||
+                                        _normalizeText(d['nombre'] ?? '')
+                                            .contains(
+                                                _normalizeText(searchQuery)))
+                                    .map((d) => _buildDiscipuloCardReprobado(d))
+                                    .toList(),
+                              ],
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                );
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildDiscipuloCardReprobado(Map<String, dynamic> discipulo) {
+    final nombre = discipulo['nombre'] ?? 'Sin nombre';
+    final telefono = discipulo['telefono'] ?? 'N/A';
+    final inicial = nombre.isNotEmpty ? nombre[0].toUpperCase() : '?';
+    final nombreTribu = discipulo['tribu']?.toString() ?? 'Sin tribu';
+
+    return Container(
+      margin: EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.grey[100],
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.red[200]!, width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 6,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: EdgeInsets.all(16),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Avatar tachado
+            Stack(
+              children: [
+                Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[400],
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Center(
+                    child: Text(
+                      inicial,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+                // ✅ Línea diagonal indicando reprobado
+                Positioned.fill(
+                  child: CustomPaint(
+                    painter: _CrossPainter(),
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // ✅ Nombre con efecto tachado
+                  Text(
+                    nombre,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey[500],
+                      decoration: TextDecoration.lineThrough,
+                      decorationColor: Colors.red[400],
+                      decorationThickness: 2,
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: Colors.red[50],
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: Colors.red[200]!),
+                    ),
+                    child: Text(
+                      'REPROBADO - Sin toma de asistencia',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.red[700],
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: 6),
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 4,
                     children: [
-                      Container(
-                        padding: EdgeInsets.all(24),
-                        decoration: BoxDecoration(
-                          color: cocepOrange.withOpacity(0.1),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          Icons.search_off_rounded,
-                          size: 64,
-                          color: cocepOrange.withOpacity(0.5),
-                        ),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.phone_android,
+                              size: 13, color: Colors.grey[400]),
+                          SizedBox(width: 4),
+                          Text(telefono,
+                              style: TextStyle(
+                                  fontSize: 12, color: Colors.grey[400])),
+                        ],
                       ),
-                      SizedBox(height: 16),
-                      Text(
-                        'No se encontraron resultados',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.grey[700],
-                        ),
-                      ),
-                      SizedBox(height: 8),
-                      Text(
-                        'Intenta con otro término de búsqueda',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey[500],
-                        ),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.group, size: 13, color: Colors.grey[400]),
+                          SizedBox(width: 4),
+                          Text(nombreTribu,
+                              style: TextStyle(
+                                  fontSize: 12, color: Colors.grey[400])),
+                        ],
                       ),
                     ],
                   ),
-                ),
-              );
-            }
-
-            return Padding(
-              padding: EdgeInsets.fromLTRB(16, 8, 16, 100),
-              child: Column(
-                children: discipulosFiltrados
-                    .map((discipulo) => _buildDiscipuloCard(discipulo))
-                    .toList(),
+                ],
               ),
-            );
-          },
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 
@@ -2118,19 +2389,17 @@ class _MaestroDiscipuladoScreenState extends State<MaestroDiscipuladoScreen>
     Map<String, bool> asistencias = {
       for (var d in discipulos) d['personaId']: true
     };
-// ✅ CORRECCIÓN CRÍTICA: Obtener claseAsignadaId ACTUAL del maestro en tiempo real
+
     final maestroDoc = await FirebaseFirestore.instance
         .collection('maestrosDiscipulado')
         .doc(widget.maestroId)
         .get();
     if (!maestroDoc.exists) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: No se encontró el maestro'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Error: No se encontró el maestro'),
+          backgroundColor: Colors.red,
+        ));
       }
       return;
     }
@@ -2138,270 +2407,251 @@ class _MaestroDiscipuladoScreenState extends State<MaestroDiscipuladoScreen>
     final claseAsignadaId = maestroData['claseAsignadaId'];
     if (claseAsignadaId == null) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('No hay clase asignada actualmente'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('No hay clase asignada actualmente'),
+          backgroundColor: Colors.red,
+        ));
       }
       return;
     }
-// ✅ Ahora obtener la clase con el ID correcto
+
     final claseDoc = await FirebaseFirestore.instance
         .collection('clasesDiscipulado')
         .doc(claseAsignadaId)
         .get();
     if (!claseDoc.exists) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: La clase no existe'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Error: La clase no existe'),
+          backgroundColor: Colors.red,
+        ));
       }
       return;
     }
     final claseData = claseDoc.data();
-    if (claseData == null) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content:
-                Text('Error: No se pudieron obtener los datos de la clase'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-      return;
-    }
+    if (claseData == null) return;
+
     final totalModulos = claseData['totalModulos'] as int;
     final tipoClase = claseData['tipo'] ?? 'Clase de Discipulado';
-// ✅ Determinar si usar "Lección" o "Módulo"
     final usarLeccion = tipoClase == 'Discipulado 1' ||
         tipoClase == 'Discipulado 2' ||
         tipoClase == 'Discipulado 3' ||
         tipoClase == 'Consolidación';
     final nombreUnidad = usarLeccion ? 'Lección' : 'Módulo';
-// ✅ Obtener módulo inicial permitido (por defecto 1)
     final moduloInicialPermitido =
         claseData['moduloInicialPermitido'] as int? ?? 1;
-// ✅ CORRECCIÓN: Obtener asistencias SOLO de la clase ACTUAL
+
     final asistenciasRegistradas = await FirebaseFirestore.instance
         .collection('asistenciasDiscipulado')
-        .where('claseId',
-            isEqualTo: claseAsignadaId) // ✅ Usar claseAsignadaId ACTUAL
+        .where('claseId', isEqualTo: claseAsignadaId)
         .get();
+
     Set<int> modulosYaRegistrados = {};
     for (var doc in asistenciasRegistradas.docs) {
       final data = doc.data();
       modulosYaRegistrados.add(data['numeroModulo'] as int);
     }
-// ✅ Calcular siguiente módulo considerando el inicial permitido
+
     int siguienteModulo = moduloInicialPermitido;
     while (modulosYaRegistrados.contains(siguienteModulo) &&
         siguienteModulo <= totalModulos) {
       siguienteModulo++;
     }
+
     showDialog(
       context: context,
       builder: (context) => Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         insetPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 20),
         child: StatefulBuilder(
-          builder: (context, setDialogState) => LayoutBuilder(
-            builder: (context, constraints) {
-              final screenWidth = MediaQuery.of(context).size.width;
-              final isSmallScreen = screenWidth < 600;
-              return SingleChildScrollView(
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    maxWidth: 600,
-                    minHeight: 100,
-                  ),
-                  child: IntrinsicHeight(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: isSmallScreen ? 12 : 20,
-                            vertical: isSmallScreen ? 12 : 16,
-                          ),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [cocepTeal, cocepDarkTeal],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
+          builder: (context, setDialogState) {
+            // ✅ Estado de guardado para deshabilitar botón
+            bool guardando = false;
+
+            return LayoutBuilder(
+              builder: (context, constraints) {
+                final screenWidth = MediaQuery.of(context).size.width;
+                final isSmallScreen = screenWidth < 600;
+
+                Future<void> guardarAsistencia() async {
+                  if (guardando) return; // ✅ Prevenir doble tap
+                  if (numeroModulo == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                      content: Text('Selecciona el número de $nombreUnidad'),
+                      backgroundColor: Colors.orange,
+                    ));
+                    return;
+                  }
+
+                  setDialogState(() => guardando = true);
+
+                  try {
+                    // ✅ ANTI-DUPLICADO: Verificar y limpiar duplicados existentes ANTES de insertar
+                    for (var discipulo in discipulos) {
+                      final personaId = discipulo['personaId'];
+
+                      // Obtener todos los registros existentes para este discípulo + módulo + clase
+                      final registrosExistentes = await FirebaseFirestore
+                          .instance
+                          .collection('asistenciasDiscipulado')
+                          .where('claseId', isEqualTo: claseAsignadaId)
+                          .where('discipuloId', isEqualTo: personaId)
+                          .where('numeroModulo', isEqualTo: numeroModulo)
+                          .get();
+
+                      if (registrosExistentes.docs.isNotEmpty) {
+                        // ✅ Ya existe: eliminar todos los duplicados excepto el primero
+                        if (registrosExistentes.docs.length > 1) {
+                          for (int i = 1;
+                              i < registrosExistentes.docs.length;
+                              i++) {
+                            await registrosExistentes.docs[i].reference
+                                .delete();
+                          }
+                        }
+                        // ✅ NO insertar nuevo, ya existe
+                        continue;
+                      }
+
+                      // ✅ No existe: crear el registro
+                      final asistio = asistencias[personaId] ?? false;
+                      await FirebaseFirestore.instance
+                          .collection('asistenciasDiscipulado')
+                          .add({
+                        'claseId': claseAsignadaId,
+                        'discipuloId': personaId,
+                        'discipuloNombre': discipulo['nombre'],
+                        'numeroModulo': numeroModulo,
+                        'asistio': asistio,
+                        'fecha': Timestamp.fromDate(fechaSeleccionada),
+                        'maestroId': widget.maestroId,
+                        'recuperado': false,
+                      });
+                    }
+
+                    Navigator.pop(context);
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                        content: Row(children: [
+                          Icon(Icons.check_circle, color: Colors.white),
+                          SizedBox(width: 12),
+                          Flexible(
+                              child: Text(
+                                  'Asistencia de $nombreUnidad $numeroModulo registrada')),
+                        ]),
+                        backgroundColor: Colors.green,
+                        behavior: SnackBarBehavior.floating,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10)),
+                      ));
+                      setState(() {});
+                    }
+                  } catch (e) {
+                    setDialogState(() => guardando = false);
+                    Navigator.pop(context);
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                        content: Text('Error al registrar asistencia: $e'),
+                        backgroundColor: Colors.red,
+                      ));
+                    }
+                  }
+                }
+
+                return SingleChildScrollView(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(maxWidth: 600, minHeight: 100),
+                    child: IntrinsicHeight(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Header
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: isSmallScreen ? 12 : 20,
+                              vertical: isSmallScreen ? 12 : 16,
                             ),
-                            borderRadius: BorderRadius.only(
-                              topLeft: Radius.circular(20),
-                              topRight: Radius.circular(20),
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(Icons.how_to_reg,
-                                  color: Colors.white,
-                                  size: isSmallScreen ? 22 : 28),
-                              SizedBox(width: isSmallScreen ? 8 : 12),
-                              Expanded(
-                                child: Text(
-                                  'Registrar Asistencia',
-                                  style: TextStyle(
-                                    fontSize: isSmallScreen ? 16 : 20,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [cocepTeal, cocepDarkTeal],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
                               ),
-                            ],
-                          ),
-                        ),
-                        Flexible(
-                          child: SingleChildScrollView(
-                            padding: EdgeInsets.all(isSmallScreen ? 12 : 20),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              borderRadius: BorderRadius.only(
+                                topLeft: Radius.circular(20),
+                                topRight: Radius.circular(20),
+                              ),
+                            ),
+                            child: Row(
                               children: [
-                                // ✅ Indicador visual del módulo inicial
-                                if (moduloInicialPermitido > 1)
-                                  Container(
-                                    margin: EdgeInsets.only(bottom: 16),
-                                    padding: EdgeInsets.all(12),
-                                    decoration: BoxDecoration(
-                                      gradient: LinearGradient(
-                                        colors: [
-                                          Colors.blue[50]!,
-                                          Colors.blue[100]!,
+                                Icon(Icons.how_to_reg,
+                                    color: Colors.white,
+                                    size: isSmallScreen ? 22 : 28),
+                                SizedBox(width: isSmallScreen ? 8 : 12),
+                                Expanded(
+                                  child: Text(
+                                    'Registrar Asistencia',
+                                    style: TextStyle(
+                                      fontSize: isSmallScreen ? 16 : 20,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          // Body
+                          Flexible(
+                            child: SingleChildScrollView(
+                              padding: EdgeInsets.all(isSmallScreen ? 12 : 20),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  if (moduloInicialPermitido > 1)
+                                    Container(
+                                      margin: EdgeInsets.only(bottom: 16),
+                                      padding: EdgeInsets.all(12),
+                                      decoration: BoxDecoration(
+                                        color: Colors.blue[50],
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(
+                                            color: Colors.blue[300]!,
+                                            width: 1.5),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Icon(Icons.info_outline,
+                                              color: Colors.blue[700],
+                                              size: 20),
+                                          SizedBox(width: 12),
+                                          Expanded(
+                                            child: Text(
+                                              'Clase en progreso: Iniciando desde $nombreUnidad $moduloInicialPermitido',
+                                              style: TextStyle(
+                                                color: Colors.blue[900],
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ),
                                         ],
                                       ),
-                                      borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(
-                                        color: Colors.blue[300]!,
-                                        width: 1.5,
-                                      ),
                                     ),
-                                    child: Row(
-                                      children: [
-                                        Icon(Icons.info_outline,
-                                            color: Colors.blue[700], size: 20),
-                                        SizedBox(width: 12),
-                                        Expanded(
-                                          child: Text(
-                                            'Clase en progreso: Iniciando desde $nombreUnidad $moduloInicialPermitido',
-                                            style: TextStyle(
-                                              color: Colors.blue[900],
-                                              fontSize: 13,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-
-                                DropdownButtonFormField<int>(
-                                  decoration: InputDecoration(
-                                    labelText: nombreUnidad,
-                                    helperText:
-                                        'Siguiente: $nombreUnidad $siguienteModulo',
-                                    helperStyle: TextStyle(
-                                      color: cocepTeal,
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: isSmallScreen ? 11 : 12,
-                                    ),
-                                    prefixIcon: Icon(Icons.bookmark,
-                                        color: cocepTeal,
-                                        size: isSmallScreen ? 20 : 24),
-                                    border: OutlineInputBorder(
-                                        borderRadius:
-                                            BorderRadius.circular(12)),
-                                    focusedBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                      borderSide: BorderSide(
-                                          color: cocepTeal, width: 2),
-                                    ),
-                                    contentPadding: EdgeInsets.symmetric(
-                                      horizontal: isSmallScreen ? 8 : 12,
-                                      vertical: isSmallScreen ? 12 : 16,
-                                    ),
-                                  ),
-                                  value: numeroModulo,
-                                  isExpanded: true,
-                                  items: List.generate(
-                                    totalModulos - moduloInicialPermitido + 1,
-                                    (index) {
-                                      final modulo =
-                                          moduloInicialPermitido + index;
-                                      final yaRegistrado =
-                                          modulosYaRegistrados.contains(modulo);
-                                      final puedeSeleccionar =
-                                          modulo == siguienteModulo;
-                                      return DropdownMenuItem<int>(
-                                        value: modulo,
-                                        enabled: puedeSeleccionar,
-                                        child: Text(
-                                          '$nombreUnidad $modulo${yaRegistrado ? " ✓" : ""}',
-                                          style: TextStyle(
-                                            color: yaRegistrado
-                                                ? Colors.grey
-                                                : puedeSeleccionar
-                                                    ? cocepDarkTeal
-                                                    : Colors.orange,
-                                            fontWeight:
-                                                modulo == siguienteModulo
-                                                    ? FontWeight.bold
-                                                    : FontWeight.normal,
-                                            fontSize: isSmallScreen ? 13 : 14,
-                                          ),
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      );
-                                    },
-                                  ).toList(),
-                                  onChanged: (value) {
-                                    setDialogState(() {
-                                      numeroModulo = value;
-                                    });
-                                  },
-                                ),
-                                SizedBox(height: isSmallScreen ? 12 : 16),
-                                InkWell(
-                                  onTap: () async {
-                                    final fecha = await showDatePicker(
-                                      context: context,
-                                      initialDate: fechaSeleccionada,
-                                      firstDate: DateTime.now()
-                                          .subtract(Duration(days: 365)),
-                                      lastDate: DateTime.now(),
-                                      builder: (context, child) {
-                                        return Theme(
-                                          data: Theme.of(context).copyWith(
-                                            colorScheme: ColorScheme.light(
-                                              primary: cocepTeal,
-                                              onPrimary: Colors.white,
-                                              surface: Colors.white,
-                                              onSurface: cocepDarkTeal,
-                                            ),
-                                          ),
-                                          child: child!,
-                                        );
-                                      },
-                                    );
-                                    if (fecha != null) {
-                                      setDialogState(() {
-                                        fechaSeleccionada = fecha;
-                                      });
-                                    }
-                                  },
-                                  child: InputDecorator(
+                                  DropdownButtonFormField<int>(
                                     decoration: InputDecoration(
-                                      labelText: 'Fecha',
-                                      prefixIcon: Icon(Icons.calendar_today,
+                                      labelText: nombreUnidad,
+                                      helperText:
+                                          'Siguiente: $nombreUnidad $siguienteModulo',
+                                      helperStyle: TextStyle(
+                                        color: cocepTeal,
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: isSmallScreen ? 11 : 12,
+                                      ),
+                                      prefixIcon: Icon(Icons.bookmark,
                                           color: cocepTeal,
                                           size: isSmallScreen ? 20 : 24),
                                       border: OutlineInputBorder(
@@ -2417,470 +2667,435 @@ class _MaestroDiscipuladoScreenState extends State<MaestroDiscipuladoScreen>
                                         vertical: isSmallScreen ? 12 : 16,
                                       ),
                                     ),
-                                    child: Text(
-                                      DateFormat('dd/MM/yyyy')
-                                          .format(fechaSeleccionada),
-                                      style: TextStyle(
-                                          fontSize: isSmallScreen ? 14 : 16),
+                                    value: numeroModulo,
+                                    isExpanded: true,
+                                    items: List.generate(
+                                      totalModulos - moduloInicialPermitido + 1,
+                                      (index) {
+                                        final modulo =
+                                            moduloInicialPermitido + index;
+                                        final yaRegistrado =
+                                            modulosYaRegistrados
+                                                .contains(modulo);
+                                        final puedeSeleccionar =
+                                            modulo == siguienteModulo;
+                                        return DropdownMenuItem<int>(
+                                          value: modulo,
+                                          enabled: puedeSeleccionar,
+                                          child: Text(
+                                            '$nombreUnidad $modulo${yaRegistrado ? " ✓" : ""}',
+                                            style: TextStyle(
+                                              color: yaRegistrado
+                                                  ? Colors.grey
+                                                  : puedeSeleccionar
+                                                      ? cocepDarkTeal
+                                                      : Colors.orange,
+                                              fontWeight:
+                                                  modulo == siguienteModulo
+                                                      ? FontWeight.bold
+                                                      : FontWeight.normal,
+                                              fontSize: isSmallScreen ? 13 : 14,
+                                            ),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        );
+                                      },
+                                    ).toList(),
+                                    onChanged: guardando
+                                        ? null
+                                        : (value) {
+                                            setDialogState(() {
+                                              numeroModulo = value;
+                                            });
+                                          },
+                                  ),
+                                  SizedBox(height: isSmallScreen ? 12 : 16),
+                                  InkWell(
+                                    onTap: guardando
+                                        ? null
+                                        : () async {
+                                            final fecha = await showDatePicker(
+                                              context: context,
+                                              initialDate: fechaSeleccionada,
+                                              firstDate: DateTime.now()
+                                                  .subtract(
+                                                      Duration(days: 365)),
+                                              lastDate: DateTime.now(),
+                                              builder: (context, child) {
+                                                return Theme(
+                                                  data: Theme.of(context)
+                                                      .copyWith(
+                                                    colorScheme:
+                                                        ColorScheme.light(
+                                                      primary: cocepTeal,
+                                                      onPrimary: Colors.white,
+                                                      surface: Colors.white,
+                                                      onSurface: cocepDarkTeal,
+                                                    ),
+                                                  ),
+                                                  child: child!,
+                                                );
+                                              },
+                                            );
+                                            if (fecha != null) {
+                                              setDialogState(() {
+                                                fechaSeleccionada = fecha;
+                                              });
+                                            }
+                                          },
+                                    child: InputDecorator(
+                                      decoration: InputDecoration(
+                                        labelText: 'Fecha',
+                                        prefixIcon: Icon(Icons.calendar_today,
+                                            color: cocepTeal,
+                                            size: isSmallScreen ? 20 : 24),
+                                        border: OutlineInputBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(12)),
+                                        focusedBorder: OutlineInputBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                          borderSide: BorderSide(
+                                              color: cocepTeal, width: 2),
+                                        ),
+                                        contentPadding: EdgeInsets.symmetric(
+                                          horizontal: isSmallScreen ? 8 : 12,
+                                          vertical: isSmallScreen ? 12 : 16,
+                                        ),
+                                      ),
+                                      child: Text(
+                                        DateFormat('dd/MM/yyyy')
+                                            .format(fechaSeleccionada),
+                                        style: TextStyle(
+                                            fontSize: isSmallScreen ? 14 : 16),
+                                      ),
                                     ),
                                   ),
-                                ),
-                                SizedBox(height: isSmallScreen ? 12 : 20),
-                                Container(
-                                  padding:
-                                      EdgeInsets.all(isSmallScreen ? 12 : 16),
-                                  decoration: BoxDecoration(
-                                    color: cocepTeal.withOpacity(0.05),
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(
-                                        color: cocepTeal.withOpacity(0.2),
-                                        width: 1),
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Wrap(
-                                        alignment: WrapAlignment.spaceBetween,
-                                        crossAxisAlignment:
-                                            WrapCrossAlignment.center,
-                                        spacing: 8,
-                                        runSpacing: 8,
-                                        children: [
-                                          Text(
-                                            'Marcar Asistencias',
-                                            style: TextStyle(
-                                              fontSize: isSmallScreen ? 14 : 16,
-                                              fontWeight: FontWeight.bold,
-                                              color: cocepDarkTeal,
-                                            ),
-                                          ),
-                                          Wrap(
-                                            spacing: 4,
-                                            runSpacing: 4,
-                                            children: [
-                                              TextButton.icon(
-                                                onPressed: () {
-                                                  setDialogState(() {
-                                                    asistencias.updateAll(
-                                                        (key, value) => true);
-                                                  });
-                                                },
-                                                icon: Icon(Icons.check_circle,
-                                                    size:
-                                                        isSmallScreen ? 14 : 16,
-                                                    color: Colors.green),
-                                                label: Text('Todos',
-                                                    style: TextStyle(
-                                                        color: Colors.green,
-                                                        fontSize: isSmallScreen
-                                                            ? 12
-                                                            : 14)),
-                                                style: TextButton.styleFrom(
-                                                  padding: EdgeInsets.symmetric(
-                                                      horizontal: isSmallScreen
-                                                          ? 8
-                                                          : 12,
-                                                      vertical: 4),
-                                                  minimumSize: Size(0, 0),
-                                                  tapTargetSize:
-                                                      MaterialTapTargetSize
-                                                          .shrinkWrap,
-                                                ),
-                                              ),
-                                              TextButton.icon(
-                                                onPressed: () {
-                                                  setDialogState(() {
-                                                    asistencias.updateAll(
-                                                        (key, value) => false);
-                                                  });
-                                                },
-                                                icon: Icon(Icons.cancel,
-                                                    size:
-                                                        isSmallScreen ? 14 : 16,
-                                                    color: Colors.red),
-                                                label: Text('Ninguno',
-                                                    style: TextStyle(
-                                                        color: Colors.red,
-                                                        fontSize: isSmallScreen
-                                                            ? 12
-                                                            : 14)),
-                                                style: TextButton.styleFrom(
-                                                  padding: EdgeInsets.symmetric(
-                                                      horizontal: isSmallScreen
-                                                          ? 8
-                                                          : 12,
-                                                      vertical: 4),
-                                                  minimumSize: Size(0, 0),
-                                                  tapTargetSize:
-                                                      MaterialTapTargetSize
-                                                          .shrinkWrap,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ],
-                                      ),
-                                      SizedBox(height: isSmallScreen ? 8 : 12),
-                                      ...discipulos.map((discipulo) {
-                                        final personaId =
-                                            discipulo['personaId'];
-                                        final asistio =
-                                            asistencias[personaId] ?? true;
-                                        return Container(
-                                          margin: EdgeInsets.only(bottom: 6),
-                                          decoration: BoxDecoration(
-                                            color: Colors.white,
-                                            borderRadius:
-                                                BorderRadius.circular(10),
-                                            border: Border.all(
-                                              color: asistio
-                                                  ? Colors.green
-                                                      .withOpacity(0.3)
-                                                  : Colors.red.withOpacity(0.3),
-                                              width: 1,
-                                            ),
-                                          ),
-                                          child: CheckboxListTile(
-                                            dense: isSmallScreen,
-                                            contentPadding:
-                                                EdgeInsets.symmetric(
-                                              horizontal:
-                                                  isSmallScreen ? 8 : 12,
-                                              vertical: isSmallScreen ? 0 : 4,
-                                            ),
-                                            title: Text(
-                                              discipulo['nombre'] ??
-                                                  'Sin nombre',
+                                  SizedBox(height: isSmallScreen ? 12 : 20),
+                                  Container(
+                                    padding:
+                                        EdgeInsets.all(isSmallScreen ? 12 : 16),
+                                    decoration: BoxDecoration(
+                                      color: cocepTeal.withOpacity(0.05),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                          color: cocepTeal.withOpacity(0.2),
+                                          width: 1),
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Wrap(
+                                          alignment: WrapAlignment.spaceBetween,
+                                          crossAxisAlignment:
+                                              WrapCrossAlignment.center,
+                                          spacing: 8,
+                                          runSpacing: 8,
+                                          children: [
+                                            Text(
+                                              'Marcar Asistencias',
                                               style: TextStyle(
-                                                fontWeight: FontWeight.w600,
-                                                color: cocepDarkTeal,
                                                 fontSize:
-                                                    isSmallScreen ? 13 : 14,
-                                              ),
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                            subtitle: Text(
-                                              discipulo['telefono'] ?? 'N/A',
-                                              style: TextStyle(
-                                                  fontSize:
-                                                      isSmallScreen ? 11 : 12),
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                            value: asistio,
-                                            activeColor: Colors.green,
-                                            checkColor: Colors.white,
-                                            onChanged: (value) {
-                                              setDialogState(() {
-                                                asistencias[personaId] =
-                                                    value ?? false;
-                                              });
-                                            },
-                                            secondary: CircleAvatar(
-                                              radius: isSmallScreen ? 16 : 20,
-                                              backgroundColor: asistio
-                                                  ? Colors.green
-                                                      .withOpacity(0.2)
-                                                  : Colors.red.withOpacity(0.2),
-                                              child: Icon(
-                                                asistio
-                                                    ? Icons.check
-                                                    : Icons.close,
-                                                color: asistio
-                                                    ? Colors.green
-                                                    : Colors.red,
-                                                size: isSmallScreen ? 16 : 20,
+                                                    isSmallScreen ? 14 : 16,
+                                                fontWeight: FontWeight.bold,
+                                                color: cocepDarkTeal,
                                               ),
                                             ),
-                                          ),
-                                        );
-                                      }).toList(),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        Container(
-                          padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
-                          decoration: BoxDecoration(
-                            color: Colors.grey[100],
-                            borderRadius: BorderRadius.only(
-                              bottomLeft: Radius.circular(20),
-                              bottomRight: Radius.circular(20),
-                            ),
-                          ),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              if (isSmallScreen) ...[
-                                SizedBox(
-                                  width: double.infinity,
-                                  child: TextButton(
-                                    onPressed: () => Navigator.pop(context),
-                                    child: Text('Cancelar',
-                                        style: TextStyle(
-                                            color: Colors.grey[700],
-                                            fontSize: 14)),
-                                  ),
-                                ),
-                                SizedBox(height: 8),
-                                SizedBox(
-                                  width: double.infinity,
-                                  child: ElevatedButton.icon(
-                                    onPressed: () async {
-                                      if (numeroModulo == null) {
-                                        ScaffoldMessenger.of(context)
-                                            .showSnackBar(
-                                          SnackBar(
-                                            content: Text(
-                                                'Selecciona el número de $nombreUnidad'),
-                                            backgroundColor: Colors.orange,
-                                          ),
-                                        );
-                                        return;
-                                      }
-
-                                      // ✅ PROTECCIÓN ANTI-DUPLICADOS: Verificar que no existan registros previos
-                                      try {
-                                        for (var discipulo in discipulos) {
-                                          final personaId =
-                                              discipulo['personaId'];
-
-                                          // ✅ Verificar si ya existe un registro para este discípulo + módulo + clase
-                                          final registrosExistentes =
-                                              await FirebaseFirestore.instance
-                                                  .collection(
-                                                      'asistenciasDiscipulado')
-                                                  .where('claseId',
-                                                      isEqualTo:
-                                                          claseAsignadaId)
-                                                  .where('discipuloId',
-                                                      isEqualTo: personaId)
-                                                  .where('numeroModulo',
-                                                      isEqualTo: numeroModulo)
-                                                  .get();
-
-                                          // ✅ Si ya existe, saltar este discípulo
-                                          if (registrosExistentes
-                                              .docs.isNotEmpty) {
-                                            continue;
-                                          }
-
-                                          // ✅ Si no existe, crear el registro
-                                          final asistio =
-                                              asistencias[personaId] ?? false;
-                                          await FirebaseFirestore.instance
-                                              .collection(
-                                                  'asistenciasDiscipulado')
-                                              .add({
-                                            'claseId': claseAsignadaId,
-                                            'discipuloId': personaId,
-                                            'discipuloNombre':
-                                                discipulo['nombre'],
-                                            'numeroModulo': numeroModulo,
-                                            'asistio': asistio,
-                                            'fecha': Timestamp.fromDate(
-                                                fechaSeleccionada),
-                                            'maestroId': widget.maestroId,
-                                            'recuperado': false,
-                                          });
-                                        }
-
-                                        Navigator.pop(context);
-                                        ScaffoldMessenger.of(context)
-                                            .showSnackBar(
-                                          SnackBar(
-                                            content: Row(
+                                            Wrap(
+                                              spacing: 4,
+                                              runSpacing: 4,
                                               children: [
-                                                Icon(Icons.check_circle,
-                                                    color: Colors.white),
-                                                SizedBox(width: 12),
-                                                Flexible(
-                                                  child: Text(
-                                                      'Asistencia de $nombreUnidad $numeroModulo registrada'),
+                                                TextButton.icon(
+                                                  onPressed: guardando
+                                                      ? null
+                                                      : () {
+                                                          setDialogState(() {
+                                                            asistencias
+                                                                .updateAll((key,
+                                                                        value) =>
+                                                                    true);
+                                                          });
+                                                        },
+                                                  icon: Icon(Icons.check_circle,
+                                                      size: isSmallScreen
+                                                          ? 14
+                                                          : 16,
+                                                      color: Colors.green),
+                                                  label: Text('Todos',
+                                                      style: TextStyle(
+                                                          color: Colors.green,
+                                                          fontSize:
+                                                              isSmallScreen
+                                                                  ? 12
+                                                                  : 14)),
+                                                  style: TextButton.styleFrom(
+                                                    padding:
+                                                        EdgeInsets.symmetric(
+                                                            horizontal:
+                                                                isSmallScreen
+                                                                    ? 8
+                                                                    : 12,
+                                                            vertical: 4),
+                                                    minimumSize: Size(0, 0),
+                                                    tapTargetSize:
+                                                        MaterialTapTargetSize
+                                                            .shrinkWrap,
+                                                  ),
+                                                ),
+                                                TextButton.icon(
+                                                  onPressed: guardando
+                                                      ? null
+                                                      : () {
+                                                          setDialogState(() {
+                                                            asistencias
+                                                                .updateAll((key,
+                                                                        value) =>
+                                                                    false);
+                                                          });
+                                                        },
+                                                  icon: Icon(Icons.cancel,
+                                                      size: isSmallScreen
+                                                          ? 14
+                                                          : 16,
+                                                      color: Colors.red),
+                                                  label: Text('Ninguno',
+                                                      style: TextStyle(
+                                                          color: Colors.red,
+                                                          fontSize:
+                                                              isSmallScreen
+                                                                  ? 12
+                                                                  : 14)),
+                                                  style: TextButton.styleFrom(
+                                                    padding:
+                                                        EdgeInsets.symmetric(
+                                                            horizontal:
+                                                                isSmallScreen
+                                                                    ? 8
+                                                                    : 12,
+                                                            vertical: 4),
+                                                    minimumSize: Size(0, 0),
+                                                    tapTargetSize:
+                                                        MaterialTapTargetSize
+                                                            .shrinkWrap,
+                                                  ),
                                                 ),
                                               ],
                                             ),
-                                            backgroundColor: Colors.green,
-                                            behavior: SnackBarBehavior.floating,
-                                            shape: RoundedRectangleBorder(
+                                          ],
+                                        ),
+                                        SizedBox(
+                                            height: isSmallScreen ? 8 : 12),
+                                        ...discipulos.map((discipulo) {
+                                          final personaId =
+                                              discipulo['personaId'];
+                                          final asistio =
+                                              asistencias[personaId] ?? true;
+                                          return Container(
+                                            margin: EdgeInsets.only(bottom: 6),
+                                            decoration: BoxDecoration(
+                                              color: Colors.white,
                                               borderRadius:
                                                   BorderRadius.circular(10),
+                                              border: Border.all(
+                                                color: asistio
+                                                    ? Colors.green
+                                                        .withOpacity(0.3)
+                                                    : Colors.red
+                                                        .withOpacity(0.3),
+                                                width: 1,
+                                              ),
                                             ),
-                                          ),
-                                        );
-                                        setState(() {});
-                                      } catch (e) {
-                                        Navigator.pop(context);
-                                        ScaffoldMessenger.of(context)
-                                            .showSnackBar(
-                                          SnackBar(
-                                            content: Text(
-                                                'Error al registrar asistencia: $e'),
-                                            backgroundColor: Colors.red,
-                                          ),
-                                        );
-                                      }
-                                    },
-                                    icon: Icon(Icons.save, size: 18),
-                                    label: Text('Guardar',
-                                        style: TextStyle(
-                                            fontSize: 15,
-                                            fontWeight: FontWeight.w600)),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: cocepTeal,
-                                      padding:
-                                          EdgeInsets.symmetric(vertical: 14),
-                                      shape: RoundedRectangleBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(12)),
+                                            child: CheckboxListTile(
+                                              dense: isSmallScreen,
+                                              contentPadding:
+                                                  EdgeInsets.symmetric(
+                                                horizontal:
+                                                    isSmallScreen ? 8 : 12,
+                                                vertical: isSmallScreen ? 0 : 4,
+                                              ),
+                                              title: Text(
+                                                discipulo['nombre'] ??
+                                                    'Sin nombre',
+                                                style: TextStyle(
+                                                  fontWeight: FontWeight.w600,
+                                                  color: cocepDarkTeal,
+                                                  fontSize:
+                                                      isSmallScreen ? 13 : 14,
+                                                ),
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                              subtitle: Text(
+                                                discipulo['telefono'] ?? 'N/A',
+                                                style: TextStyle(
+                                                    fontSize: isSmallScreen
+                                                        ? 11
+                                                        : 12),
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                              value: asistio,
+                                              activeColor: Colors.green,
+                                              checkColor: Colors.white,
+                                              onChanged: guardando
+                                                  ? null
+                                                  : (value) {
+                                                      setDialogState(() {
+                                                        asistencias[personaId] =
+                                                            value ?? false;
+                                                      });
+                                                    },
+                                              secondary: CircleAvatar(
+                                                radius: isSmallScreen ? 16 : 20,
+                                                backgroundColor: asistio
+                                                    ? Colors.green
+                                                        .withOpacity(0.2)
+                                                    : Colors.red
+                                                        .withOpacity(0.2),
+                                                child: Icon(
+                                                  asistio
+                                                      ? Icons.check
+                                                      : Icons.close,
+                                                  color: asistio
+                                                      ? Colors.green
+                                                      : Colors.red,
+                                                  size: isSmallScreen ? 16 : 20,
+                                                ),
+                                              ),
+                                            ),
+                                          );
+                                        }).toList(),
+                                      ],
                                     ),
                                   ),
-                                ),
-                              ] else ...[
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: TextButton(
-                                        onPressed: () => Navigator.pop(context),
-                                        child: Text('Cancelar',
-                                            style: TextStyle(
-                                                color: Colors.grey[700])),
+                                ],
+                              ),
+                            ),
+                          ),
+
+                          // Footer con botón que se deshabilita
+                          Container(
+                            padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
+                            decoration: BoxDecoration(
+                              color: Colors.grey[100],
+                              borderRadius: BorderRadius.only(
+                                bottomLeft: Radius.circular(20),
+                                bottomRight: Radius.circular(20),
+                              ),
+                            ),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (isSmallScreen) ...[
+                                  SizedBox(
+                                    width: double.infinity,
+                                    child: TextButton(
+                                      onPressed: guardando
+                                          ? null
+                                          : () => Navigator.pop(context),
+                                      child: Text('Cancelar',
+                                          style: TextStyle(
+                                              color: Colors.grey[700],
+                                              fontSize: 14)),
+                                    ),
+                                  ),
+                                  SizedBox(height: 8),
+                                  SizedBox(
+                                    width: double.infinity,
+                                    child: ElevatedButton.icon(
+                                      onPressed:
+                                          guardando ? null : guardarAsistencia,
+                                      icon: guardando
+                                          ? SizedBox(
+                                              width: 16,
+                                              height: 16,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                                color: Colors.white,
+                                              ),
+                                            )
+                                          : Icon(Icons.save, size: 18),
+                                      label: Text(
+                                          guardando
+                                              ? 'Guardando...'
+                                              : 'Guardar',
+                                          style: TextStyle(
+                                              fontSize: 15,
+                                              fontWeight: FontWeight.w600)),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor:
+                                            guardando ? Colors.grey : cocepTeal,
+                                        padding:
+                                            EdgeInsets.symmetric(vertical: 14),
+                                        shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(12)),
                                       ),
                                     ),
-                                    SizedBox(width: 12),
-                                    Expanded(
-                                      flex: 2,
-                                      child: ElevatedButton.icon(
-                                        onPressed: () async {
-                                          if (numeroModulo == null) {
-                                            ScaffoldMessenger.of(context)
-                                                .showSnackBar(
-                                              SnackBar(
-                                                content: Text(
-                                                    'Selecciona el número de $nombreUnidad'),
-                                                backgroundColor: Colors.orange,
-                                              ),
-                                            );
-                                            return;
-                                          }
-
-                                          // ✅ PROTECCIÓN ANTI-DUPLICADOS: Verificar que no existan registros previos
-                                          try {
-                                            for (var discipulo in discipulos) {
-                                              final personaId =
-                                                  discipulo['personaId'];
-
-                                              // ✅ Verificar si ya existe un registro para este discípulo + módulo + clase
-                                              final registrosExistentes =
-                                                  await FirebaseFirestore
-                                                      .instance
-                                                      .collection(
-                                                          'asistenciasDiscipulado')
-                                                      .where('claseId',
-                                                          isEqualTo:
-                                                              claseAsignadaId)
-                                                      .where('discipuloId',
-                                                          isEqualTo: personaId)
-                                                      .where('numeroModulo',
-                                                          isEqualTo:
-                                                              numeroModulo)
-                                                      .get();
-
-                                              // ✅ Si ya existe, saltar este discípulo
-                                              if (registrosExistentes
-                                                  .docs.isNotEmpty) {
-                                                continue;
-                                              }
-
-                                              // ✅ Si no existe, crear el registro
-                                              final asistio =
-                                                  asistencias[personaId] ??
-                                                      false;
-                                              await FirebaseFirestore.instance
-                                                  .collection(
-                                                      'asistenciasDiscipulado')
-                                                  .add({
-                                                'claseId': claseAsignadaId,
-                                                'discipuloId': personaId,
-                                                'discipuloNombre':
-                                                    discipulo['nombre'],
-                                                'numeroModulo': numeroModulo,
-                                                'asistio': asistio,
-                                                'fecha': Timestamp.fromDate(
-                                                    fechaSeleccionada),
-                                                'maestroId': widget.maestroId,
-                                                'recuperado': false,
-                                              });
-                                            }
-
-                                            Navigator.pop(context);
-                                            ScaffoldMessenger.of(context)
-                                                .showSnackBar(
-                                              SnackBar(
-                                                content: Row(
-                                                  children: [
-                                                    Icon(Icons.check_circle,
-                                                        color: Colors.white),
-                                                    SizedBox(width: 12),
-                                                    Flexible(
-                                                      child: Text(
-                                                          'Asistencia de $nombreUnidad $numeroModulo registrada'),
-                                                    ),
-                                                  ],
-                                                ),
-                                                backgroundColor: Colors.green,
-                                                behavior:
-                                                    SnackBarBehavior.floating,
-                                                shape: RoundedRectangleBorder(
-                                                  borderRadius:
-                                                      BorderRadius.circular(10),
-                                                ),
-                                              ),
-                                            );
-                                            setState(() {});
-                                          } catch (e) {
-                                            Navigator.pop(context);
-                                            ScaffoldMessenger.of(context)
-                                                .showSnackBar(
-                                              SnackBar(
-                                                content: Text(
-                                                    'Error al registrar asistencia: $e'),
-                                                backgroundColor: Colors.red,
-                                              ),
-                                            );
-                                          }
-                                        },
-                                        icon: Icon(Icons.save),
-                                        label: Text('Guardar',
-                                            style: TextStyle(
-                                                fontSize: 16,
-                                                fontWeight: FontWeight.w600)),
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: cocepTeal,
-                                          padding: EdgeInsets.symmetric(
-                                              vertical: 14),
-                                          shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(12)),
+                                  ),
+                                ] else ...[
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: TextButton(
+                                          onPressed: guardando
+                                              ? null
+                                              : () => Navigator.pop(context),
+                                          child: Text('Cancelar',
+                                              style: TextStyle(
+                                                  color: Colors.grey[700])),
                                         ),
                                       ),
-                                    ),
-                                  ],
-                                ),
+                                      SizedBox(width: 12),
+                                      Expanded(
+                                        flex: 2,
+                                        child: ElevatedButton.icon(
+                                          onPressed: guardando
+                                              ? null
+                                              : guardarAsistencia,
+                                          icon: guardando
+                                              ? SizedBox(
+                                                  width: 18,
+                                                  height: 18,
+                                                  child:
+                                                      CircularProgressIndicator(
+                                                    strokeWidth: 2,
+                                                    color: Colors.white,
+                                                  ),
+                                                )
+                                              : Icon(Icons.save),
+                                          label: Text(
+                                              guardando
+                                                  ? 'Guardando...'
+                                                  : 'Guardar',
+                                              style: TextStyle(
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.w600)),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: guardando
+                                                ? Colors.grey
+                                                : cocepTeal,
+                                            padding: EdgeInsets.symmetric(
+                                                vertical: 14),
+                                            shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(12)),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
                               ],
-                            ],
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
-                ),
-              );
-            },
-          ),
+                );
+              },
+            );
+          },
         ),
       ),
     );
@@ -2965,9 +3180,30 @@ class _MaestroDiscipuladoScreenState extends State<MaestroDiscipuladoScreen>
                 // ✅ Procesar asistencias
                 if (asistenciasSnapshot.hasData &&
                     asistenciasSnapshot.data!.docs.isNotEmpty) {
+                  // Agrupar por (personaId, numeroModulo) -> tomar el más reciente
+                  Map<String, Map<String, dynamic>> mapaDeduplicado = {};
+
                   for (var doc in asistenciasSnapshot.data!.docs) {
                     final data = doc.data() as Map<String, dynamic>;
-                    final personaId = data['discipuloId'];
+                    final personaId = data['discipuloId'] as String? ?? '';
+                    final numeroModulo = data['numeroModulo'] as int;
+                    final clave = '$personaId|$numeroModulo';
+
+                    if (!mapaDeduplicado.containsKey(clave)) {
+                      mapaDeduplicado[clave] = data;
+                    } else {
+                      // Conservar el recuperado si alguno lo es
+                      final existing = mapaDeduplicado[clave]!;
+                      if ((data['recuperado'] ?? false) == true) {
+                        mapaDeduplicado[clave] = data;
+                      }
+                      // Si el existente ya es recuperado, dejarlo
+                    }
+                  }
+
+                  for (var entry in mapaDeduplicado.entries) {
+                    final data = entry.value;
+                    final personaId = data['discipuloId'] as String? ?? '';
                     final numeroModulo = data['numeroModulo'] as int;
                     final recuperado = data['recuperado'] ?? false;
 
@@ -2978,7 +3214,6 @@ class _MaestroDiscipuladoScreenState extends State<MaestroDiscipuladoScreen>
                                 as List<int>)
                             .add(numeroModulo);
                       } else {
-                        // ✅ Solo contar como falta si NO fue recuperado
                         if (!recuperado) {
                           estadisticas[personaId]!['faltas']++;
                           (estadisticas[personaId]!['modulosFaltados']
@@ -5592,4 +5827,28 @@ class _DialogoConfirmarResultadosState
       ),
     );
   }
+}
+
+class _CrossPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.red.withOpacity(0.6)
+      ..strokeWidth = 3
+      ..strokeCap = StrokeCap.round;
+
+    canvas.drawLine(
+      Offset(4, 4),
+      Offset(size.width - 4, size.height - 4),
+      paint,
+    );
+    canvas.drawLine(
+      Offset(size.width - 4, 4),
+      Offset(4, size.height - 4),
+      paint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
