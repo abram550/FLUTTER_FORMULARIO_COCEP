@@ -26,11 +26,13 @@ class _MaestroDiscipuladoScreenState extends State<MaestroDiscipuladoScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final ScrollController _scrollController = ScrollController();
-
   final TextEditingController _searchController = TextEditingController();
   final ValueNotifier<String> _searchQueryNotifier = ValueNotifier<String>('');
   final ValueNotifier<bool> _isSearchActiveNotifier =
       ValueNotifier<bool>(false);
+
+  //Flag para ejecutar limpieza una sola vez por sesión
+  bool _limpiezaEjecutada = false;
 
   // Colores COCEP
   static const Color cocepTeal = Color(0xFF1B7F7A);
@@ -42,6 +44,12 @@ class _MaestroDiscipuladoScreenState extends State<MaestroDiscipuladoScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+
+    // Lanzar limpieza inteligente una sola vez al entrar
+    // Se ejecuta en segundo plano sin bloquear la UI
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _ejecutarLimpiezaInteligente();
+    });
   }
 
   @override
@@ -52,6 +60,125 @@ class _MaestroDiscipuladoScreenState extends State<MaestroDiscipuladoScreen>
     _searchQueryNotifier.dispose();
     _isSearchActiveNotifier.dispose();
     super.dispose();
+  }
+
+  Future<void> _ejecutarLimpiezaInteligente() async {
+    // ✅ Guardia 1: Solo ejecutar una vez por sesión
+    if (_limpiezaEjecutada) return;
+    _limpiezaEjecutada = true;
+
+    // ✅ Guardia 2: Verificar que el widget sigue montado
+    if (!mounted) return;
+
+    try {
+      // ✅ PASO 1: Obtener claseAsignadaId del maestro
+      // Si falla aquí, simplemente no hacemos nada (no hay error visible)
+      final maestroDoc = await FirebaseFirestore.instance
+          .collection('maestrosDiscipulado')
+          .doc(widget.maestroId)
+          .get();
+
+      if (!mounted) return;
+      if (!maestroDoc.exists) return;
+
+      final maestroData = maestroDoc.data() as Map<String, dynamic>?;
+      if (maestroData == null) return;
+
+      final claseAsignadaId = maestroData['claseAsignadaId'] as String?;
+      if (claseAsignadaId == null || claseAsignadaId.isEmpty) return;
+
+      // ✅ PASO 2: Obtener SOLO las asistencias de la clase actual
+      // Consulta acotada: no trae toda la colección, solo la clase del maestro
+      final asistenciasSnap = await FirebaseFirestore.instance
+          .collection('asistenciasDiscipulado')
+          .where('claseId', isEqualTo: claseAsignadaId)
+          .get();
+
+      if (!mounted) return;
+
+      // ✅ PASO 3: Detectar si hay duplicados ANTES de hacer cualquier escritura
+      // Agrupamos por (discipuloId + numeroModulo)
+      // Si ningún grupo tiene más de 1 elemento → no hay duplicados → salimos sin tocar nada
+      final Map<String, List<String>> grupos = {};
+
+      for (final doc in asistenciasSnap.docs) {
+        final data = doc.data();
+        final discipuloId = data['discipuloId'] as String? ?? '';
+        final numeroModulo = data['numeroModulo'];
+        if (discipuloId.isEmpty || numeroModulo == null) continue;
+
+        final clave = '${discipuloId}|${numeroModulo.toString()}';
+        grupos.putIfAbsent(clave, () => []).add(doc.id);
+      }
+
+      // ✅ Verificar si hay algún grupo con duplicados
+      final hayDuplicados = grupos.values.any((ids) => ids.length > 1);
+
+      // ✅ Si no hay duplicados, terminar aquí sin escribir nada en Firestore
+      if (!hayDuplicados) return;
+
+      // ✅ PASO 4: Solo llegamos aquí si HAY duplicados confirmados
+      // Proceder a eliminar, conservando el documento correcto de cada grupo
+      // Regla de conservación: si alguno tiene recuperado=true, conservar ese;
+      // de lo contrario, conservar el primero (más antiguo o el que aparezca primero)
+      int eliminados = 0;
+
+      for (final entry in grupos.entries) {
+        final ids = entry.value;
+
+        // Sin duplicados en este grupo → saltar
+        if (ids.length <= 1) continue;
+
+        // ✅ Obtener los docs de este grupo para decidir cuál conservar
+        // Solo los que tienen duplicado (ids.length > 1)
+        final docsDelGrupo =
+            asistenciasSnap.docs.where((d) => ids.contains(d.id)).toList();
+
+        // ✅ Decidir cuál conservar:
+        // Prioridad 1: el que tenga recuperado=true
+        // Prioridad 2: el primero de la lista (más antiguo)
+        String idAConservar = docsDelGrupo.first.id;
+
+        for (final doc in docsDelGrupo) {
+          final data = doc.data();
+          final recuperado = data['recuperado'] ?? false;
+          if (recuperado == true) {
+            idAConservar = doc.id;
+            break; // Ya encontramos el mejor, salir
+          }
+        }
+
+        // ✅ Eliminar todos menos el que conservamos
+        for (final doc in docsDelGrupo) {
+          if (doc.id == idAConservar) continue;
+
+          // ✅ Guardia dentro del loop: si el widget se desmontó, parar todo
+          if (!mounted) return;
+
+          try {
+            await doc.reference.delete();
+            eliminados++;
+          } catch (_) {
+            // Si falla una eliminación individual, continuamos con las demás
+            // No propagamos el error para no interrumpir el proceso
+            continue;
+          }
+        }
+      }
+
+      // ✅ Log solo en desarrollo (no muestra nada al usuario)
+      // Si eliminados > 0 significa que se encontraron y limpiaron duplicados
+      if (eliminados > 0) {
+        // ignore: avoid_print
+        print(
+            '[LimpiezaInteligente] Eliminados $eliminados duplicados de la clase $claseAsignadaId');
+      }
+    } catch (_) {
+      // ✅ Captura cualquier error inesperado (permisos, red, etc.)
+      // No muestra nada al usuario, falla silenciosamente
+      // El maestro no ve ningún error y la app sigue funcionando normal
+      return;
+    }
   }
 
   @override
