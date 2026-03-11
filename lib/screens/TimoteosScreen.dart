@@ -2597,13 +2597,23 @@ class JovenesAsignadosTab extends StatelessWidget {
                           final bool tieneBloqueoPendiente =
                               faltas >= 3 && !visible;
 
+// ✅ NUEVO: Detectar si está fuera de la ciudad
+                          final String estadoCiudadReg =
+                              (data['estadoCiudad'] as String? ?? '').trim();
+                          final bool fueraDeCiudadReg =
+                              estadoCiudadReg.toLowerCase().contains('fuera');
+
                           return Container(
                             margin: EdgeInsets.only(bottom: 10),
                             child: Card(
-                              elevation: tieneAlertaActiva ? 6 : 3,
-                              shadowColor: tieneAlertaActiva
-                                  ? Color(0xFFFF4B2B).withOpacity(0.4)
-                                  : Colors.grey.withOpacity(0.2),
+                              elevation: fueraDeCiudadReg
+                                  ? 4
+                                  : (tieneAlertaActiva ? 6 : 3),
+                              shadowColor: fueraDeCiudadReg
+                                  ? Colors.deepPurple.withOpacity(0.4)
+                                  : tieneAlertaActiva
+                                      ? Color(0xFFFF4B2B).withOpacity(0.4)
+                                      : Colors.grey.withOpacity(0.2),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(14),
                               ),
@@ -2613,27 +2623,116 @@ class JovenesAsignadosTab extends StatelessWidget {
                                   gradient: LinearGradient(
                                     begin: Alignment.topLeft,
                                     end: Alignment.bottomRight,
-                                    colors: tieneAlertaActiva
+                                    colors: fueraDeCiudadReg
                                         ? [
-                                            Colors.white,
-                                            Color(0xFFFF4B2B).withOpacity(0.03),
+                                            const Color(0xFFEDE7F6),
+                                            Colors.deepPurple.shade50,
                                           ]
-                                        : [
-                                            Colors.white,
-                                            Colors.white,
-                                          ],
+                                        : tieneAlertaActiva
+                                            ? [
+                                                Colors.white,
+                                                Color(0xFFFF4B2B)
+                                                    .withOpacity(0.03),
+                                              ]
+                                            : [
+                                                Colors.white,
+                                                Colors.white,
+                                              ],
                                   ),
-                                  border: tieneAlertaActiva
+                                  border: fueraDeCiudadReg
                                       ? Border.all(
-                                          color: Color(0xFFFF4B2B)
-                                              .withOpacity(0.3),
+                                          color: Colors.deepPurple
+                                              .withOpacity(0.5),
                                           width: 2,
                                         )
-                                      : null,
+                                      : tieneAlertaActiva
+                                          ? Border.all(
+                                              color: Color(0xFFFF4B2B)
+                                                  .withOpacity(0.3),
+                                              width: 2,
+                                            )
+                                          : null,
                                 ),
                                 child: Column(
                                   children: [
-                                    // ExpansionTile principal
+                                    // ✅ NUEVO: Banner superior "FUERA DE LA CIUDAD"
+                                    if (fueraDeCiudadReg)
+                                      Container(
+                                        width: double.infinity,
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 12, vertical: 7),
+                                        decoration: BoxDecoration(
+                                          gradient: LinearGradient(
+                                            colors: [
+                                              Colors.deepPurple.shade400,
+                                              Colors.deepPurple.shade700,
+                                            ],
+                                            begin: Alignment.centerLeft,
+                                            end: Alignment.centerRight,
+                                          ),
+                                          borderRadius: const BorderRadius.only(
+                                            topLeft: Radius.circular(12),
+                                            topRight: Radius.circular(12),
+                                          ),
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            const Icon(
+                                              Icons.flight_takeoff_rounded,
+                                              color: Colors.white,
+                                              size: 15,
+                                            ),
+                                            const SizedBox(width: 6),
+                                            const Text(
+                                              'FUERA DE LA CIUDAD',
+                                              style: TextStyle(
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.white,
+                                                letterSpacing: 0.8,
+                                              ),
+                                            ),
+                                            const Spacer(),
+                                            Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      horizontal: 8,
+                                                      vertical: 3),
+                                              decoration: BoxDecoration(
+                                                color: Colors.white
+                                                    .withOpacity(0.2),
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                                border: Border.all(
+                                                    color: Colors.white
+                                                        .withOpacity(0.4),
+                                                    width: 1),
+                                              ),
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: const [
+                                                  Icon(
+                                                    Icons.location_off_rounded,
+                                                    color: Colors.white,
+                                                    size: 11,
+                                                  ),
+                                                  SizedBox(width: 4),
+                                                  Text(
+                                                    'De viaje',
+                                                    style: TextStyle(
+                                                      fontSize: 10,
+                                                      color: Colors.white,
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+
                                     ExpansionTile(
                                       tilePadding: EdgeInsets.symmetric(
                                           horizontal: 14, vertical: 10),
@@ -2654,16 +2753,25 @@ class JovenesAsignadosTab extends StatelessWidget {
                                             height: 40,
                                             decoration: BoxDecoration(
                                               gradient: LinearGradient(
-                                                colors: [
-                                                  Color(0xFF147B7C),
-                                                  Color(0xFF147B7C)
-                                                      .withOpacity(0.8),
-                                                ],
+                                                colors: fueraDeCiudadReg
+                                                    ? [
+                                                        Colors.deepPurple
+                                                            .shade400,
+                                                        Colors.deepPurple
+                                                            .shade700,
+                                                      ]
+                                                    : [
+                                                        Color(0xFF147B7C),
+                                                        Color(0xFF147B7C)
+                                                            .withOpacity(0.8),
+                                                      ],
                                               ),
                                               shape: BoxShape.circle,
                                               boxShadow: [
                                                 BoxShadow(
-                                                  color: Color(0xFF147B7C)
+                                                  color: (fueraDeCiudadReg
+                                                          ? Colors.deepPurple
+                                                          : Color(0xFF147B7C))
                                                       .withOpacity(0.3),
                                                   spreadRadius: 2,
                                                   blurRadius: 6,
@@ -2672,19 +2780,29 @@ class JovenesAsignadosTab extends StatelessWidget {
                                               ],
                                             ),
                                             child: Center(
-                                              child: Text(
-                                                nombre.isNotEmpty
-                                                    ? nombre[0].toUpperCase()
-                                                    : '?',
-                                                style: TextStyle(
-                                                  color: Colors.white,
-                                                  fontWeight: FontWeight.bold,
-                                                  fontSize: 16,
-                                                ),
-                                              ),
+                                              child: fueraDeCiudadReg
+                                                  ? Icon(
+                                                      Icons
+                                                          .flight_takeoff_rounded,
+                                                      color: Colors.white,
+                                                      size: 18,
+                                                    )
+                                                  : Text(
+                                                      nombre.isNotEmpty
+                                                          ? nombre[0]
+                                                              .toUpperCase()
+                                                          : '?',
+                                                      style: TextStyle(
+                                                        color: Colors.white,
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                        fontSize: 16,
+                                                      ),
+                                                    ),
                                             ),
                                           ),
-                                          if (tieneAlertaActiva)
+                                          if (tieneAlertaActiva &&
+                                              !fueraDeCiudadReg)
                                             Positioned(
                                               top: -2,
                                               right: -2,
@@ -2705,6 +2823,28 @@ class JovenesAsignadosTab extends StatelessWidget {
                                                 ),
                                               ),
                                             ),
+                                          if (fueraDeCiudadReg)
+                                            Positioned(
+                                              top: -2,
+                                              right: -2,
+                                              child: Container(
+                                                width: 18,
+                                                height: 18,
+                                                decoration: BoxDecoration(
+                                                  color: Colors
+                                                      .deepPurple.shade600,
+                                                  shape: BoxShape.circle,
+                                                  border: Border.all(
+                                                      color: Colors.white,
+                                                      width: 2),
+                                                ),
+                                                child: Icon(
+                                                  Icons.location_off_rounded,
+                                                  color: Colors.white,
+                                                  size: 10,
+                                                ),
+                                              ),
+                                            ),
                                         ],
                                       ),
                                       title: Text(
@@ -2712,7 +2852,9 @@ class JovenesAsignadosTab extends StatelessWidget {
                                         style: TextStyle(
                                           fontSize: 15,
                                           fontWeight: FontWeight.bold,
-                                          color: Color(0xFF147B7C),
+                                          color: fueraDeCiudadReg
+                                              ? Colors.deepPurple.shade700
+                                              : Color(0xFF147B7C),
                                         ),
                                       ),
                                       subtitle: Container(
@@ -2721,6 +2863,55 @@ class JovenesAsignadosTab extends StatelessWidget {
                                           spacing: 6,
                                           runSpacing: 4,
                                           children: [
+                                            // ✅ NUEVO: Badge "DE VIAJE" si está fuera de la ciudad
+                                            if (fueraDeCiudadReg)
+                                              Container(
+                                                padding: EdgeInsets.symmetric(
+                                                    horizontal: 6, vertical: 3),
+                                                decoration: BoxDecoration(
+                                                  gradient: LinearGradient(
+                                                    colors: [
+                                                      Colors
+                                                          .deepPurple.shade400,
+                                                      Colors
+                                                          .deepPurple.shade600,
+                                                    ],
+                                                  ),
+                                                  borderRadius:
+                                                      BorderRadius.circular(8),
+                                                  boxShadow: [
+                                                    BoxShadow(
+                                                      color: Colors.deepPurple
+                                                          .withOpacity(0.3),
+                                                      blurRadius: 4,
+                                                      offset: Offset(0, 2),
+                                                    ),
+                                                  ],
+                                                ),
+                                                child: Row(
+                                                  mainAxisSize:
+                                                      MainAxisSize.min,
+                                                  children: [
+                                                    Icon(
+                                                      Icons
+                                                          .flight_takeoff_rounded,
+                                                      size: 11,
+                                                      color: Colors.white,
+                                                    ),
+                                                    SizedBox(width: 3),
+                                                    Text(
+                                                      'DE VIAJE',
+                                                      style: TextStyle(
+                                                        color: Colors.white,
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                        fontSize: 9,
+                                                        letterSpacing: 0.3,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
                                             // Badge de faltas
                                             Container(
                                               padding: EdgeInsets.symmetric(
@@ -2761,9 +2952,8 @@ class JovenesAsignadosTab extends StatelessWidget {
                                                 ],
                                               ),
                                             ),
-
-                                            // Badge de ALERTA ACTIVA
-                                            if (tieneAlertaActiva)
+                                            if (tieneAlertaActiva &&
+                                                !fueraDeCiudadReg)
                                               Container(
                                                 padding: EdgeInsets.symmetric(
                                                     horizontal: 6, vertical: 3),
@@ -2809,9 +2999,8 @@ class JovenesAsignadosTab extends StatelessWidget {
                                                   ],
                                                 ),
                                               ),
-
-                                            // Badge de bloqueado
-                                            if (tieneBloqueoPendiente)
+                                            if (tieneBloqueoPendiente &&
+                                                !fueraDeCiudadReg)
                                               Container(
                                                 padding: EdgeInsets.symmetric(
                                                     horizontal: 6, vertical: 3),
@@ -2868,8 +3057,7 @@ class JovenesAsignadosTab extends StatelessWidget {
                                       ],
                                     ),
 
-                                    // ===== BANNER DE ALERTA INFORMATIVO (VISIBLE CUANDO HAY ALERTA) =====
-                                    if (tieneAlertaActiva)
+                                    if (tieneAlertaActiva && !fueraDeCiudadReg)
                                       Container(
                                         width: double.infinity,
                                         padding: EdgeInsets.symmetric(
@@ -2899,7 +3087,6 @@ class JovenesAsignadosTab extends StatelessWidget {
                                         ),
                                         child: LayoutBuilder(
                                           builder: (context, constraints) {
-                                            // Detectar pantallas pequeñas
                                             final isSmallScreen =
                                                 constraints.maxWidth < 380;
                                             final isMediumScreen =
@@ -2910,7 +3097,6 @@ class JovenesAsignadosTab extends StatelessWidget {
                                               crossAxisAlignment:
                                                   CrossAxisAlignment.start,
                                               children: [
-                                                // Ícono de advertencia con animación sutil
                                                 Container(
                                                   padding: EdgeInsets.all(
                                                       isSmallScreen ? 7 : 8),
@@ -2949,15 +3135,12 @@ class JovenesAsignadosTab extends StatelessWidget {
                                                 SizedBox(
                                                     width:
                                                         isSmallScreen ? 8 : 10),
-
-                                                // Texto informativo (responsivo)
                                                 Expanded(
                                                   child: Column(
                                                     crossAxisAlignment:
                                                         CrossAxisAlignment
                                                             .start,
                                                     children: [
-                                                      // Título
                                                       Text(
                                                         'Estado de Alerta Activo',
                                                         style: TextStyle(
@@ -2973,8 +3156,6 @@ class JovenesAsignadosTab extends StatelessWidget {
                                                         ),
                                                       ),
                                                       SizedBox(height: 4),
-
-                                                      // Descripción adaptativa
                                                       Text(
                                                         isSmallScreen
                                                             ? 'Múltiples inasistencias detectadas. Notifique a su líder o coordinador. Asistencias bloqueadas hasta revisión.'
@@ -3028,6 +3209,7 @@ class JovenesAsignadosTab extends StatelessWidget {
   }
 
   /// Muestra información resumida sin dirección ni barrio (eso va en "Ver Detalles")
+
   Widget _buildExpandedContent(
     BuildContext context,
     DocumentSnapshot registro,
@@ -3036,39 +3218,124 @@ class JovenesAsignadosTab extends StatelessWidget {
     String estadoProceso,
     List asistencias,
   ) {
+    // ✅ NUEVO: Detectar si está fuera de la ciudad
+    final data = registro.data() as Map<String, dynamic>? ?? {};
+    final String estadoCiudad = (data['estadoCiudad'] as String? ?? '').trim();
+    final bool fueraDeCiudad = estadoCiudad.toLowerCase().contains('fuera');
+
     return Container(
-      // Padding reducido para hacer la tarjeta más compacta
-      padding: EdgeInsets.all(14), // Reducido de 16 a 14
+      padding: EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.grey[50],
         borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(16), // Ajustado a 16
-          bottomRight: Radius.circular(16), // Ajustado a 16
+          bottomLeft: Radius.circular(16),
+          bottomRight: Radius.circular(16),
         ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Sección de información de contacto
+          // ✅ NUEVO: Banner de "Fuera de la ciudad" visible dentro del contenido expandido
+          if (fueraDeCiudad)
+            Container(
+              width: double.infinity,
+              margin: EdgeInsets.only(bottom: 12),
+              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Colors.deepPurple.shade400,
+                    Colors.deepPurple.shade700,
+                  ],
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                ),
+                borderRadius: BorderRadius.circular(10),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.deepPurple.withOpacity(0.3),
+                    blurRadius: 6,
+                    offset: Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.flight_takeoff_rounded,
+                    color: Colors.white,
+                    size: 18,
+                  ),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'FUERA DE LA CIUDAD',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                        SizedBox(height: 2),
+                        Text(
+                          'Este discípulo está de viaje. No se puede registrar asistencia.',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.white.withOpacity(0.9),
+                            height: 1.3,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: Colors.white.withOpacity(0.4),
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.location_off_rounded,
+                          color: Colors.white,
+                          size: 12,
+                        ),
+                        SizedBox(width: 4),
+                        Text(
+                          'De viaje',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
           _buildInfoSection(telefono),
-          SizedBox(height: 10), // Reducido de 12 a 10
-
-          // Sección de estado del proceso
+          SizedBox(height: 10),
           _buildEstadoSection(estadoProceso),
-          SizedBox(height: 14), // Reducido de 16 a 14
-
-          // Botones de acción
+          SizedBox(height: 14),
           _buildActionButtons(context, registro),
 
-          // Historial de asistencias (si existen)
           if (asistencias.isNotEmpty) ...[
-            SizedBox(height: 14), // Reducido de 16 a 14
+            SizedBox(height: 14),
             _buildAsistenciasSection(asistencias),
           ],
-
-          // ===== DIRECCIÓN Y BARRIO ELIMINADOS =====
-          // Esta información ahora solo aparece en el diálogo "Ver Detalles"
-          // para mantener las tarjetas más compactas y limpias
         ],
       ),
     );
@@ -3170,115 +3437,131 @@ class JovenesAsignadosTab extends StatelessWidget {
   /// Construye los botones de acción para cada discípulo
   /// Incluye: Actualizar Estado, Ver Detalles y Registrar Asistencia
   /// Los botones son responsivos y se adaptan al tamaño de pantalla
+
   Widget _buildActionButtons(BuildContext context, DocumentSnapshot registro) {
+    final data = registro.data() as Map<String, dynamic>;
+
+    // Detectar si está fuera de la ciudad
+    final String estadoCiudad = (data['estadoCiudad'] as String? ?? '').trim();
+    final bool fueraDeCiudad = estadoCiudad.toLowerCase().contains('fuera');
+
     return LayoutBuilder(
       builder: (context, constraints) {
         bool isSmallScreen = constraints.maxWidth < 320;
 
         if (isSmallScreen) {
-          // ===== LAYOUT VERTICAL PARA PANTALLAS PEQUEÑAS =====
           return Column(
             children: [
               // Botón: Actualizar Estado
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
-                  icon: Icon(Icons.edit_note,
-                      color: Colors.white, size: 16), // Reducido
-                  label: Text('Actualizar Estado',
-                      style: TextStyle(fontSize: 13)), // Reducido
+                  icon: Icon(Icons.edit_note, color: Colors.white, size: 16),
+                  label:
+                      Text('Actualizar Estado', style: TextStyle(fontSize: 13)),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Color(0xFF147B7C),
                     foregroundColor: Colors.white,
-                    padding: EdgeInsets.symmetric(
-                        vertical: 10), // Reducido de 12 a 10
+                    padding: EdgeInsets.symmetric(vertical: 10),
                     shape: RoundedRectangleBorder(
-                      borderRadius:
-                          BorderRadius.circular(10), // Reducido de 12 a 10
+                      borderRadius: BorderRadius.circular(10),
                     ),
                     elevation: 2,
                   ),
                   onPressed: () => _actualizarEstado(context, registro),
                 ),
               ),
-              SizedBox(height: 6), // Reducido de 8 a 6
+              SizedBox(height: 6),
 
               // Botón: Ver Detalles
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
-                  icon: Icon(Icons.info_outline,
-                      color: Colors.white, size: 16), // Reducido
-                  label: Text('Ver Detalles',
-                      style: TextStyle(fontSize: 13)), // Reducido
+                  icon: Icon(Icons.info_outline, color: Colors.white, size: 16),
+                  label: Text('Ver Detalles', style: TextStyle(fontSize: 13)),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Color(0xFFFFB74D),
                     foregroundColor: Colors.white,
-                    padding: EdgeInsets.symmetric(vertical: 10), // Reducido
+                    padding: EdgeInsets.symmetric(vertical: 10),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10), // Reducido
+                      borderRadius: BorderRadius.circular(10),
                     ),
                     elevation: 2,
                   ),
                   onPressed: () => _mostrarDetallesDiscipulo(context, registro),
                 ),
               ),
-              SizedBox(height: 6), // Reducido
+              SizedBox(height: 6),
 
-              // Botón: Registrar Asistencia (con verificación de bloqueo)
+              // Botón: Registrar Asistencia (bloqueado si fuera de ciudad)
               SizedBox(
                 width: double.infinity,
-                child: FutureBuilder<bool>(
-                  future: _tieneBloqueoPorFaltas(
-                    registro.id,
-                    (registro.data()
-                            as Map<String, dynamic>)['faltasConsecutivas'] ??
-                        0,
-                  ),
-                  builder: (context, snapshot) {
-                    final bool bloqueado = snapshot.data == true;
-                    final bool cargando =
-                        snapshot.connectionState == ConnectionState.waiting;
-
-                    return ElevatedButton.icon(
-                      icon: Icon(
-                        bloqueado ? Icons.block : Icons.calendar_today,
-                        color: Colors.white,
-                        size: 16, // Reducido
-                      ),
-                      label: Text(
-                        bloqueado
-                            ? 'Bloqueado'
-                            : (cargando
-                                ? 'Verificando...'
-                                : 'Registrar Asistencia'),
-                        style: TextStyle(fontSize: 13), // Reducido
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: bloqueado
-                            ? Colors.grey.shade400
-                            : Color(0xFFFF4B2B),
-                        foregroundColor: Colors.white,
-                        padding: EdgeInsets.symmetric(vertical: 10), // Reducido
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10), // Reducido
+                child: fueraDeCiudad
+                    ? ElevatedButton.icon(
+                        icon: Icon(Icons.flight_takeoff_rounded,
+                            color: Colors.white, size: 16),
+                        label: Text('Fuera de la ciudad',
+                            style: TextStyle(fontSize: 13)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.deepPurple.shade300,
+                          foregroundColor: Colors.white,
+                          padding: EdgeInsets.symmetric(vertical: 10),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          elevation: 0,
                         ),
-                        disabledBackgroundColor: Colors.grey.shade300,
-                        disabledForegroundColor: Colors.grey.shade500,
-                        elevation: 2,
+                        onPressed: null,
+                      )
+                    : FutureBuilder<bool>(
+                        future: _tieneBloqueoPorFaltas(
+                          registro.id,
+                          data['faltasConsecutivas'] ?? 0,
+                        ),
+                        builder: (context, snapshot) {
+                          final bool bloqueado = snapshot.data == true;
+                          final bool cargando = snapshot.connectionState ==
+                              ConnectionState.waiting;
+
+                          return ElevatedButton.icon(
+                            icon: Icon(
+                              bloqueado ? Icons.block : Icons.calendar_today,
+                              color: Colors.white,
+                              size: 16,
+                            ),
+                            label: Text(
+                              bloqueado
+                                  ? 'Bloqueado'
+                                  : (cargando
+                                      ? 'Verificando...'
+                                      : 'Registrar Asistencia'),
+                              style: TextStyle(fontSize: 13),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: bloqueado
+                                  ? Colors.grey.shade400
+                                  : Color(0xFFFF4B2B),
+                              foregroundColor: Colors.white,
+                              padding: EdgeInsets.symmetric(vertical: 10),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              disabledBackgroundColor: Colors.grey.shade300,
+                              disabledForegroundColor: Colors.grey.shade500,
+                              elevation: 2,
+                            ),
+                            onPressed: (bloqueado || cargando)
+                                ? null
+                                : () => _registrarAsistencia(context, registro),
+                          );
+                        },
                       ),
-                      onPressed: (bloqueado || cargando)
-                          ? null
-                          : () => _registrarAsistencia(context, registro),
-                    );
-                  },
-                ),
               ),
             ],
           );
         }
 
-        // ===== LAYOUT HORIZONTAL PARA PANTALLAS NORMALES =====
+        // Layout horizontal para pantallas normales
         return Column(
           children: [
             Row(
@@ -3286,39 +3569,34 @@ class JovenesAsignadosTab extends StatelessWidget {
                 // Botón: Actualizar Estado
                 Expanded(
                   child: ElevatedButton.icon(
-                    icon: Icon(Icons.edit_note,
-                        color: Colors.white, size: 16), // Reducido
-                    label: Text('Actualizar',
-                        style: TextStyle(
-                            fontSize: 13)), // Reducido y texto más corto
+                    icon: Icon(Icons.edit_note, color: Colors.white, size: 16),
+                    label: Text('Actualizar', style: TextStyle(fontSize: 13)),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Color(0xFF147B7C),
                       foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(vertical: 10), // Reducido
+                      padding: EdgeInsets.symmetric(vertical: 10),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10), // Reducido
+                        borderRadius: BorderRadius.circular(10),
                       ),
                       elevation: 2,
                     ),
                     onPressed: () => _actualizarEstado(context, registro),
                   ),
                 ),
-                SizedBox(width: 6), // Reducido de 8 a 6
+                SizedBox(width: 6),
 
                 // Botón: Ver Detalles
                 Expanded(
                   child: ElevatedButton.icon(
-                    icon: Icon(Icons.info_outline,
-                        color: Colors.white, size: 16), // Reducido
-                    label: Text('Detalles',
-                        style: TextStyle(
-                            fontSize: 13)), // Reducido y texto más corto
+                    icon:
+                        Icon(Icons.info_outline, color: Colors.white, size: 16),
+                    label: Text('Detalles', style: TextStyle(fontSize: 13)),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Color(0xFFFFB74D),
                       foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(vertical: 10), // Reducido
+                      padding: EdgeInsets.symmetric(vertical: 10),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10), // Reducido
+                        borderRadius: BorderRadius.circular(10),
                       ),
                       elevation: 2,
                     ),
@@ -3328,55 +3606,71 @@ class JovenesAsignadosTab extends StatelessWidget {
                 ),
               ],
             ),
-            SizedBox(height: 6), // Reducido de 8 a 6
+            SizedBox(height: 6),
 
-            // Botón: Registrar Asistencia (ancho completo)
+            // Botón: Registrar Asistencia (ancho completo, bloqueado si fuera de ciudad)
             SizedBox(
               width: double.infinity,
-              child: FutureBuilder<bool>(
-                future: _tieneBloqueoPorFaltas(
-                  registro.id,
-                  (registro.data()
-                          as Map<String, dynamic>)['faltasConsecutivas'] ??
-                      0,
-                ),
-                builder: (context, snapshot) {
-                  final bool bloqueado = snapshot.data == true;
-                  final bool cargando =
-                      snapshot.connectionState == ConnectionState.waiting;
-
-                  return ElevatedButton.icon(
-                    icon: Icon(
-                      bloqueado ? Icons.block : Icons.calendar_today,
-                      color: Colors.white,
-                      size: 16, // Reducido
-                    ),
-                    label: Text(
-                      bloqueado
-                          ? 'Bloqueado'
-                          : (cargando
-                              ? 'Verificando...'
-                              : 'Registrar Asistencia'),
-                      style: TextStyle(fontSize: 13), // Reducido
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor:
-                          bloqueado ? Colors.grey.shade400 : Color(0xFFFF4B2B),
-                      foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(vertical: 10), // Reducido
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10), // Reducido
+              child: fueraDeCiudad
+                  ? ElevatedButton.icon(
+                      icon: Icon(Icons.flight_takeoff_rounded,
+                          color: Colors.white, size: 16),
+                      label: Text('Discípulo fuera de la ciudad',
+                          style: TextStyle(fontSize: 13)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.deepPurple.shade300,
+                        foregroundColor: Colors.white,
+                        padding: EdgeInsets.symmetric(vertical: 10),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        elevation: 0,
                       ),
-                      disabledBackgroundColor: Colors.grey.shade300,
-                      disabledForegroundColor: Colors.grey.shade500,
-                      elevation: 2,
+                      onPressed: null,
+                    )
+                  : FutureBuilder<bool>(
+                      future: _tieneBloqueoPorFaltas(
+                        registro.id,
+                        data['faltasConsecutivas'] ?? 0,
+                      ),
+                      builder: (context, snapshot) {
+                        final bool bloqueado = snapshot.data == true;
+                        final bool cargando =
+                            snapshot.connectionState == ConnectionState.waiting;
+
+                        return ElevatedButton.icon(
+                          icon: Icon(
+                            bloqueado ? Icons.block : Icons.calendar_today,
+                            color: Colors.white,
+                            size: 16,
+                          ),
+                          label: Text(
+                            bloqueado
+                                ? 'Bloqueado'
+                                : (cargando
+                                    ? 'Verificando...'
+                                    : 'Registrar Asistencia'),
+                            style: TextStyle(fontSize: 13),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: bloqueado
+                                ? Colors.grey.shade400
+                                : Color(0xFFFF4B2B),
+                            foregroundColor: Colors.white,
+                            padding: EdgeInsets.symmetric(vertical: 10),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            disabledBackgroundColor: Colors.grey.shade300,
+                            disabledForegroundColor: Colors.grey.shade500,
+                            elevation: 2,
+                          ),
+                          onPressed: (bloqueado || cargando)
+                              ? null
+                              : () => _registrarAsistencia(context, registro),
+                        );
+                      },
                     ),
-                    onPressed: (bloqueado || cargando)
-                        ? null
-                        : () => _registrarAsistencia(context, registro),
-                  );
-                },
-              ),
             ),
           ],
         );

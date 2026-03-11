@@ -20,7 +20,6 @@ import 'package:intl/intl.dart';
 import 'package:formulario_app/services/auth_service.dart';
 import 'package:formulario_app/utils/excel_exporter.dart';
 import 'package:formulario_app/utils/theme_constants.dart';
-import 'package:formulario_app/screens/peticiones_form_screen.dart';
 import 'package:excel/excel.dart' as excel_pkg;
 import 'dart:html' as html;
 
@@ -9266,6 +9265,8 @@ Widget _buildInfoRow(IconData icon, String label, String value) {
   );
 }
 
+
+
 //--Clase de la pestaña de Personas
 class RegistrosAsignadosTab extends StatefulWidget {
   final String tribuId;
@@ -9821,6 +9822,7 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
       'peticiones': {'icon': Icons.volunteer_activism, 'type': 'text'},
       'sexo': {'icon': Icons.wc, 'type': 'dropdown'},
       'estadoProceso': {'icon': Icons.track_changes_outlined, 'type': 'text'},
+      'estadoCiudad': {'icon': Icons.location_city_outlined, 'type': 'text'},
       'fechaNacimiento': {'icon': Icons.calendar_today, 'type': 'date'},
     };
 
@@ -9866,6 +9868,7 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
       'edad',
       'peticiones',
       'estadoProceso',
+      'estadoCiudad',
     ];
 
     // ✅ NUEVO: Función para ir al siguiente campo
@@ -9888,27 +9891,49 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
     }
 
     // Función para mostrar el selector de fecha
+
     Future<void> _seleccionarFecha(StateSetter setState) async {
-      final DateTime? pickedDate = await showDatePicker(
-        context: context,
-        initialDate: fechaNacimiento ??
-            DateTime.now().subtract(Duration(days: 365 * 25)),
-        firstDate: DateTime(1900),
-        lastDate: DateTime.now(),
-        builder: (context, child) {
-          return Theme(
-            data: Theme.of(context).copyWith(
-              colorScheme: ColorScheme.light(
-                primary: primaryTeal,
-                onPrimary: Colors.white,
-                surface: Colors.white,
-                onSurface: Colors.black,
+      final DateTime ahora = DateTime.now();
+
+      // ✅ FIX: initialDate nunca puede ser posterior a lastDate (DateTime.now())
+      DateTime initialDate;
+      if (fechaNacimiento != null) {
+        // Si la fecha guardada es futura (dato corrupto), usar fecha segura
+        initialDate = fechaNacimiento!.isAfter(ahora)
+            ? DateTime(ahora.year - 25, ahora.month, ahora.day)
+            : fechaNacimiento!;
+      } else {
+        initialDate = DateTime(ahora.year - 25, ahora.month, ahora.day);
+      }
+
+      // ✅ FIX: lastDate también necesita ser una fecha estable
+      final DateTime lastDate = DateTime(ahora.year, ahora.month, ahora.day);
+
+      DateTime? pickedDate;
+      try {
+        pickedDate = await showDatePicker(
+          context: context,
+          initialDate: initialDate,
+          firstDate: DateTime(1900),
+          lastDate: lastDate,
+          builder: (context, child) {
+            return Theme(
+              data: Theme.of(context).copyWith(
+                colorScheme: ColorScheme.light(
+                  primary: primaryTeal,
+                  onPrimary: Colors.white,
+                  surface: Colors.white,
+                  onSurface: Colors.black,
+                ),
               ),
-            ),
-            child: child ?? const SizedBox.shrink(),
-          );
-        },
-      );
+              child: child ?? const SizedBox.shrink(),
+            );
+          },
+        );
+      } catch (e) {
+        print('❌ Error al abrir selector de fecha: $e');
+        return;
+      }
 
       if (pickedDate != null) {
         setState(() {
@@ -11087,6 +11112,27 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
                                         } else {
                                           return SizedBox.shrink();
                                         }
+                                      } else if (fieldName == 'estadoCiudad') {
+                                        return _buildAnimatedTextFieldConOpcionesResponsive(
+                                          label: 'Estado en Ciudad',
+                                          icon: Icons.location_city_outlined,
+                                          controller: controller!,
+                                          focusNode: focusNode!,
+                                          primaryColor: primaryTeal,
+                                          fontSize: contentFontSize,
+                                          iconSize: iconSize,
+                                          borderRadius: borderRadius,
+                                          opciones: [
+                                            'En la ciudad',
+                                            'Fuera de la ciudad',
+                                          ],
+                                          onChanged: (value) {
+                                            hayModificaciones = true;
+                                          },
+                                          onSubmitted: (value) {
+                                            _irAlSiguienteCampo(fieldName);
+                                          },
+                                        );
                                       } else if (fieldName == 'estadoProceso') {
                                         return _buildAnimatedTextFieldConOpcionesResponsive(
                                           label: 'Estado del Proceso',
@@ -14395,15 +14441,27 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
                             ? DateTime.now().difference(fechaMasReciente).inDays
                             : 0;
 
-                        // Colores dinámicos según antiguedad
-                        Color colorTarjeta =
-                            esNuevo ? Colors.amber.shade50 : Colors.white;
-                        Color colorBorde = esNuevo
-                            ? Colors.amber.withOpacity(0.4)
-                            : primaryTeal.withOpacity(0.1);
-                        Color colorSombra = esNuevo
-                            ? Colors.amber.withOpacity(0.2)
-                            : primaryTeal.withOpacity(0.1);
+                        // Colores dinámicos según antigüedad y estado de ciudad
+                        final String estadoCiudad =
+                            (data['estadoCiudad'] as String? ?? '').trim();
+                        final bool fueraDeCiudad =
+                            estadoCiudad.toLowerCase().contains('fuera');
+
+                        Color colorTarjeta = fueraDeCiudad
+                            ? const Color(0xFFEDE7F6)
+                            : esNuevo
+                                ? Colors.amber.shade50
+                                : Colors.white;
+                        Color colorBorde = fueraDeCiudad
+                            ? Colors.deepPurple.withOpacity(0.5)
+                            : esNuevo
+                                ? Colors.amber.withOpacity(0.4)
+                                : primaryTeal.withOpacity(0.1);
+                        Color colorSombra = fueraDeCiudad
+                            ? Colors.deepPurple.withOpacity(0.2)
+                            : esNuevo
+                                ? Colors.amber.withOpacity(0.2)
+                                : primaryTeal.withOpacity(0.1);
 
                         return Container(
                           margin:
@@ -14424,6 +14482,84 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
                                 ),
                                 child: Column(
                                   children: [
+                                    // Banner: Fuera de la ciudad
+                                    if (fueraDeCiudad)
+                                      Container(
+                                        width: double.infinity,
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 12, vertical: 7),
+                                        decoration: BoxDecoration(
+                                          gradient: LinearGradient(
+                                            colors: [
+                                              Colors.deepPurple.shade400,
+                                              Colors.deepPurple.shade700,
+                                            ],
+                                            begin: Alignment.centerLeft,
+                                            end: Alignment.centerRight,
+                                          ),
+                                          borderRadius: const BorderRadius.only(
+                                            topLeft: Radius.circular(10),
+                                            topRight: Radius.circular(10),
+                                          ),
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            const Icon(
+                                              Icons.flight_takeoff_rounded,
+                                              color: Colors.white,
+                                              size: 15,
+                                            ),
+                                            const SizedBox(width: 6),
+                                            const Text(
+                                              'FUERA DE LA CIUDAD',
+                                              style: TextStyle(
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.white,
+                                                letterSpacing: 0.8,
+                                              ),
+                                            ),
+                                            const Spacer(),
+                                            Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      horizontal: 8,
+                                                      vertical: 3),
+                                              decoration: BoxDecoration(
+                                                color: Colors.white
+                                                    .withOpacity(0.2),
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                                border: Border.all(
+                                                    color: Colors.white
+                                                        .withOpacity(0.4),
+                                                    width: 1),
+                                              ),
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: const [
+                                                  Icon(
+                                                    Icons.location_off_rounded,
+                                                    color: Colors.white,
+                                                    size: 11,
+                                                  ),
+                                                  SizedBox(width: 4),
+                                                  Text(
+                                                    'De viaje',
+                                                    style: TextStyle(
+                                                      fontSize: 10,
+                                                      color: Colors.white,
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+
                                     // Indicador visual para registros nuevos
                                     if (esNuevo)
                                       Container(
@@ -17062,6 +17198,8 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
     return filtros.join(' • ');
   }
 }
+
+
 
 ///------------------------------
 

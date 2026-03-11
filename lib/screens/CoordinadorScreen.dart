@@ -1302,56 +1302,61 @@ class _AsistenciasCoordinadorTabState extends State<AsistenciasCoordinadorTab> {
     }
   }
 
-  List<DocumentSnapshot> _filtrarRegistros(List<DocumentSnapshot> docs) {
-    try {
-      var filtered = docs.where((doc) {
-        try {
-          final data = doc.data();
-          if (data is Map<String, dynamic>) {
-            final categoria = data['categoria']?.toString() ?? '';
-            final categoriaMatch = categoria == widget.categoriaTribu ||
-                widget.categoriaTribu.isEmpty;
 
-            if (!categoriaMatch) return false;
 
-            if (_searchQuery.isEmpty) return true;
+List<DocumentSnapshot> _filtrarRegistros(List<DocumentSnapshot> docs) {
+  try {
+    var filtered = docs.where((doc) {
+      try {
+        final data = doc.data();
+        if (data is Map<String, dynamic>) {
+          final categoria = data['categoria']?.toString() ?? '';
+          final categoriaMatch = categoria == widget.categoriaTribu ||
+              widget.categoriaTribu.isEmpty;
 
-            final nombre = data['nombre']?.toString().toLowerCase() ?? '';
-            final apellido = data['apellido']?.toString().toLowerCase() ?? '';
-            final nombreCompleto = '$nombre $apellido';
+          if (!categoriaMatch) return false;
 
-            return nombreCompleto.contains(_searchQuery.toLowerCase());
-          }
-          return false;
-        } catch (e) {
-          print('Error filtrando documento individual: $e');
-          return false;
+          // Excluir registros fuera de la ciudad
+          final estadoCiudad =
+              data['estadoCiudad']?.toString().trim() ?? '';
+          if (estadoCiudad.toLowerCase().contains('fuera')) return false;
+
+          if (_searchQuery.isEmpty) return true;
+
+          final nombre = data['nombre']?.toString().toLowerCase() ?? '';
+          final apellido =
+              data['apellido']?.toString().toLowerCase() ?? '';
+          final nombreCompleto = '$nombre $apellido';
+
+          return nombreCompleto.contains(_searchQuery.toLowerCase());
         }
-      }).toList();
+        return false;
+      } catch (e) {
+        print('Error filtrando documento individual: $e');
+        return false;
+      }
+    }).toList();
 
-      // Ordenar alfabéticamente (A-Z)
-      filtered.sort((a, b) {
-        try {
-          final dataA = a.data() as Map<String, dynamic>?;
-          final dataB = b.data() as Map<String, dynamic>?;
+    filtered.sort((a, b) {
+      try {
+        final dataA = a.data() as Map<String, dynamic>?;
+        final dataB = b.data() as Map<String, dynamic>?;
+        final nombreA =
+            '${dataA?['nombre'] ?? ''} ${dataA?['apellido'] ?? ''}'.trim();
+        final nombreB =
+            '${dataB?['nombre'] ?? ''} ${dataB?['apellido'] ?? ''}'.trim();
+        return nombreA.compareTo(nombreB);
+      } catch (e) {
+        return 0;
+      }
+    });
 
-          final nombreA =
-              '${dataA?['nombre'] ?? ''} ${dataA?['apellido'] ?? ''}'.trim();
-          final nombreB =
-              '${dataB?['nombre'] ?? ''} ${dataB?['apellido'] ?? ''}'.trim();
-
-          return nombreA.compareTo(nombreB);
-        } catch (e) {
-          return 0;
-        }
-      });
-
-      return filtered;
-    } catch (e) {
-      print('Error en _filtrarRegistros: $e');
-      return [];
-    }
+    return filtered;
+  } catch (e) {
+    print('Error en _filtrarRegistros: $e');
+    return [];
   }
+}
 
   Future<void> _procesarAsistenciaMasiva() async {
     if (!mounted || _isProcessingMassive || _selectedAttendances.isEmpty)
@@ -2532,6 +2537,8 @@ class _AsistenciasCoordinadorTabState extends State<AsistenciasCoordinadorTab> {
     );
   }
 }
+
+
 
 class AlertasTab extends StatelessWidget {
   final String coordinadorId;
@@ -6463,6 +6470,7 @@ Future<List<Map<String, dynamic>>> _obtenerTimoteosConConteo(
     ];
 
     // Definición de campos con sus iconos y tipos
+
     final Map<String, Map<String, dynamic>> camposDefinicion = {
       'nombre': {'icon': Icons.person, 'type': 'text'},
       'apellido': {'icon': Icons.person_outline, 'type': 'text'},
@@ -6481,9 +6489,9 @@ Future<List<Map<String, dynamic>>> _obtenerTimoteosConConteo(
       'peticiones': {'icon': Icons.volunteer_activism, 'type': 'text'},
       'sexo': {'icon': Icons.wc, 'type': 'dropdown'},
       'estadoProceso': {'icon': Icons.track_changes_outlined, 'type': 'text'},
+      'estadoCiudad': {'icon': Icons.location_city_outlined, 'type': 'text'},
       'fechaNacimiento': {'icon': Icons.calendar_today, 'type': 'date'},
     };
-
     // Inicializar controladores y FocusNodes
     camposDefinicion.forEach((key, value) {
       if (key != 'estadoCivil' && key != 'sexo' && key != 'fechaNacimiento') {
@@ -6509,7 +6517,6 @@ Future<List<Map<String, dynamic>>> _obtenerTimoteosConConteo(
       focusNodes['nombrePareja'] = FocusNode();
     }
 
-    // ✅ NUEVO: Lista ordenada de campos para navegación
     final List<String> camposOrdenados = [
       'nombre',
       'apellido',
@@ -6526,6 +6533,7 @@ Future<List<Map<String, dynamic>>> _obtenerTimoteosConConteo(
       'edad',
       'peticiones',
       'estadoProceso',
+      'estadoCiudad',
     ];
 
     // ✅ NUEVO: Función para ir al siguiente campo
@@ -7598,6 +7606,27 @@ Future<List<Map<String, dynamic>>> _obtenerTimoteosConConteo(
                                             'Consolidación',
                                             'Estudio Bíblico',
                                             'Escuela de Líderes'
+                                          ],
+                                          onChanged: (value) {
+                                            hayModificaciones = true;
+                                          },
+                                          onSubmitted: (value) {
+                                            _irAlSiguienteCampo(fieldName);
+                                          },
+                                        );
+                                      } else if (fieldName == 'estadoCiudad') {
+                                        return _buildAnimatedTextFieldConOpcionesResponsive(
+                                          label: 'Estado en Ciudad',
+                                          icon: Icons.location_city_outlined,
+                                          controller: controller!,
+                                          focusNode: focusNode!,
+                                          primaryColor: primaryTeal,
+                                          fontSize: contentFontSize,
+                                          iconSize: iconSize,
+                                          borderRadius: borderRadius,
+                                          opciones: [
+                                            'En la ciudad',
+                                            'Fuera de la ciudad',
                                           ],
                                           onChanged: (value) {
                                             hayModificaciones = true;
@@ -10284,6 +10313,10 @@ class _PersonasAsignadasContentState extends State<_PersonasAsignadasContent> {
   }) {
     final data = registro.data() as Map<String, dynamic>;
 
+    // Detectar si está fuera de la ciudad
+    final String estadoCiudad = (data['estadoCiudad'] as String? ?? '').trim();
+    final bool fueraDeCiudad = estadoCiudad.toLowerCase().contains('fuera');
+
     String obtenerTextoTiempo() {
       DateTime? fechaMasReciente;
       String tipoAsignacion = '';
@@ -10324,6 +10357,41 @@ class _PersonasAsignadasContentState extends State<_PersonasAsignadasContent> {
       }
     }
 
+    // Colores dinámicos según estado
+    Color colorBorde;
+    Color colorSombra;
+    List<Color> gradientColors;
+
+    if (fueraDeCiudad) {
+      colorBorde = Colors.deepPurple.withOpacity(0.5);
+      colorSombra = Colors.deepPurple.withOpacity(0.2);
+      gradientColors = [
+        const Color(0xFFEDE7F6),
+        Colors.deepPurple.shade50,
+      ];
+    } else if (esReciente) {
+      colorBorde = Color(0xFFFF6B35).withOpacity(0.4);
+      colorSombra = Color(0xFFFF6B35).withOpacity(0.15);
+      gradientColors = [
+        Color(0xFFFF6B35).withOpacity(0.15),
+        Color(0xFFFF8C42).withOpacity(0.08),
+      ];
+    } else {
+      colorBorde = widget.primaryTeal.withOpacity(0.15);
+      colorSombra = widget.primaryTeal.withOpacity(0.08);
+      gradientColors = [
+        Colors.white,
+        Colors.grey.shade50,
+      ];
+    }
+
+    // Color principal de la card
+    Color colorPrincipal = fueraDeCiudad
+        ? Colors.deepPurple
+        : esReciente
+            ? Color(0xFFFF6B35)
+            : widget.primaryTeal;
+
     return Container(
       margin: EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
@@ -10331,397 +10399,478 @@ class _PersonasAsignadasContentState extends State<_PersonasAsignadasContent> {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: esReciente
-              ? [
-                  Color(0xFFFF6B35).withOpacity(0.15),
-                  Color(0xFFFF8C42).withOpacity(0.08),
-                ]
-              : [
-                  Colors.white,
-                  Colors.grey.shade50,
-                ],
+          colors: gradientColors,
         ),
         border: Border.all(
-          color: esReciente
-              ? Color(0xFFFF6B35).withOpacity(0.4)
-              : widget.primaryTeal.withOpacity(0.15),
-          width: esReciente ? 2 : 1,
+          color: colorBorde,
+          width: fueraDeCiudad || esReciente ? 2 : 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: esReciente
-                ? Color(0xFFFF6B35).withOpacity(0.15)
-                : widget.primaryTeal.withOpacity(0.08),
-            blurRadius: esReciente ? 12 : 8,
-            offset: Offset(0, esReciente ? 6 : 3),
-            spreadRadius: esReciente ? 1 : 0,
+            color: colorSombra,
+            blurRadius: fueraDeCiudad || esReciente ? 12 : 8,
+            offset: Offset(0, fueraDeCiudad || esReciente ? 6 : 3),
+            spreadRadius: fueraDeCiudad || esReciente ? 1 : 0,
           ),
         ],
       ),
       child: Stack(
         children: [
-          if (esReciente)
-            Positioned(
-              top: 12,
-              right: 12,
-              child: Container(
-                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Color(0xFFFF4757), Color(0xFFFF3838)],
-                  ),
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Color(0xFFFF4757).withOpacity(0.3),
-                      blurRadius: 6,
-                      offset: Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.fiber_new, color: Colors.white, size: 12),
-                    SizedBox(width: 4),
-                    Text(
-                      'NUEVO',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          Padding(
-            padding: EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: esReciente
-                              ? [Color(0xFFFF6B35), Color(0xFFFF8C42)]
-                              : isAssigned
-                                  ? [
-                                      widget.primaryTeal,
-                                      widget.primaryTeal.withOpacity(0.8)
-                                    ]
-                                  : [
-                                      widget.secondaryOrange,
-                                      widget.secondaryOrange.withOpacity(0.8)
-                                    ],
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: (esReciente
-                                    ? Color(0xFFFF6B35)
-                                    : isAssigned
-                                        ? widget.primaryTeal
-                                        : widget.secondaryOrange)
-                                .withOpacity(0.3),
-                            blurRadius: 8,
-                            offset: Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: CircleAvatar(
-                        backgroundColor: Colors.transparent,
-                        radius: 28,
-                        child: Text(
-                          '${registro.get('nombre')[0]}${registro.get('apellido')[0]}',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 18,
-                          ),
-                        ),
-                      ),
-                    ),
-                    SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '${registro.get('nombre')} ${registro.get('apellido')}',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: esReciente
-                                  ? Color(0xFFFF6B35)
-                                  : Colors.black87,
-                            ),
-                          ),
-                          SizedBox(height: 6),
-                          Container(
-                            padding: EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: (esReciente
-                                      ? Color(0xFFFF6B35)
-                                      : widget.primaryTeal)
-                                  .withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.phone,
-                                  size: 14,
-                                  color: esReciente
-                                      ? Color(0xFFFF6B35)
-                                      : widget.primaryTeal,
-                                ),
-                                SizedBox(width: 6),
-                                Text(
-                                  registro.get('telefono'),
-                                  style: TextStyle(
-                                    color: esReciente
-                                        ? Color(0xFFFF6B35)
-                                        : widget.primaryTeal,
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          if (esReciente)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 8),
-                              child: Container(
-                                padding: EdgeInsets.symmetric(
-                                    horizontal: 10, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: Colors.green.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(
-                                    color: Colors.green.withOpacity(0.3),
-                                    width: 1,
-                                  ),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      Icons.schedule,
-                                      size: 12,
-                                      color: Colors.green.shade700,
-                                    ),
-                                    SizedBox(width: 4),
-                                    Text(
-                                      obtenerTextoTiempo(),
-                                      style: TextStyle(
-                                        color: Colors.green.shade700,
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                if (isAssigned) ...[
-                  Container(
-                    margin: EdgeInsets.symmetric(vertical: 16),
-                    height: 1,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          Colors.transparent,
-                          (esReciente ? Color(0xFFFF6B35) : widget.primaryTeal)
-                              .withOpacity(0.3),
-                          Colors.transparent,
-                        ],
-                      ),
-                    ),
-                  ),
-                  Container(
-                    padding: EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color:
-                          (esReciente ? Color(0xFFFF6B35) : widget.primaryTeal)
-                              .withOpacity(0.08),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                        color: (esReciente
-                                ? Color(0xFFFF6B35)
-                                : widget.primaryTeal)
-                            .withOpacity(0.2),
-                        width: 1,
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.person_outline,
-                          size: 18,
-                          color: esReciente
-                              ? Color(0xFFFF6B35)
-                              : widget.primaryTeal,
-                        ),
-                        SizedBox(width: 8),
-                        Text(
-                          'Asignado a: ',
-                          style: TextStyle(
-                            color: Colors.grey.shade700,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        Expanded(
-                          child: Text(
-                            registro.get('nombreTimoteo'),
-                            style: TextStyle(
-                              color: esReciente
-                                  ? Color(0xFFFF6B35)
-                                  : widget.primaryTeal,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                            ),
-                          ),
-                        ),
+          Column(
+            children: [
+              // Banner FUERA DE LA CIUDAD
+              if (fueraDeCiudad)
+                Container(
+                  width: double.infinity,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.deepPurple.shade400,
+                        Colors.deepPurple.shade700,
                       ],
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                    ),
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(14),
+                      topRight: Radius.circular(14),
                     ),
                   ),
-                ],
-                SizedBox(height: 20),
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
                   child: Row(
                     children: [
-                      _buildEnhancedActionButton(
-                        icon: Icons.edit_outlined,
-                        label: 'Editar',
-                        color:
-                            esReciente ? Color(0xFFFF6B35) : widget.accentGrey,
-                        onPressed: () =>
-                            widget.onEditarRegistro(context, registro),
+                      const Icon(
+                        Icons.flight_takeoff_rounded,
+                        color: Colors.white,
+                        size: 15,
                       ),
-                      SizedBox(width: 10),
-                      _buildEnhancedActionButton(
-                        icon: Icons.visibility_outlined,
-                        label: 'Ver',
-                        color:
-                            esReciente ? Color(0xFFFF6B35) : widget.primaryTeal,
-                        onPressed: () => widget.onMostrarDetalles(
-                          context,
-                          registro.data() as Map<String, dynamic>,
+                      const SizedBox(width: 6),
+                      const Text(
+                        'FUERA DE LA CIUDAD',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                          letterSpacing: 0.8,
                         ),
                       ),
-                      SizedBox(width: 10),
-                      if (!isAssigned)
-                        _buildEnhancedActionButton(
-                          icon: Icons.person_add,
-                          label: 'Asignar',
-                          color: widget.secondaryOrange,
-                          onPressed: () =>
-                              widget.onAsignarTimoteo(context, registro),
-                        )
-                      else
-                        _buildEnhancedActionButton(
-                          icon: Icons.person_remove,
-                          label: 'Desasignar',
-                          color: Colors.red.shade400,
-                          onPressed: () async {
-                            try {
-                              await FirebaseFirestore.instance
-                                  .collection('registros')
-                                  .doc(registro.id)
-                                  .update({
-                                'timoteoAsignado': null,
-                                'nombreTimoteo': null,
-                                'fechaAsignacion': null,
-                              });
-                              if (mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                        'Registro desasignado exitosamente'),
-                                    backgroundColor: Colors.green,
-                                  ),
-                                );
-                              }
-                            } catch (e) {
-                              if (mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                        'Error al desasignar el registro: $e'),
-                                    backgroundColor: Colors.red,
-                                  ),
-                                );
-                              }
-                            }
-                          },
-                        ),
-                      SizedBox(width: 10),
+                      const Spacer(),
                       Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(
-                          color: (esReciente
-                                  ? Color(0xFFFF6B35)
-                                  : widget.primaryTeal)
-                              .withOpacity(0.1),
+                          color: Colors.white.withOpacity(0.2),
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(
-                            color: (esReciente
-                                    ? Color(0xFFFF6B35)
-                                    : widget.primaryTeal)
-                                .withOpacity(0.3),
-                            width: 1,
-                          ),
+                              color: Colors.white.withOpacity(0.4), width: 1),
                         ),
-                        child: IconButton(
-                          icon: Icon(
-                            Icons.copy,
-                            color: esReciente
-                                ? Color(0xFFFF6B35)
-                                : widget.primaryTeal,
-                            size: 20,
-                          ),
-                          tooltip: 'Copiar teléfono',
-                          onPressed: () {
-                            Clipboard.setData(
-                              ClipboardData(text: registro.get('telefono')),
-                            );
-                            if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content:
-                                      Text('Teléfono copiado al portapapeles'),
-                                  duration: Duration(seconds: 1),
-                                  backgroundColor: esReciente
-                                      ? Color(0xFFFF6B35)
-                                      : widget.primaryTeal,
-                                ),
-                              );
-                            }
-                          },
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: const [
+                            Icon(
+                              Icons.location_off_rounded,
+                              color: Colors.white,
+                              size: 11,
+                            ),
+                            SizedBox(width: 4),
+                            Text(
+                              'De viaje',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
                   ),
                 ),
-              ],
-            ),
+
+              // Banner NUEVO (solo si no está fuera de ciudad)
+              if (esReciente && !fueraDeCiudad)
+                Container(
+                  width: double.infinity,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.amber.shade100,
+                        Colors.amber.shade200,
+                      ],
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                    ),
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(14),
+                      topRight: Radius.circular(14),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.fiber_new,
+                        color: Colors.amber.shade700,
+                        size: 16,
+                      ),
+                      SizedBox(width: 4),
+                      Text(
+                        'NUEVO',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.amber.shade700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+              // Contenido principal
+              Padding(
+                padding: EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: fueraDeCiudad
+                                  ? [
+                                      Colors.deepPurple.shade400,
+                                      Colors.deepPurple.shade700
+                                    ]
+                                  : esReciente
+                                      ? [Color(0xFFFF6B35), Color(0xFFFF8C42)]
+                                      : isAssigned
+                                          ? [
+                                              widget.primaryTeal,
+                                              widget.primaryTeal
+                                                  .withOpacity(0.8)
+                                            ]
+                                          : [
+                                              widget.secondaryOrange,
+                                              widget.secondaryOrange
+                                                  .withOpacity(0.8)
+                                            ],
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: colorPrincipal.withOpacity(0.3),
+                                blurRadius: 8,
+                                offset: Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: CircleAvatar(
+                            backgroundColor: Colors.transparent,
+                            radius: 28,
+                            child: Text(
+                              '${registro.get('nombre')[0]}${registro.get('apellido')[0]}',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 18,
+                              ),
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '${registro.get('nombre')} ${registro.get('apellido')}',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: fueraDeCiudad
+                                      ? Colors.deepPurple.shade700
+                                      : esReciente
+                                          ? Color(0xFFFF6B35)
+                                          : Colors.black87,
+                                ),
+                              ),
+                              SizedBox(height: 6),
+                              Container(
+                                padding: EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: colorPrincipal.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.phone,
+                                      size: 14,
+                                      color: colorPrincipal,
+                                    ),
+                                    SizedBox(width: 6),
+                                    Text(
+                                      registro.get('telefono'),
+                                      style: TextStyle(
+                                        color: colorPrincipal,
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              if (esReciente && !fueraDeCiudad)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 8),
+                                  child: Container(
+                                    padding: EdgeInsets.symmetric(
+                                        horizontal: 10, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: Colors.green.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(
+                                        color: Colors.green.withOpacity(0.3),
+                                        width: 1,
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          Icons.schedule,
+                                          size: 12,
+                                          color: Colors.green.shade700,
+                                        ),
+                                        SizedBox(width: 4),
+                                        Text(
+                                          obtenerTextoTiempo(),
+                                          style: TextStyle(
+                                            color: Colors.green.shade700,
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (isAssigned) ...[
+                      Container(
+                        margin: EdgeInsets.symmetric(vertical: 16),
+                        height: 1,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              Colors.transparent,
+                              colorPrincipal.withOpacity(0.3),
+                              Colors.transparent,
+                            ],
+                          ),
+                        ),
+                      ),
+                      Container(
+                        padding: EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: colorPrincipal.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: colorPrincipal.withOpacity(0.2),
+                            width: 1,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.person_outline,
+                              size: 18,
+                              color: colorPrincipal,
+                            ),
+                            SizedBox(width: 8),
+                            Text(
+                              'Asignado a: ',
+                              style: TextStyle(
+                                color: Colors.grey.shade700,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            Expanded(
+                              child: Text(
+                                registro.get('nombreTimoteo'),
+                                style: TextStyle(
+                                  color: colorPrincipal,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                    SizedBox(height: 20),
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          _buildEnhancedActionButton(
+                            icon: Icons.edit_outlined,
+                            label: 'Editar',
+                            color: fueraDeCiudad
+                                ? Colors.deepPurple
+                                : esReciente
+                                    ? Color(0xFFFF6B35)
+                                    : widget.accentGrey,
+                            onPressed: () =>
+                                widget.onEditarRegistro(context, registro),
+                          ),
+                          SizedBox(width: 10),
+                          _buildEnhancedActionButton(
+                            icon: Icons.visibility_outlined,
+                            label: 'Ver',
+                            color: fueraDeCiudad
+                                ? Colors.deepPurple
+                                : esReciente
+                                    ? Color(0xFFFF6B35)
+                                    : widget.primaryTeal,
+                            onPressed: () => widget.onMostrarDetalles(
+                              context,
+                              registro.data() as Map<String, dynamic>,
+                            ),
+                          ),
+                          SizedBox(width: 10),
+                          if (!isAssigned)
+                            _buildEnhancedActionButton(
+                              icon: Icons.person_add,
+                              label: 'Asignar',
+                              color: widget.secondaryOrange,
+                              onPressed: () =>
+                                  widget.onAsignarTimoteo(context, registro),
+                            )
+                          else
+                            _buildEnhancedActionButton(
+                              icon: Icons.person_remove,
+                              label: 'Desasignar',
+                              color: Colors.red.shade400,
+                              onPressed: () async {
+                                try {
+                                  await FirebaseFirestore.instance
+                                      .collection('registros')
+                                      .doc(registro.id)
+                                      .update({
+                                    'timoteoAsignado': null,
+                                    'nombreTimoteo': null,
+                                    'fechaAsignacion': null,
+                                  });
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                            'Registro desasignado exitosamente'),
+                                        backgroundColor: Colors.green,
+                                      ),
+                                    );
+                                  }
+                                } catch (e) {
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                            'Error al desasignar el registro: $e'),
+                                        backgroundColor: Colors.red,
+                                      ),
+                                    );
+                                  }
+                                }
+                              },
+                            ),
+                          SizedBox(width: 10),
+                          Container(
+                            decoration: BoxDecoration(
+                              color: colorPrincipal.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: colorPrincipal.withOpacity(0.3),
+                                width: 1,
+                              ),
+                            ),
+                            child: IconButton(
+                              icon: Icon(
+                                Icons.copy,
+                                color: colorPrincipal,
+                                size: 20,
+                              ),
+                              tooltip: 'Copiar teléfono',
+                              onPressed: () {
+                                Clipboard.setData(
+                                  ClipboardData(text: registro.get('telefono')),
+                                );
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                          'Teléfono copiado al portapapeles'),
+                                      duration: Duration(seconds: 1),
+                                      backgroundColor: colorPrincipal,
+                                    ),
+                                  );
+                                }
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
+
+          // Badge NUEVO flotante (solo si no está fuera de ciudad)
+          if (esReciente && !fueraDeCiudad)
+            Positioned(
+              top: -5,
+              right: -5,
+              child: Container(
+                padding: EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.red.shade400, Colors.red.shade600],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.red.withOpacity(0.3),
+                      blurRadius: 4,
+                      offset: Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Icon(
+                  Icons.priority_high,
+                  color: Colors.white,
+                  size: 12,
+                ),
+              ),
+            ),
         ],
       ),
     );
