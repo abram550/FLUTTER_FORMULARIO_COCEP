@@ -385,6 +385,15 @@ class ExcelExporter {
         registrosActivosPorCoordinador[nombreCoordinador]!.add(registro);
       }
 
+      // Ordenar alfabéticamente por nombre dentro de cada coordinador
+      registrosActivosPorCoordinador.forEach((coordinador, lista) {
+        lista.sort((a, b) {
+          final nombreA = ((a['nombre'] ?? '') as String).toLowerCase().trim();
+          final nombreB = ((b['nombre'] ?? '') as String).toLowerCase().trim();
+          return nombreA.compareTo(nombreB);
+        });
+      });
+
       // Crear una hoja de resumen
       final resumenSheet = excel['Resumen'];
 
@@ -657,6 +666,14 @@ class ExcelExporter {
             allSheet.cell(CellIndex.indexByString('${columnLetter}3'));
         headerCell.cellStyle = headerStyle;
       }
+
+      // ✅ Crear hoja exclusiva para registros NO ACTIVOS
+      // Ordenar registros no activos alfabéticamente por nombre
+      registrosNoActivos.sort((a, b) {
+        final nombreA = ((a['nombre'] ?? '') as String).toLowerCase().trim();
+        final nombreB = ((b['nombre'] ?? '') as String).toLowerCase().trim();
+        return nombreA.compareTo(nombreB);
+      });
 
       // ✅ Crear hoja exclusiva para registros NO ACTIVOS
       if (registrosNoActivos.isNotEmpty) {
