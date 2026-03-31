@@ -32,12 +32,12 @@ class ExcelExporter {
     {'nombre': 'Observaciones 2', 'campo': 'observaciones2'},
     {'nombre': 'Peticiones', 'campo': 'peticiones'},
     {'nombre': 'Estado en la Iglesia', 'campo': 'estadoProceso'},
-    {'nombre': 'Activo', 'campo': 'activo'},
-    {'nombre': 'Fecha de Nacimiento', 'campo': 'fechaNacimiento'},
     {
       'nombre': 'Descripción Estado Proceso',
       'campo': 'descripcionEstadoProceso'
     },
+    {'nombre': 'Fecha de Nacimiento', 'campo': 'fechaNacimiento'},
+    {'nombre': 'Activo', 'campo': 'activo'},
   ];
 
 // ✅ MEJORADO: Método para obtener el valor de un campo con detección de variantes
