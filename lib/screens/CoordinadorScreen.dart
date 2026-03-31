@@ -1302,61 +1302,57 @@ class _AsistenciasCoordinadorTabState extends State<AsistenciasCoordinadorTab> {
     }
   }
 
+  List<DocumentSnapshot> _filtrarRegistros(List<DocumentSnapshot> docs) {
+    try {
+      var filtered = docs.where((doc) {
+        try {
+          final data = doc.data();
+          if (data is Map<String, dynamic>) {
+            final categoria = data['categoria']?.toString() ?? '';
+            final categoriaMatch = categoria == widget.categoriaTribu ||
+                widget.categoriaTribu.isEmpty;
 
+            if (!categoriaMatch) return false;
 
-List<DocumentSnapshot> _filtrarRegistros(List<DocumentSnapshot> docs) {
-  try {
-    var filtered = docs.where((doc) {
-      try {
-        final data = doc.data();
-        if (data is Map<String, dynamic>) {
-          final categoria = data['categoria']?.toString() ?? '';
-          final categoriaMatch = categoria == widget.categoriaTribu ||
-              widget.categoriaTribu.isEmpty;
+            // Excluir registros fuera de la ciudad
+            final estadoCiudad = data['estadoCiudad']?.toString().trim() ?? '';
+            if (estadoCiudad.toLowerCase().contains('fuera')) return false;
 
-          if (!categoriaMatch) return false;
+            if (_searchQuery.isEmpty) return true;
 
-          // Excluir registros fuera de la ciudad
-          final estadoCiudad =
-              data['estadoCiudad']?.toString().trim() ?? '';
-          if (estadoCiudad.toLowerCase().contains('fuera')) return false;
+            final nombre = data['nombre']?.toString().toLowerCase() ?? '';
+            final apellido = data['apellido']?.toString().toLowerCase() ?? '';
+            final nombreCompleto = '$nombre $apellido';
 
-          if (_searchQuery.isEmpty) return true;
-
-          final nombre = data['nombre']?.toString().toLowerCase() ?? '';
-          final apellido =
-              data['apellido']?.toString().toLowerCase() ?? '';
-          final nombreCompleto = '$nombre $apellido';
-
-          return nombreCompleto.contains(_searchQuery.toLowerCase());
+            return nombreCompleto.contains(_searchQuery.toLowerCase());
+          }
+          return false;
+        } catch (e) {
+          print('Error filtrando documento individual: $e');
+          return false;
         }
-        return false;
-      } catch (e) {
-        print('Error filtrando documento individual: $e');
-        return false;
-      }
-    }).toList();
+      }).toList();
 
-    filtered.sort((a, b) {
-      try {
-        final dataA = a.data() as Map<String, dynamic>?;
-        final dataB = b.data() as Map<String, dynamic>?;
-        final nombreA =
-            '${dataA?['nombre'] ?? ''} ${dataA?['apellido'] ?? ''}'.trim();
-        final nombreB =
-            '${dataB?['nombre'] ?? ''} ${dataB?['apellido'] ?? ''}'.trim();
-        return nombreA.compareTo(nombreB);
-      } catch (e) {
-        return 0;
-      }
-    });
+      filtered.sort((a, b) {
+        try {
+          final dataA = a.data() as Map<String, dynamic>?;
+          final dataB = b.data() as Map<String, dynamic>?;
+          final nombreA =
+              '${dataA?['nombre'] ?? ''} ${dataA?['apellido'] ?? ''}'.trim();
+          final nombreB =
+              '${dataB?['nombre'] ?? ''} ${dataB?['apellido'] ?? ''}'.trim();
+          return nombreA.compareTo(nombreB);
+        } catch (e) {
+          return 0;
+        }
+      });
 
-    return filtered;
-  } catch (e) {
-    print('Error en _filtrarRegistros: $e');
-    return [];
+      return filtered;
+    } catch (e) {
+      print('Error en _filtrarRegistros: $e');
+      return [];
+    }
   }
-}
 
   Future<void> _procesarAsistenciaMasiva() async {
     if (!mounted || _isProcessingMassive || _selectedAttendances.isEmpty)
@@ -2537,8 +2533,6 @@ List<DocumentSnapshot> _filtrarRegistros(List<DocumentSnapshot> docs) {
     );
   }
 }
-
-
 
 class AlertasTab extends StatelessWidget {
   final String coordinadorId;
@@ -5853,6 +5847,11 @@ Future<List<Map<String, dynamic>>> _obtenerTimoteosConConteo(
             'label': 'Estado en la Iglesia',
             'icon': Icons.verified_outlined
           },
+          {
+            'key': 'descripcionEstadoProceso',
+            'label': 'Descripción del Proceso',
+            'icon': Icons.notes_outlined
+          },
         ]
       },
     ];
@@ -6489,6 +6488,10 @@ Future<List<Map<String, dynamic>>> _obtenerTimoteosConConteo(
       'peticiones': {'icon': Icons.volunteer_activism, 'type': 'text'},
       'sexo': {'icon': Icons.wc, 'type': 'dropdown'},
       'estadoProceso': {'icon': Icons.track_changes_outlined, 'type': 'text'},
+      'descripcionEstadoProceso': {
+        'icon': Icons.notes_outlined,
+        'type': 'text'
+      },
       'estadoCiudad': {'icon': Icons.location_city_outlined, 'type': 'text'},
       'fechaNacimiento': {'icon': Icons.calendar_today, 'type': 'date'},
     };
@@ -6533,6 +6536,7 @@ Future<List<Map<String, dynamic>>> _obtenerTimoteosConConteo(
       'edad',
       'peticiones',
       'estadoProceso',
+      'descripcionEstadoProceso',
       'estadoCiudad',
     ];
 
@@ -7613,6 +7617,234 @@ Future<List<Map<String, dynamic>>> _obtenerTimoteosConConteo(
                                           onSubmitted: (value) {
                                             _irAlSiguienteCampo(fieldName);
                                           },
+                                        );
+                                      } else if (fieldName ==
+                                          'descripcionEstadoProceso') {
+                                        return Padding(
+                                          padding:
+                                              EdgeInsets.only(bottom: 16.0),
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              // Etiqueta descriptiva del subcampo
+                                              Container(
+                                                margin: EdgeInsets.only(
+                                                  bottom:
+                                                      isVerySmallScreen ? 6 : 8,
+                                                ),
+                                                padding: EdgeInsets.symmetric(
+                                                  horizontal: isVerySmallScreen
+                                                      ? 8
+                                                      : 10,
+                                                  vertical:
+                                                      isVerySmallScreen ? 4 : 6,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  color: primaryTeal
+                                                      .withOpacity(0.08),
+                                                  borderRadius:
+                                                      BorderRadius.circular(
+                                                    isVerySmallScreen ? 6 : 8,
+                                                  ),
+                                                  border: Border.all(
+                                                    color: primaryTeal
+                                                        .withOpacity(0.2),
+                                                    width: 1,
+                                                  ),
+                                                ),
+                                                child: Row(
+                                                  children: [
+                                                    Icon(
+                                                      Icons
+                                                          .subdirectory_arrow_right_rounded,
+                                                      color: primaryTeal
+                                                          .withOpacity(0.7),
+                                                      size: isVerySmallScreen
+                                                          ? iconSize * 0.6
+                                                          : iconSize * 0.65,
+                                                    ),
+                                                    SizedBox(
+                                                        width: isVerySmallScreen
+                                                            ? 4
+                                                            : 6),
+                                                    Flexible(
+                                                      child: Text(
+                                                        'Descripción del estado del proceso',
+                                                        style:
+                                                            GoogleFonts.poppins(
+                                                          fontSize: isVerySmallScreen
+                                                              ? contentFontSize -
+                                                                  4
+                                                              : contentFontSize -
+                                                                  3,
+                                                          color: primaryTeal
+                                                              .withOpacity(0.8),
+                                                          fontWeight:
+                                                              FontWeight.w500,
+                                                          fontStyle:
+                                                              FontStyle.italic,
+                                                        ),
+                                                        overflow: TextOverflow
+                                                            .ellipsis,
+                                                        maxLines: 2,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                              // Campo de texto responsive con múltiples líneas
+                                              Builder(
+                                                builder: (fieldContext) {
+                                                  return TextField(
+                                                    controller: controller!,
+                                                    focusNode: focusNode!,
+                                                    textInputAction:
+                                                        TextInputAction.newline,
+                                                    maxLines: isVerySmallScreen
+                                                        ? 3
+                                                        : (isSmallScreen
+                                                            ? 4
+                                                            : 5),
+                                                    minLines: isVerySmallScreen
+                                                        ? 2
+                                                        : 3,
+                                                    onTap: () {
+                                                      WidgetsBinding.instance
+                                                          .addPostFrameCallback(
+                                                              (_) {
+                                                        if (fieldContext
+                                                            .mounted) {
+                                                          Scrollable
+                                                              .ensureVisible(
+                                                            fieldContext,
+                                                            duration:
+                                                                const Duration(
+                                                                    milliseconds:
+                                                                        250),
+                                                            curve: Curves
+                                                                .easeInOut,
+                                                            alignment: 0.2,
+                                                          );
+                                                        }
+                                                      });
+                                                    },
+                                                    onChanged: (value) {
+                                                      hayModificaciones = true;
+                                                    },
+                                                    style: GoogleFonts.poppins(
+                                                      fontSize: isVerySmallScreen
+                                                          ? contentFontSize - 2
+                                                          : contentFontSize,
+                                                    ),
+                                                    decoration: InputDecoration(
+                                                      labelText: isVerySmallScreen
+                                                          ? 'Descripción del proceso'
+                                                          : 'Descripción / Observaciones del proceso',
+                                                      labelStyle:
+                                                          GoogleFonts.poppins(
+                                                        color: primaryTeal
+                                                            .withOpacity(0.8),
+                                                        fontWeight:
+                                                            FontWeight.w500,
+                                                        fontSize: isVerySmallScreen
+                                                            ? contentFontSize -
+                                                                4
+                                                            : contentFontSize -
+                                                                2,
+                                                      ),
+                                                      hintText: isVerySmallScreen
+                                                          ? 'Ej: Ganó el proceso, pendiente a encuentro...'
+                                                          : 'Ej: Ganó el proceso. Pendiente a ir a encuentro...',
+                                                      hintStyle:
+                                                          GoogleFonts.poppins(
+                                                        fontSize: isVerySmallScreen
+                                                            ? contentFontSize -
+                                                                4
+                                                            : contentFontSize -
+                                                                3,
+                                                        color: Colors.grey[400],
+                                                      ),
+                                                      prefixIcon: Container(
+                                                        margin: EdgeInsets.all(
+                                                          isVerySmallScreen
+                                                              ? 8
+                                                              : 10,
+                                                        ),
+                                                        padding: EdgeInsets.all(
+                                                          isVerySmallScreen
+                                                              ? 5
+                                                              : 6,
+                                                        ),
+                                                        decoration:
+                                                            BoxDecoration(
+                                                          color: primaryTeal
+                                                              .withOpacity(0.1),
+                                                          borderRadius:
+                                                              BorderRadius
+                                                                  .circular(8),
+                                                        ),
+                                                        child: Icon(
+                                                          Icons.notes_outlined,
+                                                          color: primaryTeal,
+                                                          size:
+                                                              isVerySmallScreen
+                                                                  ? iconSize *
+                                                                      0.7
+                                                                  : iconSize *
+                                                                      0.8,
+                                                        ),
+                                                      ),
+                                                      border:
+                                                          OutlineInputBorder(
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                                borderRadius),
+                                                        borderSide: BorderSide(
+                                                          color: primaryTeal
+                                                              .withOpacity(0.3),
+                                                        ),
+                                                      ),
+                                                      enabledBorder:
+                                                          OutlineInputBorder(
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                                borderRadius),
+                                                        borderSide: BorderSide(
+                                                          color: primaryTeal
+                                                              .withOpacity(0.5),
+                                                        ),
+                                                      ),
+                                                      focusedBorder:
+                                                          OutlineInputBorder(
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                                borderRadius),
+                                                        borderSide: BorderSide(
+                                                          color: primaryTeal,
+                                                          width: 2,
+                                                        ),
+                                                      ),
+                                                      filled: true,
+                                                      fillColor: Colors.white,
+                                                      contentPadding:
+                                                          EdgeInsets.symmetric(
+                                                        horizontal:
+                                                            isVerySmallScreen
+                                                                ? 10
+                                                                : 14,
+                                                        vertical:
+                                                            isVerySmallScreen
+                                                                ? 10
+                                                                : 14,
+                                                      ),
+                                                      alignLabelWithHint: true,
+                                                    ),
+                                                  );
+                                                },
+                                              ),
+                                            ],
+                                          ),
                                         );
                                       } else if (fieldName == 'estadoCiudad') {
                                         return _buildAnimatedTextFieldConOpcionesResponsive(
