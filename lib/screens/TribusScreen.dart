@@ -9323,6 +9323,96 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
 
     // ✅ NUEVO: Cargar años disponibles
     _cargarAniosDisponibles();
+
+    // ✅ NUEVO: Migración automática de edad (se ejecuta una sola vez en background)
+    _sincronizarEdadesDesdeFechaNacimiento();
+  }
+
+  /// Recorre todos los registros de esta tribu, y para cada uno que tenga
+  /// fechaNacimiento válida actualiza el campo edad en Firestore usando
+  /// batch writes (máx 500 por batch). Solo escribe si la edad calculada
+  /// difiere del valor actual, evitando escrituras innecesarias.
+  Future<void> _sincronizarEdadesDesdeFechaNacimiento() async {
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('registros')
+          .where('tribuAsignada', isEqualTo: widget.tribuId)
+          .get();
+
+      if (snapshot.docs.isEmpty) return;
+
+      final hoy = DateTime.now();
+
+      // Acumulamos las operaciones en lotes de 500 (límite de Firestore)
+      WriteBatch batch = FirebaseFirestore.instance.batch();
+      int operacionesEnBatch = 0;
+      const int limiteBatch = 400; // Margen de seguridad bajo el límite de 500
+
+      for (final doc in snapshot.docs) {
+        final data = doc.data();
+
+        // Solo procesar si tiene fechaNacimiento
+        final fechaRaw = data['fechaNacimiento'];
+        if (fechaRaw == null) continue;
+
+        DateTime? fechaNacimiento;
+        if (fechaRaw is Timestamp) {
+          fechaNacimiento = fechaRaw.toDate();
+        } else if (fechaRaw is String && fechaRaw.trim().isNotEmpty) {
+          try {
+            fechaNacimiento = DateTime.parse(fechaRaw);
+          } catch (_) {
+            continue; // Fecha malformada, saltar
+          }
+        } else {
+          continue; // Tipo no reconocido, saltar
+        }
+
+        // Calcular edad
+        int edadCalculada = hoy.year - fechaNacimiento.year;
+        if (hoy.month < fechaNacimiento.month ||
+            (hoy.month == fechaNacimiento.month &&
+                hoy.day < fechaNacimiento.day)) {
+          edadCalculada--;
+        }
+
+        // Validar que la edad sea coherente
+        if (edadCalculada <= 0 || edadCalculada > 120) continue;
+
+        // Comparar con el valor actual para evitar escrituras innecesarias
+        final edadActual = data['edad'];
+        int? edadActualInt;
+        if (edadActual is int) {
+          edadActualInt = edadActual;
+        } else if (edadActual is String) {
+          edadActualInt = int.tryParse(edadActual);
+        }
+
+        // Solo escribir si el valor cambió
+        if (edadActualInt == edadCalculada) continue;
+
+        batch.update(
+          FirebaseFirestore.instance.collection('registros').doc(doc.id),
+          {'edad': edadCalculada},
+        );
+        operacionesEnBatch++;
+
+        // Cuando se alcanza el límite, confirmar el batch y crear uno nuevo
+        if (operacionesEnBatch >= limiteBatch) {
+          await batch.commit();
+          batch = FirebaseFirestore.instance.batch();
+          operacionesEnBatch = 0;
+        }
+      }
+
+      // Confirmar el último batch si quedaron operaciones pendientes
+      if (operacionesEnBatch > 0) {
+        await batch.commit();
+      }
+    } catch (e) {
+      // Error silencioso: no interrumpe la UI ni muestra mensajes al usuario
+      print('⚠️ _sincronizarEdadesDesdeFechaNacimiento error: $e');
+    }
   }
 
   @override
