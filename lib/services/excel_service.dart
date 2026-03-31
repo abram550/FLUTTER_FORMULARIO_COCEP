@@ -42,6 +42,7 @@ class ExcelService {
         'Tiene Hijos',
         'Ocupaciones',
         'Referencia',
+        'Peticiones',
         'Observaciones',
         'Estado Fonovisita',
         'Observaciones 2',
@@ -198,10 +199,10 @@ class ExcelService {
       final isEvenRow = rowIndex % 2 == 0;
 
       List<dynamic> rowData;
-      if (sheetName == 'Nuevos') {
+     if (sheetName == 'Nuevos') {
         rowData = [
-          _formatDateLongSpanish(registro.fecha), // Fecha en español
-          registro.servicio ?? '', // Servicio separado
+          _formatDateLongSpanish(registro.fecha),
+          registro.servicio ?? '',
           registro.nombre,
           registro.apellido,
           registro.edad?.toString() ?? '',
@@ -214,8 +215,8 @@ class ExcelService {
           registro.tieneHijos ? 'Sí' : 'No',
           registro.ocupaciones.join(', '),
           registro.referenciaInvitacion,
-          registro.observaciones ?? '',
           registro.peticiones ?? '',
+          registro.observaciones ?? '',
           registro.estadoFonovisita ?? '',
           registro.observaciones2 ?? '',
           registro.consolidador ?? ''
