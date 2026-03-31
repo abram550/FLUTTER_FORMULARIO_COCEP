@@ -12013,508 +12013,22 @@ class _AdminPanelState extends State<AdminPanel>
     );
   }
 
-  void _mostrarEstadisticasAsignacion(BuildContext context) {
+
+
+
+void _mostrarEstadisticasAsignacion(BuildContext context) {
     showDialog(
       context: context,
       barrierDismissible: true,
       barrierColor: Colors.black54,
       builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            final size = MediaQuery.of(context).size;
-            final isSmallScreen = size.width < 600;
-            final isVerySmallScreen = size.width < 400;
-
-            // Filtros locales del diálogo
-            DateTime? fechaInicio;
-            DateTime? fechaFin;
-            String _modoVista = 'general'; // 'general' o 'porFecha'
-
-            return StatefulBuilder(
-              builder: (context, setInnerState) {
-                return Dialog(
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20)),
-                  insetPadding: EdgeInsets.symmetric(
-                    horizontal:
-                        isVerySmallScreen ? 8 : (isSmallScreen ? 14 : 24),
-                    vertical: isVerySmallScreen ? 10 : 20,
-                  ),
-                  child: Container(
-                    width:
-                        isSmallScreen ? size.width * 0.97 : size.width * 0.80,
-                    constraints: BoxConstraints(
-                      maxHeight: size.height * 0.90,
-                      maxWidth: 900,
-                    ),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(20),
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [Colors.white, primaryTeal.withOpacity(0.04)],
-                      ),
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // ── Header ──
-                        Container(
-                          padding: EdgeInsets.all(isSmallScreen ? 14 : 20),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                primaryTeal,
-                                primaryTeal.withOpacity(0.85)
-                              ],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            borderRadius: const BorderRadius.only(
-                              topLeft: Radius.circular(20),
-                              topRight: Radius.circular(20),
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              Container(
-                                padding: EdgeInsets.all(isSmallScreen ? 8 : 10),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.2),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Icon(Icons.group_work_rounded,
-                                    color: Colors.white,
-                                    size: isSmallScreen ? 22 : 28),
-                              ),
-                              SizedBox(width: isSmallScreen ? 10 : 14),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    FittedBox(
-                                      fit: BoxFit.scaleDown,
-                                      alignment: Alignment.centerLeft,
-                                      child: Text(
-                                        'Almas Asignadas',
-                                        style: TextStyle(
-                                          fontSize: isSmallScreen ? 18 : 22,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                    ),
-                                    Text(
-                                      'Por tribu y ministerio',
-                                      style: TextStyle(
-                                        fontSize: isSmallScreen ? 11 : 13,
-                                        color: Colors.white.withOpacity(0.85),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.close_rounded,
-                                    color: Colors.white),
-                                onPressed: () => Navigator.pop(context),
-                              ),
-                            ],
-                          ),
-                        ),
-
-                        // ── Selector de modo ──
-                        Padding(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: isSmallScreen ? 12 : 20,
-                            vertical: isSmallScreen ? 10 : 14,
-                          ),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: _buildModoBtn(
-                                  label: 'General',
-                                  icon: Icons.all_inclusive_rounded,
-                                  isSelected: _modoVista == 'general',
-                                  color: primaryTeal,
-                                  isSmall: isSmallScreen,
-                                  onTap: () => setInnerState(
-                                      () => _modoVista = 'general'),
-                                ),
-                              ),
-                              SizedBox(width: isSmallScreen ? 8 : 12),
-                              Expanded(
-                                child: _buildModoBtn(
-                                  label: 'Por Fecha',
-                                  icon: Icons.date_range_rounded,
-                                  isSelected: _modoVista == 'porFecha',
-                                  color: secondaryOrange,
-                                  isSmall: isSmallScreen,
-                                  onTap: () => setInnerState(
-                                      () => _modoVista = 'porFecha'),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-
-                        // ── Selector de fechas (solo si modo = porFecha) ──
-                        if (_modoVista == 'porFecha')
-                          Padding(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: isSmallScreen ? 12 : 20,
-                            ),
-                            child: InkWell(
-                              borderRadius: BorderRadius.circular(12),
-                              onTap: () async {
-                                final picked = await showDateRangePicker(
-                                  context: context,
-                                  firstDate: DateTime(2020),
-                                  lastDate: DateTime.now(),
-                                  initialDateRange:
-                                      fechaInicio != null && fechaFin != null
-                                          ? DateTimeRange(
-                                              start: fechaInicio!,
-                                              end: fechaFin!)
-                                          : null,
-                                  builder: (ctx, child) => Theme(
-                                    data: Theme.of(ctx).copyWith(
-                                      colorScheme: ColorScheme.light(
-                                          primary: primaryTeal,
-                                          onPrimary: Colors.white),
-                                    ),
-                                    child: child!,
-                                  ),
-                                );
-                                if (picked != null) {
-                                  setInnerState(() {
-                                    fechaInicio = picked.start;
-                                    fechaFin = picked.end;
-                                  });
-                                }
-                              },
-                              child: Container(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: isSmallScreen ? 12 : 16,
-                                  vertical: isSmallScreen ? 10 : 13,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                    color: fechaInicio != null
-                                        ? secondaryOrange
-                                        : Colors.grey.shade300,
-                                    width: fechaInicio != null ? 2 : 1,
-                                  ),
-                                ),
-                                child: Row(
-                                  children: [
-                                    Icon(Icons.calendar_today_rounded,
-                                        color: secondaryOrange,
-                                        size: isSmallScreen ? 18 : 22),
-                                    SizedBox(width: isSmallScreen ? 8 : 12),
-                                    Expanded(
-                                      child: Text(
-                                        fechaInicio != null && fechaFin != null
-                                            ? '${DateFormat('dd/MM/yyyy').format(fechaInicio!)}  →  ${DateFormat('dd/MM/yyyy').format(fechaFin!)}'
-                                            : 'Seleccionar rango de fechas',
-                                        style: TextStyle(
-                                          fontSize: isSmallScreen ? 12 : 14,
-                                          color: fechaInicio != null
-                                              ? Colors.black87
-                                              : Colors.grey[500],
-                                          fontWeight: fechaInicio != null
-                                              ? FontWeight.w600
-                                              : FontWeight.normal,
-                                        ),
-                                      ),
-                                    ),
-                                    if (fechaInicio != null)
-                                      GestureDetector(
-                                        onTap: () => setInnerState(() {
-                                          fechaInicio = null;
-                                          fechaFin = null;
-                                        }),
-                                        child: Icon(Icons.clear_rounded,
-                                            color: Colors.grey, size: 18),
-                                      ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-
-                        if (_modoVista == 'porFecha')
-                          const SizedBox(height: 10),
-
-                        // ── Contenido principal ──
-                        Flexible(
-                          child: FutureBuilder<Map<String, Map<String, int>>>(
-                            future: _calcularAsignacionesPorGrupo(
-                              fechaInicio:
-                                  _modoVista == 'porFecha' ? fechaInicio : null,
-                              fechaFin:
-                                  _modoVista == 'porFecha' ? fechaFin : null,
-                            ),
-                            builder: (context, snapshot) {
-                              if (snapshot.connectionState ==
-                                  ConnectionState.waiting) {
-                                return SizedBox(
-                                  height: 180,
-                                  child: Center(
-                                    child: Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        CircularProgressIndicator(
-                                            color: primaryTeal),
-                                        const SizedBox(height: 10),
-                                        Text('Calculando asignaciones...',
-                                            style: TextStyle(
-                                                color: primaryTeal,
-                                                fontSize: 13)),
-                                      ],
-                                    ),
-                                  ),
-                                );
-                              }
-
-                              if (snapshot.hasError) {
-                                return Padding(
-                                  padding: const EdgeInsets.all(20),
-                                  child: Text('Error: ${snapshot.error}',
-                                      style:
-                                          const TextStyle(color: Colors.red)),
-                                );
-                              }
-
-                              final datos = snapshot.data ?? {};
-                              if (datos.isEmpty ||
-                                  datos.values.every(
-                                      (m) => m.values.every((v) => v == 0))) {
-                                return SizedBox(
-                                  height: 160,
-                                  child: Center(
-                                    child: Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(Icons.inbox_rounded,
-                                            size: 44, color: Colors.grey[400]),
-                                        const SizedBox(height: 10),
-                                        Text(
-                                          _modoVista == 'porFecha' &&
-                                                  fechaInicio == null
-                                              ? 'Selecciona un rango de fechas'
-                                              : 'No hay asignaciones en este período',
-                                          textAlign: TextAlign.center,
-                                          style: TextStyle(
-                                              color: Colors.grey[600],
-                                              fontSize:
-                                                  isSmallScreen ? 13 : 15),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                );
-                              }
-
-                              // Calcular total general
-                              int totalGeneral = 0;
-                              datos.forEach((_, grupos) {
-                                grupos.forEach((_, v) => totalGeneral += v);
-                              });
-
-                              return SingleChildScrollView(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: isSmallScreen ? 12 : 20,
-                                  vertical: 8,
-                                ),
-                                child: Column(
-                                  children: [
-                                    // Tarjeta resumen total
-                                    Container(
-                                      width: double.infinity,
-                                      margin: const EdgeInsets.only(bottom: 14),
-                                      padding: EdgeInsets.symmetric(
-                                        horizontal: isSmallScreen ? 14 : 20,
-                                        vertical: isSmallScreen ? 12 : 16,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        gradient: LinearGradient(
-                                          colors: [
-                                            primaryTeal,
-                                            primaryTeal.withOpacity(0.8)
-                                          ],
-                                        ),
-                                        borderRadius: BorderRadius.circular(14),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: primaryTeal.withOpacity(0.3),
-                                            blurRadius: 8,
-                                            offset: const Offset(0, 4),
-                                          )
-                                        ],
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          Icon(Icons.people_alt_rounded,
-                                              color: Colors.white,
-                                              size: isSmallScreen ? 28 : 36),
-                                          SizedBox(
-                                              width: isSmallScreen ? 12 : 16),
-                                          Expanded(
-                                            child: Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                Text(
-                                                  'Total de almas asignadas',
-                                                  style: TextStyle(
-                                                    color: Colors.white
-                                                        .withOpacity(0.9),
-                                                    fontSize:
-                                                        isSmallScreen ? 11 : 13,
-                                                  ),
-                                                ),
-                                                FittedBox(
-                                                  fit: BoxFit.scaleDown,
-                                                  alignment:
-                                                      Alignment.centerLeft,
-                                                  child: Text(
-                                                    '$totalGeneral',
-                                                    style: TextStyle(
-                                                      color: Colors.white,
-                                                      fontSize: isSmallScreen
-                                                          ? 28
-                                                          : 36,
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                    ),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                          if (_modoVista == 'porFecha' &&
-                                              fechaInicio != null)
-                                            Container(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                      horizontal: 10,
-                                                      vertical: 6),
-                                              decoration: BoxDecoration(
-                                                color: Colors.white
-                                                    .withOpacity(0.2),
-                                                borderRadius:
-                                                    BorderRadius.circular(10),
-                                              ),
-                                              child: Text(
-                                                '${DateFormat('dd/MM').format(fechaInicio!)} - ${DateFormat('dd/MM').format(fechaFin!)}',
-                                                style: TextStyle(
-                                                  color: Colors.white,
-                                                  fontSize:
-                                                      isSmallScreen ? 10 : 12,
-                                                  fontWeight: FontWeight.w600,
-                                                ),
-                                              ),
-                                            ),
-                                        ],
-                                      ),
-                                    ),
-
-                                    // Tarjetas por ministerio
-                                    ...datos.entries.map((entry) {
-                                      final ministerio = entry.key;
-                                      final grupos = entry.value;
-                                      final totalMinisterio = grupos.values
-                                          .fold(0, (a, b) => a + b);
-
-                                      return _buildTarjetaMinisterio(
-                                        ministerio: ministerio,
-                                        grupos: grupos,
-                                        total: totalMinisterio,
-                                        totalGeneral: totalGeneral,
-                                        isSmallScreen: isSmallScreen,
-                                        isVerySmallScreen: isVerySmallScreen,
-                                      );
-                                    }).toList(),
-
-                                    const SizedBox(height: 16),
-                                  ],
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            );
-          },
+        return _AsignacionesDialog(
+          primaryTeal: primaryTeal,
+          secondaryOrange: secondaryOrange,
+          calcularAsignaciones: _calcularAsignacionesPorGrupo,
+          buildTarjetaMinisterio: _buildTarjetaMinisterio,
         );
       },
-    );
-  }
-
-  Widget _buildModoBtn({
-    required String label,
-    required IconData icon,
-    required bool isSelected,
-    required Color color,
-    required bool isSmall,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: EdgeInsets.symmetric(
-          horizontal: isSmall ? 10 : 16,
-          vertical: isSmall ? 10 : 12,
-        ),
-        decoration: BoxDecoration(
-          gradient: isSelected
-              ? LinearGradient(colors: [color, color.withOpacity(0.8)])
-              : null,
-          color: isSelected ? null : Colors.grey[100],
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isSelected ? color : Colors.grey.shade300,
-            width: isSelected ? 2 : 1,
-          ),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                      color: color.withOpacity(0.3),
-                      blurRadius: 8,
-                      offset: const Offset(0, 3))
-                ]
-              : null,
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon,
-                color: isSelected ? Colors.white : Colors.grey[600],
-                size: isSmall ? 18 : 20),
-            SizedBox(width: isSmall ? 6 : 8),
-            Flexible(
-              child: Text(
-                label,
-                style: TextStyle(
-                  color: isSelected ? Colors.white : Colors.grey[700],
-                  fontSize: isSmall ? 12 : 14,
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                ),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 
@@ -12526,7 +12040,8 @@ class _AdminPanelState extends State<AdminPanel>
     required bool isSmallScreen,
     required bool isVerySmallScreen,
   }) {
-    final porcentaje = totalGeneral > 0 ? (total / totalGeneral * 100) : 0.0;
+    final porcentaje =
+        totalGeneral > 0 ? (total / totalGeneral * 100) : 0.0;
     final color = ministerio.toLowerCase().contains('damas')
         ? const Color(0xFFE91E8C)
         : ministerio.toLowerCase().contains('caballeros')
@@ -12711,39 +12226,34 @@ class _AdminPanelState extends State<AdminPanel>
   }
 
   Future<Map<String, Map<String, int>>> _calcularAsignacionesPorGrupo({
-    DateTime? fechaInicio,
-    DateTime? fechaFin,
+    int? anio,
+    int? mes,
   }) async {
     try {
       final snapshot =
           await FirebaseFirestore.instance.collection('registros').get();
 
-      // ministerio → { tribu/nombreGrupo → cantidad }
       final Map<String, Map<String, int>> resultado = {};
 
       for (final doc in snapshot.docs) {
         final data = doc.data() as Map<String, dynamic>?;
         if (data == null) continue;
 
-        // Excluir registros de perfiles sociales directos sin asignación
         final ministerio = data['ministerioAsignado']?.toString().trim();
         if (ministerio == null || ministerio.isEmpty) continue;
 
-        // Filtro de fecha usando fechaAsignacion
-        if (fechaInicio != null && fechaFin != null) {
+        // Filtro por año y mes usando fechaAsignacion
+        if (anio != null) {
           final fechaAsig = data['fechaAsignacion'];
           DateTime? fechaAsignacion;
           if (fechaAsig is Timestamp) {
             fechaAsignacion = fechaAsig.toDate();
           }
           if (fechaAsignacion == null) continue;
-          final fin =
-              DateTime(fechaFin.year, fechaFin.month, fechaFin.day, 23, 59, 59);
-          if (fechaAsignacion.isBefore(fechaInicio) ||
-              fechaAsignacion.isAfter(fin)) continue;
+          if (fechaAsignacion.year != anio) continue;
+          if (mes != null && fechaAsignacion.month != mes) continue;
         }
 
-        // Determinar el nombre del grupo (tribu o ministerio directo)
         final tribuAsignada = data['tribuAsignada']?.toString().trim();
         final nombreTribu = data['nombreTribu']?.toString().trim();
 
@@ -12762,7 +12272,7 @@ class _AdminPanelState extends State<AdminPanel>
             (resultado[ministerio]![nombreGrupo] ?? 0) + 1;
       }
 
-      // Ordenar cada ministerio por cantidad descendente
+      // Ordenar por cantidad descendente
       final Map<String, Map<String, int>> ordenado = {};
       final ministeriosOrdenados = resultado.keys.toList()
         ..sort((a, b) {
@@ -12776,11 +12286,9 @@ class _AdminPanelState extends State<AdminPanel>
           resultado[min]!.entries.toList()
             ..sort((a, b) => b.value.compareTo(a.value)),
         );
-        // Si el único grupo == el ministerio (asignación directa sin tribu), no duplicar
         if (grupos.length == 1 && grupos.keys.first == min) {
           ordenado[min] = {min: grupos[min]!};
         } else {
-          // Quitar la entrada duplicada del ministerio si existe
           grupos.remove(min);
           ordenado[min] = grupos;
         }
@@ -12792,7 +12300,659 @@ class _AdminPanelState extends State<AdminPanel>
       return {};
     }
   }
+
+  /// Obtiene los años disponibles en fechaAsignacion (solo años con datos)
+  Future<List<int>> _obtenerAniosConAsignaciones() async {
+    try {
+      final snapshot =
+          await FirebaseFirestore.instance.collection('registros').get();
+      final Set<int> anios = {};
+      for (final doc in snapshot.docs) {
+        final data = doc.data() as Map<String, dynamic>?;
+        if (data == null) continue;
+        final ministerio = data['ministerioAsignado']?.toString().trim();
+        if (ministerio == null || ministerio.isEmpty) continue;
+        final fechaAsig = data['fechaAsignacion'];
+        if (fechaAsig is Timestamp) {
+          anios.add(fechaAsig.toDate().year);
+        }
+      }
+      return anios.toList()..sort((a, b) => b.compareTo(a));
+    } catch (_) {
+      return [];
+    }
+  }
+
+  /// Obtiene los meses disponibles para un año dado
+  Future<List<int>> _obtenerMesesConAsignaciones(int anio) async {
+    try {
+      final snapshot =
+          await FirebaseFirestore.instance.collection('registros').get();
+      final Set<int> meses = {};
+      for (final doc in snapshot.docs) {
+        final data = doc.data() as Map<String, dynamic>?;
+        if (data == null) continue;
+        final ministerio = data['ministerioAsignado']?.toString().trim();
+        if (ministerio == null || ministerio.isEmpty) continue;
+        final fechaAsig = data['fechaAsignacion'];
+        if (fechaAsig is Timestamp) {
+          final fecha = fechaAsig.toDate();
+          if (fecha.year == anio) meses.add(fecha.month);
+        }
+      }
+      return meses.toList()..sort();
+    } catch (_) {
+      return [];
+    }
+  }
+
+
+
 }
+
+
+class _AsignacionesDialog extends StatefulWidget {
+  final Color primaryTeal;
+  final Color secondaryOrange;
+  final Future<Map<String, Map<String, int>>> Function({int? anio, int? mes})
+      calcularAsignaciones;
+  final Widget Function({
+    required String ministerio,
+    required Map<String, int> grupos,
+    required int total,
+    required int totalGeneral,
+    required bool isSmallScreen,
+    required bool isVerySmallScreen,
+  }) buildTarjetaMinisterio;
+
+  const _AsignacionesDialog({
+    Key? key,
+    required this.primaryTeal,
+    required this.secondaryOrange,
+    required this.calcularAsignaciones,
+    required this.buildTarjetaMinisterio,
+  }) : super(key: key);
+
+  @override
+  State<_AsignacionesDialog> createState() => _AsignacionesDialogState();
+}
+
+class _AsignacionesDialogState extends State<_AsignacionesDialog> {
+  // Filtros
+  int? _anioSeleccionado;   // null = todos los años
+  int? _mesSeleccionado;    // null = todos los meses
+
+  // Datos cargados
+  List<int> _aniosDisponibles = [];
+  List<int> _mesesDisponibles = [];
+  bool _cargandoFiltros = true;
+
+  static const List<String> _nombresMeses = [
+    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _cargarAnios();
+  }
+
+  Future<void> _cargarAnios() async {
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('registros')
+          .get();
+      final Set<int> anios = {};
+      for (final doc in snapshot.docs) {
+        final data = doc.data() as Map<String, dynamic>?;
+        if (data == null) continue;
+        final ministerio = data['ministerioAsignado']?.toString().trim();
+        if (ministerio == null || ministerio.isEmpty) continue;
+        final fechaAsig = data['fechaAsignacion'];
+        if (fechaAsig is Timestamp) {
+          anios.add(fechaAsig.toDate().year);
+        }
+      }
+      if (mounted) {
+        setState(() {
+          _aniosDisponibles = anios.toList()..sort((a, b) => b.compareTo(a));
+          _cargandoFiltros = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _cargandoFiltros = false);
+    }
+  }
+
+  Future<void> _cargarMeses(int anio) async {
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('registros')
+          .get();
+      final Set<int> meses = {};
+      for (final doc in snapshot.docs) {
+        final data = doc.data() as Map<String, dynamic>?;
+        if (data == null) continue;
+        final ministerio = data['ministerioAsignado']?.toString().trim();
+        if (ministerio == null || ministerio.isEmpty) continue;
+        final fechaAsig = data['fechaAsignacion'];
+        if (fechaAsig is Timestamp) {
+          final fecha = fechaAsig.toDate();
+          if (fecha.year == anio) meses.add(fecha.month);
+        }
+      }
+      if (mounted) {
+        setState(() {
+          _mesesDisponibles = meses.toList()..sort();
+          _mesSeleccionado = null;
+        });
+      }
+    } catch (_) {}
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+    final isSmallScreen = size.width < 600;
+    final isVerySmallScreen = size.width < 400;
+
+    return Dialog(
+      shape:
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      insetPadding: EdgeInsets.symmetric(
+        horizontal: isVerySmallScreen ? 8 : (isSmallScreen ? 14 : 24),
+        vertical: isVerySmallScreen ? 10 : 20,
+      ),
+      child: Container(
+        width: isSmallScreen ? size.width * 0.97 : size.width * 0.80,
+        constraints: BoxConstraints(
+          maxHeight: size.height * 0.90,
+          maxWidth: 900,
+        ),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Colors.white,
+              widget.primaryTeal.withOpacity(0.04)
+            ],
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // ── Header ──────────────────────────────────────────────
+            Container(
+              padding: EdgeInsets.all(isSmallScreen ? 14 : 20),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    widget.primaryTeal,
+                    widget.primaryTeal.withOpacity(0.85)
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(20),
+                  topRight: Radius.circular(20),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding:
+                        EdgeInsets.all(isSmallScreen ? 8 : 10),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(Icons.group_work_rounded,
+                        color: Colors.white,
+                        size: isSmallScreen ? 22 : 28),
+                  ),
+                  SizedBox(width: isSmallScreen ? 10 : 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            'Almas Asignadas',
+                            style: TextStyle(
+                              fontSize: isSmallScreen ? 18 : 22,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                        Text(
+                          'Por tribu y ministerio',
+                          style: TextStyle(
+                            fontSize: isSmallScreen ? 11 : 13,
+                            color: Colors.white.withOpacity(0.85),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close_rounded,
+                        color: Colors.white),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+            ),
+
+            // ── Filtros Año / Mes ────────────────────────────────────
+            if (_cargandoFiltros)
+              Padding(
+                padding: EdgeInsets.all(isSmallScreen ? 12 : 18),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: widget.primaryTeal),
+                    ),
+                    const SizedBox(width: 10),
+                    Text('Cargando filtros...',
+                        style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: isSmallScreen ? 12 : 13)),
+                  ],
+                ),
+              )
+            else
+              Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: isSmallScreen ? 12 : 20,
+                  vertical: isSmallScreen ? 10 : 14,
+                ),
+                child: isVerySmallScreen
+                    ? Column(
+                        children: [
+                          _buildSelectorAnio(isSmallScreen),
+                          const SizedBox(height: 8),
+                          _buildSelectorMes(isSmallScreen),
+                        ],
+                      )
+                    : Row(
+                        children: [
+                          Expanded(
+                              child: _buildSelectorAnio(isSmallScreen)),
+                          SizedBox(width: isSmallScreen ? 8 : 12),
+                          Expanded(
+                              child: _buildSelectorMes(isSmallScreen)),
+                        ],
+                      ),
+              ),
+
+            // ── Contenido ───────────────────────────────────────────
+            Flexible(
+              child: FutureBuilder<Map<String, Map<String, int>>>(
+                future: widget.calcularAsignaciones(
+                  anio: _anioSeleccionado,
+                  mes: _mesSeleccionado,
+                ),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState ==
+                      ConnectionState.waiting) {
+                    return SizedBox(
+                      height: 180,
+                      child: Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            CircularProgressIndicator(
+                                color: widget.primaryTeal),
+                            const SizedBox(height: 10),
+                            Text('Calculando asignaciones...',
+                                style: TextStyle(
+                                    color: widget.primaryTeal,
+                                    fontSize: 13)),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
+
+                  if (snapshot.hasError) {
+                    return Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Text('Error: ${snapshot.error}',
+                          style:
+                              const TextStyle(color: Colors.red)),
+                    );
+                  }
+
+                  final datos = snapshot.data ?? {};
+                  final hayDatos = datos.isNotEmpty &&
+                      datos.values
+                          .any((m) => m.values.any((v) => v > 0));
+
+                  if (!hayDatos) {
+                    return SizedBox(
+                      height: 180,
+                      child: Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.inbox_rounded,
+                                size: 44,
+                                color: Colors.grey[400]),
+                            const SizedBox(height: 10),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 24),
+                              child: Text(
+                                'No hay asignaciones para el período seleccionado',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                    color: Colors.grey[600],
+                                    fontSize:
+                                        isSmallScreen ? 13 : 15),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
+
+                  int totalGeneral = 0;
+                  datos.forEach((_, grupos) {
+                    grupos.forEach((_, v) => totalGeneral += v);
+                  });
+
+                  // Etiqueta del período seleccionado
+                  String etiquetaPeriodo = 'Todos los años';
+                  if (_anioSeleccionado != null) {
+                    etiquetaPeriodo = _mesSeleccionado != null
+                        ? '${_nombresMeses[_mesSeleccionado! - 1]} $_anioSeleccionado'
+                        : 'Todo el año $_anioSeleccionado';
+                  }
+
+                  return SingleChildScrollView(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: isSmallScreen ? 12 : 20,
+                      vertical: 8,
+                    ),
+                    child: Column(
+                      children: [
+                        // Tarjeta resumen total
+                        Container(
+                          width: double.infinity,
+                          margin: const EdgeInsets.only(bottom: 14),
+                          padding: EdgeInsets.symmetric(
+                            horizontal: isSmallScreen ? 14 : 20,
+                            vertical: isSmallScreen ? 12 : 16,
+                          ),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                widget.primaryTeal,
+                                widget.primaryTeal.withOpacity(0.8)
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(14),
+                            boxShadow: [
+                              BoxShadow(
+                                color: widget.primaryTeal
+                                    .withOpacity(0.3),
+                                blurRadius: 8,
+                                offset: const Offset(0, 4),
+                              )
+                            ],
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.people_alt_rounded,
+                                  color: Colors.white,
+                                  size: isSmallScreen ? 28 : 36),
+                              SizedBox(
+                                  width: isSmallScreen ? 12 : 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Total de almas asignadas',
+                                      style: TextStyle(
+                                        color: Colors.white
+                                            .withOpacity(0.9),
+                                        fontSize:
+                                            isSmallScreen ? 11 : 13,
+                                      ),
+                                    ),
+                                    FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      alignment: Alignment.centerLeft,
+                                      child: Text(
+                                        '$totalGeneral',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize:
+                                              isSmallScreen ? 28 : 36,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color:
+                                      Colors.white.withOpacity(0.2),
+                                  borderRadius:
+                                      BorderRadius.circular(10),
+                                ),
+                                child: Text(
+                                  etiquetaPeriodo,
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: isSmallScreen ? 10 : 12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        // Tarjetas por ministerio
+                        ...datos.entries.map((entry) {
+                          final ministerio = entry.key;
+                          final grupos = entry.value;
+                          final totalMin = grupos.values
+                              .fold(0, (a, b) => a + b);
+                          return widget.buildTarjetaMinisterio(
+                            ministerio: ministerio,
+                            grupos: grupos,
+                            total: totalMin,
+                            totalGeneral: totalGeneral,
+                            isSmallScreen: isSmallScreen,
+                            isVerySmallScreen: isVerySmallScreen,
+                          );
+                        }).toList(),
+
+                        const SizedBox(height: 16),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Selector de Año ──────────────────────────────────────────────────────
+  Widget _buildSelectorAnio(bool isSmallScreen) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: _anioSeleccionado != null
+              ? widget.primaryTeal
+              : Colors.grey.shade300,
+          width: _anioSeleccionado != null ? 2 : 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 4,
+              offset: const Offset(0, 2)),
+        ],
+      ),
+      padding: EdgeInsets.symmetric(
+          horizontal: isSmallScreen ? 10 : 14,
+          vertical: isSmallScreen ? 2 : 4),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<int?>(
+          value: _anioSeleccionado,
+          isExpanded: true,
+          icon: Icon(Icons.keyboard_arrow_down_rounded,
+              color: widget.primaryTeal, size: isSmallScreen ? 22 : 26),
+          hint: Row(
+            children: [
+              Icon(Icons.calendar_today_rounded,
+                  color: Colors.grey[500], size: isSmallScreen ? 16 : 18),
+              const SizedBox(width: 6),
+              Text('Año',
+                  style: TextStyle(
+                      color: Colors.grey[500],
+                      fontSize: isSmallScreen ? 13 : 14)),
+            ],
+          ),
+          items: [
+            DropdownMenuItem<int?>(
+              value: null,
+              child: Text('Todos los años',
+                  style: TextStyle(
+                    fontSize: isSmallScreen ? 13 : 14,
+                    fontWeight: FontWeight.w600,
+                    color: widget.primaryTeal,
+                  )),
+            ),
+            ..._aniosDisponibles.map(
+              (a) => DropdownMenuItem<int?>(
+                value: a,
+                child: Text('$a',
+                    style: TextStyle(
+                        fontSize: isSmallScreen ? 13 : 14,
+                        color: Colors.black87)),
+              ),
+            ),
+          ],
+          onChanged: (val) async {
+            setState(() {
+              _anioSeleccionado = val;
+              _mesSeleccionado = null;
+              _mesesDisponibles = [];
+            });
+            if (val != null) await _cargarMeses(val);
+          },
+        ),
+      ),
+    );
+  }
+
+  // ── Selector de Mes ──────────────────────────────────────────────────────
+  Widget _buildSelectorMes(bool isSmallScreen) {
+    final habilitado =
+        _anioSeleccionado != null && _mesesDisponibles.isNotEmpty;
+
+    return AnimatedOpacity(
+      opacity: habilitado ? 1.0 : 0.4,
+      duration: const Duration(milliseconds: 200),
+      child: IgnorePointer(
+        ignoring: !habilitado,
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: _mesSeleccionado != null
+                  ? widget.secondaryOrange
+                  : Colors.grey.shade300,
+              width: _mesSeleccionado != null ? 2 : 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2)),
+            ],
+          ),
+          padding: EdgeInsets.symmetric(
+              horizontal: isSmallScreen ? 10 : 14,
+              vertical: isSmallScreen ? 2 : 4),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<int?>(
+              value: _mesSeleccionado,
+              isExpanded: true,
+              icon: Icon(Icons.keyboard_arrow_down_rounded,
+                  color: widget.secondaryOrange,
+                  size: isSmallScreen ? 22 : 26),
+              hint: Row(
+                children: [
+                  Icon(Icons.event_rounded,
+                      color: Colors.grey[500],
+                      size: isSmallScreen ? 16 : 18),
+                  const SizedBox(width: 6),
+                  Text('Mes',
+                      style: TextStyle(
+                          color: Colors.grey[500],
+                          fontSize: isSmallScreen ? 13 : 14)),
+                ],
+              ),
+              items: [
+                DropdownMenuItem<int?>(
+                  value: null,
+                  child: Text('Todos los meses',
+                      style: TextStyle(
+                        fontSize: isSmallScreen ? 13 : 14,
+                        fontWeight: FontWeight.w600,
+                        color: widget.secondaryOrange,
+                      )),
+                ),
+                ..._mesesDisponibles.map(
+                  (m) => DropdownMenuItem<int?>(
+                    value: m,
+                    child: Text(_nombresMeses[m - 1],
+                        style: TextStyle(
+                            fontSize: isSmallScreen ? 13 : 14,
+                            color: Colors.black87)),
+                  ),
+                ),
+              ],
+              onChanged: (val) => setState(() => _mesSeleccionado = val),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 
 class ChartData {
   final String label;
