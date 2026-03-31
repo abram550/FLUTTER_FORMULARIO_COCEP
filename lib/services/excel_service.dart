@@ -199,7 +199,7 @@ class ExcelService {
       final isEvenRow = rowIndex % 2 == 0;
 
       List<dynamic> rowData;
-     if (sheetName == 'Nuevos') {
+      if (sheetName == 'Nuevos') {
         rowData = [
           _formatDateLongSpanish(registro.fecha),
           registro.servicio ?? '',

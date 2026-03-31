@@ -9265,8 +9265,6 @@ Widget _buildInfoRow(IconData icon, String label, String value) {
   );
 }
 
-
-
 //--Clase de la pestaña de Personas
 class RegistrosAsignadosTab extends StatefulWidget {
   final String tribuId;
@@ -9822,6 +9820,10 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
       'peticiones': {'icon': Icons.volunteer_activism, 'type': 'text'},
       'sexo': {'icon': Icons.wc, 'type': 'dropdown'},
       'estadoProceso': {'icon': Icons.track_changes_outlined, 'type': 'text'},
+      'descripcionEstadoProceso': {
+        'icon': Icons.notes_outlined,
+        'type': 'text'
+      },
       'estadoCiudad': {'icon': Icons.location_city_outlined, 'type': 'text'},
       'fechaNacimiento': {'icon': Icons.calendar_today, 'type': 'date'},
     };
@@ -9868,6 +9870,7 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
       'edad',
       'peticiones',
       'estadoProceso',
+      'descripcionEstadoProceso',
       'estadoCiudad',
     ];
 
@@ -11158,6 +11161,234 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
                                           onSubmitted: (value) {
                                             _irAlSiguienteCampo(fieldName);
                                           },
+                                        );
+                                      } else if (fieldName ==
+                                          'descripcionEstadoProceso') {
+                                        return Padding(
+                                          padding:
+                                              EdgeInsets.only(bottom: 16.0),
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              // Etiqueta descriptiva del subcampo
+                                              Container(
+                                                margin: EdgeInsets.only(
+                                                  bottom:
+                                                      isVerySmallScreen ? 6 : 8,
+                                                ),
+                                                padding: EdgeInsets.symmetric(
+                                                  horizontal: isVerySmallScreen
+                                                      ? 8
+                                                      : 10,
+                                                  vertical:
+                                                      isVerySmallScreen ? 4 : 6,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  color: primaryTeal
+                                                      .withOpacity(0.08),
+                                                  borderRadius:
+                                                      BorderRadius.circular(
+                                                    isVerySmallScreen ? 6 : 8,
+                                                  ),
+                                                  border: Border.all(
+                                                    color: primaryTeal
+                                                        .withOpacity(0.2),
+                                                    width: 1,
+                                                  ),
+                                                ),
+                                                child: Row(
+                                                  children: [
+                                                    Icon(
+                                                      Icons
+                                                          .subdirectory_arrow_right_rounded,
+                                                      color: primaryTeal
+                                                          .withOpacity(0.7),
+                                                      size: isVerySmallScreen
+                                                          ? iconSize * 0.6
+                                                          : iconSize * 0.65,
+                                                    ),
+                                                    SizedBox(
+                                                        width: isVerySmallScreen
+                                                            ? 4
+                                                            : 6),
+                                                    Flexible(
+                                                      child: Text(
+                                                        'Descripción del estado del proceso',
+                                                        style:
+                                                            GoogleFonts.poppins(
+                                                          fontSize: isVerySmallScreen
+                                                              ? contentFontSize -
+                                                                  4
+                                                              : contentFontSize -
+                                                                  3,
+                                                          color: primaryTeal
+                                                              .withOpacity(0.8),
+                                                          fontWeight:
+                                                              FontWeight.w500,
+                                                          fontStyle:
+                                                              FontStyle.italic,
+                                                        ),
+                                                        overflow: TextOverflow
+                                                            .ellipsis,
+                                                        maxLines: 2,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                              // Campo de texto responsive con múltiples líneas
+                                              Builder(
+                                                builder: (fieldContext) {
+                                                  return TextField(
+                                                    controller: controller!,
+                                                    focusNode: focusNode!,
+                                                    textInputAction:
+                                                        TextInputAction.newline,
+                                                    maxLines: isVerySmallScreen
+                                                        ? 3
+                                                        : (isSmallScreen
+                                                            ? 4
+                                                            : 5),
+                                                    minLines: isVerySmallScreen
+                                                        ? 2
+                                                        : 3,
+                                                    onTap: () {
+                                                      WidgetsBinding.instance
+                                                          .addPostFrameCallback(
+                                                              (_) {
+                                                        if (fieldContext
+                                                            .mounted) {
+                                                          Scrollable
+                                                              .ensureVisible(
+                                                            fieldContext,
+                                                            duration:
+                                                                const Duration(
+                                                                    milliseconds:
+                                                                        250),
+                                                            curve: Curves
+                                                                .easeInOut,
+                                                            alignment: 0.2,
+                                                          );
+                                                        }
+                                                      });
+                                                    },
+                                                    onChanged: (value) {
+                                                      hayModificaciones = true;
+                                                    },
+                                                    style: GoogleFonts.poppins(
+                                                      fontSize: isVerySmallScreen
+                                                          ? contentFontSize - 2
+                                                          : contentFontSize,
+                                                    ),
+                                                    decoration: InputDecoration(
+                                                      labelText: isVerySmallScreen
+                                                          ? 'Descripción del proceso'
+                                                          : 'Descripción / Observaciones del proceso',
+                                                      labelStyle:
+                                                          GoogleFonts.poppins(
+                                                        color: primaryTeal
+                                                            .withOpacity(0.8),
+                                                        fontWeight:
+                                                            FontWeight.w500,
+                                                        fontSize: isVerySmallScreen
+                                                            ? contentFontSize -
+                                                                4
+                                                            : contentFontSize -
+                                                                2,
+                                                      ),
+                                                      hintText: isVerySmallScreen
+                                                          ? 'Ej: Ganó el proceso, pendiente a encuentro...'
+                                                          : 'Ej: Ganó el proceso. Pendiente a ir a encuentro...',
+                                                      hintStyle:
+                                                          GoogleFonts.poppins(
+                                                        fontSize: isVerySmallScreen
+                                                            ? contentFontSize -
+                                                                4
+                                                            : contentFontSize -
+                                                                3,
+                                                        color: Colors.grey[400],
+                                                      ),
+                                                      prefixIcon: Container(
+                                                        margin: EdgeInsets.all(
+                                                          isVerySmallScreen
+                                                              ? 8
+                                                              : 10,
+                                                        ),
+                                                        padding: EdgeInsets.all(
+                                                          isVerySmallScreen
+                                                              ? 5
+                                                              : 6,
+                                                        ),
+                                                        decoration:
+                                                            BoxDecoration(
+                                                          color: primaryTeal
+                                                              .withOpacity(0.1),
+                                                          borderRadius:
+                                                              BorderRadius
+                                                                  .circular(8),
+                                                        ),
+                                                        child: Icon(
+                                                          Icons.notes_outlined,
+                                                          color: primaryTeal,
+                                                          size:
+                                                              isVerySmallScreen
+                                                                  ? iconSize *
+                                                                      0.7
+                                                                  : iconSize *
+                                                                      0.8,
+                                                        ),
+                                                      ),
+                                                      border:
+                                                          OutlineInputBorder(
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                                borderRadius),
+                                                        borderSide: BorderSide(
+                                                          color: primaryTeal
+                                                              .withOpacity(0.3),
+                                                        ),
+                                                      ),
+                                                      enabledBorder:
+                                                          OutlineInputBorder(
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                                borderRadius),
+                                                        borderSide: BorderSide(
+                                                          color: primaryTeal
+                                                              .withOpacity(0.5),
+                                                        ),
+                                                      ),
+                                                      focusedBorder:
+                                                          OutlineInputBorder(
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                                borderRadius),
+                                                        borderSide: BorderSide(
+                                                          color: primaryTeal,
+                                                          width: 2,
+                                                        ),
+                                                      ),
+                                                      filled: true,
+                                                      fillColor: Colors.white,
+                                                      contentPadding:
+                                                          EdgeInsets.symmetric(
+                                                        horizontal:
+                                                            isVerySmallScreen
+                                                                ? 10
+                                                                : 14,
+                                                        vertical:
+                                                            isVerySmallScreen
+                                                                ? 10
+                                                                : 14,
+                                                      ),
+                                                      alignLabelWithHint: true,
+                                                    ),
+                                                  );
+                                                },
+                                              ),
+                                            ],
+                                          ),
                                         );
                                       } else if (controller != null &&
                                           focusNode != null) {
@@ -16628,6 +16859,11 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
             'label': 'Estado en la Iglesia',
             'icon': Icons.verified_outlined
           },
+          {
+            'key': 'descripcionEstadoProceso',
+            'label': 'Descripción del Proceso',
+            'icon': Icons.notes_outlined
+          },
         ]
       },
     ];
@@ -17198,8 +17434,6 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
     return filtros.join(' • ');
   }
 }
-
-
 
 ///------------------------------
 

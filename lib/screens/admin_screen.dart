@@ -12013,10 +12013,7 @@ class _AdminPanelState extends State<AdminPanel>
     );
   }
 
-
-
-
-void _mostrarEstadisticasAsignacion(BuildContext context) {
+  void _mostrarEstadisticasAsignacion(BuildContext context) {
     showDialog(
       context: context,
       barrierDismissible: true,
@@ -12040,8 +12037,7 @@ void _mostrarEstadisticasAsignacion(BuildContext context) {
     required bool isSmallScreen,
     required bool isVerySmallScreen,
   }) {
-    final porcentaje =
-        totalGeneral > 0 ? (total / totalGeneral * 100) : 0.0;
+    final porcentaje = totalGeneral > 0 ? (total / totalGeneral * 100) : 0.0;
     final color = ministerio.toLowerCase().contains('damas')
         ? const Color(0xFFE91E8C)
         : ministerio.toLowerCase().contains('caballeros')
@@ -12345,11 +12341,7 @@ void _mostrarEstadisticasAsignacion(BuildContext context) {
       return [];
     }
   }
-
-
-
 }
-
 
 class _AsignacionesDialog extends StatefulWidget {
   final Color primaryTeal;
@@ -12379,8 +12371,8 @@ class _AsignacionesDialog extends StatefulWidget {
 
 class _AsignacionesDialogState extends State<_AsignacionesDialog> {
   // Filtros
-  int? _anioSeleccionado;   // null = todos los años
-  int? _mesSeleccionado;    // null = todos los meses
+  int? _anioSeleccionado; // null = todos los años
+  int? _mesSeleccionado; // null = todos los meses
 
   // Datos cargados
   List<int> _aniosDisponibles = [];
@@ -12388,8 +12380,18 @@ class _AsignacionesDialogState extends State<_AsignacionesDialog> {
   bool _cargandoFiltros = true;
 
   static const List<String> _nombresMeses = [
-    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
+    'Enero',
+    'Febrero',
+    'Marzo',
+    'Abril',
+    'Mayo',
+    'Junio',
+    'Julio',
+    'Agosto',
+    'Septiembre',
+    'Octubre',
+    'Noviembre',
+    'Diciembre',
   ];
 
   @override
@@ -12400,9 +12402,8 @@ class _AsignacionesDialogState extends State<_AsignacionesDialog> {
 
   Future<void> _cargarAnios() async {
     try {
-      final snapshot = await FirebaseFirestore.instance
-          .collection('registros')
-          .get();
+      final snapshot =
+          await FirebaseFirestore.instance.collection('registros').get();
       final Set<int> anios = {};
       for (final doc in snapshot.docs) {
         final data = doc.data() as Map<String, dynamic>?;
@@ -12427,9 +12428,8 @@ class _AsignacionesDialogState extends State<_AsignacionesDialog> {
 
   Future<void> _cargarMeses(int anio) async {
     try {
-      final snapshot = await FirebaseFirestore.instance
-          .collection('registros')
-          .get();
+      final snapshot =
+          await FirebaseFirestore.instance.collection('registros').get();
       final Set<int> meses = {};
       for (final doc in snapshot.docs) {
         final data = doc.data() as Map<String, dynamic>?;
@@ -12458,8 +12458,7 @@ class _AsignacionesDialogState extends State<_AsignacionesDialog> {
     final isVerySmallScreen = size.width < 400;
 
     return Dialog(
-      shape:
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       insetPadding: EdgeInsets.symmetric(
         horizontal: isVerySmallScreen ? 8 : (isSmallScreen ? 14 : 24),
         vertical: isVerySmallScreen ? 10 : 20,
@@ -12475,10 +12474,7 @@ class _AsignacionesDialogState extends State<_AsignacionesDialog> {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              Colors.white,
-              widget.primaryTeal.withOpacity(0.04)
-            ],
+            colors: [Colors.white, widget.primaryTeal.withOpacity(0.04)],
           ),
         ),
         child: Column(
@@ -12504,15 +12500,13 @@ class _AsignacionesDialogState extends State<_AsignacionesDialog> {
               child: Row(
                 children: [
                   Container(
-                    padding:
-                        EdgeInsets.all(isSmallScreen ? 8 : 10),
+                    padding: EdgeInsets.all(isSmallScreen ? 8 : 10),
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.2),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(Icons.group_work_rounded,
-                        color: Colors.white,
-                        size: isSmallScreen ? 22 : 28),
+                        color: Colors.white, size: isSmallScreen ? 22 : 28),
                   ),
                   SizedBox(width: isSmallScreen ? 10 : 14),
                   Expanded(
@@ -12542,8 +12536,7 @@ class _AsignacionesDialogState extends State<_AsignacionesDialog> {
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.close_rounded,
-                        color: Colors.white),
+                    icon: const Icon(Icons.close_rounded, color: Colors.white),
                     onPressed: () => Navigator.pop(context),
                   ),
                 ],
@@ -12561,8 +12554,7 @@ class _AsignacionesDialogState extends State<_AsignacionesDialog> {
                       width: 20,
                       height: 20,
                       child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: widget.primaryTeal),
+                          strokeWidth: 2, color: widget.primaryTeal),
                     ),
                     const SizedBox(width: 10),
                     Text('Cargando filtros...',
@@ -12588,11 +12580,9 @@ class _AsignacionesDialogState extends State<_AsignacionesDialog> {
                       )
                     : Row(
                         children: [
-                          Expanded(
-                              child: _buildSelectorAnio(isSmallScreen)),
+                          Expanded(child: _buildSelectorAnio(isSmallScreen)),
                           SizedBox(width: isSmallScreen ? 8 : 12),
-                          Expanded(
-                              child: _buildSelectorMes(isSmallScreen)),
+                          Expanded(child: _buildSelectorMes(isSmallScreen)),
                         ],
                       ),
               ),
@@ -12605,8 +12595,7 @@ class _AsignacionesDialogState extends State<_AsignacionesDialog> {
                   mes: _mesSeleccionado,
                 ),
                 builder: (context, snapshot) {
-                  if (snapshot.connectionState ==
-                      ConnectionState.waiting) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
                     return SizedBox(
                       height: 180,
                       child: Center(
@@ -12618,8 +12607,7 @@ class _AsignacionesDialogState extends State<_AsignacionesDialog> {
                             const SizedBox(height: 10),
                             Text('Calculando asignaciones...',
                                 style: TextStyle(
-                                    color: widget.primaryTeal,
-                                    fontSize: 13)),
+                                    color: widget.primaryTeal, fontSize: 13)),
                           ],
                         ),
                       ),
@@ -12630,15 +12618,13 @@ class _AsignacionesDialogState extends State<_AsignacionesDialog> {
                     return Padding(
                       padding: const EdgeInsets.all(20),
                       child: Text('Error: ${snapshot.error}',
-                          style:
-                              const TextStyle(color: Colors.red)),
+                          style: const TextStyle(color: Colors.red)),
                     );
                   }
 
                   final datos = snapshot.data ?? {};
                   final hayDatos = datos.isNotEmpty &&
-                      datos.values
-                          .any((m) => m.values.any((v) => v > 0));
+                      datos.values.any((m) => m.values.any((v) => v > 0));
 
                   if (!hayDatos) {
                     return SizedBox(
@@ -12648,19 +12634,17 @@ class _AsignacionesDialogState extends State<_AsignacionesDialog> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(Icons.inbox_rounded,
-                                size: 44,
-                                color: Colors.grey[400]),
+                                size: 44, color: Colors.grey[400]),
                             const SizedBox(height: 10),
                             Padding(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 24),
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 24),
                               child: Text(
                                 'No hay asignaciones para el período seleccionado',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                     color: Colors.grey[600],
-                                    fontSize:
-                                        isSmallScreen ? 13 : 15),
+                                    fontSize: isSmallScreen ? 13 : 15),
                               ),
                             ),
                           ],
@@ -12707,8 +12691,7 @@ class _AsignacionesDialogState extends State<_AsignacionesDialog> {
                             borderRadius: BorderRadius.circular(14),
                             boxShadow: [
                               BoxShadow(
-                                color: widget.primaryTeal
-                                    .withOpacity(0.3),
+                                color: widget.primaryTeal.withOpacity(0.3),
                                 blurRadius: 8,
                                 offset: const Offset(0, 4),
                               )
@@ -12719,20 +12702,16 @@ class _AsignacionesDialogState extends State<_AsignacionesDialog> {
                               Icon(Icons.people_alt_rounded,
                                   color: Colors.white,
                                   size: isSmallScreen ? 28 : 36),
-                              SizedBox(
-                                  width: isSmallScreen ? 12 : 16),
+                              SizedBox(width: isSmallScreen ? 12 : 16),
                               Expanded(
                                 child: Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.start,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
                                       'Total de almas asignadas',
                                       style: TextStyle(
-                                        color: Colors.white
-                                            .withOpacity(0.9),
-                                        fontSize:
-                                            isSmallScreen ? 11 : 13,
+                                        color: Colors.white.withOpacity(0.9),
+                                        fontSize: isSmallScreen ? 11 : 13,
                                       ),
                                     ),
                                     FittedBox(
@@ -12742,8 +12721,7 @@ class _AsignacionesDialogState extends State<_AsignacionesDialog> {
                                         '$totalGeneral',
                                         style: TextStyle(
                                           color: Colors.white,
-                                          fontSize:
-                                              isSmallScreen ? 28 : 36,
+                                          fontSize: isSmallScreen ? 28 : 36,
                                           fontWeight: FontWeight.bold,
                                         ),
                                       ),
@@ -12755,10 +12733,8 @@ class _AsignacionesDialogState extends State<_AsignacionesDialog> {
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 10, vertical: 6),
                                 decoration: BoxDecoration(
-                                  color:
-                                      Colors.white.withOpacity(0.2),
-                                  borderRadius:
-                                      BorderRadius.circular(10),
+                                  color: Colors.white.withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(10),
                                 ),
                                 child: Text(
                                   etiquetaPeriodo,
@@ -12778,8 +12754,8 @@ class _AsignacionesDialogState extends State<_AsignacionesDialog> {
                         ...datos.entries.map((entry) {
                           final ministerio = entry.key;
                           final grupos = entry.value;
-                          final totalMin = grupos.values
-                              .fold(0, (a, b) => a + b);
+                          final totalMin =
+                              grupos.values.fold(0, (a, b) => a + b);
                           return widget.buildTarjetaMinisterio(
                             ministerio: ministerio,
                             grupos: grupos,
@@ -12823,8 +12799,7 @@ class _AsignacionesDialogState extends State<_AsignacionesDialog> {
         ],
       ),
       padding: EdgeInsets.symmetric(
-          horizontal: isSmallScreen ? 10 : 14,
-          vertical: isSmallScreen ? 2 : 4),
+          horizontal: isSmallScreen ? 10 : 14, vertical: isSmallScreen ? 2 : 4),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<int?>(
           value: _anioSeleccionado,
@@ -12910,13 +12885,11 @@ class _AsignacionesDialogState extends State<_AsignacionesDialog> {
               value: _mesSeleccionado,
               isExpanded: true,
               icon: Icon(Icons.keyboard_arrow_down_rounded,
-                  color: widget.secondaryOrange,
-                  size: isSmallScreen ? 22 : 26),
+                  color: widget.secondaryOrange, size: isSmallScreen ? 22 : 26),
               hint: Row(
                 children: [
                   Icon(Icons.event_rounded,
-                      color: Colors.grey[500],
-                      size: isSmallScreen ? 16 : 18),
+                      color: Colors.grey[500], size: isSmallScreen ? 16 : 18),
                   const SizedBox(width: 6),
                   Text('Mes',
                       style: TextStyle(
@@ -12952,7 +12925,6 @@ class _AsignacionesDialogState extends State<_AsignacionesDialog> {
     );
   }
 }
-
 
 class ChartData {
   final String label;
