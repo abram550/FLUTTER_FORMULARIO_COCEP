@@ -10617,7 +10617,7 @@ class _AdminPanelState extends State<AdminPanel>
                       // Es una tribu del Ministerio Juvenil
                       tribuAsignada = seleccion;
                       ministerioAsignado =
-                          'Ministerio Juvenil'; // ✅ SIEMPRE asignar Ministerio Juvenil
+                          'Ministerio Juvenil'; // SIEMPRE asignar Ministerio Juvenil
 
                       // Obtener el nombre de la tribu
                       final tribuDoc = tribusSnapshot.docs.firstWhere(

@@ -215,6 +215,7 @@ class ExcelService {
           registro.ocupaciones.join(', '),
           registro.referenciaInvitacion,
           registro.observaciones ?? '',
+          registro.peticiones ?? '',
           registro.estadoFonovisita ?? '',
           registro.observaciones2 ?? '',
           registro.consolidador ?? ''
