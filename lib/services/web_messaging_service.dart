@@ -1,8 +1,13 @@
-import 'package:js/js.dart';
-import 'package:js/js_util.dart';
+import 'dart:js_interop';
+import 'package:web/web.dart' as web;
 
 @JS('firebase.messaging')
-external dynamic get messaging;
+external JSObject get messaging;
+
+extension MessagingExtension on JSObject {
+  external JSPromise getToken();
+  external JSPromise requestPermission();
+}
 
 class WebMessagingService {
   static final WebMessagingService _instance = WebMessagingService._internal();
@@ -12,9 +17,8 @@ class WebMessagingService {
   Future<String?> getToken() async {
     try {
       final messagingInstance = messaging;
-      final token =
-          await promiseToFuture(callMethod(messagingInstance, 'getToken', []));
-      return token as String?;
+      final token = await messagingInstance.getToken().toDart;
+      return token.dartify() as String?;
     } catch (e) {
       print('Error getting token: $e');
       return null;
@@ -24,8 +28,7 @@ class WebMessagingService {
   Future<void> requestPermission() async {
     try {
       final messagingInstance = messaging;
-      await promiseToFuture(
-          callMethod(messagingInstance, 'requestPermission', []));
+      await messagingInstance.requestPermission().toDart;
     } catch (e) {
       print('Error requesting permission: $e');
     }

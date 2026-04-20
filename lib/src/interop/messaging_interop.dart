@@ -1,15 +1,8 @@
-import 'package:js/js.dart';
-import 'package:js_interop/js_interop.dart';
-
-@JS()
-@anonymous
-class PromiseJsImpl<T> {
-  external factory PromiseJsImpl();
-}
+import 'dart:js_interop';
 
 @JS('firebase.messaging.MessagingJsImpl')
-class MessagingJsImpl {
-  external PromiseJsImpl<bool> deleteToken();
-  external PromiseJsImpl<String> getToken(dynamic options);
-  external PromiseJsImpl<bool> isSupported();
+extension type MessagingJsImpl._(JSObject _) implements JSObject {
+  external JSPromise<JSBoolean> deleteToken();
+  external JSPromise<JSString> getToken([JSAny? options]);
+  external JSPromise<JSBoolean> isSupported();
 }
