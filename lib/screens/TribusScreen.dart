@@ -18292,9 +18292,12 @@ class _AsistenciasTabState extends State<AsistenciasTab>
               apellido.isNotEmpty ? "$nombre $apellido" : nombre;
 
           return {
+            'id': doc
+                .id, // ✅ Identificador único real (evita confundir personas con el mismo nombre)
             'nombre': nombre,
             'nombreCompleto': nombreCompleto,
-            'fecha': (data['fecha'] as Timestamp).toDate(),
+            'fecha': _timestampToColombiaDateTime(data['fecha']
+                as Timestamp), // ✅ Fecha fija a hora de Colombia, sin importar el dispositivo
             'diaSemana': data['diaSemana'] ?? '',
             'asistio': data['asistio'],
             'nombreServicio': data['nombreServicio'] ?? '',
@@ -18581,7 +18584,11 @@ class _AsistenciasTabState extends State<AsistenciasTab>
 
     for (var asistencia in asistencias) {
       final servicio = asistencia['nombreServicio'] ?? 'Otro Servicio';
-      final nombre = asistencia['nombre'];
+      // ✅ CORREGIDO: se usa el ID único del documento en vez del nombre de
+      // pila, para no perder el conteo cuando dos personas comparten nombre.
+      final idPersona = asistencia['id'] ??
+          asistencia['nombreCompleto'] ??
+          asistencia['nombre'];
 
       if (!porServicio.containsKey(servicio)) {
         porServicio[servicio] = [];
@@ -18589,10 +18596,9 @@ class _AsistenciasTabState extends State<AsistenciasTab>
       }
 
       porServicio[servicio]!.add(asistencia);
-      personasPorServicio[servicio]!.add(nombre);
-      todasLasPersonas.add(nombre);
+      personasPorServicio[servicio]!.add(idPersona);
+      todasLasPersonas.add(idPersona);
     }
-
     Map<String, int> resumen = {
       for (var servicio in porServicio.keys)
         servicio: personasPorServicio[servicio]!.length
@@ -19429,7 +19435,12 @@ class _AsistenciasTabState extends State<AsistenciasTab>
 
         for (var asistencia in listaAsistencias) {
           final fecha = asistencia['fecha'] as DateTime;
-          final nombrePersona = asistencia['nombre'] ?? '';
+          // ✅ CORREGIDO: se usa el ID único del documento en vez del nombre
+          // de pila, para contar bien aunque dos personas compartan nombre.
+          final idPersona = asistencia['id'] ??
+              asistencia['nombreCompleto'] ??
+              asistencia['nombre'] ??
+              '';
 
           // Obtener el día de la semana
           String diaSemana = _obtenerNombreDiaSemana(fecha.weekday);
@@ -19440,7 +19451,7 @@ class _AsistenciasTabState extends State<AsistenciasTab>
           }
 
           // Contar personas únicas por día (no duplicar si asistió a varios servicios el mismo día)
-          String claveDiaPersona = '$diaSemana-$nombrePersona';
+          String claveDiaPersona = '$diaSemana-$idPersona';
           if (!personasUnicas.contains(claveDiaPersona)) {
             asistenciasPorDia[diaSemana] = asistenciasPorDia[diaSemana]! + 1;
             personasUnicas.add(claveDiaPersona);
@@ -19464,10 +19475,13 @@ class _AsistenciasTabState extends State<AsistenciasTab>
       Set<String> personasTotales = {};
       for (var servicio in porServicio.values) {
         for (var asistencia in servicio) {
-          personasTotales.add(asistencia['nombre'] ?? '');
+          // ✅ CORREGIDO: usar el ID único en vez del nombre para el conteo total
+          personasTotales.add(asistencia['id'] ??
+              asistencia['nombreCompleto'] ??
+              asistencia['nombre'] ??
+              '');
         }
       }
-
       texto.write('*Total FDS:* ${personasTotales.length}');
 
       // Copiar al portapapeles
@@ -19845,6 +19859,16 @@ class _AsistenciasTabState extends State<AsistenciasTab>
     if (servicioLower.contains("poder")) return "Viernes de Poder";
 
     return "Servicio Especial";
+  }
+
+  // ✅ NUEVO: Convierte el Timestamp de Firestore a la hora de Colombia
+  // (UTC-5) de forma FIJA, sin importar la zona horaria configurada en el
+  // dispositivo/navegador desde el que se entra. Así el mismo registro
+  // siempre cae en el mismo día/semana, sin importar si se entra desde un
+  // PC, un iPad o un Android.
+  DateTime _timestampToColombiaDateTime(Timestamp timestamp) {
+    final utc = timestamp.toDate().toUtc();
+    return utc.subtract(const Duration(hours: 5));
   }
 
   Color _getColorByMinisterio(String ministerio) {

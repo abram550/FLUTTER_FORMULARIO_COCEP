@@ -196,6 +196,14 @@ void main() async {
         options: DefaultFirebaseOptions.currentPlatform,
       );
 
+      // ✅ NUEVO: Forzamos que Firestore siempre traiga los datos directamente
+      // del servidor, sin depender del caché local (IndexedDB) del navegador.
+      // Esto evita que, según el dispositivo/navegador desde el que se entre,
+      // se muestren datos desincronizados, incompletos o desactualizados.
+      FirebaseFirestore.instance.settings = const Settings(
+        persistenceEnabled: false,
+      );
+
       final syncService = SyncService();
       await syncService.initialize();
 
