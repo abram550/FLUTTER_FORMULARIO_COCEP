@@ -18032,20 +18032,44 @@ class _AsistenciasTabState extends State<AsistenciasTab>
   // VARIABLES DE ESTADO ORIGINALES
   // ========================================
   final Map<String, bool> _servicioExpand = {};
-  Map<String, Map<String, Map<String, List<Map<String, dynamic>>>>>?
-      _cachedDataAsistencias; // ⬅️ NUEVO: Caché separado para asistencias
-  Map<String, Map<String, Map<String, List<Map<String, dynamic>>>>>?
-      _cachedDataFallas; // ⬅️ NUEVO: Caché separado para fallas
-  bool _isFirstLoadAsistencias = true; // ⬅️ NUEVO: Control de carga por pestaña
-  bool _isFirstLoadFallas = true; // ⬅️ NUEVO
+
+  // ✅ CORREGIDO: los streams se crean UNA sola vez (no en cada build) y ya
+  // NO se guarda ninguna copia "congelada" de los datos en memoria. Esto es
+  // lo que causaba la lentitud y los datos desincronizados/erróneos: antes,
+  // una vez que se guardaba el primer resultado en caché, la pantalla dejaba
+  // de reflejar los cambios reales de Firestore.
+  late Stream<QuerySnapshot> _streamAsistencias;
+  late Stream<QuerySnapshot> _streamFallas;
 
   // ========================================
-  // INICIALIZACIÓN DEL TabController
+  // INICIALIZACIÓN DEL TabController Y LOS STREAMS
   // ========================================
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    // ✅ CORREGIDO: debía ser length: 2 (Asistencias / Inasistencias), no 3.
+    // Ese desfase entre el número de pestañas del controlador y las
+    // pestañas reales del TabBar/TabBarView es una causa típica de
+    // comportamiento inconsistente, especialmente en Flutter Web.
+    _tabController = TabController(length: 2, vsync: this);
+
+    _streamAsistencias = obtenerAsistenciasPorTribu(widget.tribuId, true);
+    _streamFallas = obtenerAsistenciasPorTribu(widget.tribuId, false);
+  }
+
+  // ========================================
+  // Si la tribu cambia (poco común, pero por seguridad), se vuelven a
+  // crear los streams para no quedarse escuchando la tribu anterior.
+  // ========================================
+  @override
+  void didUpdateWidget(covariant AsistenciasTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.tribuId != widget.tribuId) {
+      setState(() {
+        _streamAsistencias = obtenerAsistenciasPorTribu(widget.tribuId, true);
+        _streamFallas = obtenerAsistenciasPorTribu(widget.tribuId, false);
+      });
+    }
   }
 
   // ========================================
@@ -18172,24 +18196,48 @@ class _AsistenciasTabState extends State<AsistenciasTab>
 // ========================================
 // NUEVA FUNCIÓN OPTIMIZADA: Construye el contenido para cada pestaña
 // ========================================
+
   Widget _buildContenidoAsistencias(bool mostrarAsistencias) {
-    // ⬅️ OPTIMIZACIÓN: Determinar qué caché y control usar
-    final cachedData =
-        mostrarAsistencias ? _cachedDataAsistencias : _cachedDataFallas;
-    final isFirstLoad =
-        mostrarAsistencias ? _isFirstLoadAsistencias : _isFirstLoadFallas;
+    // ✅ CORREGIDO: se reutiliza siempre el mismo stream (creado una sola
+    // vez en initState), en vez de crear uno nuevo en cada build.
+    final stream = mostrarAsistencias ? _streamAsistencias : _streamFallas;
 
     return StreamBuilder<QuerySnapshot>(
-      stream: obtenerAsistenciasPorTribu(widget.tribuId, mostrarAsistencias),
+      stream: stream,
       builder: (context, snapshot) {
-        // ⬅️ OPTIMIZACIÓN: Si ya hay caché, mostrarlo inmediatamente
-        if (cachedData != null && cachedData.isNotEmpty) {
-          return _buildListaConDatos(cachedData, mostrarAsistencias);
+        // ✅ NUEVO: manejo de errores explícito. Si Firestore falla, se
+        // muestra un mensaje claro en vez de quedarse cargando para siempre.
+        if (snapshot.hasError) {
+          return Center(
+            child: Padding(
+              padding: EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.error_outline, color: Colors.red[400], size: 48),
+                  SizedBox(height: 12),
+                  Text(
+                    'Error al cargar los datos',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.red[600],
+                    ),
+                  ),
+                  SizedBox(height: 6),
+                  Text(
+                    '${snapshot.error}',
+                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+          );
         }
 
-        // Manejo de carga inicial
-        if (snapshot.connectionState == ConnectionState.waiting &&
-            isFirstLoad) {
+        // Carga inicial: solo mientras todavía no ha llegado NINGÚN dato
+        if (!snapshot.hasData) {
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -18224,66 +18272,39 @@ class _AsistenciasTabState extends State<AsistenciasTab>
           );
         }
 
-        // Manejo de datos vacíos
-        if ((!snapshot.hasData || snapshot.data!.docs.isEmpty) && isFirstLoad) {
-          // ⬅️ OPTIMIZACIÓN: Actualizar control de primera carga
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) {
-              setState(() {
-                if (mostrarAsistencias) {
-                  _isFirstLoadAsistencias = false;
-                } else {
-                  _isFirstLoadFallas = false;
-                }
-              });
-            }
-          });
+        final docs = snapshot.data!.docs;
 
+        // ✅ Se evalúa en cada snapshot nuevo, nunca queda "congelado"
+        if (docs.isEmpty) {
           return _buildMensajeVacio(mostrarAsistencias, true);
         }
 
-        // Procesamiento de datos
-        if (snapshot.hasData && snapshot.data!.docs.isNotEmpty) {
-          // ⬅️ OPTIMIZACIÓN: Procesar y cachear datos
-          final asistencias = snapshot.data!.docs.map((doc) {
-            final data = doc.data() as Map<String, dynamic>;
-            final nombre = data['nombre'] ?? "Sin nombre";
-            final apellido = data['apellido'] ?? '';
-            final nombreCompleto =
-                apellido.isNotEmpty ? "$nombre $apellido" : nombre;
+        // ✅ CORREGIDO: se procesa siempre a partir del snapshot MÁS
+        // RECIENTE que entrega Firestore, nunca de una copia guardada en
+        // memoria. Así los datos jamás quedan desincronizados ni
+        // "atascados" en una versión vieja, sin importar el dispositivo
+        // o navegador desde el que se entre a la página.
+        final asistencias = docs.map((doc) {
+          final data = doc.data() as Map<String, dynamic>;
+          final nombre = data['nombre'] ?? "Sin nombre";
+          final apellido = data['apellido'] ?? '';
+          final nombreCompleto =
+              apellido.isNotEmpty ? "$nombre $apellido" : nombre;
 
-            return {
-              'nombre': nombre,
-              'nombreCompleto': nombreCompleto,
-              'fecha': (data['fecha'] as Timestamp).toDate(),
-              'diaSemana': data['diaSemana'] ?? '',
-              'asistio': data['asistio'],
-              'nombreServicio': data['nombreServicio'] ?? '',
-              'ministerio': _determinarMinisterio(data['nombreServicio'] ?? ''),
-            };
-          }).toList();
+          return {
+            'nombre': nombre,
+            'nombreCompleto': nombreCompleto,
+            'fecha': (data['fecha'] as Timestamp).toDate(),
+            'diaSemana': data['diaSemana'] ?? '',
+            'asistio': data['asistio'],
+            'nombreServicio': data['nombreServicio'] ?? '',
+            'ministerio': _determinarMinisterio(data['nombreServicio'] ?? ''),
+          };
+        }).toList();
 
-          final datosAgrupados = _agruparAsistenciasPorFecha(asistencias);
+        final datosAgrupados = _agruparAsistenciasPorFecha(asistencias);
 
-          // ⬅️ OPTIMIZACIÓN: Guardar en caché correspondiente
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) {
-              setState(() {
-                if (mostrarAsistencias) {
-                  _cachedDataAsistencias = datosAgrupados;
-                  _isFirstLoadAsistencias = false;
-                } else {
-                  _cachedDataFallas = datosAgrupados;
-                  _isFirstLoadFallas = false;
-                }
-              });
-            }
-          });
-
-          return _buildListaConDatos(datosAgrupados, mostrarAsistencias);
-        }
-
-        return _buildMensajeVacio(mostrarAsistencias, true);
+        return _buildListaConDatos(datosAgrupados, mostrarAsistencias);
       },
     );
   }
