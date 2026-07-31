@@ -58,17 +58,23 @@ class _CoordinadorScreenState extends State<CoordinadorScreen>
   // Controller para las pestañas
   late TabController _tabController;
 
+  // ✅ NUEVO: Future cacheado UNA sola vez. Antes se creaba dentro de build(),
+  // lo que disparaba 2 consultas nuevas a Firestore cada vez que la pantalla
+  // se reconstruía (incluyendo cada frame de la animación al cambiar de
+  // pestaña). Esto era la causa real de la lentitud, especialmente en móvil.
+  late Future<Map<String, dynamic>> _datosTribuFuture;
+
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
 
-    // ✅ Listener para sincronización instantánea
-    _tabController.animation!.addListener(() {
-      if (mounted) {
-        setState(() {});
-      }
-    });
+    // ✅ Se elimina el listener que llamaba setState() en cada frame de la
+    // animación (eso reconstruía TODA la pantalla, incluyendo el FutureBuilder
+    // y las pestañas con StreamBuilder pesados). La animación de la barra de
+    // pestañas ahora se maneja de forma aislada con AnimatedBuilder (ver más abajo).
+
+    _datosTribuFuture = obtenerDatosTribu();
 
     _resetInactivityTimer();
 
@@ -302,7 +308,8 @@ class _CoordinadorScreenState extends State<CoordinadorScreen>
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<Map<String, dynamic>>(
-      future: obtenerDatosTribu(),
+      future:
+          _datosTribuFuture, // Se reutiliza el mismo Future, no se vuelve a crear en cada build
       builder: (context, snapshot) {
         if (!snapshot.hasData) {
           return Scaffold(
@@ -590,28 +597,33 @@ class _CoordinadorScreenState extends State<CoordinadorScreen>
                         },
                       ];
 
-                      return Container(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: horizontalPadding,
-                          vertical: verticalPadding,
-                        ),
-                        child: Wrap(
-                          spacing: spacing,
-                          runSpacing: runSpacing,
-                          alignment: WrapAlignment.center,
-                          children: tabs.map((tab) {
-                            return _buildAutoSyncCoordinadorTab(
-                              index: tab['index'] as int,
-                              icon: tab['icon'] as IconData,
-                              label: tab['label'] as String,
-                              screenWidth: screenWidth,
-                              tabsPorFila: tabsPorFila,
+                      return AnimatedBuilder(
+                        animation: _tabController.animation!,
+                        builder: (context, _) {
+                          return Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: horizontalPadding,
+                              vertical: verticalPadding,
+                            ),
+                            child: Wrap(
                               spacing: spacing,
-                              isVerySmallScreen: isVerySmallScreen,
-                              isSmallScreen: isSmallScreen,
-                            );
-                          }).toList(),
-                        ),
+                              runSpacing: runSpacing,
+                              alignment: WrapAlignment.center,
+                              children: tabs.map((tab) {
+                                return _buildAutoSyncCoordinadorTab(
+                                  index: tab['index'] as int,
+                                  icon: tab['icon'] as IconData,
+                                  label: tab['label'] as String,
+                                  screenWidth: screenWidth,
+                                  tabsPorFila: tabsPorFila,
+                                  spacing: spacing,
+                                  isVerySmallScreen: isVerySmallScreen,
+                                  isSmallScreen: isSmallScreen,
+                                );
+                              }).toList(),
+                            ),
+                          );
+                        },
                       );
                     },
                   ),

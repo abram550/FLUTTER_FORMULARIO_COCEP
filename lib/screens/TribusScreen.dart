@@ -5104,6 +5104,9 @@ class MiembroCard extends StatelessWidget {
   }
 }
 
+
+
+
 //-------------------------------
 class CoordinadoresTab extends StatelessWidget {
   final String tribuId;
@@ -7205,6 +7208,10 @@ class CoordinadoresTab extends StatelessWidget {
     );
   }
 }
+
+
+
+
 
 class TimoteosTab extends StatelessWidget {
   final String tribuId;
