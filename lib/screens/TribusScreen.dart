@@ -9304,6 +9304,12 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
 // 🆕 NUEVA VARIABLE: Control de expansión del panel de filtros
   bool _filtrosExpandidos = false;
 
+// ✅ NUEVO: Mapas persistentes de expansión (viven en el State, no se
+// recrean en cada reconstrucción del StreamBuilder). Esto es lo que
+// corrige que la lista se colapse cada vez que asignas/editas un registro.
+  final Map<String, bool> _groupExpandedStatesPersistente = {};
+  final Map<String, bool> _itemExpandedStatesPersistente = {};
+
   @override
   void initState() {
     super.initState();
@@ -13879,8 +13885,14 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
                             Map<String, String> nombresCoordinadores =
                                 futureSnapshot.data ?? {};
 
-                            Map<String, bool> groupExpandedStates = {};
-                            Map<String, bool> expandedStates = {};
+                            // ✅ CORREGIDO: usamos los mapas persistentes del
+                            // State en lugar de crear mapas nuevos en cada
+                            // reconstrucción, así el estado expandido/colapsado
+                            // ya no se pierde al asignar, editar o eliminar.
+                            final Map<String, bool> groupExpandedStates =
+                                _groupExpandedStatesPersistente;
+                            final Map<String, bool> expandedStates =
+                                _itemExpandedStatesPersistente;
 
                             if (_searchTerm.isNotEmpty) {
                               if (sinCoordinador.isNotEmpty) {
@@ -13901,7 +13913,6 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
                                 expandedStates[doc.id] = true;
                               }
                             }
-
                             return Padding(
                               padding: EdgeInsets.symmetric(horizontal: 12),
                               child: ListView(
@@ -14578,6 +14589,71 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
                           ],
                         ),
                       ),
+                      if (titulo.contains('Sin') && registros.length > 1)
+                        Padding(
+                          padding: EdgeInsets.only(right: 8),
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(10),
+                              onTap: () => _mostrarDialogoAsignacionMasiva(
+                                  context,
+                                  registros,
+                                  primaryTeal,
+                                  secondaryOrange),
+                              child: Container(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal:
+                                      MediaQuery.of(context).size.width < 400
+                                          ? 8
+                                          : 10,
+                                  vertical: 8,
+                                ),
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      secondaryOrange,
+                                      secondaryOrange.withOpacity(0.85)
+                                    ],
+                                  ),
+                                  borderRadius: BorderRadius.circular(10),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: secondaryOrange.withOpacity(0.3),
+                                      blurRadius: 6,
+                                      offset: Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.playlist_add_check_rounded,
+                                      color: Colors.white,
+                                      size: MediaQuery.of(context).size.width <
+                                              400
+                                          ? 16
+                                          : 18,
+                                    ),
+                                    if (MediaQuery.of(context).size.width >=
+                                        400) ...[
+                                      SizedBox(width: 6),
+                                      Text(
+                                        'Asignar en lote',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
                       Icon(
                         groupExpandedStates[groupId]!
                             ? Icons.keyboard_arrow_up
@@ -15401,7 +15477,497 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
     );
   }
 
-// Agregar después de la función _editarRegistro o antes del método build
+  Future<void> _mostrarDialogoAsignacionMasiva(
+    BuildContext context,
+    List<DocumentSnapshot> personasDisponibles,
+    Color primaryTeal,
+    Color secondaryOrange,
+  ) async {
+    QuerySnapshot coordinadoresSnapshot;
+    try {
+      coordinadoresSnapshot = await FirebaseFirestore.instance
+          .collection('coordinadores')
+          .where('tribuId', isEqualTo: widget.tribuId)
+          .get();
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al cargar coordinadores: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
+    }
+
+    if (coordinadoresSnapshot.docs.isEmpty) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.warning_amber_rounded, color: Colors.white),
+                SizedBox(width: 8),
+                Text('No hay coordinadores disponibles'),
+              ],
+            ),
+            backgroundColor: Colors.red.shade700,
+            behavior: SnackBarBehavior.floating,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            margin: EdgeInsets.all(10),
+          ),
+        );
+      }
+      return;
+    }
+
+    final Set<String> seleccionados = {};
+    String? coordinadorSeleccionado;
+    String filtroNombre = '';
+    final TextEditingController filtroController = TextEditingController();
+
+    if (!context.mounted) return;
+
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (builderContext, setStateDialog) {
+            final mediaQuery = MediaQuery.of(builderContext);
+            final screenWidth = mediaQuery.size.width;
+            final screenHeight = mediaQuery.size.height;
+            final isVerySmallScreen = screenWidth < 360;
+            final isSmallScreen = screenWidth < 600;
+            final isMediumScreen = screenWidth >= 600 && screenWidth < 900;
+
+            final titleFontSize =
+                isVerySmallScreen ? 16.0 : (isSmallScreen ? 18.0 : 20.0);
+            final subtitleFontSize =
+                isVerySmallScreen ? 11.0 : (isSmallScreen ? 12.0 : 13.0);
+            final itemFontSize =
+                isVerySmallScreen ? 12.0 : (isSmallScreen ? 13.0 : 14.0);
+            final itemSubFontSize =
+                isVerySmallScreen ? 10.0 : (isSmallScreen ? 11.0 : 12.0);
+            final buttonFontSize =
+                isVerySmallScreen ? 13.0 : (isSmallScreen ? 14.0 : 15.0);
+            final iconSize =
+                isVerySmallScreen ? 18.0 : (isSmallScreen ? 20.0 : 22.0);
+            final dialogPadding =
+                isVerySmallScreen ? 12.0 : (isSmallScreen ? 16.0 : 20.0);
+            final borderRadius =
+                isVerySmallScreen ? 14.0 : (isSmallScreen ? 16.0 : 20.0);
+
+            final dialogMaxWidth = isVerySmallScreen
+                ? screenWidth * 0.96
+                : (isSmallScreen
+                    ? screenWidth * 0.92
+                    : (isMediumScreen ? 520.0 : 580.0));
+            final dialogMaxHeight = screenHeight * 0.85;
+
+            final personasFiltradas = filtroNombre.isEmpty
+                ? personasDisponibles
+                : personasDisponibles.where((doc) {
+                    final data = doc.data() as Map<String, dynamic>;
+                    final nombre =
+                        ('${data['nombre'] ?? ''} ${data['apellido'] ?? ''}')
+                            .toLowerCase();
+                    return nombre.contains(filtroNombre.toLowerCase());
+                  }).toList();
+
+            return Dialog(
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(borderRadius)),
+              insetPadding: EdgeInsets.symmetric(
+                horizontal: isVerySmallScreen ? 12 : 24,
+                vertical: 20,
+              ),
+              child: Container(
+                width: dialogMaxWidth,
+                constraints: BoxConstraints(maxHeight: dialogMaxHeight),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: EdgeInsets.all(dialogPadding),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [primaryTeal, primaryTeal.withOpacity(0.85)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.only(
+                          topLeft: Radius.circular(borderRadius),
+                          topRight: Radius.circular(borderRadius),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: EdgeInsets.all(isVerySmallScreen ? 8 : 10),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Icon(Icons.playlist_add_check_rounded,
+                                color: Colors.white, size: iconSize),
+                          ),
+                          SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  alignment: Alignment.centerLeft,
+                                  child: Text(
+                                    'Asignación en Lote',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: titleFontSize,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                                FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  alignment: Alignment.centerLeft,
+                                  child: Text(
+                                    '${seleccionados.length} de ${personasDisponibles.length} seleccionados',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: subtitleFontSize,
+                                      color: Colors.white.withOpacity(0.9),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () => Navigator.pop(dialogContext),
+                            icon: Icon(Icons.close_rounded,
+                                color: Colors.white, size: iconSize),
+                            style: IconButton.styleFrom(
+                              backgroundColor: Colors.white.withOpacity(0.2),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10)),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Padding(
+                      padding: EdgeInsets.fromLTRB(
+                          dialogPadding, dialogPadding, dialogPadding, 8),
+                      child: Column(
+                        children: [
+                          TextField(
+                            controller: filtroController,
+                            style: GoogleFonts.poppins(fontSize: itemFontSize),
+                            decoration: InputDecoration(
+                              hintText: 'Buscar por nombre...',
+                              hintStyle: GoogleFonts.poppins(
+                                  fontSize: itemFontSize,
+                                  color: Colors.grey[400]),
+                              prefixIcon: Icon(Icons.search,
+                                  color: primaryTeal, size: iconSize * 0.8),
+                              isDense: true,
+                              filled: true,
+                              fillColor: Colors.grey.shade50,
+                              contentPadding: EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 10),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide:
+                                    BorderSide(color: Colors.grey.shade300),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide:
+                                    BorderSide(color: Colors.grey.shade300),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide:
+                                    BorderSide(color: primaryTeal, width: 2),
+                              ),
+                            ),
+                            onChanged: (value) {
+                              setStateDialog(() {
+                                filtroNombre = value;
+                              });
+                            },
+                          ),
+                          SizedBox(height: 8),
+                          Row(
+                            children: [
+                              Checkbox(
+                                value: personasFiltradas.isNotEmpty &&
+                                    personasFiltradas.every((doc) =>
+                                        seleccionados.contains(doc.id)),
+                                activeColor: primaryTeal,
+                                onChanged: (value) {
+                                  setStateDialog(() {
+                                    if (value == true) {
+                                      seleccionados.addAll(
+                                          personasFiltradas.map((d) => d.id));
+                                    } else {
+                                      for (var doc in personasFiltradas) {
+                                        seleccionados.remove(doc.id);
+                                      }
+                                    }
+                                  });
+                                },
+                              ),
+                              Text(
+                                'Seleccionar todos',
+                                style: GoogleFonts.poppins(
+                                  fontSize: itemFontSize,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.grey[800],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    Divider(height: 1, color: Colors.grey.shade300),
+                    Flexible(
+                      child: personasFiltradas.isEmpty
+                          ? Padding(
+                              padding: EdgeInsets.all(dialogPadding),
+                              child: Text(
+                                'No se encontraron personas',
+                                style: GoogleFonts.poppins(
+                                    color: Colors.grey[600]),
+                              ),
+                            )
+                          : ListView.builder(
+                              shrinkWrap: true,
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: dialogPadding * 0.5, vertical: 4),
+                              itemCount: personasFiltradas.length,
+                              itemBuilder: (context, index) {
+                                final doc = personasFiltradas[index];
+                                final data = doc.data() as Map<String, dynamic>;
+                                final nombre =
+                                    '${data['nombre'] ?? ''} ${data['apellido'] ?? ''}'
+                                        .trim();
+                                final telefono =
+                                    data['telefono'] ?? 'Sin teléfono';
+                                final marcado = seleccionados.contains(doc.id);
+
+                                return Container(
+                                  margin: EdgeInsets.symmetric(
+                                      vertical: 3,
+                                      horizontal: dialogPadding * 0.5),
+                                  decoration: BoxDecoration(
+                                    color: marcado
+                                        ? primaryTeal.withOpacity(0.08)
+                                        : Colors.white,
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(
+                                      color: marcado
+                                          ? primaryTeal.withOpacity(0.4)
+                                          : Colors.grey.shade200,
+                                      width: marcado ? 1.5 : 1,
+                                    ),
+                                  ),
+                                  child: CheckboxListTile(
+                                    dense: true,
+                                    value: marcado,
+                                    activeColor: primaryTeal,
+                                    controlAffinity:
+                                        ListTileControlAffinity.leading,
+                                    onChanged: (value) {
+                                      setStateDialog(() {
+                                        if (value == true) {
+                                          seleccionados.add(doc.id);
+                                        } else {
+                                          seleccionados.remove(doc.id);
+                                        }
+                                      });
+                                    },
+                                    title: Text(
+                                      nombre.isEmpty ? 'Sin nombre' : nombre,
+                                      style: GoogleFonts.poppins(
+                                        fontSize: itemFontSize,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    subtitle: Text(
+                                      telefono,
+                                      style: GoogleFonts.poppins(
+                                        fontSize: itemSubFontSize,
+                                        color: Colors.grey[600],
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                    ),
+                    Divider(height: 1, color: Colors.grey.shade300),
+                    Padding(
+                      padding: EdgeInsets.all(dialogPadding),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                  color: primaryTeal.withOpacity(0.4)),
+                            ),
+                            child: DropdownButtonFormField<String>(
+                              value: coordinadorSeleccionado,
+                              isExpanded: true,
+                              style: GoogleFonts.poppins(
+                                  fontSize: itemFontSize,
+                                  color: Colors.black87),
+                              items:
+                                  coordinadoresSnapshot.docs.map((coordinador) {
+                                final cData =
+                                    coordinador.data() as Map<String, dynamic>;
+                                return DropdownMenuItem(
+                                  value: coordinador.id,
+                                  child: Text(
+                                    '${cData['nombre'] ?? ''} ${cData['apellido'] ?? ''}',
+                                    style: GoogleFonts.poppins(
+                                        color: primaryTeal,
+                                        fontWeight: FontWeight.w500),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                );
+                              }).toList(),
+                              onChanged: (value) {
+                                setStateDialog(() {
+                                  coordinadorSeleccionado = value;
+                                });
+                              },
+                              decoration: InputDecoration(
+                                labelText: 'Asignar a coordinador',
+                                labelStyle: GoogleFonts.poppins(
+                                    color: primaryTeal,
+                                    fontSize: itemSubFontSize),
+                                border: InputBorder.none,
+                                contentPadding: EdgeInsets.symmetric(
+                                    horizontal: 14, vertical: 10),
+                              ),
+                              icon: Icon(Icons.arrow_drop_down,
+                                  color: primaryTeal),
+                            ),
+                          ),
+                          SizedBox(height: 12),
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: secondaryOrange,
+                                foregroundColor: Colors.white,
+                                disabledBackgroundColor: Colors.grey.shade300,
+                                padding: EdgeInsets.symmetric(
+                                    vertical: isVerySmallScreen ? 12 : 14),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12)),
+                                elevation: 2,
+                              ),
+                              icon: Icon(Icons.check_circle_outline,
+                                  size: iconSize * 0.8),
+                              label: Text(
+                                seleccionados.isEmpty
+                                    ? 'Selecciona personas'
+                                    : 'Asignar ${seleccionados.length} ${seleccionados.length == 1 ? 'persona' : 'personas'}',
+                                style: GoogleFonts.poppins(
+                                  fontSize: buttonFontSize,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              onPressed: (seleccionados.isEmpty ||
+                                      coordinadorSeleccionado == null)
+                                  ? null
+                                  : () async {
+                                      final idsSeleccionados =
+                                          List<String>.from(seleccionados);
+                                      final coordinadorId =
+                                          coordinadorSeleccionado!;
+                                      Navigator.pop(dialogContext);
+
+                                      try {
+                                        final batch =
+                                            FirebaseFirestore.instance.batch();
+                                        for (var id in idsSeleccionados) {
+                                          final ref = FirebaseFirestore.instance
+                                              .collection('registros')
+                                              .doc(id);
+                                          batch.update(ref, {
+                                            'coordinadorAsignado':
+                                                coordinadorId,
+                                            'fechaAsignacionCoordinador':
+                                                FieldValue.serverTimestamp(),
+                                          });
+                                        }
+                                        await batch.commit();
+
+                                        if (context.mounted) {
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(
+                                            SnackBar(
+                                              content: Row(
+                                                children: [
+                                                  Icon(Icons.check_circle,
+                                                      color: Colors.white),
+                                                  SizedBox(width: 8),
+                                                  Text(
+                                                      '${idsSeleccionados.length} personas asignadas correctamente'),
+                                                ],
+                                              ),
+                                              backgroundColor: Colors.green,
+                                              behavior:
+                                                  SnackBarBehavior.floating,
+                                              shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(
+                                                          10)),
+                                              margin: EdgeInsets.all(10),
+                                            ),
+                                          );
+                                        }
+                                      } catch (e) {
+                                        if (context.mounted) {
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(
+                                            SnackBar(
+                                              content: Text(
+                                                  'Error al asignar en lote: $e'),
+                                              backgroundColor: Colors.red,
+                                            ),
+                                          );
+                                        }
+                                      }
+                                    },
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   Future<void> _cambiarMinisterioTribu(
       BuildContext context, DocumentSnapshot registro) async {
     if (context == null || registro == null) {
@@ -20892,9 +21458,14 @@ class _InscripcionesTabState extends State<InscripcionesTab> {
 
         final docs = snapshot.data!.docs;
 
-// Filtrar registros con cumpleaños en el mes actual
+// Filtrar registros ACTIVOS con cumpleaños en el mes actual
         final cumpleanieros = docs.where((doc) {
           final data = doc.data() as Map<String, dynamic>;
+
+          // ✅ NUEVO: excluir personas inactivas
+          final bool activo = data['activo'] ?? true;
+          if (!activo) return false;
+
           final raw = data['fechaNacimiento'];
 
           DateTime? fechaNacimiento;
