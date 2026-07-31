@@ -5104,9 +5104,6 @@ class MiembroCard extends StatelessWidget {
   }
 }
 
-
-
-
 //-------------------------------
 class CoordinadoresTab extends StatelessWidget {
   final String tribuId;
@@ -7209,10 +7206,6 @@ class CoordinadoresTab extends StatelessWidget {
   }
 }
 
-
-
-
-
 class TimoteosTab extends StatelessWidget {
   final String tribuId;
 
@@ -9249,9 +9242,6 @@ class TimoteosTab extends StatelessWidget {
   }
 }
 
-
-
-
 Widget _buildInfoRow(IconData icon, String label, String value) {
   return Row(
     children: [
@@ -9274,7 +9264,6 @@ Widget _buildInfoRow(IconData icon, String label, String value) {
     ],
   );
 }
-
 
 //--Clase de la pestaña de Personas
 class RegistrosAsignadosTab extends StatefulWidget {
@@ -13689,7 +13678,8 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
                   // 📋 CONTENIDO PRINCIPAL - LISTA DE REGISTROS
                   Expanded(
                     child: StreamBuilder<QuerySnapshot>(
-                      stream: _registrosStream, // ✅ reutiliza el mismo stream, no lo vuelve a crear
+                      stream:
+                          _registrosStream, // ✅ reutiliza el mismo stream, no lo vuelve a crear
                       builder: (context, snapshot) {
                         if (snapshot.connectionState ==
                                 ConnectionState.waiting &&
@@ -18039,8 +18029,6 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
 }
 
 ///------------------------------
-
-
 
 //--------------------------PESTAÑA DE ASISTENCIA
 
