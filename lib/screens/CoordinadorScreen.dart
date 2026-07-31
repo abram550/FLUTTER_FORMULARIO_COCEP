@@ -1245,10 +1245,19 @@ class _AsistenciasCoordinadorTabState extends State<AsistenciasCoordinadorTab> {
   String _searchQuery = '';
   final FocusNode _searchFocusNode = FocusNode();
 
+  // ✅ NUEVO: Cache de resultados de bloqueo por faltas. Sin esto, cada
+  // reconstrucción de la lista (algo que pasa muy seguido, cada vez que
+  // llega una actualización de Firestore) volvía a lanzar 1-2 consultas a
+  // Firestore POR CADA PERSONA con 3+ faltas. En móvil, con más latencia,
+  // esto hacía que la pestaña tardara mucho o se quedara "cargando" sin
+  // mostrar nada mientras se acumulaban decenas de consultas repetidas.
+  final Map<String, Future<bool>> _bloqueoCache = {};
+
   @override
   void dispose() {
     _searchController.dispose();
     _searchFocusNode.dispose();
+    _bloqueoCache.clear();
     super.dispose();
   }
 
@@ -1312,6 +1321,18 @@ class _AsistenciasCoordinadorTabState extends State<AsistenciasCoordinadorTab> {
       print('Error verificando bloqueo por faltas: $e');
       return false;
     }
+  }
+
+  // ✅ NUEVO: Versión cacheada. Reutiliza el mismo Future para el mismo
+  // registro + cantidad de faltas, en vez de lanzar una consulta nueva a
+  // Firestore cada vez que la lista se reconstruye.
+  Future<bool> _tieneBloqueoPorFaltasCached(
+      String registroId, int faltasActuales) {
+    final cacheKey = '$registroId-$faltasActuales';
+    return _bloqueoCache.putIfAbsent(
+      cacheKey,
+      () => _tieneBloqueoPorFaltas(registroId, faltasActuales),
+    );
   }
 
   List<DocumentSnapshot> _filtrarRegistros(List<DocumentSnapshot> docs) {
@@ -2263,7 +2284,8 @@ class _AsistenciasCoordinadorTabState extends State<AsistenciasCoordinadorTab> {
                               _selectedAttendances[registro.id];
 
                           return FutureBuilder<bool>(
-                            future: _tieneBloqueoPorFaltas(registro.id, faltas),
+                            future: _tieneBloqueoPorFaltasCached(registro.id,
+                                faltas), // usa la versión cacheada, sin repetir consultas
                             builder: (context, snap) {
                               final bool bloqueado = snap.data == true;
 
@@ -3015,6 +3037,16 @@ class AttendanceHistoryWidget extends StatelessWidget {
       ),
     );
   }
+}
+
+// ✅ NUEVO: Extrae la primera letra de un texto de forma segura. Si el
+// texto es null o está vacío, devuelve '?' en vez de lanzar una excepción.
+// Antes, 'nombre'[0] sobre un nombre vacío causaba un RangeError que podía
+// romper la construcción de toda la lista y dejar la pestaña "cargando"
+// para siempre o en blanco, sin ningún mensaje de error visible.
+String _obtenerInicial(String? texto) {
+  if (texto == null || texto.isEmpty) return '?';
+  return texto[0].toUpperCase();
 }
 
 class TimoteosTab extends StatelessWidget {
@@ -3856,8 +3888,7 @@ class TimoteosTab extends StatelessWidget {
             itemBuilder: (context, index) {
               final timoteo = snapshot.data!.docs[index];
               final iniciales =
-                  '${timoteo['nombre'][0]}${timoteo['apellido'][0]}'
-                      .toUpperCase();
+                  '${_obtenerInicial(timoteo['nombre'] as String?)}${_obtenerInicial(timoteo['apellido'] as String?)}';
 
               return Container(
                 margin: EdgeInsets.only(bottom: 16),
@@ -10819,7 +10850,7 @@ class _PersonasAsignadasContentState extends State<_PersonasAsignadasContent> {
                             backgroundColor: Colors.transparent,
                             radius: 28,
                             child: Text(
-                              '${registro.get('nombre')[0]}${registro.get('apellido')[0]}',
+                              '${_obtenerInicial(registro.get('nombre') as String?)}${_obtenerInicial(registro.get('apellido') as String?)}', // ✅ ya no puede lanzar RangeError con nombres vacíos
                               style: TextStyle(
                                 color: Colors.white,
                                 fontWeight: FontWeight.bold,
