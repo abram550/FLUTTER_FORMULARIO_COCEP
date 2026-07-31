@@ -9249,6 +9249,9 @@ class TimoteosTab extends StatelessWidget {
   }
 }
 
+
+
+
 Widget _buildInfoRow(IconData icon, String label, String value) {
   return Row(
     children: [
@@ -9271,6 +9274,7 @@ Widget _buildInfoRow(IconData icon, String label, String value) {
     ],
   );
 }
+
 
 //--Clase de la pestaña de Personas
 class RegistrosAsignadosTab extends StatefulWidget {
@@ -9317,9 +9321,27 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
   final Map<String, bool> _groupExpandedStatesPersistente = {};
   final Map<String, bool> _itemExpandedStatesPersistente = {};
 
+  // ✅ NUEVO: Cache de nombres de coordinadores ya consultados, para no
+  // volver a pedirlos a Firestore cada vez que se reconstruye la lista.
+  final Map<String, String> _nombresCoordinadoresCache = {};
+
+  // ✅ NUEVO: Stream cacheado UNA sola vez. Antes se creaba dentro de
+  // build(), así que cada letra que se escribía en el buscador (o
+  // cualquier otro cambio de estado) cerraba la conexión con Firestore y
+  // abría una nueva, volviendo a traer todos los registros desde cero.
+  // En móvil, con más latencia, esto se sentía como lentitud al escribir
+  // o al usar los filtros.
+  late final Stream<QuerySnapshot> _registrosStream;
+
   @override
   void initState() {
     super.initState();
+
+    _registrosStream = FirebaseFirestore.instance
+        .collection('registros')
+        .where('tribuAsignada', isEqualTo: widget.tribuId)
+        .snapshots();
+
     // ✅ NUEVO: Listener para actualizar el término de búsqueda en tiempo real
     _searchController.addListener(() {
       setState(() {
@@ -13667,10 +13689,7 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
                   // 📋 CONTENIDO PRINCIPAL - LISTA DE REGISTROS
                   Expanded(
                     child: StreamBuilder<QuerySnapshot>(
-                      stream: FirebaseFirestore.instance
-                          .collection('registros')
-                          .where('tribuAsignada', isEqualTo: widget.tribuId)
-                          .snapshots(),
+                      stream: _registrosStream, // ✅ reutiliza el mismo stream, no lo vuelve a crear
                       builder: (context, snapshot) {
                         if (snapshot.connectionState ==
                                 ConnectionState.waiting &&
@@ -14488,25 +14507,36 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
 // Nueva función para obtener nombres de coordinadores
   Future<Map<String, String>> obtenerNombresCoordinadores(
       List<String> coordinadorIds) async {
-    Map<String, String> nombresCoordinadores = {};
+    if (coordinadorIds.isEmpty) return {};
 
-    if (coordinadorIds.isEmpty) return nombresCoordinadores;
+    // ✅ NUEVO: solo se consultan a Firestore los IDs que todavía no
+    // están en cache; los ya conocidos se devuelven sin red.
+    final idsFaltantes = coordinadorIds
+        .where((id) => !_nombresCoordinadoresCache.containsKey(id))
+        .toList();
 
-    try {
-      var snapshot = await FirebaseFirestore.instance
-          .collection('coordinadores')
-          .where(FieldPath.documentId, whereIn: coordinadorIds)
-          .get();
+    if (idsFaltantes.isNotEmpty) {
+      try {
+        var snapshot = await FirebaseFirestore.instance
+            .collection('coordinadores')
+            .where(FieldPath.documentId, whereIn: idsFaltantes)
+            .get();
 
-      for (var doc in snapshot.docs) {
-        var data = doc.data();
-        nombresCoordinadores[doc.id] = "${data['nombre']} ${data['apellido']}";
+        for (var doc in snapshot.docs) {
+          var data = doc.data();
+          _nombresCoordinadoresCache[doc.id] =
+              "${data['nombre']} ${data['apellido']}";
+        }
+      } catch (e) {
+        print("Error obteniendo nombres de coordinadores: $e");
       }
-    } catch (e) {
-      print("Error obteniendo nombres de coordinadores: $e");
     }
 
-    return nombresCoordinadores;
+    return {
+      for (var id in coordinadorIds)
+        if (_nombresCoordinadoresCache.containsKey(id))
+          id: _nombresCoordinadoresCache[id]!
+    };
   }
 
   Widget _buildGrupo(
@@ -18010,6 +18040,8 @@ class _RegistrosAsignadosTabState extends State<RegistrosAsignadosTab> {
 
 ///------------------------------
 
+
+
 //--------------------------PESTAÑA DE ASISTENCIA
 
 class AsistenciasTab extends StatefulWidget {
@@ -20026,6 +20058,47 @@ class _InscripcionesTabState extends State<InscripcionesTab> {
   String _vistaMostrada = 'clases';
   bool isLoading = false;
 
+  // ✅ NUEVO: streams cacheados UNA sola vez. Antes cada uno se creaba
+  // dentro de su propio método de construcción (_buildPeticionesView,
+  // _buildEventosView, etc.), así que cualquier interacción dentro de esa
+  // pestaña (expandir una tarjeta, tocar un botón, etc.) volvía a crear el
+  // stream y a traer todos los datos desde cero. En móvil esto se sentía
+  // como lentitud al interactuar con "Eventos", "Peticiones", "Cumpleaños"
+  // o "Clases".
+  late final Stream<QuerySnapshot> _peticionesStream;
+  late final Stream<QuerySnapshot> _eventosStream;
+  late final Stream<QuerySnapshot> _registrosCumpleanosStream;
+  late final Stream<QuerySnapshot> _clasesStream;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _peticionesStream = FirebaseFirestore.instance
+        .collection('peticiones')
+        .where('tribuId', isEqualTo: widget.tribuId)
+        .orderBy('fecha', descending: true)
+        .snapshots();
+
+    _eventosStream = FirebaseFirestore.instance
+        .collection('eventos')
+        .where('tribuId', isEqualTo: widget.tribuId)
+        .where('estado', isNotEqualTo: 'cancelado')
+        .orderBy('estado')
+        .orderBy('fechaInicio', descending: false)
+        .snapshots();
+
+    _registrosCumpleanosStream = FirebaseFirestore.instance
+        .collection('registros')
+        .where('tribuAsignada', isEqualTo: widget.tribuId)
+        .snapshots();
+
+    _clasesStream = FirebaseFirestore.instance
+        .collection('clasesDiscipulado')
+        .where('estado', isEqualTo: 'activa')
+        .snapshots();
+  }
+
   Future<String> _obtenerNombreTribu(String tribuId) async {
     try {
       final doc = await FirebaseFirestore.instance
@@ -20632,11 +20705,7 @@ class _InscripcionesTabState extends State<InscripcionesTab> {
 
   Widget _buildPeticionesView() {
     return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('peticiones')
-          .where('tribuId', isEqualTo: widget.tribuId)
-          .orderBy('fecha', descending: true)
-          .snapshots(),
+      stream: _peticionesStream, // ✅ reutiliza el mismo stream
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return Center(
@@ -21146,13 +21215,7 @@ class _InscripcionesTabState extends State<InscripcionesTab> {
   // AÑADIR AL FINAL DE LA CLASE _InscripcionesTabState
   Widget _buildEventosView() {
     return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('eventos')
-          .where('tribuId', isEqualTo: widget.tribuId)
-          .where('estado', isNotEqualTo: 'cancelado')
-          .orderBy('estado')
-          .orderBy('fechaInicio', descending: false)
-          .snapshots(),
+      stream: _eventosStream, // ✅ reutiliza el mismo stream
       builder: (context, snapshot) {
         // Debug info
         if (snapshot.hasData) {}
@@ -21461,10 +21524,7 @@ class _InscripcionesTabState extends State<InscripcionesTab> {
     final currentYear = now.year;
 
     return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('registros')
-          .where('tribuAsignada', isEqualTo: widget.tribuId)
-          .snapshots(),
+      stream: _registrosCumpleanosStream, // ✅ reutiliza el mismo stream
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return Center(
@@ -22567,10 +22627,7 @@ class _InscripcionesTabState extends State<InscripcionesTab> {
 
   Widget _buildClasesDiscipuladoView() {
     return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('clasesDiscipulado')
-          .where('estado', isEqualTo: 'activa')
-          .snapshots(),
+      stream: _clasesStream, // ✅ reutiliza el mismo stream
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return Center(
