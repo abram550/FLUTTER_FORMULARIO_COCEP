@@ -134,8 +134,8 @@ final GoRouter router = GoRouter(
 
     GoRoute(
       path: '/ministerio_lider',
-      redirect: (context, state) =>
-          _authGuard.redirect(context, state, ['liderMinisterio']),
+      redirect: (context, state) => _authGuard.redirect(
+          context, state, ['liderMinisterio', 'adminPastores']),
       builder: (context, state) {
         final params = state.extra as Map<String, dynamic>;
         return MinisterioLiderScreen(ministerio: params['ministerio']);
