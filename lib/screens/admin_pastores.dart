@@ -1847,10 +1847,26 @@ class _AdminPastoresState extends State<AdminPastores>
         child: TabBarView(
           controller: _tabController,
           children: [
-            _buildTribusTab(),
-            _buildLiderConsolidacionTab(),
-            _buildMinisterioTab('Ministerio de Damas'),
-            _buildMinisterioTab('Ministerio de Caballeros'),
+            _LazyTab(
+              index: 0,
+              controller: _tabController,
+              builder: (_) => _buildTribusTab(),
+            ),
+            _LazyTab(
+              index: 1,
+              controller: _tabController,
+              builder: (_) => _buildLiderConsolidacionTab(),
+            ),
+            _LazyTab(
+              index: 2,
+              controller: _tabController,
+              builder: (_) => _buildMinisterioTab('Ministerio de Damas'),
+            ),
+            _LazyTab(
+              index: 3,
+              controller: _tabController,
+              builder: (_) => _buildMinisterioTab('Ministerio de Caballeros'),
+            ),
           ],
         ),
       ),
@@ -1895,6 +1911,7 @@ class _AdminPastoresState extends State<AdminPastores>
           stream: _firestore
               .collection('lideresMinisterio')
               .where('ministerio', isEqualTo: ministerio)
+              .limit(1)
               .snapshots(),
           builder: (context, snapshot) {
             if (!snapshot.hasData)
@@ -2096,7 +2113,12 @@ class _AdminPastoresState extends State<AdminPastores>
                         ),
                         const Divider(thickness: 1),
                         StreamBuilder<QuerySnapshot>(
-                          stream: _firestore.collection('tribus').snapshots(),
+                          // ✅ Filtrado en el servidor: solo baja las tribus
+                          // de este ministerio, no la colección completa.
+                          stream: _firestore
+                              .collection('tribus')
+                              .where('categoria', isEqualTo: ministerio)
+                              .snapshots(),
                           builder: (context, snapshot) {
                             if (!snapshot.hasData)
                               return const Center(
@@ -2109,14 +2131,7 @@ class _AdminPastoresState extends State<AdminPastores>
                                 ),
                               );
 
-                            final allTribus = snapshot.data!.docs;
-
-                            // Filtrar las tribus por ministerio en memoria
-                            final tribus = allTribus.where((doc) {
-                              final tribuData =
-                                  doc.data() as Map<String, dynamic>;
-                              return tribuData['categoria'] == ministerio;
-                            }).toList();
+                            final tribus = snapshot.data!.docs;
 
                             // Ordenar por fecha de creación
                             // Ordenar por fecha de creación manualmente (con manejo de nulos)
@@ -5018,9 +5033,16 @@ class _AdminPastoresState extends State<AdminPastores>
     );
   }
 
+
+
   Widget _buildListaTribus() {
     return StreamBuilder<QuerySnapshot>(
-      stream: _firestore.collection('tribus').snapshots(),
+      // ✅ Filtrado en el servidor: solo baja las tribus del Ministerio
+      // Juvenil, no la colección completa.
+      stream: _firestore
+          .collection('tribus')
+          .where('categoria', isEqualTo: 'Ministerio Juvenil')
+          .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.hasError) {
           return _buildErrorWidget('Error: ${snapshot.error}');
@@ -5034,13 +5056,7 @@ class _AdminPastoresState extends State<AdminPastores>
           );
         }
 
-        final allTribus = snapshot.data?.docs ?? [];
-
-        // Filtrar las tribus del ministerio juvenil en memoria
-        final tribus = allTribus.where((doc) {
-          final data = doc.data() as Map<String, dynamic>;
-          return data['categoria'] == 'Ministerio Juvenil';
-        }).toList();
+        final tribus = snapshot.data?.docs ?? [];
 
         if (tribus.isEmpty) {
           return _buildEmptyState();
@@ -5164,6 +5180,9 @@ class _AdminPastoresState extends State<AdminPastores>
       },
     );
   }
+
+
+
 
   Widget _buildEstadisticasTribu(String tribuId) {
     return StreamBuilder<QuerySnapshot>(
@@ -7564,6 +7583,60 @@ class _AdminPastoresState extends State<AdminPastores>
         ),
       ),
     );
+  }
+
+
+
+
+  
+}
+
+
+class _LazyTab extends StatefulWidget {
+  final int index;
+  final TabController controller;
+  final WidgetBuilder builder;
+
+  const _LazyTab({
+    required this.index,
+    required this.controller,
+    required this.builder,
+  });
+
+  @override
+  State<_LazyTab> createState() => _LazyTabState();
+}
+
+class _LazyTabState extends State<_LazyTab>
+    with AutomaticKeepAliveClientMixin {
+  late bool _visited = widget.controller.index == widget.index;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.addListener(_onTabChange);
+  }
+
+  void _onTabChange() {
+    if (!_visited && widget.controller.index == widget.index) {
+      setState(() => _visited = true);
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_onTabChange);
+    super.dispose();
+  }
+
+  @override
+  bool get wantKeepAlive => _visited;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    if (!_visited) return const SizedBox.shrink();
+    return widget.builder(context);
   }
 }
 

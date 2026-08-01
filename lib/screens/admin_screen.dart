@@ -365,90 +365,13 @@ class _AdminPanelState extends State<AdminPanel>
     }
   }
 
-  Future<void> _loadData() async {
+
+
+Future<void> _loadData() async {
     print('🚀 === INICIANDO _loadData ===');
+  
     setState(() => _isLoading = true);
-
-    try {
-      final snapshot = await _firestore.collection('registros').get();
-      print('📊 Total documentos en "registros": ${snapshot.docs.length}');
-
-      final Set<int> anios = {};
-
-      for (final doc in snapshot.docs) {
-        final data = doc.data() as Map<String, dynamic>?;
-
-        // ✅ MANEJO SEGURO: Verificar que exista el campo 'fecha' y sea un Timestamp
-        if (data == null ||
-            !data.containsKey('fecha') ||
-            data['fecha'] == null) {
-          print('  ⚠️ Doc ${doc.id}: Sin campo "fecha" válido - ignorado');
-          continue;
-        }
-
-        try {
-          // ✅ CONVERSIÓN SEGURA: Intentar convertir a DateTime
-          final fechaField = data['fecha'];
-          DateTime? fecha;
-
-          if (fechaField is Timestamp) {
-            fecha = fechaField.toDate();
-          } else if (fechaField is String) {
-            fecha = DateTime.tryParse(fechaField);
-          }
-
-          // ✅ Si se obtuvo una fecha válida, agregar el año
-          if (fecha != null) {
-            anios.add(fecha.year);
-            print('  ✅ Doc ${doc.id}: Año ${fecha.year} agregado');
-          } else {
-            print(
-                '  ⚠️ Doc ${doc.id}: Campo "fecha" no es Timestamp ni String válido');
-          }
-        } catch (e) {
-          print('  ❌ Doc ${doc.id}: Error al procesar fecha: $e');
-        }
-      }
-
-      if (anios.isNotEmpty) {
-        final lista = anios.toList()..sort();
-
-        setState(() {
-          _aniosDisponibles = lista;
-
-          // ✅ CORRECCIÓN PRINCIPAL: Seleccionar el año MÁS RECIENTE con datos
-          _anioSeleccionado = _aniosDisponibles.last;
-
-          // ✅ Para vista mensual/semanal inicial, mostrar "Todos los meses"
-          if (_filtroSeleccionado == "mensual" ||
-              _filtroSeleccionado == "semanal") {
-            _mesSeleccionado = "Todos los meses";
-          }
-        });
-
-        print('📅 Años disponibles (con datos): $_aniosDisponibles');
-        print('🎯 Año seleccionado automáticamente: $_anioSeleccionado');
-      } else {
-        print('⚠️ No se encontraron documentos con fecha válida');
-
-        // ✅ FALLBACK: Si no hay datos, usar año actual
-        final currentYear = DateTime.now().year;
-        setState(() {
-          _aniosDisponibles = [currentYear];
-          _anioSeleccionado = currentYear;
-        });
-        print('ℹ️ Usando año actual como fallback: $currentYear');
-      }
-
-      _inicializarStreams();
-    } catch (e, stackTrace) {
-      print('❌ ERROR CRÍTICO en _loadData: $e');
-      print('Stack trace: $stackTrace');
-      _mostrarError('Error cargando datos: $e');
-    } finally {
-      setState(() => _isLoading = false);
-      print('🏁 === FIN _loadData ===\n');
-    }
+    _inicializarStreams();
   }
 
   void _inicializarStreams() {
@@ -457,6 +380,28 @@ class _AdminPanelState extends State<AdminPanel>
         if (mounted) {
           setState(() {
             _registrosPorAnioMesDia = _agruparRegistrosPorFecha(registros);
+
+            // ✅ Calculamos los años disponibles aquí mismo, con los datos
+            // que ya trajo el stream, en vez de pedirlos aparte con un
+            // `.get()` adicional (eso era la doble descarga).
+            final anios = _registrosPorAnioMesDia.keys.toList()..sort();
+            if (anios.isNotEmpty) {
+              _aniosDisponibles = anios;
+              if (_anioSeleccionado == -1 ||
+                  !_aniosDisponibles.contains(_anioSeleccionado)) {
+                _anioSeleccionado = _aniosDisponibles.last;
+                if (_filtroSeleccionado == "mensual" ||
+                    _filtroSeleccionado == "semanal") {
+                  _mesSeleccionado = "Todos los meses";
+                }
+              }
+            } else if (_aniosDisponibles.isEmpty) {
+              final currentYear = DateTime.now().year;
+              _aniosDisponibles = [currentYear];
+              _anioSeleccionado = currentYear;
+            }
+
+            _isLoading = false;
           });
         }
       },
@@ -5305,7 +5250,7 @@ class _AdminPanelState extends State<AdminPanel>
     // Inicializar estado de expansión si no existe
     _aniosExpandidos[anio] ??= false;
 
-   return ExpansionTile(
+    return ExpansionTile(
       // ✅ CRÍTICO: Controlar expansión manualmente
       initiallyExpanded: _aniosExpandidos[anio]!,
       onExpansionChanged: (expanded) {
