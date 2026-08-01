@@ -475,10 +475,7 @@ class _AdminPanelState extends State<AdminPanel>
           _mostrarError('Error cargando consolidadores: $error'),
     );
 
-    FirebaseFirestore.instance
-        .collection('social_profiles')
-        .snapshots()
-        .listen(
+    FirebaseFirestore.instance.collection('social_profiles').snapshots().listen(
       (snapshot) {
         if (!mounted) return;
         final perfiles = snapshot.docs
@@ -551,8 +548,7 @@ class _AdminPanelState extends State<AdminPanel>
           3, // Importante: asegurar que hay 3 tabs para mantener la lógica original
       child: Scaffold(
         floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-        floatingActionButton: SafeArea(
-          child: LayoutBuilder(
+        floatingActionButton: SafeArea(child: LayoutBuilder(
           builder: (context, constraints) {
             final screenWidth = MediaQuery.of(context).size.width;
             final isSmallScreen = screenWidth < 500;
@@ -4290,7 +4286,7 @@ class _AdminPanelState extends State<AdminPanel>
     );
   }
 
-Widget _buildRegistrosTab() {
+  Widget _buildRegistrosTab() {
     return SingleChildScrollView(
       child: FadeTransition(
         opacity: _fadeAnimation,
@@ -5309,8 +5305,7 @@ Widget _buildRegistrosTab() {
     // Inicializar estado de expansión si no existe
     _aniosExpandidos[anio] ??= false;
 
-    return ExpansionTile(
-      key: PageStorageKey('anio_$anio'),
+   return ExpansionTile(
       // ✅ CRÍTICO: Controlar expansión manualmente
       initiallyExpanded: _aniosExpandidos[anio]!,
       onExpansionChanged: (expanded) {
@@ -5349,7 +5344,6 @@ Widget _buildRegistrosTab() {
     _mesesExpandidos[mesKey] ??= false;
 
     return ExpansionTile(
-      key: PageStorageKey('mes_$mesKey'),
       // ✅ CRÍTICO: Controlar expansión manualmente
       initiallyExpanded: _mesesExpandidos[mesKey]!,
       onExpansionChanged: (expanded) {
@@ -7348,7 +7342,7 @@ Widget _buildRegistrosTab() {
                     List<int> orderedYears = years.toList()
                       ..sort((a, b) => b.compareTo(a));
 
-                   return _buildGroupedPerfilesView(
+                    return _buildGroupedPerfilesView(
                       context,
                       groupedPerfiles,
                       orderedYears,
@@ -10281,7 +10275,7 @@ Widget _buildRegistrosTab() {
     return Icons.public; // Ícono predeterminado si no es Facebook ni YouTube
   }
 
-Widget _buildConsolidadoresTab() {
+  Widget _buildConsolidadoresTab() {
     return SingleChildScrollView(
       child: FadeTransition(
         opacity: _fadeAnimation,
