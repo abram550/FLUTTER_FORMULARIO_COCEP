@@ -98,6 +98,7 @@ class _AdminPanelState extends State<AdminPanel>
       _filtroTipoRegistro; // null = todos, "nuevo" = nuevos, "visita" = visitas
 
   List<Map<String, String>> _consolidadores = [];
+  List<SocialProfile> _perfilesSociales = [];
 
 // Variables para el manejo de sesión - AGREGAR ESTAS LÍNEAS
   Timer? _inactivityTimer;
@@ -473,6 +474,24 @@ class _AdminPanelState extends State<AdminPanel>
       onError: (error) =>
           _mostrarError('Error cargando consolidadores: $error'),
     );
+
+    FirebaseFirestore.instance
+        .collection('social_profiles')
+        .snapshots()
+        .listen(
+      (snapshot) {
+        if (!mounted) return;
+        final perfiles = snapshot.docs
+            .map((doc) => SocialProfile.fromMap(
+                doc.data() as Map<String, dynamic>, doc.id))
+            .toList();
+        setState(() {
+          _perfilesSociales = perfiles;
+        });
+      },
+      onError: (error) =>
+          _mostrarError('Error cargando perfiles sociales: $error'),
+    );
   }
 
   void _mostrarError(String mensaje) {
@@ -531,7 +550,9 @@ class _AdminPanelState extends State<AdminPanel>
       length:
           3, // Importante: asegurar que hay 3 tabs para mantener la lógica original
       child: Scaffold(
-        floatingActionButton: LayoutBuilder(
+        floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+        floatingActionButton: SafeArea(
+          child: LayoutBuilder(
           builder: (context, constraints) {
             final screenWidth = MediaQuery.of(context).size.width;
             final isSmallScreen = screenWidth < 500;
@@ -574,7 +595,7 @@ class _AdminPanelState extends State<AdminPanel>
               ],
             );
           },
-        ),
+        )),
         appBar: AppBar(
           leading: IconButton(
             icon: const Icon(Icons.arrow_back, color: Colors.white),
@@ -4269,7 +4290,7 @@ class _AdminPanelState extends State<AdminPanel>
     );
   }
 
-  Widget _buildRegistrosTab() {
+Widget _buildRegistrosTab() {
     return SingleChildScrollView(
       child: FadeTransition(
         opacity: _fadeAnimation,
@@ -4279,6 +4300,9 @@ class _AdminPanelState extends State<AdminPanel>
             _searchQuery.isNotEmpty
                 ? _buildRegistrosSearchList()
                 : _buildRegistrosList(),
+            // ✅ Espacio para que los FAB (Asignaciones/Estadísticas)
+            // nunca tapen el último elemento de la lista.
+            const SizedBox(height: 140),
           ],
         ),
       ),
@@ -4680,6 +4704,9 @@ class _AdminPanelState extends State<AdminPanel>
   }
 
   Widget _buildRegistrosList() {
+    final datos =
+        _mostrarFiltrados ? _registrosFiltrados : _registrosPorAnioMesDia;
+
     return Card(
       margin: const EdgeInsets.all(16),
       elevation: 8,
@@ -4698,73 +4725,33 @@ class _AdminPanelState extends State<AdminPanel>
         child: Column(
           children: [
             _buildFiltroTipoRegistro(),
-            StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance
-                  .collection('registros')
-                  .snapshots(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-
-                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                  return const Center(
-                      child: Text('No hay registros disponibles.'));
-                }
-
-                // ✅ FILTRO CRÍTICO: Excluir registros provenientes de perfiles sociales
-                final registrosFiltrados = snapshot.data!.docs.where((doc) {
-                  final data = doc.data() as Map<String, dynamic>?;
-
-                  // ✅ CRITERIO 1: Excluir si tiene origenPerfilSocial = true
-                  final origenPerfilSocial =
-                      data?['origenPerfilSocial'] ?? false;
-                  if (origenPerfilSocial == true) {
-                    return false; // NO mostrar en pestaña Registros
-                  }
-
-                  // ✅ CRITERIO 2: Excluir si tiene perfilSocialId (vinculado a perfil social)
-                  final perfilSocialId = data?['perfilSocialId'];
-                  if (perfilSocialId != null &&
-                      perfilSocialId.toString().trim().isNotEmpty) {
-                    return false; // NO mostrar en pestaña Registros
-                  }
-
-                  // ✅ Si no cumple ninguno de los criterios anteriores, SÍ mostrarlo
-                  return true; // Mostrar solo registros directos
-                }).toList();
-
-                if (registrosFiltrados.isEmpty) {
-                  return const Center(
-                    child: Padding(
-                      padding: EdgeInsets.all(20),
-                      child: Text(
-                        'No hay registros directos disponibles.\nLos registros de perfiles sociales se muestran en su pestaña.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: 14, color: Colors.grey),
-                      ),
-                    ),
-                  );
-                }
-
-                return ListView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  padding: const EdgeInsets.all(8),
-                  itemCount: (_mostrarFiltrados
-                          ? _registrosFiltrados
-                          : _registrosPorAnioMesDia)
-                      .length,
-                  itemBuilder: (context, indexAnio) {
-                    final datos = _mostrarFiltrados
-                        ? _registrosFiltrados
-                        : _registrosPorAnioMesDia;
-                    final anio = datos.keys.toList()[indexAnio];
-                    return _buildAnioGroup(anio, datos[anio]!);
-                  },
-                );
-              },
-            ),
+            if (_isLoading && datos.isEmpty)
+              const Padding(
+                padding: EdgeInsets.all(24),
+                child: Center(child: CircularProgressIndicator()),
+              )
+            else if (datos.isEmpty)
+              const Padding(
+                padding: EdgeInsets.all(20),
+                child: Center(
+                  child: Text(
+                    'No hay registros directos disponibles.\nLos registros de perfiles sociales se muestran en su pestaña.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 14, color: Colors.grey),
+                  ),
+                ),
+              )
+            else
+              ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(8),
+                itemCount: datos.length,
+                itemBuilder: (context, indexAnio) {
+                  final anio = datos.keys.toList()[indexAnio];
+                  return _buildAnioGroup(anio, datos[anio]!);
+                },
+              ),
           ],
         ),
       ),
@@ -5323,6 +5310,7 @@ class _AdminPanelState extends State<AdminPanel>
     _aniosExpandidos[anio] ??= false;
 
     return ExpansionTile(
+      key: PageStorageKey('anio_$anio'),
       // ✅ CRÍTICO: Controlar expansión manualmente
       initiallyExpanded: _aniosExpandidos[anio]!,
       onExpansionChanged: (expanded) {
@@ -5361,6 +5349,7 @@ class _AdminPanelState extends State<AdminPanel>
     _mesesExpandidos[mesKey] ??= false;
 
     return ExpansionTile(
+      key: PageStorageKey('mes_$mesKey'),
       // ✅ CRÍTICO: Controlar expansión manualmente
       initiallyExpanded: _mesesExpandidos[mesKey]!,
       onExpansionChanged: (expanded) {
@@ -7232,13 +7221,12 @@ class _AdminPanelState extends State<AdminPanel>
                   ),
                 ),
 
-                // StreamBuilder con diseño mejorado
-                StreamBuilder<QuerySnapshot>(
-                  stream: FirebaseFirestore.instance
-                      .collection('social_profiles')
-                      .snapshots(),
-                  builder: (context, snapshot) {
-                    if (!snapshot.hasData) {
+                // ✅ Ya no usamos StreamBuilder aquí: los datos vienen
+                // cacheados en _perfilesSociales, evitando reconstruir
+                // todo el árbol de años/meses/semanas en cada escritura.
+                Builder(
+                  builder: (context) {
+                    if (_isLoading && _perfilesSociales.isEmpty) {
                       return Container(
                         height: 200,
                         child: Center(
@@ -7265,13 +7253,10 @@ class _AdminPanelState extends State<AdminPanel>
                       );
                     }
 
-                    List<SocialProfile> allPerfiles =
-                        snapshot.data!.docs.map((doc) {
-                      return SocialProfile.fromMap(
-                          doc.data() as Map<String, dynamic>, doc.id);
-                    }).toList();
+                    List<SocialProfile> allPerfiles = _perfilesSociales;
 
                     // Filtrar por rango de fechas si está seleccionado
+
                     List<SocialProfile> filteredPerfiles = allPerfiles;
                     if (_startDate != null && _endDate != null) {
                       filteredPerfiles = allPerfiles.where((perfil) {
@@ -7363,7 +7348,7 @@ class _AdminPanelState extends State<AdminPanel>
                     List<int> orderedYears = years.toList()
                       ..sort((a, b) => b.compareTo(a));
 
-                    return _buildGroupedPerfilesView(
+                   return _buildGroupedPerfilesView(
                       context,
                       groupedPerfiles,
                       orderedYears,
@@ -7374,6 +7359,7 @@ class _AdminPanelState extends State<AdminPanel>
                     );
                   },
                 ),
+                const SizedBox(height: 140),
               ],
             ),
           ),
@@ -10295,7 +10281,7 @@ class _AdminPanelState extends State<AdminPanel>
     return Icons.public; // Ícono predeterminado si no es Facebook ni YouTube
   }
 
-  Widget _buildConsolidadoresTab() {
+Widget _buildConsolidadoresTab() {
     return SingleChildScrollView(
       child: FadeTransition(
         opacity: _fadeAnimation,
@@ -10303,6 +10289,7 @@ class _AdminPanelState extends State<AdminPanel>
           children: [
             _buildAgregarConsolidadorCard(),
             _buildConsolidadoresList(),
+            const SizedBox(height: 140),
           ],
         ),
       ),
